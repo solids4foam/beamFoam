@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    "DWDTheta|WTheta"
+    {
+        solver BlockTDM; //BiCGStab;
+
+        preconditioner ParCholesky;
+        tolerance       1e-13;
+        relTol          1e-3;
+        minIter         1;
+        maxIter         1000;
+    };
+}
+
+relaxationFactors
+{
+    euqations
+    {
+        // U 0.99;
+    }
+    fields
+    {
+        // DW 0.5;
+      
+        // DTheta 0.1;
+        // DLambda 0.1;
+        
+        // Theta 0.1;
+        // Lambda 0.1;
+        // // T 0.1;
+        
+        // stretchRatio 0.1;
+    }
+}
+
+
+// ************************************************************************* //

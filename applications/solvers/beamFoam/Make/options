@@ -1,0 +1,27 @@
+EXE_INC = \
+    -I../../../src/wireBunchingModels/lnInclude \
+    -I../../../ThirdParty/eigen3 \
+    -I../../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
+    -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude
+
+EXE_LIBS = \
+    -L$(FOAM_USER_LIBBIN) \
+    -lwireBunchingModels \
+    -lfiniteVolume \
+    -ldynamicFvMesh \
+    -ldynamicMesh \
+    -lmeshTools \
+    -llduSolvers
+
+/*
+-fopenmp
+*/
+
+/*
+    -I$(PETSC_DIR)/include \
+    -I$(PETSC_DIR)/$(PETSC_ARCH)/include
+    -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
+    -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_rt -lpthread -lm -ldl
+*/

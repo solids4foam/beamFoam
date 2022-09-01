@@ -1,0 +1,23 @@
+set terminal postscript color solid
+set output "beamContactForce.ps"
+
+
+set xlabel "s"
+set ylabel  "f_c(s)"
+
+#set grid
+#set size ratio -1
+set size 1,0.5
+
+set border linewidth 1.5
+
+#set rmargin 2
+#set lmargin 6
+
+#set yrange [-1:0]
+
+set key top center
+
+plot [1:4] "fem-data.txt" using 1:2 title "FEM" with points pt 6 lw 2, \
+"1/beam-0_force.txt" using 1:3 title "Our solver" with lines lw 2
+

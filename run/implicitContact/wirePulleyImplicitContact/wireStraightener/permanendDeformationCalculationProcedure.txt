@@ -1,0 +1,10 @@
+After wire straightening simulation is finished, one can obtaine permanently deformed shape of the beam based on plastic strain saved in wireStraightener/1 folder. For this purpose it is defined "permanentDeformation" case. In order to calculate permanently deforme shape, one has to performe following preparation steps:
+
+1. Beam dimension (radius and length), discretization and mechanical properties defined in permanentDeformation/constang/beamProperties dictionary must be same as in the wireStraigtener/constang/beamProperties dictionary
+
+2. Run Allrun script
+
+3. If calculation diverges, reduce time step size.
+
+4. Run "gnuplot gpBeamCurvature" to create graph which shows distribution of curvature along beam length.
+   According to line "stats [0:1000] './1/beamCurvature.dat' using 1:2 nooutput", mean values will be calculated in the specified range "[0:1000]". 

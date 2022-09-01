@@ -1,0 +1,17 @@
+#!/bin/sh
+set -x
+
+cd build
+
+rm -rf *
+
+cmake -DVTK_DIR:PATH=/home/ztukovic/Install/VTK-9.0.0.rc2/build ..
+#cmake -DVTK_DIR:PATH=/home/ztukovic/foam/foam-extend-4.1/ThirdParty/rpmBuild/BUILD/ParaView-v5.5.2/buildObj/VTK/ ..
+
+make
+
+echo $FOAM_USER_APPBIN
+
+cp vtk2vtp $FOAM_USER_APPBIN
+
+cd ..

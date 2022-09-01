@@ -1,0 +1,1 @@
+../beamContactModel/contactModels/frictionContactModels/regularizedStandardPenaltyFriction/regularizedStandardPenaltyFriction.C

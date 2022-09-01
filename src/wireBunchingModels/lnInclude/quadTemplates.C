@@ -1,0 +1,1 @@
+../beamModels/beamModel/crossSections/crossSection/quad/quadTemplates.C

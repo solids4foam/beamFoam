@@ -1,0 +1,73 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+beams
+(
+    beam_0
+    {
+        crossSectionModel rectangle;
+
+        rectangleCrossSectionModelDict
+        {
+            b 5; //mm
+            h 0.9; //mm
+
+            nx 1;
+            ny 50;
+        }
+
+        length 800; // mm
+        nSegments 800;
+    }
+);
+
+nBeams 1;
+R R [0 1 0 0 0 0 0] 0.45; // mm;
+L L [0 1 0 0 0 0 0] 800; // mm
+nSegments 800;
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    E E [1 -1 -2 0 0 0 0] 177e6;
+    G G [1 -1 -2 0 0 0 0] 88.5e6; // nu=0
+
+    plasticityModel linearElasticMisesPlastic;
+    linearElasticMisesPlasticCoeffs
+    {
+        sigmaY0 sigmaY0 [1 -1 -2 0 0 0 0] 1.57e6;
+        HP EP [1 -1 -2 0 0 0 0] 0;
+
+        elPredTol 1e-6;
+
+        writeFaceIDs 1( 400 );
+        plasticity false;
+    }
+
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 2000;
+    convergenceTol 1e-12;
+
+    debug no;
+    updatedLagrangian no;
+}
+
+// ************************************************************************* //

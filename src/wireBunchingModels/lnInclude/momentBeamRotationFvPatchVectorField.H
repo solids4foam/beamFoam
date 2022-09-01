@@ -1,0 +1,1 @@
+../beamModels/fvPatchFields/momentBeamRotation/momentBeamRotationFvPatchVectorField.H

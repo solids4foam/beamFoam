@@ -1,0 +1,1 @@
+../beamContactModel/contactModels/frictionContactModels/tanhPenaltyFriction/tanhPenaltyFriction.H

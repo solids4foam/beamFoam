@@ -1,0 +1,170 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beams
+(
+    beam_0
+    {
+        crossSectionModel rectangle;
+
+        rectangleCrossSectionModelDict
+        {
+            b 5; //mm
+            h 0.9; //mm
+
+            nx 10;
+            ny 20;
+        }
+
+        length 110; // mm
+        nSegments 110;
+    }
+);
+
+// nBeams 1;
+// R R [0 1 0 0 0 0 0] 0.45; // mm;
+// L L [0 1 0 0 0 0 0] 800; // mm
+// nSegments 800;
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    E E [1 -1 -2 0 0 0 0] 177e6;
+    G G [1 -1 -2 0 0 0 0] 68.07e6; // nu=0.3
+    // G G [1 -1 -2 0 0 0 0] 88.5e6; // nu=0
+
+    plasticityModel linearElasticMisesPlastic;
+    linearElasticMisesPlasticCoeffs
+    {
+        sigmaY0 sigmaY0 [1 -1 -2 0 0 0 0] 1.57e6;
+        HP EP [1 -1 -2 0 0 0 0] 1.57e5;
+
+        elPredTol 1e-6;
+
+        writeFaceIDs 1( 48 );
+    }
+
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 2000;
+    convergenceTol 1e-12;
+
+    debug no;
+    updatedLagrangian no;
+
+    // deltaTseries
+    // {
+    //     fileName "$FOAM_CASE/constant/timeVsDeltaT";
+    //     outOfBounds clamp;
+    // }
+}
+
+
+toroidalPulleys
+(    
+    // First row
+    pulley_0
+    {
+        origin (0 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+    
+    pulley_1
+    {
+        origin (32 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement_1";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_1.stl";
+    }
+
+    pulley_2
+    {
+        origin (64 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+    
+    // Second row
+    pulley_3
+    {
+        origin (0 0 0);
+        originShift (-16 31 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+
+    pulley_4
+    {
+        origin (32 0 0);
+        originShift (-16 31 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+        
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement_4";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_4.stl";
+    }
+
+    pulley_5
+    {
+        origin (64 0 0);
+        originShift (-16 31 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+);
+
+
+// ************************************************************************* //

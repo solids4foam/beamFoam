@@ -1,0 +1,77 @@
+# 1 "options"
+# 1 "<built-in>"
+# 1 "<command-line>"
+
+
+
+
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+
+# 17 "/usr/include/stdc-predef.h" 3 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4 "<command-line>" 2
+# 1 "options"
+ifeq ($(WM_PROJECT), foam)
+    VER := $(shell expr `echo $(WM_PROJECT_VERSION)` \>= 4.1)
+    ifeq ($(VER), 1)
+        VERSION_SPECIFIC_INC = -DFOAMEXTEND=41
+    else
+        VERSION_SPECIFIC_INC = -DFOAMEXTEND=40
+    endif
+endif
+
+EXE_INC =     $(VERSION_SPECIFIC_INC)     -I../../../src/wireBunchingModels/lnInclude     -I$(LIB_SRC)/finiteVolume/lnInclude     -I$(LIB_SRC)/finiteArea/lnInclude     -I$(LIB_SRC)/meshTools/lnInclude     -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude     -I$(LIB_SRC)/lagrangian/basic/lnInclude
+
+
+
+
+
+
+
+
+LIB_LIBS =     -L$(FOAM_USER_LIBBIN)     -lwireBunchingModels     -lfiniteVolume     -lfiniteArea     -ldynamicFvMesh     -ldynamicMesh     -lmeshTools

@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.1                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      refW;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   nonuniform List<vector> 8((-0.00197109 0.120454 0) (-0.0531684 1.08235 0) (-0.245675 2.99688 0) (-0.672183 5.84559 0) (-1.42314 9.60107 0) (-2.58585 14.2272 0) (-4.24367 19.6793 0) (-6.47518 25.9049 0));
+
+boundaryField
+{
+    left
+    {
+        type            calculated;
+        value           uniform (0 0 0);
+    }
+    right
+    {
+        type            calculated;
+        value           uniform (-7.82914 29.2893 0);
+    }
+    beam
+    {
+        type            empty;
+    }
+}
+
+
+// ************************************************************************* //

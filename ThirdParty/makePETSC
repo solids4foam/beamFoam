@@ -1,0 +1,87 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# =========                 |
+# \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+#  \\    /   O peration     |
+#   \\  /    A nd           | www.openfoam.com
+#    \\/     M anipulation  |
+#------------------------------------------------------------------------------
+#     Copyright (C) 2018-2021 OpenCFD Ltd.
+#------------------------------------------------------------------------------
+# License
+#     This file is part of OpenFOAM, distributed under GPL-3.0-or-later.
+#
+# Script
+#     makePETSC
+#
+# Description
+#     Build script for PETSC
+#
+# ----------------------------------------------
+# NO USER-CONFIGURABLE SETTINGS WITHIN THIS FILE
+#------------------------------------------------------------------------------
+
+PETSC_SOURCE_DIR="$(pwd)/petsc"
+PETSC_BUILD="$PETSC_SOURCE_DIR/build"
+
+archOpt=DPInt32
+
+cd $PETSC_SOURCE_DIR
+
+if [ -z $MKLROOT ]
+then
+
+./configure \
+    --prefix="$PETSC_BUILD" \
+    --PETSC_DIR="$PETSC_SOURCE_DIR" \
+    --with-petsc-arch=DPInt32 \
+    --with-clanguage=C \
+    --with-x=0 \
+    --with-fc=mpif90 \
+    --download-scalapack \
+    --download-mumps \
+    --download-parmetis \
+    --download-metis \
+    --download-ptscotch \
+    --with-cc=/usr/bin/mpicc \
+    --with-cxx=/usr/bin/mpicxx \
+    --with-debugging=0 \
+    --COPTFLAGS=-O3 \
+    --CXXOPTFLAGS=-O3 \
+    --with-shared-libraries \
+    --with-64-bit-indices=0 \
+    --with-precision=double \
+    --download-hypre \
+    --with-blas-lapack-dir=$MKLROOT \
+    --with-mkl_cpardiso-dir=$MKLROOT
+
+else
+./configure \
+    --prefix="$PETSC_BUILD" \
+    --PETSC_DIR="$PETSC_SOURCE_DIR" \
+    --with-petsc-arch=DPInt32 \
+    --with-clanguage=C \
+    --with-x=0 \
+    --with-fc=mpif90 \
+    --download-scalapack \
+    --download-mumps \
+    --download-parmetis \
+    --download-metis \
+    --download-ptscotch \
+    --with-cc=/usr/bin/mpicc \
+    --with-cxx=/usr/bin/mpicxx \
+    --with-debugging=0 \
+    --COPTFLAGS=-O3 \
+    --CXXOPTFLAGS=-O3 \
+    --with-shared-libraries \
+    --with-64-bit-indices=0 \
+    --with-precision=double \
+    --download-hypre
+
+fi
+
+make PETSC_DIR="$PETSC_SOURCE_DIR" PETSC_ARCH="$archOpt" all
+
+make PETSC_DIR="$PETSC_SOURCE_DIR" PETSC_ARCH="$archOpt" install
+
+#------------------------------------------------------------------------------

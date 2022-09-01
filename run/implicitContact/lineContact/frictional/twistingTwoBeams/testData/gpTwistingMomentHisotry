@@ -1,0 +1,27 @@
+set terminal postscript color solid
+set output "twistingMomentHistory.ps"
+
+
+set xlabel "Time, s"
+set ylabel  "Moment, Nm"
+
+#set grid
+#set size ratio -1
+set size 1,0.5
+
+set border linewidth 1.5
+
+#set rmargin 2
+#set lmargin 6
+
+set yrange [0:]
+
+set key top left
+
+
+set title "Time history of the end point moment (axial component)"
+
+plot [0.01:] \
+"history/0/endForceMoment_right_0_mu01.dat" using 1:2 title "Friction coeff: 0.1" with lines lw 2, \
+"history/0/endForceMoment_right_0_mu02.dat" using 1:2 title "Friction coeff: 0.2" with lines lw 2, \
+"history/0/endForceMoment_right_0_mu03.dat" using 1:2 title "Friction coeff: 0.3" with lines lw 2

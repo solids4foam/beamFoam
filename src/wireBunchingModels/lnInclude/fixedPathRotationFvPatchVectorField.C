@@ -1,0 +1,1 @@
+../beamModels/fvPatchFields/fixedPathRotation/fixedPathRotationFvPatchVectorField.C

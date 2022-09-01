@@ -1,0 +1,1 @@
+../beamModels/plasticityStressResultantReturnMethods/axialForce3dBending/axialForce3dBending.C

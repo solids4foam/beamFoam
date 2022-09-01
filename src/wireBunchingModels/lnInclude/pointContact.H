@@ -1,0 +1,1 @@
+../beamContactModel/pointContact/pointContact.H

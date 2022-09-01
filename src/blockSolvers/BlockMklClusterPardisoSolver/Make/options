@@ -1,0 +1,68 @@
+include $(RULES)/mplib$(WM_MPLIB)
+
+ifeq (Gcc,$(findstring Gcc,$(WM_COMPILER)))
+    DISABLE_WARNING_FLAGS = -Wno-old-style-cast -Wno-return-type
+else
+    DISABLE_WARNING_FLAGS =
+endif
+
+EXE_INC = $(PFLAGS) $(PINC) \
+    $(DISABLE_WARNING_FLAGS) \
+    -std=c++11 \
+    -I../../wireBunchingModels/lnInclude \
+    -I/usr/lib/x86_64-linux-gnu/openmpi/include \
+    -I$(LIB_SRC)/finiteVolume/lnInclude  \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/topoChangerFvMesh/lnInclude \
+    -m64 -I${MKLROOT}/include
+
+LIB_LIBS = $(PLIBS)\
+    -lfiniteVolume \
+    -lmeshTools \
+    -ldynamicFvMesh \
+    -ldynamicMesh \
+    -ltopoChangerFvMesh \
+    -Wl,--start-group \
+    ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
+    ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+    ${MKLROOT}/lib/intel64/libmkl_core.a \
+    ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+    -Wl,--end-group \
+    -lgomp -lpthread -lm -ldl
+
+
+$(OBJECTS_DIR)/global.o: FORCE
+
+FORCE:
+
+
+/*
+    -L$(OPENMPI_DIR)/lib -lmpi \
+*/
+
+/*
+    -Wl,--start-group \
+    ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
+    ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a \
+    ${MKLROOT}/lib/intel64/libmkl_core.a \
+    ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+    -Wl,--end-group \
+    -lmpi -lgomp -lpthread -lm -ldl
+*/
+
+/*
+    -Wl,--start-group \
+    ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
+    ${MKLROOT}/lib/intel64/libmkl_intel_thread.a \
+    ${MKLROOT}/lib/intel64/libmkl_core.a \
+    -Wl,--end-group \
+    -L${MKLROOT}/../compiler/lib/intel64 -liomp5 -lpthread -lm -ldl
+*/
+
+/*
+    -L$(FOAM_USER_LIBBIN) \
+    -lwireBunchingModels \
+*/

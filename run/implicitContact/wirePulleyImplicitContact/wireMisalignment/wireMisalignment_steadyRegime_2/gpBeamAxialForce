@@ -1,0 +1,44 @@
+set terminal postscript color solid
+set output "beamAxialForce.ps"
+
+set xlabel "x, mm"
+set ylabel  "Axial force, N"
+#set y2label "Normal contact force (Fcn)"
+
+#set y2tics
+
+set grid
+#set size ratio -1
+
+set border linewidth 1.5
+
+#set rmargin 2
+#set lmargin 6
+
+#set y2range [0:1000]
+#set yrange [0:100]
+
+set key bottom left
+
+#set palette defined (0 'blue', 1 'red' )
+
+#set palette maxcolors 100
+#set palette defined (0 "red", 99 "blue")
+
+set palette model RGB
+set palette model RGB defined (0 "blue", 1 "green", 2 "red")
+
+#set cbrange [0:1]
+set cblabel "Active normal contact"
+
+plot \
+"< join ./1/beamAxialForce.txt ./1/activeNormalContact.txt" using (1650-$1):($2/1000):3 notitle with lines lc palette lw 5
+
+#plot \
+#"< join ./1.00976/beamAxialForce.txt ./1.00976/activeNormalContact.txt" using (1650-$1):($2/1000):3 notitle with lines lc palette lw 5
+
+
+#plot \
+#"./1.00976/conicalPulleyNormalContactForce.txt" using (1*$1):4 axis x1y2 title "Fcn 0" with lines lt 2 lw 2, \
+#"./1.00976/conicalPulleyNormalContactForce.txt" using (1*$1):5 axis x1y2 title "Fcn 1" with lines lt 3 lw 2, \
+#"./1.00976/beamAxialForce.txt" using (1*$1):2:4 axis x1y1 title "Axial force" with lines lt 7 lw 4

@@ -1,0 +1,47 @@
+ifeq (Gcc,$(findstring Gcc,$(WM_COMPILER)))
+    DISABLE_WARNING_FLAGS = -Wno-old-style-cast -Wno-return-type
+else
+    DISABLE_WARNING_FLAGS =
+endif
+
+EXE_INC = \
+    $(DISABLE_WARNING_FLAGS) \
+    -std=c++11 \
+    -I./beamModels/beamModel/pulleys/conicalPulley \
+    -I./beamModels/beamModel/pulleys/toroidalPulley \
+    -I./numerics/BlockEigenSolvers/BlockEigenSolver \
+    -I../../ThirdParty/eigen3 \
+    -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
+    -I$(LIB_SRC)/finiteVolume/lnInclude  \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/dynamicMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicMesh/topoChangerFvMesh/lnInclude
+
+LIB_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools \
+    -ldynamicFvMesh \
+    -ldynamicMesh \
+    -ltopoChangerFvMesh
+
+/*
+-Wno-implicit-fallthrough
+
+c++WARN = \
+    -Wno-deprecated -Wall -Wextra -Wno-unused-parameter -Wnon-virtual-dtor \
+    -Werror -Wredundant-decls -Wcast-align \
+    -Wmissing-declarations  -Wswitch-enum -Winvalid-pch -Wredundant-decls \
+    -Wformat=2 -Wmissing-format-attribute -Wformat-nonliteral
+    
+    -m64 -I${MKLROOT}/include \
+    -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_rt -lpthread -lm -ldl
+    
+    -I$(PETSC_DIR)/include \
+    -I$(PETSC_DIR)/$(PETSC_ARCH)/include
+    -L$(PETSC_DIR)/$(PETSC_ARCH)/lib -lpetsc
+
+
+ -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_rt -lpthread -lm -ldl
+*/

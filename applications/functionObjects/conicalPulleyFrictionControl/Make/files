@@ -1,0 +1,4 @@
+
+conicalPulleyFrictionControl.C
+
+LIB = $(FOAM_USER_LIBBIN)/libconicalPulleyFrictionControl

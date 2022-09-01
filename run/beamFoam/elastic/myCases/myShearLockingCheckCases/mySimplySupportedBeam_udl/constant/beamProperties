@@ -1,0 +1,70 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+beams
+(
+beam_0
+{
+        crossSectionModel rectangle;
+
+        rectangleCrossSectionModelDict
+        {
+        // Here b: height of the beam, and h: width of the beam. 
+        // It is rotated because of the way EI is 
+        // assigned in the beamModel.C file.
+        
+            b	0.01;
+            h	0.01;
+            nx	4;
+            ny	4;
+        }
+
+        length 1;
+        nSegments 40;
+}
+);
+
+
+/*
+nBeams 1;
+R R [0 1 0 0 0 0 0] 0.2; //5.70732;
+L L [0 1 0 0 0 0 0] 1;
+nSegments 10;
+*/
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    E E [1 -1 -2 0 0 0 0] 2e11;
+    G G [1 -1 -2 0 0 0 0] 7.6923e11; // nu=0.3
+    
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 200;
+    convergenceTol 1e-10;
+
+    debug no;
+    
+    updatedLagrangian no;
+
+    ibrahimovicCase false;
+    
+}
+
+// ************************************************************************* //

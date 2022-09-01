@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------* \
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      DW;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    right
+    {
+        type forceBeamDisplacementNR;
+        forceSeries
+        {
+            fileName        "$FOAM_CASE/constant/timeVsForce";
+            outOfBounds     clamp;
+        }
+        value uniform (0 0 0);
+    }
+
+    left
+    {
+        type fixedPathDisplacement;
+        value uniform (0 0 0);
+
+        pathFileName "./constant/conicalPulleys/conicalPulleysPath";
+        velocity 1650;
+    }
+
+    beam
+    {
+        type empty;
+    }
+}
+
+
+// ************************************************************************* //

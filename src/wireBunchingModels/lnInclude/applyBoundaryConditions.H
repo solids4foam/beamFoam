@@ -1,0 +1,1 @@
+../beamModels/coupledTotalLagNewtonRaphsonBeam/applyBoundaryConditions.H

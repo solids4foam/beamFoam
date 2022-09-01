@@ -1,0 +1,27 @@
+set terminal postscript color solid
+set output "beamThetaX.ps"
+
+set xlabel "x, mm"
+set ylabel  "ThetaX"
+set y2label "Fcn"
+
+set y2tics
+
+set grid
+#set size ratio -1
+
+set border linewidth 1.5
+
+#set rmargin 2
+#set lmargin 6
+
+#set yrange [-1:0]
+
+set key top left
+
+plot [0:] \
+"./1.00305/conicalPulleyNormalContactForce.txt" using 1:4 axis x1y2 title "Fcn[0]" with lines, \
+"./1.00305/conicalPulleyNormalContactForce.txt" using 1:5 axis x1y2 title "Fcn[1]" with lines, \
+"./1.00976/beamShape.dat" using 1:4 axis x1y1 title "ThetaX" with lines
+
+

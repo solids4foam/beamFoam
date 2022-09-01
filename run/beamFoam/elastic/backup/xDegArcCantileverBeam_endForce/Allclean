@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Source tutorial clean functions
+. $WM_PROJECT_DIR/bin/tools/CleanFunctions
+
+cleanCase
+
+wclean ./makeArc
+
+cp ./0/org/refTheta ./0
+
+rm -f constant/polyMesh/boundary

@@ -1,0 +1,57 @@
+#!/bin/bash
+cd ${0%/*} || exit 1    # run from this directory
+
+# Eigen library
+# http://eigen.tuxfamily.org/index.php?title=Main_Page
+# To use system version of eigen, set the EIGEN_DIR environmental variable
+# For example, add the following line to your ~.bashrc:
+#     export EIGEN_DIR="/opt/local/include/eigen3"
+# Check if src/eigen3 directory is found
+echo "Checking eigen installation"
+if [ -d $(pwd)/eigen3 ]
+then
+    echo "eigen3 found."
+else
+    # If EIGEN_DIR is not set then we wil download eigen
+    if [ -z $EIGEN_DIR ]
+    then
+        # Download eigen using wget
+        echo "Downloading eigen3"
+        wget --no-check-certificate https://gitlab.com/libeigen/eigen/-/archive/3.3.9/eigen-3.3.9.tar.gz
+#        wget http://bitbucket.org/eigen/eigen/get/3.3.7.tar.gz
+        \tar xvzf eigen-3.3.9.tar.gz
+        \rm -f eigen-3.3.9.tar.gz
+        \mv eigen-3.3.9 eigen3
+        (cd eigen3 && wmakeLnInclude .)
+    else
+        #  If EIGEN_DIR is set then we will create a symbolic link to it
+        echo "EIGEN_DIR is set: creating symbolic link"
+        \ln -s $EIGEN_DIR eigen3;
+    fi
+fi
+
+# Petsc library
+if [ -d $(pwd)/petsc ]
+then
+    echo "petsc found."
+else
+    if [ -z $PETSC_DIR ]
+    then
+        # Download petsc using git
+        echo "Downloading petsc"
+        git clone https://github.com/petsc/petsc.git
+        if [ $? -ne 0 ]
+        then
+            echo "Download failed!"
+            echo "Check your internet connection and check the following link "
+            echo "is valid: "
+            echo
+            exit 1
+        fi
+        ./makePETSC
+    else
+        #  If PETSC_DIR is set then we will create a symbolic link to it
+        echo "PETSC_DIR is set: creating symbolic link"
+        \ln -s $PETSC_DIR petsc
+    fi
+fi

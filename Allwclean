@@ -1,0 +1,53 @@
+#!/bin/sh
+set -x
+
+# clean library
+wclean src/wireBunchingModels
+wclean applications/functionObjects/writeBeamData
+wclean applications/functionObjects/patchForceMomentHistory
+wclean applications/functionObjects/beamPlasticStrainTransition
+wclean applications/functionObjects/conicalPulleyFrictionControl
+wclean applications/functionObjects/conicalPulleyContactHistory
+
+# clean external solver
+wclean petsc4Foam
+
+# clean solvers
+wclean applications/solvers/coupledUpdatedLagrangianBeamFoam
+wclean applications/solvers/beamFoam
+wclean applications/solvers/beamsBunchingFoam
+
+# clean utilities
+wclean applications/utilities/createCircularBeamMesh
+wclean applications/utilities/createMultipleCircularBeamMesh
+wclean applications/utilities/createMultipleBeamMesh
+wclean applications/utilities/moveBeam
+wclean applications/utilities/createConicalPulleys
+wclean applications/utilities/createConicalPulleysPath
+wclean applications/utilities/createRegimeConicalPulleysPath
+wclean applications/utilities/createToroidalPulleys
+wclean applications/utilities/createToroidalPulleysPath
+
+# Intel MKL library
+echo "Checking Intel MKL installation"
+if [ -z $MKLROOT ]
+then
+    echo "Intel MKL library is not installed"
+else
+    echo "Intel MKL library is instlled."
+    wclean src/blockSolvers/BlockMklPardisoSolver
+    wclean src/blockSolvers/BlockMklClusterPardisoSolver
+fi
+
+# Extra cleaning
+rm~all
+rmdepall
+rmoall
+\find . -type f \( -name "*~" -o -name "*.bak" \) -exec rm {} \;
+\find . \( -name 'core' -o -name 'core.[1-9]*' \) -exec rm {} \;
+\find . \( -name '*.pvs' -o -name '*.foam' \) -exec rm {} \;
+\find . -name '*.ps' -exec rm {} \;
+\rm logs > /dev/null 2>&1
+
+# clean all tutorials
+#(cd run && ./Allclean)

@@ -1,0 +1,6 @@
+3
+(
+    ( (124 0) "$FOAM_CASE/constant/timeVsForce0" )
+    ( (125 0) "$FOAM_CASE/constant/timeVsForce0" )
+    ( (126 0) "$FOAM_CASE/constant/timeVsForce0" )
+)

@@ -1,0 +1,55 @@
+/*--------------------------------*- C++ -*----------------------------------* \
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      Theta;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    "left_0|left_1"
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+
+    "right_0|right_1"
+    {
+        type fixedValue;
+        //   moment uniform (0 0 0);
+        value uniform (0 0 0);
+    }
+    
+    //   right_1
+    //   {
+	//   type momentBeamRotationNR;
+	//   value uniform (0 0 0);
+	
+	//   momentSeries
+	//   {
+	    //   fileName		"$FOAM_CASE/constant/timeVsMoment";		
+	    //   outOfBounds		clamp;
+	//   }
+    //   }
+
+    beam
+    {
+        type empty;
+    }
+}
+
+
+// ************************************************************************* //

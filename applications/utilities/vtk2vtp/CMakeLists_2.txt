@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+
+project (vtk2vtp)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
+find_package(VTK REQUIRED)
+vtk_module_config(VTK 
+  vtkCommonCore
+  vtkCommonDataModel
+  vtkIOLegacy
+  vtkIOPLY
+  vtkIOXML
+)
+
+include(${VTK_USE_FILE})
+
+add_executable(vtk2vtp MACOSX_BUNDLE Cone.cxx)
+
+target_link_libraries(vtk2vtp ${VTK_LIBRARIES})

@@ -1,0 +1,1 @@
+../beamModels/fvPatchFields/extrapolatedBeamRotation/extrapolatedBeamRotationFvPatchVectorField.H

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Get application name
+application=`getApplication`
+
+wmake libso setEndPointTwisting
+
+createMultipleCircularBeamMesh > log.createMultipleCircularBeamMesh
+transformPoints -rotateAlongVector '(0 1 0) 90' > log.rotatePoints
+
+moveBeam -cellZone beam_0 -translate '(0 0.011547 0)' > log.moveBeam.0
+moveBeam -cellZone beam_1 -translate '(0 -0.0057735 -0.01)' > log.moveBeam.1
+moveBeam -cellZone beam_2 -translate '(0 -0.0057735 0.01)' > log.moveBeam.2
+
+runApplication $application

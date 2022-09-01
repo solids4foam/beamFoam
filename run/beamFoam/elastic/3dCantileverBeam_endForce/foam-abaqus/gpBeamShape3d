@@ -1,0 +1,29 @@
+set terminal postscript color solid
+set output "beamShape_case_1.ps"
+
+set xlabel "x, mm"
+set ylabel  "y, mm" offset -5,0,0
+set zlabel  "z, mm"
+
+#set grid
+set border linewidth 2
+#set key top left
+set key at 10,10,7
+
+set size 1.5
+#set size ratio -2
+set view 70,45
+#set view 50,50
+set view equal xyz
+set ticslevel 0
+
+set origin -0.2,-0.4
+
+splot "beamShape_F1.dat" using 1:2:3 title "OF, PL^2/EI= 1" with points pt 6 ps 1.2 lw 2, \
+"beamShape_F2.dat" using 1:2:3 title "OF, PL^2/EI= 2" with points pt 6 ps 1.2 lw 2, \
+"beamShape_F5.dat" using 1:2:3 title "OF, PL^2/EI= 5" with points pt 6 ps 1.2 lw 2, \
+"beamShape_F10.dat" using 1:2:3 title "OF, PL^2/EI=10" with points pt 6 ps 1.2 lw 2, \
+"./abaqus/Slucaj_1-PL2EI_1.csv" using 1:2:3 title "Abaqus" with lines lt 7 lw 2, \
+"./abaqus/Slucaj_1-PL2EI_2.csv" using 1:2:3 notitle with lines lt 7 lw 2, \
+"./abaqus/Slucaj_1-PL2EI_5.csv" using 1:2:3 notitle with lines lt 7 lw 2, \
+"./abaqus/Slucaj_1-PL2EI_10.csv" using 1:2:3 notitle with lines lt 7 lw 2

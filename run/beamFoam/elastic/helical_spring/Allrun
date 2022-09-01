@@ -1,0 +1,16 @@
+#!/bin/sh
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Get application name
+application=`getApplication`
+
+wmake ./makeSpring
+#wmake libso beamDisplacement
+
+#runApplication blockMesh
+createCircularBeamMesh > log.createCircularBeamMesh
+transformPoints -rotateAlongVector '(0 1 0) 90' > log.rotatePoints
+
+runApplication makeSpring
+runApplication $application

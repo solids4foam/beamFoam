@@ -1,0 +1,197 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+beams
+(
+    beam_0
+    {
+        crossSectionModel rectangle;
+
+        rectangleCrossSectionModelDict
+        {
+            b 7; //mm
+            h 0.9; //mm
+
+            nx 4;
+            ny 20;
+        }
+
+        length 400; // mm
+        nSegments 400;
+    }
+);
+
+
+nBeams 1;
+R R [0 1 0 0 0 0 0] 0.45; // mm;
+L L [0 1 0 0 0 0 0] 400; // mm
+nSegments 400;
+
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    E E [1 -1 -2 0 0 0 0] 200e6;
+    G G [1 -1 -2 0 0 0 0] 100e6; // nu=0
+
+    plasticityModel linearElasticMisesPlastic;
+    linearElasticMisesPlasticCoeffs
+    {
+        sigmaY0 sigmaY0 [1 -1 -2 0 0 0 0] 1.65e6;
+        HP EP [1 -1 -2 0 0 0 0] 0;
+
+        elPredTol 1e-6;
+
+        writeFaceIDs 2(286 309);
+    }
+
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 2000;
+    convergenceTol 1e-12;
+
+    debug no;
+    updatedLagrangian no;
+    
+    deltaTseries
+    {
+        fileName "$FOAM_CASE/constant/timeVsDeltaT";
+        outOfBounds clamp;
+    }
+}
+
+
+toroidalPulleys
+(
+    // First set
+    pulley_0
+    {
+        origin (0 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+    
+    pulley_1
+    {
+        origin (45 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+    
+    pulley_2
+    {
+        origin (90 0 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+    }
+    
+    // Second set
+    pulley_3
+    {
+        origin (22.5 32 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+        
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_3.stl";
+    }
+    
+    pulley_4
+    {
+        origin (67.5 32 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+        
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_4.stl";
+    }
+
+
+    pulley_5
+    {
+        origin (-22.5 32 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+        
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement2";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_5.stl";
+    }
+    
+    pulley_6
+    {
+        origin (112.5 32 0);
+        axis (0 0 1);
+        polarAxis (1 0 0);
+        rMin 15;
+        rToroidalSurf 150000;
+        width 20;
+        rotDir -1;
+        
+        originDisplacementSeries
+        {
+            fileName "$FOAM_CASE/constant/timeVsPulleyDisplacement2";
+            outOfBounds clamp;
+        }
+
+        stlFileName "constant/toroidalPulleys/toroidalPulley_6.stl";
+    }
+);
+
+
+// ************************************************************************* //

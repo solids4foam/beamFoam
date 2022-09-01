@@ -1,0 +1,62 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamsBunchingProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+augmentedLagrangian false;
+
+sendAllPointsAndTangents false;
+
+debug no;
+
+// normalContactModel standardPenalty;
+// standardPenaltyNormalModelDict
+// {
+//     epsilon 500; // Dim of E
+// }
+pointContact
+{
+    normalContactModel regularizedStandardPenalty;
+    regularizedStandardPenaltyNormalModelDict
+    {
+	epsilon 3e5;//5e4; // Dim of E // 6e4 makes th test case run upto 1.285
+	gBar 0.001;
+    }
+
+    frictionContactModel standardPenalty;
+    standardPenaltyFrictionModelDict
+    {} // frictionless
+
+}
+
+lineContact
+{
+    normalContactModel regularizedStandardPenalty;
+    regularizedStandardPenaltyNormalModelDict
+    {
+	epsilon 1.015e5; // 3e5; // 5e5;//9e5; // Dim of E
+	gBar 0.001;
+    }
+
+    frictionContactModel standardPenalty;
+    standardPenaltyFrictionModelDict
+    {} // frictionless
+
+}
+
+lowerContactAngleLimit 20; // 10 (does not work)
+upperContactAngleLimit 30;
+
+// ************************************************************************* //

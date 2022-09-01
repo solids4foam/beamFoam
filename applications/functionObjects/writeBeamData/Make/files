@@ -1,0 +1,4 @@
+
+writeBeamData.C
+
+LIB = $(FOAM_USER_LIBBIN)/libwriteBeamData

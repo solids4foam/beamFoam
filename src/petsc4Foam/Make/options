@@ -1,0 +1,27 @@
+include $(RULES)/mplib$(WM_MPLIB)
+
+ifeq (Gcc,$(findstring Gcc,$(WM_COMPILER)))
+    DISABLE_WARNING_FLAGS = -Wno-old-style-cast -Wno-return-type
+else
+    DISABLE_WARNING_FLAGS =
+endif
+
+PETSC_INC_DIR="$(FVMBEAM_DIR)/ThirdParty/petsc/build/include"
+PETSC_LIB_DIR="$(FVMBEAM_DIR)/ThirdParty/petsc/build/lib"
+
+
+EXE_INC = $(PFLAGS) $(PINC) \
+    $(DISABLE_WARNING_FLAGS) \
+    -I./enums \
+    -I./clockValue \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/Pstream/mpi \
+    $(foreach dir,$(PETSC_INC_DIR),-I$(dir))
+
+
+LIB_LIBS = $(PLIBS) \
+    -lfiniteVolume \
+    -lmeshTools \
+    $(foreach dir,$(PETSC_LIB_DIR),-L$(dir)) \
+    -lpetsc
