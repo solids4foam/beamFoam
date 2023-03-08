@@ -422,7 +422,14 @@ Foam::beamModel::beamModel
 
     label nCellZones = mesh().cellZones().size();
 
-    if (nCellZones < 2)
+    // Check that there is at least one cell zone
+    if (nCellZones == 0)
+    {
+        FatalErrorIn("beamModel::beamModel(...)")
+            << "No cell zones are defined: one cell zone per beam is required"
+            << abort(FatalError);
+    }
+    else if (nCellZones < 2)
     {
         polyPatchID startPatch(startPatchName, mesh().boundaryMesh());
 
@@ -774,7 +781,9 @@ Foam::scalar Foam::beamModel::evolve()
     //         conicalPulleys_.clear();
     //         Info << conicalPulleys_.size() << endl;
     //     }
-    // }     
+    // }
+
+    return 0;
 }
 
 const Foam::beamContactModel& Foam::beamModel::contact() const
