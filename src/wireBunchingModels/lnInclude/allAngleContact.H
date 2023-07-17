@@ -1,1 +1,0 @@
-../beamContactModel/allAngleContact/allAngleContact.H

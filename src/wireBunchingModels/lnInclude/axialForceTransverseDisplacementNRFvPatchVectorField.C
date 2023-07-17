@@ -1,1 +1,0 @@
-../beamModels/fvPatchFields/axialForceTransverseDisplacementNR/axialForceTransverseDisplacementNRFvPatchVectorField.C

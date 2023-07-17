@@ -1,1 +1,0 @@
-../beamModels/fvPatchFields/fixedDisplacement/fixedDisplacementFvPatchVectorField.C

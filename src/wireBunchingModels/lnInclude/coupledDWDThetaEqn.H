@@ -1,1 +1,0 @@
-../beamModels/coupledUpdatedLagBeam/coupledDWDThetaEqn.H

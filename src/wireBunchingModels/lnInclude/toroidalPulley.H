@@ -1,1 +1,0 @@
-../beamModels/beamModel/pulleys/toroidalPulley/toroidalPulley.H

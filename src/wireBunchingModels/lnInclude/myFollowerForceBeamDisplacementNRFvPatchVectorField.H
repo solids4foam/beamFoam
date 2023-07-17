@@ -1,1 +1,0 @@
-../beamModels/fvPatchFields/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDisplacementNRFvPatchVectorField.H

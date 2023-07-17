@@ -1,1 +1,0 @@
-../beamContactModel/beamContactModel.C

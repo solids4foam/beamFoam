@@ -1,1 +1,0 @@
-../numerics/spinTensor/spinTensor.C

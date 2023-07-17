@@ -1,1 +1,0 @@
-../beamContactModel/beamContactModelConicalPully.C

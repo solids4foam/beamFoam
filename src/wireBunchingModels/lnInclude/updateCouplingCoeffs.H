@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagNewtonRaphsonBeam/updateCouplingCoeffs.H

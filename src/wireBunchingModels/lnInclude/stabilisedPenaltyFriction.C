@@ -1,1 +1,0 @@
-../beamContactModel/contactModels/frictionContactModels/stabilisedPenaltyFriction/stabilisedPenaltyFriction.C

@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagIncrBeam/coupledTotalLagIncrBeam.H

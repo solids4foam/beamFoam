@@ -1,1 +1,0 @@
-../beamModels/plasticityStressResultantReturnMethods/plasticityStressResultantReturn/newPlasticityStressResultantReturn.C

@@ -1,1 +1,0 @@
-../beamModels/plasticityStressResultantReturnMethods/linearElasticMisesPlastic/linearElasticMisesPlastic.C

@@ -1,5 +1,5 @@
+/*
 fvBlockMatrices/multibeamFvBlockMatrix/multibeamFvBlockMatrix.C
-
 
 beamContactModel/beamContactModel.C
 beamContactModel/beamContactModelConicalPully.C
@@ -25,8 +25,11 @@ beamContactModel/contactModels/frictionContactModels/stabilisedPenaltyFriction/s
 beamContactModel/contactModels/frictionContactModels/tanhPenaltyFriction/tanhPenaltyFriction.C
 beamContactModel/contactModels/frictionContactModels/slipPenaltyFriction/slipPenaltyFriction.C
 
+*/
 
 beamModels/beamModel/beamModel.C
+
+/*
 beamModels/beamModel/fvMeshCsrAddressing.C
 beamModels/beamModel/newBeamModel.C
 beamModels/beamModel/pulleys/conicalPulley/conicalPulley.C
@@ -40,12 +43,16 @@ beamModels/beamModel/crossSections/polygon/polygon.C
 beamModels/beamModel/crossSections/annularSector/annularSector.C
 beamModels/beamModel/crossSections/polyline/polyline.C
 
+*/
+
 /*
 beamModels/coupledUpdatedLagBeam/coupledUpdatedLagBeam.C
 beamModels/coupledTotalLagBeam/coupledTotalLagBeam.C
 beamModels/coupledTotalLagIncrBeam/coupledTotalLagIncrBeam.C
 beamModels/coupledTotalLagCurvedBeam/coupledTotalLagCurvedBeam.C
 */
+
+/*
 
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
 beamModels/coupledTotalLagNewtonRaphsonBeam/applyContacts.C
@@ -95,6 +102,8 @@ numerics/blockLduMatrix/BlockLduPrecons/blockVectorNParCholeskyPrecons.C
 numerics/blockLduMatrix/BlockLduSolvers/BlockTDMSolver/BlockTDMSolver.C
 
 numerics/beamHelperFunctions/beamHelperFunctions.C
+
+*/
 
 /*
 numerics/BlockPetscSolvers/BlockPetscSolver/BlockPetscSolver.C

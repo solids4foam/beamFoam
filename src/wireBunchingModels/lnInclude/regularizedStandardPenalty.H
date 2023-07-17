@@ -1,1 +1,0 @@
-../beamContactModel/contactModels/normalContactModels/regularizedStandardPenalty/regularizedStandardPenalty.H

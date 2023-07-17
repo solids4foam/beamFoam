@@ -1,1 +1,0 @@
-../beamModels/fvPatchFields/forceBeamDisplacement/forceBeamDisplacementFvPatchVectorField.C

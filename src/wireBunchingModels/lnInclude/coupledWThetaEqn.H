@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagBeam/coupledWThetaEqn.H

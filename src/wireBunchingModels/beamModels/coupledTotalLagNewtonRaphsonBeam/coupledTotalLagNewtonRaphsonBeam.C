@@ -44,6 +44,7 @@ License
 #include "extrapolatedBeamRotationFvPatchVectorField.H"
 
 #include "mergePoints.H"
+#include "scalarMatrices.H"
 
 // #include "beamHelperFunctions.H"
 
@@ -1312,62 +1313,62 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     // WIncrement_ = W_ - W_.oldTime(); // updated after each outer iter
 
     // Calculate rotation angle incrment
-    if (false)
-    {
-        volTensorField relRM = (RM_ & RM_.oldTime().T());
-        volVectorField relTheta = pseudoVector(relRM);
+    // if (false)
+    // {
+    //     volTensorField relRM = (RM_ & RM_.oldTime().T());
+    //     volVectorField relTheta = pseudoVector(relRM);
 
-        // ThetaIncrement_ = relTheta;
-        ThetaIncrement_ = (RM_.oldTime().T() & relTheta);
+    //     // ThetaIncrement_ = relTheta;
+    //     ThetaIncrement_ = (RM_.oldTime().T() & relTheta);
 
-        Info << "relRM: " << relRM.boundaryField()[1] << endl;
+    //     Info << "relRM: " << relRM.boundaryField()[1] << endl;
         
-        Theta_ = Theta_.oldTime() + ThetaIncrement_;
+    //     Theta_ = Theta_.oldTime() + ThetaIncrement_;
 
-        // ThetaIncrement_ = Theta_ - Theta_.oldTime();
+    //     // ThetaIncrement_ = Theta_ - Theta_.oldTime();
         
-        Info << "relTheta[1]: "
-             << relTheta.boundaryField()[1] << endl;
+    //     Info << "relTheta[1]: "
+    //          << relTheta.boundaryField()[1] << endl;
         
-        Info << "ThetaIncrement[1]: "
-             << ThetaIncrement_.boundaryField()[1] << endl;
+    //     Info << "ThetaIncrement[1]: "
+    //          << ThetaIncrement_.boundaryField()[1] << endl;
         
-        Info << "Theta[1]: "
-             << Theta_.boundaryField()[1] << endl;
+    //     Info << "Theta[1]: "
+    //          << Theta_.boundaryField()[1] << endl;
         
-        Info << "oldTheta[1]: "
-             << Theta_.oldTime().boundaryField()[1] << endl;
+    //     Info << "oldTheta[1]: "
+    //          << Theta_.oldTime().boundaryField()[1] << endl;
         
-        Info << "DTheta[1]: "
-             << Theta_.boundaryField()[1]
-              - Theta_.oldTime().boundaryField()[1] << endl;
+    //     Info << "DTheta[1]: "
+    //          << Theta_.boundaryField()[1]
+    //           - Theta_.oldTime().boundaryField()[1] << endl;
 
-        tensor RM1 = RM_.boundaryField()[1][0];
-        tensor oldRM1 = RM_.oldTime().boundaryField()[1][0];
+    //     tensor RM1 = RM_.boundaryField()[1][0];
+    //     tensor oldRM1 = RM_.oldTime().boundaryField()[1][0];
 
-        tensor RM1star =
-            rotationMatrix(Theta_.boundaryField()[1][0]);
+    //     tensor RM1star =
+    //         rotationMatrix(Theta_.boundaryField()[1][0]);
 
-        tensor oldRM1star =
-            rotationMatrix(Theta_.oldTime().boundaryField()[1][0]);
+    //     tensor oldRM1star =
+    //         rotationMatrix(Theta_.oldTime().boundaryField()[1][0]);
         
-        tensor relRMstar = (RM1star & oldRM1star.T());
+    //     tensor relRMstar = (RM1star & oldRM1star.T());
         
-        Info << "relRMstar: " << relRMstar << endl;
+    //     Info << "relRMstar: " << relRMstar << endl;
 
-        vector relAngle = pseudoVector(relRMstar);
-        vector AngleIncrement =  (oldRM1star.T() & relAngle);
+    //     vector relAngle = pseudoVector(relRMstar);
+    //     vector AngleIncrement =  (oldRM1star.T() & relAngle);
         
-        Info << "RM[1]: " << RM1 << endl;
-        Info << "RM*[1]: " << RM1star << endl;
+    //     Info << "RM[1]: " << RM1 << endl;
+    //     Info << "RM*[1]: " << RM1star << endl;
 
-        Info << "oldRM[1]: " << oldRM1 << endl;
-        Info << "oldRM*[1]: " << oldRM1star << endl;
+    //     Info << "oldRM[1]: " << oldRM1 << endl;
+    //     Info << "oldRM*[1]: " << oldRM1star << endl;
 
-        Info << "relAngle: " << relAngle << endl;
-        Info << "AngleIncrement: " << AngleIncrement << endl;
-    }
-    else
+    //     Info << "relAngle: " << relAngle << endl;
+    //     Info << "AngleIncrement: " << AngleIncrement << endl;
+    // }
+    // else
     {
         ThetaIncrement_ =  Theta_ - Theta_.oldTime();
     }
@@ -1443,174 +1444,174 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     }
 
     // Calc radius of curvature
-    if (false) // Check for parallel runs
-    {
-        if (nCellZones < 2)
-        {
-            vectorField beamPoints = this->currentBeamPoints(0);
-            vectorField beamTangents = this->currentBeamTangents(0);
+    // if (false) // Check for parallel runs
+    // {
+    //     if (nCellZones < 2)
+    //     {
+    //         vectorField beamPoints = this->currentBeamPoints(0);
+    //         vectorField beamTangents = this->currentBeamTangents(0);
 
-            HermiteSpline spline
-            (
-                beamPoints,
-                beamTangents
-            );
+    //         HermiteSpline spline
+    //         (
+    //             beamPoints,
+    //             beamTangents
+    //         );
 
-            const scalarField& segCurvature =
-                spline.midPointCurvatures();
+    //         const scalarField& segCurvature =
+    //             spline.midPointCurvatures();
             
-            // Set radius of curvature
-            curvature_.internalField() = segCurvature;
-        }
-        else
-        {
-            for (label i=0; i<nCellZones; i++)
-            {
-                vectorField beamPoints =
-                    this->currentBeamPoints(i);
-                vectorField beamTangents =
-                    this->currentBeamTangents(i);
+    //         // Set radius of curvature
+    //         curvature_.internalField() = segCurvature;
+    //     }
+    //     else
+    //     {
+    //         for (label i=0; i<nCellZones; i++)
+    //         {
+    //             vectorField beamPoints =
+    //                 this->currentBeamPoints(i);
+    //             vectorField beamTangents =
+    //                 this->currentBeamTangents(i);
 
-                HermiteSpline spline
-                (
-                    beamPoints,
-                    beamTangents
-                );
+    //             HermiteSpline spline
+    //             (
+    //                 beamPoints,
+    //                 beamTangents
+    //             );
 
-                const labelList& curBeamCells = mesh().cellZones()[i];
+    //             const labelList& curBeamCells = mesh().cellZones()[i];
 
-                const scalarField& segCurvature =
-                    spline.midPointCurvatures();
+    //             const scalarField& segCurvature =
+    //                 spline.midPointCurvatures();
 
-                forAll(curBeamCells, cellI)
-                {
-                    // Set segment lengths
-                    label curCell = curBeamCells[cellI];
-                    curvature_.internalField()[curCell] = segCurvature[cellI];
-                }
-            }
-        }
-    }
+    //             forAll(curBeamCells, cellI)
+    //             {
+    //                 // Set segment lengths
+    //                 label curCell = curBeamCells[cellI];
+    //                 curvature_.internalField()[curCell] = segCurvature[cellI];
+    //             }
+    //         }
+    //     }
+    // }
 
     // Pout << "updateTotalFields 0" << endl;
     // sleep(5);
         
-    if (updatedLagrangian_)
-    {
-        totW_ += W_;
-        refLambda_ = (Lambda_ & refLambda_);
-        // refRM_ = (RM_ & refRM_);
+    // if (updatedLagrangian_)
+    // {
+    //     totW_ += W_;
+    //     refLambda_ = (Lambda_ & refLambda_);
+    //     // refRM_ = (RM_ & refRM_);
 
-        // Calc cell-centre reference rotation matrix
-        interpolateRotationMatrix(*this, refLambda_, refRM_);
+    //     // Calc cell-centre reference rotation matrix
+    //     interpolateRotationMatrix(*this, refLambda_, refRM_);
       
-        volVectorField R0
-        (
-            IOobject
-            (
-                "R0",
-                runTime().timeName(),
-                mesh(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-             ),
-            mesh(),
-            dimensionedVector("R0", dimLength, vector::zero)
-        );
-        R0 = mesh().C() + W_;
-        R0.boundaryField().evaluateCoupled();
-        dR0Ds_ = fvc::snGrad(R0);
-        dR0Ds_ /= mag(dR0Ds_);
-        refTangent_ = dR0Ds_;
+    //     volVectorField R0
+    //     (
+    //         IOobject
+    //         (
+    //             "R0",
+    //             runTime().timeName(),
+    //             mesh(),
+    //             IOobject::NO_READ,
+    //             IOobject::NO_WRITE
+    //          ),
+    //         mesh(),
+    //         dimensionedVector("R0", dimLength, vector::zero)
+    //     );
+    //     R0 = mesh().C() + W_;
+    //     R0.boundaryField().evaluateCoupled();
+    //     dR0Ds_ = fvc::snGrad(R0);
+    //     dR0Ds_ /= mag(dR0Ds_);
+    //     refTangent_ = dR0Ds_;
 
-        // Info << "nCellZones: " << nCellZones << endl;
-        for (label pI=0; pI<nCellZones; pI++)
-        {
-            refTangent_.boundaryField()[startPatchIndex(pI)] *= -1;
-        }
+    //     // Info << "nCellZones: " << nCellZones << endl;
+    //     for (label pI=0; pI<nCellZones; pI++)
+    //     {
+    //         refTangent_.boundaryField()[startPatchIndex(pI)] *= -1;
+    //     }
 
-        // Info << refTangent_.boundaryField() << endl;
+    //     // Info << refTangent_.boundaryField() << endl;
         
-        Lambda_ == dimensionedTensor("I", Lambda_.dimensions(), tensor::I);
-        RM_ == dimensionedTensor("I", RM_.dimensions(), tensor::I);
-        Gamma_ == dimensionedVector("0", Gamma_.dimensions(), vector::zero);
-        K_ == dimensionedVector("0", K_.dimensions(), vector::zero);
+    //     Lambda_ == dimensionedTensor("I", Lambda_.dimensions(), tensor::I);
+    //     RM_ == dimensionedTensor("I", RM_.dimensions(), tensor::I);
+    //     Gamma_ == dimensionedVector("0", Gamma_.dimensions(), vector::zero);
+    //     K_ == dimensionedVector("0", K_.dimensions(), vector::zero);
 
-        W_ == dimensionedVector("0", W_.dimensions(), vector::zero);
-        W_.storePrevIter();
+    //     W_ == dimensionedVector("0", W_.dimensions(), vector::zero);
+    //     W_.storePrevIter();
         
-        Theta_ == dimensionedVector("0", Theta_.dimensions(), vector::zero);
-        Theta_.storePrevIter();
+    //     Theta_ == dimensionedVector("0", Theta_.dimensions(), vector::zero);
+    //     Theta_.storePrevIter();
         
-        // if (contactActive())
-        // {
-        //     W_ = dimensionedVector("0", W_.dimensions(), vector::zero);
-        //     W_.storePrevIter();
-        // }
+    //     // if (contactActive())
+    //     // {
+    //     //     W_ = dimensionedVector("0", W_.dimensions(), vector::zero);
+    //     //     W_.storePrevIter();
+    //     // }
 
-        vectorField newPoints = points + pointWI;    
-        const_cast<dynamicFvMesh&>(this->mesh()).movePoints(newPoints);
+    //     vectorField newPoints = points + pointWI;    
+    //     const_cast<dynamicFvMesh&>(this->mesh()).movePoints(newPoints);
 
-        // Calc element lengths and currect cell centres
-        vectorField& cellCentres =
-            const_cast<vectorField&>(mesh().cellCentres());
-        {
-            label nCellZones = mesh().cellZones().size();
+    //     // Calc element lengths and currect cell centres
+    //     vectorField& cellCentres =
+    //         const_cast<vectorField&>(mesh().cellCentres());
+    //     {
+    //         label nCellZones = mesh().cellZones().size();
 
-            if (nCellZones < 2)
-            {
-                vectorField beamPoints = this->beamPointData(mesh().Cf());
-                vectorField beamTangents = this->beamPointData(refTangent_);
+    //         if (nCellZones < 2)
+    //         {
+    //             vectorField beamPoints = this->beamPointData(mesh().Cf());
+    //             vectorField beamTangents = this->beamPointData(refTangent_);
             
-                HermiteSpline spline
-                (
-                    beamPoints,
-                    beamTangents
-                );
+    //             HermiteSpline spline
+    //             (
+    //                 beamPoints,
+    //                 beamTangents
+    //             );
 
-                // Set segment lengths
-                this->L().internalField() = spline.segLengths();
+    //             // Set segment lengths
+    //             this->L().internalField() = spline.segLengths();
  
-                cellCentres = spline.midPoints();
+    //             cellCentres = spline.midPoints();
 
-                Info << "Beam length: " << spline.length() << endl;
-            }
-            else
-            {
-                for (label i=0; i<nCellZones; i++)
-                {
-                    vectorField beamPoints =
-                        this->beamPointData(mesh().Cf(), i);
-                    vectorField beamTangents =
-                        this->beamPointData(refTangent_, i);
+    //             Info << "Beam length: " << spline.length() << endl;
+    //         }
+    //         else
+    //         {
+    //             for (label i=0; i<nCellZones; i++)
+    //             {
+    //                 vectorField beamPoints =
+    //                     this->beamPointData(mesh().Cf(), i);
+    //                 vectorField beamTangents =
+    //                     this->beamPointData(refTangent_, i);
 
-                    if (beamPoints.size())
-                    {
-                        HermiteSpline spline
-                        (
-                            beamPoints,
-                            beamTangents
-                        );
+    //                 if (beamPoints.size())
+    //                 {
+    //                     HermiteSpline spline
+    //                     (
+    //                         beamPoints,
+    //                         beamTangents
+    //                     );
             
-                        const labelList& curBeamCells = mesh().cellZones()[i];
-                        scalarField curSegLengths = spline.segLengths();
-                        vectorField newCellCentres = spline.midPoints();
+    //                     const labelList& curBeamCells = mesh().cellZones()[i];
+    //                     scalarField curSegLengths = spline.segLengths();
+    //                     vectorField newCellCentres = spline.midPoints();
 
-                        forAll(curBeamCells, cellI)
-                        {
-                            // Set segment lengths
-                            label curCell = curBeamCells[cellI];
-                            this->L().internalField()[curCell] =
-                                curSegLengths[cellI];
+    //                     forAll(curBeamCells, cellI)
+    //                     {
+    //                         // Set segment lengths
+    //                         label curCell = curBeamCells[cellI];
+    //                         this->L().internalField()[curCell] =
+    //                             curSegLengths[cellI];
 
-                            // Correct cell centres
-                            cellCentres[curCell] = newCellCentres[cellI];
-                        }
-                    }
-                }
-            }
-        }
-    }
+    //                         // Correct cell centres
+    //                         cellCentres[curCell] = newCellCentres[cellI];
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     // Pout << "updateTotalFields 1" << endl;
     // sleep(5);

@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagCurvedBeam/coupledWThetaEqn_TLC.H

@@ -11,26 +11,34 @@
     // K_.storePrevIter();
 
     // Initialise the block system
-    multibeamFvBlockMatrix WThetaEqn(WTheta_, *this);
+    // multibeamFvBlockMatrix WThetaEqn(WTheta_, *this);
     // fvBlockMatrix<vector6> WThetaEqn(WTheta_);
 
     // Pout << WTheta_.boundaryField() << endl;
-    
+
     // Grab block diagonal and set it to zero
-    tensor6Field& d = WThetaEqn.diag().asSquare();
-    d = tensor6::zero;
+    //tensor6Field& d = WThetaEqn.diag().asSquare();
+    //d = tensor6::zero;
+    //scalarSquareMatrix myMatrix(6, 6, 0.0); // 6 x 6 matrix with 0.0 values
+    Field<scalarSquareMatrix> d(mesh.size(), scalarSquareMatrix(6, 0.0));
 
     // Grab off-diagonal and set it to zero
-    tensor6Field& u = WThetaEqn.upper().asSquare();
-    u = tensor6::zero;
+    Field<scalarSquareMatrix> u(mesh.nInternalFaces(), scalarSquareMatrix(6, 0.0));
+    // tensor6Field& u = WThetaEqn.upper().asSquare();
+    // u = tensor6::zero;
 
     // Grab off-diagonal and set it to zero
-    tensor6Field& l = WThetaEqn.lower().asSquare();
-    l = tensor6::zero;
+    Field<scalarSquareMatrix> l(mesh.nInternalFaces(), scalarSquareMatrix(6, 0.0));
+    // tensor6Field& l = WThetaEqn.lower().asSquare();
+    // l = tensor6::zero;
 
     // Grap source and set it to zero
-    vector6Field& source = WThetaEqn.source();
-    source = vector6::zero;
+    Field<scalarRectangularMatrix> source
+    (
+        mesh.size(), scalarRectangularMatrix(6, 1, 0.0)
+    );
+    // vector6Field& source = WThetaEqn.source();
+    // source = vector6::zero;
 
     scalarField deltaf = 1.0/mesh().deltaCoeffs().internalField();
     const scalarField& wf = mesh().weights().internalField();
@@ -222,9 +230,9 @@
         d[nei[faceI]](2,4) += -(1-wf[faceI])*CQThetaI[faceI].zy();
         d[nei[faceI]](2,5) += -(1-wf[faceI])*CQThetaI[faceI].zz();
 
-        source[nei[faceI]](0) -= -explicitQI[faceI].x();
-        source[nei[faceI]](1) -= -explicitQI[faceI].y();
-        source[nei[faceI]](2) -= -explicitQI[faceI].z();
+        source[nei[faceI]](0,0) -= -explicitQI[faceI].x();
+        source[nei[faceI]](1,0) -= -explicitQI[faceI].y();
+        source[nei[faceI]](2,0) -= -explicitQI[faceI].z();
 
 
         ////// Theta equation
@@ -662,10 +670,10 @@
     }
 
     // Apply beam-to-beam line contact
-    applyPointContact(WThetaEqn);
+    //applyPointContact(WThetaEqn);
 
     // Apply beam-to-beam line contact
-    applyLineContact(WThetaEqn);
+    //applyLineContact(WThetaEqn);
 
     // Apply conical pulley contact
     applyConicalPulleysContactNew(WThetaEqn);

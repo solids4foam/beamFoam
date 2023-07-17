@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagNewtonRaphsonBeam/applyContacts.C

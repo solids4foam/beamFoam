@@ -1,1 +1,0 @@
-../beamModels/beamModel/crossSections/crossSection/quad/quadrilateral.C

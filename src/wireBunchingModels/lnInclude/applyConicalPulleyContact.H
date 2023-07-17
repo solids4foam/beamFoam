@@ -1,1 +1,0 @@
-../numerics/BlockEigenSolvers/deprecated/implBeamsContactBlockEigenSparseLU/applyConicalPulleyContact.H

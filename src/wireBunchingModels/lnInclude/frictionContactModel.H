@@ -1,1 +1,0 @@
-../beamContactModel/contactModels/frictionContactModels/frictionContactModel/frictionContactModel.H

@@ -1,1 +1,0 @@
-../beamModels/coupledTotalLagCurvedBeam/coupledTotalLagCurvedBeam.H

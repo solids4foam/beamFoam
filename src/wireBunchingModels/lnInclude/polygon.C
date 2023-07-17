@@ -1,1 +1,0 @@
-../beamModels/beamModel/crossSections/polygon/polygon.C
