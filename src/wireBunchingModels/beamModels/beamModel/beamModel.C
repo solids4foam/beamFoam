@@ -185,7 +185,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
     }
     cellIndicator.correctBoundaryConditions();
 
-    tIndicator() = fvc::interpolate(cellIndicator);
+    tIndicator.ref() = fvc::interpolate(cellIndicator);
 
     return tIndicator;
 }
@@ -842,7 +842,7 @@ void Foam::beamModel::writeVTK() const
     vtkFile << "\nDATASET UNSTRUCTURED_GRID" << endl;
 
     // Write points
-    vectorField curPoints = currentBeamPoints();
+    vectorField curPoints(currentBeamPoints());
     vtkFile << "\nPOINTS " << curPoints.size() << " float" << endl;
     for (label i=0; i<curPoints.size(); i++)
     {
@@ -890,9 +890,9 @@ Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
         (
             new vectorField(nPoints, vector::zero)
         );
-        vectorField& curPoints = tCurrentPoints();
+        vectorField& curPoints = tCurrentPoints.ref();
 
-        surfaceVectorField curCf = mesh.Cf();
+        const surfaceVectorField& curCf = mesh.Cf();
         const vectorField& curCfI = curCf.internalField();
 
         curPoints[0] = curCf.boundaryField()[startPatchIndex()][0];
@@ -914,9 +914,9 @@ Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
         (
             new vectorField(nPoints, vector::zero)
         );
-        vectorField& curPoints = tCurrentPoints();
+        vectorField& curPoints = tCurrentPoints.ref();
 
-        surfaceVectorField curCf = mesh.Cf();
+        const surfaceVectorField& curCf = mesh.Cf();
         const vectorField& curCfI = curCf.internalField();
 
         const labelList startPatchCells =
@@ -1619,13 +1619,13 @@ Foam::tmp<Foam::labelField> Foam::beamModel::globalPointsIndices
 
         forAll(tGlPtIndices(), pI)
         {
-            tGlPtIndices()[pI] = pI;
+            tGlPtIndices.ref()[pI] = pI;
         }
 
         if (Pstream::parRun())
         {
             // Apply offset
-            tGlPtIndices() += globalCellIndex(0);
+            tGlPtIndices.ref() += globalCellIndex(0);
         }
 
         return tGlPtIndices;
@@ -1646,11 +1646,11 @@ Foam::tmp<Foam::labelField> Foam::beamModel::globalPointsIndices
             label glCellIndex = globalCellIndex(locCellIndex);
 
             label glSegIndex = whichSegment(glCellIndex);
-            tGlPtIndices()[i] = glSegIndex;
+            tGlPtIndices.ref()[i] = glSegIndex;
         }
         // add last point
-        tGlPtIndices()[nPoints-1] =
-            tGlPtIndices()[nPoints-2] + 1;
+        tGlPtIndices.ref()[nPoints-1] =
+            tGlPtIndices.ref()[nPoints-2] + 1;
 
         return tGlPtIndices;
     }
@@ -1689,10 +1689,10 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
         for (label i=0; i<mesh.nCells(); i++)
         {
             curGlPtIndex = globalCellIndexOffset + i;
-            tLocPtIndices()[curGlPtIndex] = i;
+            tLocPtIndices.ref()[curGlPtIndex] = i;
         }
         curGlPtIndex++;
-        tLocPtIndices()[curGlPtIndex] = mesh.nCells();
+        tLocPtIndices.ref()[curGlPtIndex] = mesh.nCells();
 
         return tLocPtIndices;
     }
@@ -1717,12 +1717,12 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
             label glCellIndex = globalCellIndex(locCellIndex);
 
             glSegIndex = whichSegment(glCellIndex);
-            tLocPtIndices()[glSegIndex] = i;
+            tLocPtIndices.ref()[glSegIndex] = i;
         }
 
         // add last point
         glSegIndex++;
-        tLocPtIndices()[glSegIndex] = cz.size();
+        tLocPtIndices.ref()[glSegIndex] = cz.size();
 
 
         // if (Pstream::myProcNo() == 0)
