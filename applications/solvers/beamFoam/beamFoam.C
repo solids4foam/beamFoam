@@ -25,7 +25,7 @@ Application
     beamFoam
 
 Description
-    Solves a Timoshenko beam models for 
+    Solves a Timoshenko beam models for
     non-linear elastic beams (small strains and large rotations).
 
 \*---------------------------------------------------------------------------*/
@@ -34,7 +34,7 @@ Description
 #include "parRun.H"
 
 #include "objectRegistry.H"
-#include "foamTime.H"
+#include "Time.H"
 #include "fvMesh.H"
 #include "fvc.H"
 #include "fvMatrices.H"
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     // Eigen::initParallel();
     // Eigen::setNbThreads(2);
     // Foam::Info << "nThreads: " << Eigen::nbThreads() << Foam::endl;
-    
+
     // PetscErrorCode ierr =
     //     PetscInitializeNoArguments();
     // if (ierr)
@@ -80,10 +80,10 @@ int main(int argc, char *argv[])
     // }
 
     // MPI_Init(&argc, &argv);
-        
+
 #   include "setRootCase.H"
 #   include "createTime.H"
-    
+
     // Create beam model
     Foam::autoPtr<Foam::beamModel> beam =
         Foam::beamModel::New(runTime, Foam::dynamicFvMesh::defaultRegion);
@@ -97,9 +97,9 @@ int main(int argc, char *argv[])
     while (runTime.loop())
     {
         // runTime.setDeltaT(beam().deltaT());
-        
+
         // runTime++;
-        
+
         Foam::Info<< "\n\nTime = " << runTime.timeName() << Foam::nl
                   << Foam::endl;
 

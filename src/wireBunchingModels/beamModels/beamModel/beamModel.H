@@ -53,10 +53,10 @@ SourceFiles
 
 #include "crossSectionModel.H"
 
-#include "conicalPulley.H"
-#include "toroidalPulley.H"
+// #include "conicalPulley.H"
+// #include "toroidalPulley.H"
 
-#include "beamContactModel.H"
+// #include "beamContactModel.H"
 #include "labelPair.H"
 
 
@@ -66,7 +66,7 @@ namespace Foam
 {
 
 // class beamContactModel;
-  
+
 /*---------------------------------------------------------------------------*\
                            Class beamModel Declaration
 \*---------------------------------------------------------------------------*/
@@ -79,7 +79,7 @@ class beamModel
 
         //- Reference to the master time object
         Time& runTime_;
-  
+
         //- Mesh
         autoPtr<dynamicFvMesh> meshPtr_;
 
@@ -94,10 +94,10 @@ class beamModel
 
         //- Local to global point addressing per processor and beam
         PtrList<labelListList> localToGlobalBeamPointsAddressing_;
-    
+
         //- Global to local point addressing per beam
         List<labelList> globalToLocalBeamPointsAddressing_;
-    
+
         //- Cell face shared with upper neighbour cell
         mutable labelList* upperNeiCellFacesPtr_;
 
@@ -124,7 +124,7 @@ class beamModel
 
         //- Number of cell for every beam
         labelList nBeamCells_;
-    
+
         //- Beam cross-section model
         mutable PtrList<crossSectionModel> crossSections_;
 
@@ -133,16 +133,16 @@ class beamModel
 
         //- Beam convection velocity
         scalarField U_;
-    
+
         //- Young modulus
         dimensionedScalar E_;
-  
+
         //- Shear modulus
         dimensionedScalar G_;
 
         //- Density
         dimensionedScalar rho_;
-  
+
         // //- Beam cross-section area
         // dimensionedScalar A_;
 
@@ -151,19 +151,19 @@ class beamModel
 
         // //- Beam cross-section constant
         // dimensionedScalar J_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar EI_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar GJ_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar EA_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar GA_;
-    
+
         //- Segment length
         mutable volScalarField L_;
 
@@ -175,7 +175,7 @@ class beamModel
 
         //- Point forces
         labelScalarTimeVaryingVectorList pointForces_;
-  
+
         //- Outer iteration counter
         label iOuterCorr_;
 
@@ -184,31 +184,31 @@ class beamModel
 
         //- Use objective interpolation for rotation
         bool objectiveInterpolation_;
-    
-        //- Conical pullys
-        mutable PtrList<conicalPulley> conicalPulleys_;
 
-        //- Toroidal pullys
-        mutable PtrList<toroidalPulley> toroidalPulleys_;
-    
+        //- Conical pullys
+        // mutable PtrList<conicalPulley> conicalPulleys_;
+
+        // //- Toroidal pullys
+        // mutable PtrList<toroidalPulley> toroidalPulleys_;
+
         //- Time instance at which contact force will be relaxing
         scalar startToRelaxTime_;
 
         //- Time period over which contact force will be relaxed
         scalar relaxationPeriod_;
-    
-        //- Beam contact model
-        autoPtr<beamContactModel> contactPtr_;
+
+        // //- Beam contact model
+        // autoPtr<beamContactModel> contactPtr_;
 
         //- celtaT time series
         interpolationTable<scalar> deltaTseries_;
-    
-    
+
+
     // Private Member Functions
 
         //- Create upper and lower cell faces
         void makeUpperLowerNeiCellFaces() const;
-        
+
         //- Disallow default bitwise copy construct
         beamModel(const beamModel&);
 
@@ -221,7 +221,7 @@ protected:
 
         //- Multibeam indicator
         tmp<surfaceScalarField> indicator(const label bI) const;
-    
+
         // //- Return flow properties dictionary
         // dictionary& beamProperties()
         // {
@@ -276,10 +276,10 @@ public:
 
         // Return global indices of local beam (spline) points
         tmp<labelField> globalPointsIndices(const label bI) const;
-    
+
         // Return local indices of global beam (spline) points
         tmp<labelField> localPointsIndices(const label bI) const;
-    
+
         // Access
 
             //- Return mesh
@@ -293,43 +293,43 @@ public:
             {
                 return mesh().cellZones().size();
             }
-    
+
             //- Return number of cells (segments) for beam
             label nCells(const label bI) const
             {
                 return mesh().cellZones()[bI].size();
             }
-    
+
             //- Return CSR addressing
             const fvMeshCsrAddressing& csrAddr() const
             {
                 return csrAddressing_;
             }
 
-            //- Return list of conical pulleys
-            const PtrList<conicalPulley>& conicalPulleys() const
-            {
-  	        return conicalPulleys_;
-            }
+            // //- Return list of conical pulleys
+            // const PtrList<conicalPulley>& conicalPulleys() const
+            // {
+  	        // return conicalPulleys_;
+            // }
 
-            //- Return list of conical pulleys
-            const PtrList<toroidalPulley>& toroidalPulleys() const
-            {
-  	        return toroidalPulleys_;
-            }
-    
-            //- Return time instance when contact force relaxation will start
-            const scalar& startToRelaxTime() const
-            {
-                return startToRelaxTime_;
-            }
-    
-            //- Return contact force relaxation period
-            const scalar& relaxationPeriod() const
-            {
-                return relaxationPeriod_;
-            }
-    
+            // //- Return list of conical pulleys
+            // const PtrList<toroidalPulley>& toroidalPulleys() const
+            // {
+  	        // return toroidalPulleys_;
+            // }
+
+            // //- Return time instance when contact force relaxation will start
+            // const scalar& startToRelaxTime() const
+            // {
+            //     return startToRelaxTime_;
+            // }
+
+            // //- Return contact force relaxation period
+            // const scalar& relaxationPeriod() const
+            // {
+            //     return relaxationPeriod_;
+            // }
+
             //- Return time
             const Time& runTime() const
             {
@@ -379,7 +379,7 @@ public:
 
             //- For cell index return local beam segment index
             label whichSegment(const label cellIndex) const;
-    
+
             //- For local beam segment return global cell index
             label whichCell(const label beamIndex, const label segIndex) const;
 
@@ -391,7 +391,7 @@ public:
 
             //- For local cell index return local cell index (parallel runs)
             label globalCellIndex(const label localCellIndex) const;
-    
+
             //- Beam cross-section model
             const PtrList<crossSectionModel>& crossSections() const
             {
@@ -403,7 +403,7 @@ public:
             {
                 return R_[bI];
             }
-  
+
             //- Return beam cross-section radius
             const scalar& U(label bI = 0) const
             {
@@ -416,7 +416,7 @@ public:
                 {
                     return dimensionedScalar("A", dimArea, crossSections_[bI].A());
                 }
-                
+
                 return dimensionedScalar("A", dimArea, M_PI*sqr(R(bI)));
                 // return A_;
             }
@@ -427,7 +427,7 @@ public:
                 {
                     return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
                 }
-                
+
                 return dimensionedScalar("I", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
                 // return I_;
             }
@@ -449,7 +449,7 @@ public:
                 {
                     return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
                 }
-                
+
                 return dimensionedScalar("Izz", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
                 // return I_;
             }
@@ -460,7 +460,7 @@ public:
                 {
                     return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
                 }
-                
+
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
                 // return J_;
             }
@@ -469,32 +469,32 @@ public:
             {
                 return rho_;
             }
-    
+
             const dimensionedScalar& E() const
             {
                 return E_;
             }
-    
+
             const dimensionedScalar& G() const
             {
                 return G_;
             }
-    
+
             inline dimensionedScalar GA(label bI = 0) const
             {
                 return G_*A(bI);
             }
-    
+
             inline dimensionedScalar GJ(label bI = 0) const
             {
                 return G_*J(bI);
             }
-    
+
             inline dimensionedScalar EA(label bI = 0) const
             {
                 return E_*A(bI);
             }
-    
+
             inline dimensionedScalar EI(label bI = 0) const
             {
                 return E_*I(bI);
@@ -527,7 +527,7 @@ public:
             {
                 return q_;
             }
-  
+
             //- Return distributed force
             volVectorField& q()
             {
@@ -539,54 +539,54 @@ public:
             {
                 return m_;
             }
-  
+
             //- Return distributed force
             volVectorField& m()
             {
                 return m_;
             }
-  
+
             //- Return distributed force
             const labelScalarTimeVaryingVectorList& pointForces() const
             {
                 return pointForces_;
             }
-  
+
             //- Return outer iteration counter
             label& iOuterCorr()
             {
                 return iOuterCorr_;
             }
-  
+
             //- Return outer iteration counter
             const label& iOuterCorr() const
             {
                 return iOuterCorr_;
             }
-    
+
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
             virtual volVectorField& solutionW() const = 0;
-  
+
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
             virtual volVectorField& solutionDW() const = 0;
-    
+
             //- Each beamModel must indicate whether Theta or DTheta
             //  is the primary solution variable
             virtual volVectorField& solutionTheta() const = 0;
-    
+
             //- Each beamModel must indicate whether Lambda or DLambda
             //  is operating rotation matrix variable
             virtual surfaceTensorField& solutionLambda() const = 0;
-  
+
             //- Each beamModel must indicate whether Lambda or DLambda
             //  is operating rotation matrix variable
             virtual const volTensorField& solutionRMC() const = 0;
 
             // //- Each beamModel must indicate whether Lambda or DLambda
             // virtual const volVectorField& solutionCellTangent() const = 0;
-    
+
             //- Return current beam points (ordered from start to end patch)
             //  (face centres in 3d representation)
             virtual tmp<vectorField> currentBeamPoints
@@ -600,7 +600,7 @@ public:
             (
                 const label bI = 0
             ) const = 0;
-    
+
             //- Return current beam points (ordered from start to end patch)
             //  (face centres in 3d representation)
             virtual tmp<vectorField> currentBeamTangents
@@ -640,48 +640,48 @@ public:
                 vectorField& points,
                 vectorField& tangents
             ) const = 0;
-    
+
             //- Return current mean line displacement increment
             virtual tmp<vectorField> currentDisplacementIncrement() const = 0;
-  
+
             //- Return current cross-section rotation matrix increment
             virtual tmp<tensorField> currentRotationIncrement() const = 0;
-  
+
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
 
             //- Return contact model
-            beamContactModel& contact();
-  
-            //- Return contact model
-            const beamContactModel& contact() const;
+            // beamContactModel& contact();
+
+            // //- Return contact model
+            // const beamContactModel& contact() const;
 
             //- Check if beam-to-beam contact is active
-            bool contactActive() const
-            {
-	        return
-                (
-                    beamContactActive()
-                 || pulleyContactActive()
-                );
-            }
+            // bool contactActive() const
+            // {
+	        // return
+            //     (
+            //         beamContactActive()
+            //      || pulleyContactActive()
+            //     );
+            // }
 
-            //- Check if pulley-to-beam contact is active
-            bool pulleyContactActive() const
-            {
-	        return
-                (
-                    conicalPulleys().size()
-                 || toroidalPulleys().size()
-                );
-            }
+            // //- Check if pulley-to-beam contact is active
+            // bool pulleyContactActive() const
+            // {
+	        // return
+            //     (
+            //         conicalPulleys().size()
+            //      || toroidalPulleys().size()
+            //     );
+            // }
 
-            //- Check if beam-to-beam contact is active
-            bool beamContactActive() const
-            {
-	        return (mesh().cellZones().size() > 1);
-            }
-    
+            // //- Check if beam-to-beam contact is active
+            // bool beamContactActive() const
+            // {
+	        // return (mesh().cellZones().size() > 1);
+            // }
+
             //- Extract beam point data from surface geometric field
             template<class Type>
             tmp<Field<Type> > beamPointData
@@ -689,7 +689,7 @@ public:
                 const GeometricField<Type, fvsPatchField, surfaceMesh>& sf,
                 const label bI = 0
             ) const;
-  
+
             //- Extract beam point data from surface geometric field
             template<class Type>
             tmp<Field<Type> > beamPointData
@@ -698,7 +698,7 @@ public:
                 const label bI,
 		const label segI
             ) const;
-  
+
             //- Extract segment data from volume geometric field
             template<class Type>
             tmp<Field<Type> > beamSegmentData
@@ -710,19 +710,19 @@ public:
 
             //- Return current time-step size
             virtual scalar deltaT() const;
-    
+
         // Edit
-  
+
             //- Evolve the solid solver
             virtual scalar evolve() = 0;
-  
+
             //- Update total fields
             virtual void updateTotalFields()
             {
-                if (contactActive())
-                {
-                    contact().finalUpdate();
-                }
+                // if (contactActive())
+                // {
+                //     contact().finalUpdate();
+                // }
             }
 
             //- Update fields
@@ -734,7 +734,7 @@ public:
 
             //- Write beam geometry in VTK format
             void writeVTK() const;
-  
+
             //- Write fields
             virtual void writeFields();
 
@@ -749,13 +749,13 @@ public:
             {
                 return objectiveInterpolation_;
             }
-    
+
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;
 
             //- Get lower neighbour cell faces
             const labelList& lowerNeiCellFaces() const;
-    
+
             //- Get upper neighbour cell faces
             const labelList& upperNeiCell() const;
 

@@ -21,7 +21,7 @@ else
 #        wget http://bitbucket.org/eigen/eigen/get/3.3.7.tar.gz
         tar xvzf eigen-3.3.9.tar.gz
         rm -f eigen-3.3.9.tar.gz
-        mv eigen-3.3.9 eigen3.x
+        mv eigen-3.3.9 eigen3
         (cd eigen3 && wmakeLnInclude .)
     else
         #  If EIGEN_DIR is set then we will create a symbolic link to it
@@ -31,27 +31,27 @@ else
 fi
 
 # Petsc library
-if [ -d $(pwd)/petsc ]
-then
-    echo "petsc found."
-else
-    if [ -z $PETSC_DIR ]
-    then
-        # Download petsc using git
-        echo "Downloading petsc"
-        git clone https://github.com/petsc/petsc.git
-        if [ $? -ne 0 ]
-        then
-            echo "Download failed!"
-            echo "Check your internet connection and check the following link "
-            echo "is valid: "
-            echo
-            exit 1
-        fi
-        ./makePETSC
-    else
-        #  If PETSC_DIR is set then we will create a symbolic link to it
-        echo "PETSC_DIR is set: creating symbolic link"
-        \ln -s $PETSC_DIR petsc
-    fi
-fi
+# if [ -d $(pwd)/petsc ]
+# then
+#     echo "petsc found."
+# else
+#     if [ -z $PETSC_DIR ]
+#     then
+#         # Download petsc using git
+#         echo "Downloading petsc"
+#         git clone https://github.com/petsc/petsc.git
+#         if [ $? -ne 0 ]
+#         then
+#             echo "Download failed!"
+#             echo "Check your internet connection and check the following link "
+#             echo "is valid: "
+#             echo
+#             exit 1
+#         fi
+#         ./makePETSC
+#     else
+#         #  If PETSC_DIR is set then we will create a symbolic link to it
+#         echo "PETSC_DIR is set: creating symbolic link"
+#         \ln -s $PETSC_DIR petsc
+#     fi
+# fi

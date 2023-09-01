@@ -27,7 +27,7 @@ License
 #include "volFields.H"
 #include "polyPatchID.H"
 
-#include "beamContactModel.H"
+// #include "beamContactModel.H"
 #include "IFstream.H"
 #include "beamHelperFunctions.H"
 #include "zeroGradientFvPatchFields.H"
@@ -83,7 +83,7 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     // Allocate storage for addressing
     lowerNeiCellPtr_ = new labelList(mesh().nCells(), -1);
     labelList& lowerNeiCell = *lowerNeiCellPtr_;
-    
+
     const cellList& cells = mesh().cells();
     const labelListList& cc = mesh().cellCells();
 
@@ -135,7 +135,7 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
         }
         else
         {
-            upperNeiCellFaces[cellI] = //-(endPatchIndex() + 1);            
+            upperNeiCellFaces[cellI] = //-(endPatchIndex() + 1);
                 -(neiPatchIndex(cells[cellI], mesh()) + 1);
         }
     }
@@ -303,8 +303,9 @@ Foam::beamModel::beamModel
     (
         beamProperties_.lookupOrDefault<bool>("objectiveInterpolation", false)
     ),
-    conicalPulleys_(),
-    toroidalPulleys_(),
+
+    //conicalPulleys_(),
+    //toroidalPulleys_(),
     startToRelaxTime_
     (
         lookupOrDefault<scalar>
@@ -321,7 +322,7 @@ Foam::beamModel::beamModel
             0
         )
     ),
-    contactPtr_(),
+    // contactPtr_(),
     deltaTseries_()
 {
     // // For Ibrahimbegovic's test case
@@ -333,12 +334,12 @@ Foam::beamModel::beamModel
     // {
     //     EA().value() = 1e4;
     //     GA().value() = 1e4;
-        
+
     //     GJ().value() = 1e2;
     //     EI().value() = 1e2;
     // }
 
-    
+
     // Read cross-sections of beams
     if (found("beams"))
     {
@@ -404,7 +405,7 @@ Foam::beamModel::beamModel
 
     // Write beam cross-section properties
     Info << "A: " << A() << endl;
-    
+
     Info << "Iyy: " << Iyy() << endl;
     Info << "Izz: " << Izz() << endl;
 
@@ -472,7 +473,7 @@ Foam::beamModel::beamModel
                 StartPatchName() << startPatchName << '_' << zI;
 
                 word zoneStartPatchName(StartPatchName.str());
-   
+
                 polyPatchID startPatch
                 (
                     zoneStartPatchName,
@@ -490,7 +491,7 @@ Foam::beamModel::beamModel
                 startPatchIndex_[zI] = startPatch.index();
             }
         }
-        
+
         // End patches
         endPatchIndex_ = labelList(nCellZones, -1);
 
@@ -508,7 +509,7 @@ Foam::beamModel::beamModel
                 EndPatchName() << endPatchName << '_' << zI;
 
                 word zoneEndPatchName(EndPatchName.str());
-   
+
                 polyPatchID endPatch
                 (
                     zoneEndPatchName,
@@ -557,135 +558,135 @@ Foam::beamModel::beamModel
     }
 
     // Create global-to-local and local-to-global cell addressing
-    if (Pstream::parRun())
-    {
-        localToGlobalCellAddressing_ =
-            labelIOList
-            (
-                IOobject
-                (
-                    "cellProcAddressing",
-                    mesh().facesInstance(),
-                    mesh().meshSubDir,
-                    mesh(),
-                    IOobject::MUST_READ,
-                    IOobject::NO_WRITE
-                )
-            );
+    // if (Pstream::parRun())
+    // {
+    //     localToGlobalCellAddressing_ =
+    //         labelIOList
+    //         (
+    //             IOobject
+    //             (
+    //                 "cellProcAddressing",
+    //                 mesh().facesInstance(),
+    //                 mesh().meshSubDir,
+    //                 mesh(),
+    //                 IOobject::MUST_READ,
+    //                 IOobject::NO_WRITE
+    //             )
+    //         );
 
-        label nGlobalCells = sum(nBeamCells_);
+    //     label nGlobalCells = sum(nBeamCells_);
 
-        globalToLocalCellAddressing_.setSize(Pstream::nProcs());
+    //     globalToLocalCellAddressing_.setSize(Pstream::nProcs());
 
-        forAll(globalToLocalCellAddressing_, procI)
-        {
-            globalToLocalCellAddressing_[procI] =
-                labelList(nGlobalCells, -1);
-        }
+    //     forAll(globalToLocalCellAddressing_, procI)
+    //     {
+    //         globalToLocalCellAddressing_[procI] =
+    //             labelList(nGlobalCells, -1);
+    //     }
 
-        forAll(globalToLocalCellAddressing_[Pstream::myProcNo()], gcI)
-        {
-            label locCellIndex =
-                findIndex(localToGlobalCellAddressing_, gcI);
+    //     forAll(globalToLocalCellAddressing_[Pstream::myProcNo()], gcI)
+    //     {
+    //         label locCellIndex =
+    //             findIndex(localToGlobalCellAddressing_, gcI);
 
-            if (locCellIndex != -1)
-            {
-                locCellIndex += csrAddr().globalNCellsOffset();
-            }
+    //         if (locCellIndex != -1)
+    //         {
+    //             locCellIndex += csrAddr().globalNCellsOffset();
+    //         }
 
-            globalToLocalCellAddressing_[Pstream::myProcNo()][gcI] =
-                locCellIndex;
-        }
+    //         globalToLocalCellAddressing_[Pstream::myProcNo()][gcI] =
+    //             locCellIndex;
+    //     }
 
-        // Send data
-        for (label domainI = 0; domainI < Pstream::nProcs(); ++domainI)
-        {
-            if (domainI != Pstream::myProcNo())
-            {
-                // if (allPoints[Pstream::myProcNo()].size())
-                {
-                    // Parallel data exchange
-                    OPstream::write
-                    (
-                        Pstream::blocking,
-                        domainI,
-                        reinterpret_cast<const char*>
-                        (
-                            globalToLocalCellAddressing_
-                            [Pstream::myProcNo()].begin()
-                        ),
-                        globalToLocalCellAddressing_
-                        [Pstream::myProcNo()].byteSize()
-                    );
-                }
-            }
-        }
+    //     // Send data
+    //     for (label domainI = 0; domainI < Pstream::nProcs(); ++domainI)
+    //     {
+    //         if (domainI != Pstream::myProcNo())
+    //         {
+    //             // if (allPoints[Pstream::myProcNo()].size())
+    //             {
+    //                 // Parallel data exchange
+    //                 OPstream::write
+    //                 (
+    //                     Pstream::blocking,
+    //                     domainI,
+    //                     reinterpret_cast<const char*>
+    //                     (
+    //                         globalToLocalCellAddressing_
+    //                         [Pstream::myProcNo()].begin()
+    //                     ),
+    //                     globalToLocalCellAddressing_
+    //                     [Pstream::myProcNo()].byteSize()
+    //                 );
+    //             }
+    //         }
+    //     }
 
-        // Receive data
-        for (label domainI = 0; domainI < Pstream::nProcs(); ++domainI)
-        {
-            if (domainI != Pstream::myProcNo())
-            {
-                // if (procNPoints[domainI])
-                {
-                    // Parallel data exchange
-                    IPstream::read
-                    (
-                        Pstream::blocking,
-                        domainI,
-                        reinterpret_cast<char*>
-                        (
-                            globalToLocalCellAddressing_[domainI].begin()
-                        ),
-                        globalToLocalCellAddressing_[domainI].byteSize()
-                    );
-                }
-            }
-        }
+    //     // Receive data
+    //     for (label domainI = 0; domainI < Pstream::nProcs(); ++domainI)
+    //     {
+    //         if (domainI != Pstream::myProcNo())
+    //         {
+    //             // if (procNPoints[domainI])
+    //             {
+    //                 // Parallel data exchange
+    //                 IPstream::read
+    //                 (
+    //                     Pstream::blocking,
+    //                     domainI,
+    //                     reinterpret_cast<char*>
+    //                     (
+    //                         globalToLocalCellAddressing_[domainI].begin()
+    //                     ),
+    //                     globalToLocalCellAddressing_[domainI].byteSize()
+    //                 );
+    //             }
+    //         }
+    //     }
 
-        // Pout << globalToLocalCellAddressing_ << endl;
-        // sleep(5);
-    }
+    //     // Pout << globalToLocalCellAddressing_ << endl;
+    //     // sleep(5);
+    // }
 
     // Calculate beam points local-to-global and global-to-local addressing
-    {
-        label nBeams = mesh().cellZones().size();
+    // {
+    //     label nBeams = mesh().cellZones().size();
 
-        localToGlobalBeamPointsAddressing_.setSize(nBeams);
+    //     localToGlobalBeamPointsAddressing_.setSize(nBeams);
 
-        forAll(localToGlobalBeamPointsAddressing_, bI)
-        {
-            localToGlobalBeamPointsAddressing_.set
-            (
-                bI,
-                new labelListList(Pstream::nProcs())
-            );
-        }
+    //     forAll(localToGlobalBeamPointsAddressing_, bI)
+    //     {
+    //         localToGlobalBeamPointsAddressing_.set
+    //         (
+    //             bI,
+    //             new labelListList(Pstream::nProcs())
+    //         );
+    //     }
 
-        forAll(localToGlobalBeamPointsAddressing_, bI)
-        {
-            forAll(localToGlobalBeamPointsAddressing_[bI], procI)
-            {
-                if (procI == Pstream::myProcNo())
-                {
-                    localToGlobalBeamPointsAddressing_[bI][procI] =
-                        globalPointsIndices(bI);
-                }
-            }
-            
-            Pstream::gatherList(localToGlobalBeamPointsAddressing_[bI]);
-            Pstream::scatterList(localToGlobalBeamPointsAddressing_[bI]);
-        }
+    //     forAll(localToGlobalBeamPointsAddressing_, bI)
+    //     {
+    //         forAll(localToGlobalBeamPointsAddressing_[bI], procI)
+    //         {
+    //             if (procI == Pstream::myProcNo())
+    //             {
+    //                 localToGlobalBeamPointsAddressing_[bI][procI] =
+    //                     globalPointsIndices(bI);
+    //             }
+    //         }
 
-        globalToLocalBeamPointsAddressing_.setSize(nBeams);
+    //         Pstream::gatherList(localToGlobalBeamPointsAddressing_[bI]);
+    //         Pstream::scatterList(localToGlobalBeamPointsAddressing_[bI]);
+    //     }
 
-        forAll(globalToLocalBeamPointsAddressing_, bI)
-        {
-            globalToLocalBeamPointsAddressing_[bI] =
-                localPointsIndices(bI);
-        }
-    }    
-    
+    //     globalToLocalBeamPointsAddressing_.setSize(nBeams);
+
+    //     forAll(globalToLocalBeamPointsAddressing_, bI)
+    //     {
+    //         globalToLocalBeamPointsAddressing_[bI] =
+    //             localPointsIndices(bI);
+    //     }
+    // }
+
     // Pout << "nBeamCells: " << nBeamCells_ << endl;
     // sleep(5);
 
@@ -703,55 +704,55 @@ Foam::beamModel::beamModel
     }
 
     // Read conical pulleys
-    if (found("conicalPulleys"))
-    {
-        // Info << "Found conical pulleys" << endl;
-        
-        const PtrList<entry> entries(lookup("conicalPulleys"));
+    // if (found("conicalPulleys"))
+    // {
+    //     // Info << "Found conical pulleys" << endl;
 
-        label nPulleys = entries.size();
+    //     const PtrList<entry> entries(lookup("conicalPulleys"));
 
-        // Info << "nPulleys: " << nPulleys << endl;
+    //     label nPulleys = entries.size();
 
-        conicalPulleys_.setSize(nPulleys);
+    //     // Info << "nPulleys: " << nPulleys << endl;
 
-        forAll(entries, pulleyI)
-        {
-            conicalPulleys_.set
-            (
-                pulleyI,
-                new conicalPulley(entries[pulleyI].dict())
-            );
+    //     conicalPulleys_.setSize(nPulleys);
 
-            // Info << entries[pulleyI].dict() << endl;
-        }
-    }
-    
+    //     forAll(entries, pulleyI)
+    //     {
+    //         conicalPulleys_.set
+    //         (
+    //             pulleyI,
+    //             new conicalPulley(entries[pulleyI].dict())
+    //         );
+
+    //         // Info << entries[pulleyI].dict() << endl;
+    //     }
+    // }
+
     // Read toroidal pulleys
-    if (found("toroidalPulleys"))
-    {
-        const PtrList<entry> entries(lookup("toroidalPulleys"));
+    // if (found("toroidalPulleys"))
+    // {
+    //     const PtrList<entry> entries(lookup("toroidalPulleys"));
 
-        label nPulleys = entries.size();
+    //     label nPulleys = entries.size();
 
-        toroidalPulleys_.setSize(nPulleys);
+    //     toroidalPulleys_.setSize(nPulleys);
 
-        forAll(entries, pulleyI)
-        {
-            toroidalPulleys_.set
-            (
-                pulleyI,
-                new toroidalPulley(entries[pulleyI].dict())
-            );
-        }
-    }
-    
+    //     forAll(entries, pulleyI)
+    //     {
+    //         toroidalPulleys_.set
+    //         (
+    //             pulleyI,
+    //             new toroidalPulley(entries[pulleyI].dict())
+    //         );
+    //     }
+    // }
+
     // Read density if present
     if (beamProperties().found("rho"))
     {
         rho_ = dimensionedScalar(beamProperties().lookup("rho"));
     }
-    
+
     // Check if deltaT is time-varying
     if (beamProperties().found("deltaTseries"))
     {
@@ -786,28 +787,28 @@ Foam::scalar Foam::beamModel::evolve()
     return 0;
 }
 
-const Foam::beamContactModel& Foam::beamModel::contact() const
-{
-    if (contactPtr_.empty())
-    {
-        FatalErrorIn("beamModel::contact() const")
-          << "Contact is not updated"
-          << abort(FatalError);
-    }
+// const Foam::beamContactModel& Foam::beamModel::contact() const
+// {
+//     if (contactPtr_.empty())
+//     {
+//         FatalErrorIn("beamModel::contact() const")
+//           << "Contact is not updated"
+//           << abort(FatalError);
+//     }
 
-    return contactPtr_();
-}
+//     return contactPtr_();
+// }
 
-Foam::beamContactModel& Foam::beamModel::contact()
-{
-    if (contactPtr_.empty())
-    {
-        contactPtr_.set(new beamContactModel(*this));
-    }
+// Foam::beamContactModel& Foam::beamModel::contact()
+// {
+//     if (contactPtr_.empty())
+//     {
+//         contactPtr_.set(new beamContactModel(*this));
+//     }
 
-    return contactPtr_();
-}
-  
+//     return contactPtr_();
+// }
+
 bool Foam::beamModel::read()
 {
     if (regIOobject::read())
@@ -832,7 +833,7 @@ void Foam::beamModel::writeVTK() const
     FileName() << mesh().name() << "_" << runTime().timeIndex() << ".vtk";
 
     fileName vtkFileName(word(FileName.str()));
-    
+
     OFstream vtkFile(vtkDir/vtkFileName);
 
     // Write header
@@ -878,7 +879,7 @@ void Foam::beamModel::writeVTK() const
 Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
 {
     const fvMesh& mesh = this->mesh();
-  
+
     label nCellZones = mesh.cellZones().size();
 
     if (nCellZones < 2)
@@ -962,441 +963,441 @@ void Foam::beamModel::writeFields()
 {
     runTime().write();
 
-    if (runTime().outputTime() && contactActive() && Pstream::master())
-    {
-        // Write contact force and contact gap for first beam
-        label nBeams = contact().splines().size();
-        for (label bI=0; bI<nBeams; bI++)
-        {
-            // label bI = 0;
-            // cubicSpline spline
-            // (
-            //     points(bI),
-            //     cubicSpline::CLAMPED_CALC,
-            //     vector(0, 0, 0),
-            //     cubicSpline::CLAMPED_CALC,
-            //     vector(0, 0, 0)
-            // );
+    // if (runTime().outputTime() && contactActive() && Pstream::master())
+    // {
+    //     // Write contact force and contact gap for first beam
+    //     label nBeams = contact().splines().size();
+    //     for (label bI=0; bI<nBeams; bI++)
+    //     {
+    //         // label bI = 0;
+    //         // cubicSpline spline
+    //         // (
+    //         //     points(bI),
+    //         //     cubicSpline::CLAMPED_CALC,
+    //         //     vector(0, 0, 0),
+    //         //     cubicSpline::CLAMPED_CALC,
+    //         //     vector(0, 0, 0)
+    //         // );
 
-            scalarField t = contact().splines()[bI].midPointParameters();
-            // scalarField t = spline.midPointParameters();
-            // Info << "First beam length: "
-            //      << sum(spline.segLengths()) << endl;
+    //         scalarField t = contact().splines()[bI].midPointParameters();
+    //         // scalarField t = spline.midPointParameters();
+    //         // Info << "First beam length: "
+    //         //      << sum(spline.segLengths()) << endl;
 
-            if (false)
-            {
-                Info << "\nTotal forces for beam " << bI << endl;
-                for (label i=0; i<nBeams; i++)
-                {
-                    if (i != bI)
-                    {
-                        Info << ' ' << sum(contact().contactForces()[bI][i]);
-                    }
-                    else
-                    {
-                        Info << ' ' << 0;
-                    }
-                }
-                Info << endl;
-            }
-
-
-            {
-                OStringStream FileName;
-                FileName() << "beam-" << bI << "_force.txt";
-
-                // OFstream forceFile(runTime().timePath()/"beam-0_force.txt");
-                OFstream forceFile
-                (
-                    runTime().timePath()/word(FileName.str())
-                );
-                forAll(t, segI)
-                {
-                    forceFile << t[segI];
-                    for (label i=0; i<nBeams; i++)
-                    {
-                        if (i != bI)
-                        {
-                            forceFile << ' ' <<
-			        mag
-			        (
-                                    contact().lineContacts()[bI][segI][i]
-			           .normalContactForce()
-				);
-                        }
-                        else
-                        {
-                            forceFile << ' ' << 0;
-                        }
-                    }
-                    forceFile << endl;
-                }
-            }
+    //         if (false)
+    //         {
+    //             Info << "\nTotal forces for beam " << bI << endl;
+    //             for (label i=0; i<nBeams; i++)
+    //             {
+    //                 if (i != bI)
+    //                 {
+    //                     Info << ' ' << sum(contact().contactForces()[bI][i]);
+    //                 }
+    //                 else
+    //                 {
+    //                     Info << ' ' << 0;
+    //                 }
+    //             }
+    //             Info << endl;
+    //         }
 
 
-            {
-                OStringStream FileName;
-                FileName() << "beam-" << bI << "_gap.txt";
+    //         {
+    //             OStringStream FileName;
+    //             FileName() << "beam-" << bI << "_force.txt";
 
-                OFstream gapFile
-                (
-                    runTime().timePath()/word(FileName.str())
-                );
-
-                // OFstream gapFile(runTime().timePath()/"beam-0_gap.txt");
-                forAll(t, segI)
-                {
-                    gapFile << t[segI];
-                    for (label i=0; i<nBeams; i++)
-                    {
-                        if (i != bI)
-                        {
-                            gapFile << ' ' <<
-			        contact().lineContacts()[bI][segI][i]
-			       .normalGap();
-
-                            // gapFile << ' '
-                            //     << contact().contactGaps()[bI][i][segI];
-                        }
-                        else
-                        {
-                            gapFile << ' ' << 0;
-                        }
-                    }
-                    gapFile << endl;
-                }
-            }
-        }
-    }
+    //             // OFstream forceFile(runTime().timePath()/"beam-0_force.txt");
+    //             OFstream forceFile
+    //             (
+    //                 runTime().timePath()/word(FileName.str())
+    //             );
+    //             forAll(t, segI)
+    //             {
+    //                 forceFile << t[segI];
+    //                 for (label i=0; i<nBeams; i++)
+    //                 {
+    //                     if (i != bI)
+    //                     {
+    //                         forceFile << ' ' <<
+	// 		        mag
+	// 		        (
+    //                                 contact().lineContacts()[bI][segI][i]
+	// 		           .normalContactForce()
+	// 			);
+    //                     }
+    //                     else
+    //                     {
+    //                         forceFile << ' ' << 0;
+    //                     }
+    //                 }
+    //                 forceFile << endl;
+    //             }
+    //         }
 
 
-    if (runTime().outputTime() && conicalPulleys_.size())
-    {
-        // Write moving pulleys
-        forAll(conicalPulleys_, pulleyI)
-        {
-            if (conicalPulleys_[pulleyI].moving())
-            {
-                // Create directory if does not exist.
-                fileName vtkDir(runTime().path()/"VTK");
-                mkDir(vtkDir);
+    //         {
+    //             OStringStream FileName;
+    //             FileName() << "beam-" << bI << "_gap.txt";
 
-                if (conicalPulleys_[pulleyI].stlModel().size())
-                {
-                    fileName conicalPulleysDir
-                    (
-                        vtkDir/"conicalPulleys"
-                    );
-                    mkDir(conicalPulleysDir);
+    //             OFstream gapFile
+    //             (
+    //                 runTime().timePath()/word(FileName.str())
+    //             );
 
-                    OStringStream conicalPulleyNvtk;
-                    conicalPulleyNvtk()
-                        << "conicalPulley-" << pulleyI
-                        << "_" << runTime().timeIndex() << ".vtk";
+    //             // OFstream gapFile(runTime().timePath()/"beam-0_gap.txt");
+    //             forAll(t, segI)
+    //             {
+    //                 gapFile << t[segI];
+    //                 for (label i=0; i<nBeams; i++)
+    //                 {
+    //                     if (i != bI)
+    //                     {
+    //                         gapFile << ' ' <<
+	// 		        contact().lineContacts()[bI][segI][i]
+	// 		       .normalGap();
 
-                    fileName vtkFileName
-                    (
-                        // "conicalPulleys"/
-                        conicalPulleysDir/word(conicalPulleyNvtk.str())
-                    );
+    //                         // gapFile << ' '
+    //                         //     << contact().contactGaps()[bI][i][segI];
+    //                     }
+    //                     else
+    //                     {
+    //                         gapFile << ' ' << 0;
+    //                     }
+    //                 }
+    //                 gapFile << endl;
+    //             }
+    //         }
+    //     }
+    // }
 
-                    OStringStream conicalPulleyNvtp;
-                    conicalPulleyNvtp()
-                        << "conicalPulley-" << pulleyI
-                        << "_" << runTime().timeIndex() << ".vtp";
-                    
-                    fileName vtpFileName
-                    (
-                        word(conicalPulleyNvtp.str())
-                    );
-                    
-                    vectorField oldPoints =
-                        conicalPulleys_[pulleyI].stlModel().points();
 
-                    vectorField newPoints =
-                        oldPoints
-                      + conicalPulleys_[pulleyI].temporalOriginDisplacement();
+    // if (runTime().outputTime() && conicalPulleys_.size())
+    // {
+    //     // Write moving pulleys
+    //     forAll(conicalPulleys_, pulleyI)
+    //     {
+    //         if (conicalPulleys_[pulleyI].moving())
+    //         {
+    //             // Create directory if does not exist.
+    //             fileName vtkDir(runTime().path()/"VTK");
+    //             mkDir(vtkDir);
 
-                    conicalPulleys_[pulleyI].stlModel().movePoints(newPoints);
-                    conicalPulleys_[pulleyI].stlModel().write(vtkFileName);
-                    conicalPulleys_[pulleyI].stlModel().movePoints(oldPoints);
+    //             if (conicalPulleys_[pulleyI].stlModel().size())
+    //             {
+    //                 fileName conicalPulleysDir
+    //                 (
+    //                     vtkDir/"conicalPulleys"
+    //                 );
+    //                 mkDir(conicalPulleysDir);
 
-                    // Write temporal collection data
-                    {
-                        OStringStream conicalPulleyNpvd;
-                        conicalPulleyNpvd() << "conicalPulley-"
-                                            << pulleyI << ".pvd";
-                            
-                        fileName collectionFileName
-                        (
-                            conicalPulleysDir/conicalPulleyNpvd.str()
-                        );
-                        ifstream collectionFile(collectionFileName);
-                        // IFstream collectionFile(collectionFileName);
+    //                 OStringStream conicalPulleyNvtk;
+    //                 conicalPulleyNvtk()
+    //                     << "conicalPulley-" << pulleyI
+    //                     << "_" << runTime().timeIndex() << ".vtk";
 
-                        fileName newCollectionFileName
-                        (
-                            conicalPulleysDir/"new.pvd"
-                        );
-                        
-                        if (collectionFile.good())
-                        {
-                            ofstream newCollectionFile
-                            (
-                                newCollectionFileName
-                            );
-                            
-                            // Add to existing collectin file
-                            label lineIndex = 0;
-                            do
-                            {
-                                lineIndex++;
-                                
-                                std::string line;
-                                std::getline(collectionFile, line);
-                                
-                                // collectionFile.getLine(line);
-                                // newCollectionFile << line << '\n';
-                                // Info << line << endl;
-                                
-                                if
-                                (
-                                    (lineIndex < 3)
-                                 || (
-                                        line.find("DataSet")
-                                     != std::string::npos
-                                    )
-                                )
-                                {
-                                    newCollectionFile << line << '\n';
-                                }
-                            }
-                            while(!collectionFile.eof());
+    //                 fileName vtkFileName
+    //                 (
+    //                     // "conicalPulleys"/
+    //                     conicalPulleysDir/word(conicalPulleyNvtk.str())
+    //                 );
 
-                            // Add current pulley data
-                            newCollectionFile
-                                << "    <DataSet timestep=\""
-                                << runTime().value()
-                                << "\" group=\"\" part=\"0\" file=\""
-                                << vtpFileName << "\"/>" << '\n';
+    //                 OStringStream conicalPulleyNvtp;
+    //                 conicalPulleyNvtp()
+    //                     << "conicalPulley-" << pulleyI
+    //                     << "_" << runTime().timeIndex() << ".vtp";
 
-                            // Add last two lines
-                            newCollectionFile << "  </Collection>" << '\n';
-                            newCollectionFile << "</VTKFile>";
-                        }
-                        else
-                        {
-                            OFstream newCollectionFile
-                            (
-                                newCollectionFileName
-                            );
-                        
-                            // Add first two lines
-                            newCollectionFile
-                                << "<VTKFile type=\"Collection\" version=\"0.1\" "
-                                << "byte_order=\"LittleEndian\">" << endl;
-                            newCollectionFile << "  <Collection>" << endl;
+    //                 fileName vtpFileName
+    //                 (
+    //                     word(conicalPulleyNvtp.str())
+    //                 );
 
-                            // Add current pulley data
-                            newCollectionFile
-                                << "    <DataSet timestep=\""
-                                << runTime().value()
-                                << "\" group=\"\" part=\"0\" file="
-                                << vtpFileName << "/>" << endl;
-                            
-                            // Add last two lines
-                            newCollectionFile << "  </Collection>" << endl;
-                            newCollectionFile << "</VTKFile>";
-                        }
+    //                 vectorField oldPoints =
+    //                     conicalPulleys_[pulleyI].stlModel().points();
 
-                        mv(newCollectionFileName, collectionFileName);
-                             
-                        // collectionFile.close();
-                        // newCollectionFile.close();
+    //                 vectorField newPoints =
+    //                     oldPoints
+    //                   + conicalPulleys_[pulleyI].temporalOriginDisplacement();
 
-                        // if
-                        // (
-                        //     std::rename
-                        //     (
-                        //         collectionFile.name().c_str(),
-                        //         newCollectionFile.name().c_str()
-                        //     )
-                        // )
-                        // {
-                        //     FatalErrorIn("void Foam::beamModel::writeFields()")
-                        //         << "Error renaming"
-                        //         << abort(FatalError);
-                        // }
-                    }
-                }
-            }
-        }
-    }
+    //                 conicalPulleys_[pulleyI].stlModel().movePoints(newPoints);
+    //                 conicalPulleys_[pulleyI].stlModel().write(vtkFileName);
+    //                 conicalPulleys_[pulleyI].stlModel().movePoints(oldPoints);
 
-    
-    if (runTime().outputTime() && toroidalPulleys_.size())
-    {
-        // Write moving pulleys
-        forAll(toroidalPulleys_, pulleyI)
-        {
-            if (toroidalPulleys_[pulleyI].moving())
-            {
-                // Create directory if does not exist.
-                fileName vtkDir(runTime().path()/"VTK");
-                mkDir(vtkDir);
-                    
-                if (toroidalPulleys_[pulleyI].stlModel().size())
-                {
-                    fileName toroidalPulleysDir
-                    (
-                        vtkDir/"toroidalPulleys"
-                    );
-                    mkDir(toroidalPulleysDir);
+    //                 // Write temporal collection data
+    //                 {
+    //                     OStringStream conicalPulleyNpvd;
+    //                     conicalPulleyNpvd() << "conicalPulley-"
+    //                                         << pulleyI << ".pvd";
 
-                    OStringStream toroidalPulleyNvtk;
-                    toroidalPulleyNvtk()
-                        << "toroidalPulley-" << pulleyI
-                        << "_" << runTime().timeIndex() << ".vtk";
+    //                     fileName collectionFileName
+    //                     (
+    //                         conicalPulleysDir/conicalPulleyNpvd.str()
+    //                     );
+    //                     ifstream collectionFile(collectionFileName);
+    //                     // IFstream collectionFile(collectionFileName);
 
-                    fileName vtkFileName
-                    (
-                        // "toroidalPulleys"/
-                        toroidalPulleysDir/
-                        word(toroidalPulleyNvtk.str())
-                    );
+    //                     fileName newCollectionFileName
+    //                     (
+    //                         conicalPulleysDir/"new.pvd"
+    //                     );
 
-                    OStringStream toroidalPulleyNvtp;
-                    toroidalPulleyNvtp()
-                        << "toroidalPulley-" << pulleyI
-                        << "_" << runTime().timeIndex() << ".vtp";
-                    
-                    fileName vtpFileName
-                    (
-                        word(toroidalPulleyNvtp.str())
-                    );
-                    
-                    vectorField oldPoints =
-                        toroidalPulleys_[pulleyI].stlModel().points();
+    //                     if (collectionFile.good())
+    //                     {
+    //                         ofstream newCollectionFile
+    //                         (
+    //                             newCollectionFileName
+    //                         );
 
-                    vectorField newPoints =
-                        oldPoints
-                      + toroidalPulleys_[pulleyI].temporalOriginDisplacement();
+    //                         // Add to existing collectin file
+    //                         label lineIndex = 0;
+    //                         do
+    //                         {
+    //                             lineIndex++;
 
-                    toroidalPulleys_[pulleyI].stlModel().movePoints(newPoints);
-                    toroidalPulleys_[pulleyI].stlModel().write(vtkFileName);
-                    toroidalPulleys_[pulleyI].stlModel().movePoints(oldPoints);
+    //                             std::string line;
+    //                             std::getline(collectionFile, line);
 
-                    // Write temporal collection data
-                    {
-                        OStringStream toroidalPulleyNpvd;
-                        toroidalPulleyNpvd() << "toroidalPulley-"
-                                            << pulleyI << ".pvd";
-                            
-                        fileName collectionFileName
-                        (
-                            toroidalPulleysDir/toroidalPulleyNpvd.str()
-                        );
-                        ifstream collectionFile(collectionFileName);
-                        // IFstream collectionFile(collectionFileName);
+    //                             // collectionFile.getLine(line);
+    //                             // newCollectionFile << line << '\n';
+    //                             // Info << line << endl;
 
-                        fileName newCollectionFileName
-                        (
-                            toroidalPulleysDir/"new.pvd"
-                        );
-                        
-                        if (collectionFile.good())
-                        {
-                            ofstream newCollectionFile
-                            (
-                                newCollectionFileName
-                            );
-                            
-                            // Add to existing collectin file
-                            label lineIndex = 0;
-                            do
-                            {
-                                lineIndex++;
-                                
-                                std::string line;
-                                std::getline(collectionFile, line);
-                                
-                                // collectionFile.getLine(line);
-                                // newCollectionFile << line << '\n';
-                                // Info << line << endl;
-                                
-                                if
-                                (
-                                    (lineIndex < 3)
-                                 || (
-                                        line.find("DataSet")
-                                     != std::string::npos
-                                    )
-                                )
-                                {
-                                    newCollectionFile << line << '\n';
-                                }
-                            }
-                            while(!collectionFile.eof());
+    //                             if
+    //                             (
+    //                                 (lineIndex < 3)
+    //                              || (
+    //                                     line.find("DataSet")
+    //                                  != std::string::npos
+    //                                 )
+    //                             )
+    //                             {
+    //                                 newCollectionFile << line << '\n';
+    //                             }
+    //                         }
+    //                         while(!collectionFile.eof());
 
-                            // Add current pulley data
-                            newCollectionFile
-                                << "    <DataSet timestep=\""
-                                << runTime().value()
-                                << "\" group=\"\" part=\"0\" file=\""
-                                << vtpFileName << "\"/>" << '\n';
+    //                         // Add current pulley data
+    //                         newCollectionFile
+    //                             << "    <DataSet timestep=\""
+    //                             << runTime().value()
+    //                             << "\" group=\"\" part=\"0\" file=\""
+    //                             << vtpFileName << "\"/>" << '\n';
 
-                            // Add last two lines
-                            newCollectionFile << "  </Collection>" << '\n';
-                            newCollectionFile << "</VTKFile>";
-                        }
-                        else
-                        {
-                            OFstream newCollectionFile
-                            (
-                                newCollectionFileName
-                            );
-                        
-                            // Add first two lines
-                            newCollectionFile
-                                << "<VTKFile type=\"Collection\" version=\"0.1\" "
-                                << "byte_order=\"LittleEndian\">" << endl;
-                            newCollectionFile << "  <Collection>" << endl;
+    //                         // Add last two lines
+    //                         newCollectionFile << "  </Collection>" << '\n';
+    //                         newCollectionFile << "</VTKFile>";
+    //                     }
+    //                     else
+    //                     {
+    //                         OFstream newCollectionFile
+    //                         (
+    //                             newCollectionFileName
+    //                         );
 
-                            // Add current pulley data
-                            newCollectionFile
-                                << "    <DataSet timestep=\""
-                                << runTime().value()
-                                << "\" group=\"\" part=\"0\" file="
-                                << vtpFileName << "/>" << endl;
-                            
-                            // Add last two lines
-                            newCollectionFile << "  </Collection>" << endl;
-                            newCollectionFile << "</VTKFile>";                            
-                        }
+    //                         // Add first two lines
+    //                         newCollectionFile
+    //                             << "<VTKFile type=\"Collection\" version=\"0.1\" "
+    //                             << "byte_order=\"LittleEndian\">" << endl;
+    //                         newCollectionFile << "  <Collection>" << endl;
 
-                        mv(newCollectionFileName, collectionFileName);
-                             
-                        // collectionFile.close();
-                        // newCollectionFile.close();
+    //                         // Add current pulley data
+    //                         newCollectionFile
+    //                             << "    <DataSet timestep=\""
+    //                             << runTime().value()
+    //                             << "\" group=\"\" part=\"0\" file="
+    //                             << vtpFileName << "/>" << endl;
 
-                        // if
-                        // (
-                        //     std::rename
-                        //     (
-                        //         collectionFile.name().c_str(),
-                        //         newCollectionFile.name().c_str()
-                        //     )
-                        // )
-                        // {
-                        //     FatalErrorIn("void Foam::beamModel::writeFields()")
-                        //         << "Error renaming"
-                        //         << abort(FatalError);
-                        // }
-                    }
-                }
-            }
-        }
-    }
+    //                         // Add last two lines
+    //                         newCollectionFile << "  </Collection>" << endl;
+    //                         newCollectionFile << "</VTKFile>";
+    //                     }
+
+    //                     mv(newCollectionFileName, collectionFileName);
+
+    //                     // collectionFile.close();
+    //                     // newCollectionFile.close();
+
+    //                     // if
+    //                     // (
+    //                     //     std::rename
+    //                     //     (
+    //                     //         collectionFile.name().c_str(),
+    //                     //         newCollectionFile.name().c_str()
+    //                     //     )
+    //                     // )
+    //                     // {
+    //                     //     FatalErrorIn("void Foam::beamModel::writeFields()")
+    //                     //         << "Error renaming"
+    //                     //         << abort(FatalError);
+    //                     // }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+
+    // if (runTime().outputTime() && toroidalPulleys_.size())
+    // {
+    //     // Write moving pulleys
+    //     forAll(toroidalPulleys_, pulleyI)
+    //     {
+    //         if (toroidalPulleys_[pulleyI].moving())
+    //         {
+    //             // Create directory if does not exist.
+    //             fileName vtkDir(runTime().path()/"VTK");
+    //             mkDir(vtkDir);
+
+    //             if (toroidalPulleys_[pulleyI].stlModel().size())
+    //             {
+    //                 fileName toroidalPulleysDir
+    //                 (
+    //                     vtkDir/"toroidalPulleys"
+    //                 );
+    //                 mkDir(toroidalPulleysDir);
+
+    //                 OStringStream toroidalPulleyNvtk;
+    //                 toroidalPulleyNvtk()
+    //                     << "toroidalPulley-" << pulleyI
+    //                     << "_" << runTime().timeIndex() << ".vtk";
+
+    //                 fileName vtkFileName
+    //                 (
+    //                     // "toroidalPulleys"/
+    //                     toroidalPulleysDir/
+    //                     word(toroidalPulleyNvtk.str())
+    //                 );
+
+    //                 OStringStream toroidalPulleyNvtp;
+    //                 toroidalPulleyNvtp()
+    //                     << "toroidalPulley-" << pulleyI
+    //                     << "_" << runTime().timeIndex() << ".vtp";
+
+    //                 fileName vtpFileName
+    //                 (
+    //                     word(toroidalPulleyNvtp.str())
+    //                 );
+
+    //                 vectorField oldPoints =
+    //                     toroidalPulleys_[pulleyI].stlModel().points();
+
+    //                 vectorField newPoints =
+    //                     oldPoints
+    //                   + toroidalPulleys_[pulleyI].temporalOriginDisplacement();
+
+    //                 toroidalPulleys_[pulleyI].stlModel().movePoints(newPoints);
+    //                 toroidalPulleys_[pulleyI].stlModel().write(vtkFileName);
+    //                 toroidalPulleys_[pulleyI].stlModel().movePoints(oldPoints);
+
+    //                 // Write temporal collection data
+    //                 {
+    //                     OStringStream toroidalPulleyNpvd;
+    //                     toroidalPulleyNpvd() << "toroidalPulley-"
+    //                                         << pulleyI << ".pvd";
+
+    //                     fileName collectionFileName
+    //                     (
+    //                         toroidalPulleysDir/toroidalPulleyNpvd.str()
+    //                     );
+    //                     ifstream collectionFile(collectionFileName);
+    //                     // IFstream collectionFile(collectionFileName);
+
+    //                     fileName newCollectionFileName
+    //                     (
+    //                         toroidalPulleysDir/"new.pvd"
+    //                     );
+
+    //                     if (collectionFile.good())
+    //                     {
+    //                         ofstream newCollectionFile
+    //                         (
+    //                             newCollectionFileName
+    //                         );
+
+    //                         // Add to existing collectin file
+    //                         label lineIndex = 0;
+    //                         do
+    //                         {
+    //                             lineIndex++;
+
+    //                             std::string line;
+    //                             std::getline(collectionFile, line);
+
+    //                             // collectionFile.getLine(line);
+    //                             // newCollectionFile << line << '\n';
+    //                             // Info << line << endl;
+
+    //                             if
+    //                             (
+    //                                 (lineIndex < 3)
+    //                              || (
+    //                                     line.find("DataSet")
+    //                                  != std::string::npos
+    //                                 )
+    //                             )
+    //                             {
+    //                                 newCollectionFile << line << '\n';
+    //                             }
+    //                         }
+    //                         while(!collectionFile.eof());
+
+    //                         // Add current pulley data
+    //                         newCollectionFile
+    //                             << "    <DataSet timestep=\""
+    //                             << runTime().value()
+    //                             << "\" group=\"\" part=\"0\" file=\""
+    //                             << vtpFileName << "\"/>" << '\n';
+
+    //                         // Add last two lines
+    //                         newCollectionFile << "  </Collection>" << '\n';
+    //                         newCollectionFile << "</VTKFile>";
+    //                     }
+    //                     else
+    //                     {
+    //                         OFstream newCollectionFile
+    //                         (
+    //                             newCollectionFileName
+    //                         );
+
+    //                         // Add first two lines
+    //                         newCollectionFile
+    //                             << "<VTKFile type=\"Collection\" version=\"0.1\" "
+    //                             << "byte_order=\"LittleEndian\">" << endl;
+    //                         newCollectionFile << "  <Collection>" << endl;
+
+    //                         // Add current pulley data
+    //                         newCollectionFile
+    //                             << "    <DataSet timestep=\""
+    //                             << runTime().value()
+    //                             << "\" group=\"\" part=\"0\" file="
+    //                             << vtpFileName << "/>" << endl;
+
+    //                         // Add last two lines
+    //                         newCollectionFile << "  </Collection>" << endl;
+    //                         newCollectionFile << "</VTKFile>";
+    //                     }
+
+    //                     mv(newCollectionFileName, collectionFileName);
+
+    //                     // collectionFile.close();
+    //                     // newCollectionFile.close();
+
+    //                     // if
+    //                     // (
+    //                     //     std::rename
+    //                     //     (
+    //                     //         collectionFile.name().c_str(),
+    //                     //         newCollectionFile.name().c_str()
+    //                     //     )
+    //                     // )
+    //                     // {
+    //                     //     FatalErrorIn("void Foam::beamModel::writeFields()")
+    //                     //         << "Error renaming"
+    //                     //         << abort(FatalError);
+    //                     // }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 const Foam::labelList& Foam::beamModel::upperNeiCellFaces() const
@@ -1449,7 +1450,7 @@ Foam::label Foam::beamModel::whichBeam(const label cellIndex) const
 
     label nCells = sum(nBeamCells_);
     // label nCells = (startCells_[nBeams-1] + nBeamCells_[nBeams-1]);
-    
+
     if (cellIndex >= nCells)
     // if (cellIndex >= mesh().nCells())
     {
@@ -1534,7 +1535,7 @@ Foam::label Foam::beamModel::localCellIndex
         {
             lci -= csrAddr().globalNCellsOffset();
         }
-        
+
         return lci;
     }
 
@@ -1584,14 +1585,14 @@ Foam::label Foam::beamModel::globalCellIndex
 Foam::scalar Foam::beamModel::deltaT() const
 {
     scalar newDeltaT = runTime().deltaT().value();
-    
+
     Info << "Current deltaT: " << newDeltaT << endl;
-   
+
     if (deltaTseries_.size())
     {
         newDeltaT = deltaTseries_(runTime().value());
     }
-    
+
     Info << "Current deltaT: " << newDeltaT << endl;
 
     return newDeltaT;
@@ -1683,7 +1684,7 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
             // Get global cell index offset
             globalCellIndexOffset = globalCellIndex(0);
         }
-        
+
         label curGlPtIndex = -1;
         for (label i=0; i<mesh.nCells(); i++)
         {
@@ -1692,7 +1693,7 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
         }
         curGlPtIndex++;
         tLocPtIndices()[curGlPtIndex] = mesh.nCells();
-        
+
         return tLocPtIndices;
     }
     else
@@ -1701,7 +1702,7 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
 
         label nCells = cz.size();
         reduce(nCells, sumOp<label>());
-        
+
         label nPoints = nCells + 1;
 
         tmp<labelField> tLocPtIndices
@@ -1718,12 +1719,12 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
             glSegIndex = whichSegment(glCellIndex);
             tLocPtIndices()[glSegIndex] = i;
         }
-        
+
         // add last point
         glSegIndex++;
         tLocPtIndices()[glSegIndex] = cz.size();
 
-        
+
         // if (Pstream::myProcNo() == 0)
         // {
         //     if (bI == 0)
@@ -1734,7 +1735,7 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
         //         }
         //     }
         // }
-        
+
         return tLocPtIndices;
     }
 }

@@ -2,7 +2,7 @@ EXE_INC = \
     -I../../../src/wireBunchingModels/lnInclude \
     -I../../../ThirdParty/eigen3 \
     -I../../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
-    -I$(LIB_SRC)/dynamicMesh/dynamicFvMesh/lnInclude \
+    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
     -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude
 
