@@ -501,11 +501,14 @@
        
         if (patch.coupled())
         {
-            #include "updateCouplingCoeffs.H"
+            notImplemented("Not ported for parallel yet!");
+            //#include "updateCouplingCoeffs.H"
         }
         else
         {
-            #include "applyBoundaryConditions.H"
+            // Philip: we do need this, but you can comment it initially
+            notImplemented("We need to port applyBoundaryConditions.H!");
+            //#include "applyBoundaryConditions.H"
         }
     }
 
@@ -676,10 +679,10 @@
     //applyLineContact(WThetaEqn);
 
     // Apply conical pulley contact
-    applyConicalPulleysContactNew(WThetaEqn);
+    // applyConicalPulleysContactNew(WThetaEqn);
 
     // Apply conical pulley contact
-    applyToroidalPulleysContact(WThetaEqn);
+    // applyToroidalPulleysContact(WThetaEqn);
     
     
     //scalar nCV = mesh().cellZones().size();
@@ -693,7 +696,9 @@
 
     
     // Block coupled solver call
-    vector6 eqnRes = WThetaEqn.solve().initialResidual();
+    // PhilipC: we need to replace this with our own solver, e.g. Eigen or PETSc
+    notImplemented("We need to implement out own linear solver, e.g. Eigen or PETSc");
+    //vector6 eqnRes = WThetaEqn.solve().initialResidual();
 
     currentResidual = mag(eqnRes);
 

@@ -52,9 +52,10 @@ beamModels/coupledTotalLagIncrBeam/coupledTotalLagIncrBeam.C
 beamModels/coupledTotalLagCurvedBeam/coupledTotalLagCurvedBeam.C
 */
 
-/*
 
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
+
+/*
 beamModels/coupledTotalLagNewtonRaphsonBeam/applyContacts.C
 beamModels/beamModel/lookupBeamModel.C
 

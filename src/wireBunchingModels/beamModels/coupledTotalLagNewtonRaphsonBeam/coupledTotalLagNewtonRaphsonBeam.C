@@ -592,19 +592,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         pMesh_,
         dimensionedVector("0", dimLength, vector::zero)
     ),
-    WTheta_
-    (
-        IOobject
-        (
-            "WTheta",
-            runTime.timeName(),
-            mesh(),
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector6("zero", dimless, vector6(1e-6))
-    ), 
+    // WTheta_
+    // (
+    //     IOobject
+    //     (
+    //         "WTheta",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::NO_READ,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector6("zero", dimless, vector6(1e-6))
+    // ), 
     totalIter_(0),
   //  nCV_(beamProperties().lookup("nSegments")),
     // E_(beamProperties().lookup("E")),
@@ -799,34 +799,34 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         )
     ),
     // Plasticity related fields
-    plasticity_(lookupOrDefault<bool>("plasticity", false)),
-    GammaP_
-    (
-        IOobject
-        (
-            "GammaP",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimless, vector::zero)
-    ),
-    KP_
-    (
-        IOobject
-        (
-            "KP",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimless/dimLength, vector::zero)
-    ),
-    plasticityStressResultantReturnPtr_(NULL),
+    // plasticity_(lookupOrDefault<bool>("plasticity", false)),
+    // GammaP_
+    // (
+    //     IOobject
+    //     (
+    //         "GammaP",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector("0", dimless, vector::zero)
+    // ),
+    // KP_
+    // (
+    //     IOobject
+    //     (
+    //         "KP",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector("0", dimless/dimLength, vector::zero)
+    // ),
+    // plasticityStressResultantReturnPtr_(NULL),
     curvature_
     (
         IOobject
@@ -909,19 +909,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     }
 
     // Plasticity
-    if (beamProperties().found("plasticityModel"))
-    {
-        // Info << "Plasticity model found" << endl;
-        plasticityStressResultantReturnPtr_ =
-            plasticityStressResultantReturn::New
-            (
-                beamProperties().lookup("plasticityModel"),
-                *this
-            );
-    }
+    // if (beamProperties().found("plasticityModel"))
+    // {
+    //     // Info << "Plasticity model found" << endl;
+    //     plasticityStressResultantReturnPtr_ =
+    //         plasticityStressResultantReturn::New
+    //         (
+    //             beamProperties().lookup("plasticityModel"),
+    //             *this
+    //         );
+    // }
     
-    GammaP_.oldTime();
-    KP_.oldTime();
+    // GammaP_.oldTime();
+    // KP_.oldTime();
 
     // Calculate tangents if it is not read
     IOobject refTangentHeader
@@ -1617,75 +1617,75 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     // sleep(5);
     
     // Plasticity    
-    if (plasticityStressResultantReturnPtr_.valid())
-    {
-        plasticityStressResultantReturnPtr_().updateYieldStress();
+    // if (plasticityStressResultantReturnPtr_.valid())
+    // {
+    //     plasticityStressResultantReturnPtr_().updateYieldStress();
 
-        CDQ_ = CQ_;
-        CDM_ = CM_;
+    //     CDQ_ = CQ_;
+    //     CDM_ = CM_;
 
-            // dimensionedTensor
-            // (
-            //     "CM",
-            //     CM_.dimensions(),
-            //     tensor
-            //     (
-            //         GJ().value(), 0, 0,
-            //         0, EI().value(), 0,
-            //         0, 0, EI().value()
-            //     )
-            // );
+    //         // dimensionedTensor
+    //         // (
+    //         //     "CM",
+    //         //     CM_.dimensions(),
+    //         //     tensor
+    //         //     (
+    //         //         GJ().value(), 0, 0,
+    //         //         0, EI().value(), 0,
+    //         //         0, 0, EI().value()
+    //         //     )
+    //         // );
 
-        CDMDGamma_ =
-            dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
+    //     CDMDGamma_ =
+    //         dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
 
-        CDQDK_ =
-            dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
+    //     CDQDK_ =
+    //         dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
 
-        plasticityStressResultantReturnPtr_().writeInfo();
-    }
+    //     plasticityStressResultantReturnPtr_().writeInfo();
+    // }
 
-    if (conicalPulleys().size())
-    {
-        label nBeams = contact().splines().size();
-        label nPulleys = conicalPulleys().size();
+    // if (conicalPulleys().size())
+    // {
+    //     label nBeams = contact().splines().size();
+    //     label nPulleys = conicalPulleys().size();
         
-        for (label bI=0; bI<nBeams; bI++)
-        {
-            const scalarPairList& curConicalPulleyContactGaps =
-                contact().conicalPulleyContactGaps()[bI];
+    //     for (label bI=0; bI<nBeams; bI++)
+    //     {
+    //         const scalarPairList& curConicalPulleyContactGaps =
+    //             contact().conicalPulleyContactGaps()[bI];
 
-            Info << "Beam " << bI << ": "
-                 << curConicalPulleyContactGaps[0];
-            for (label i=1; i<nPulleys; i++)
-            {
-                Info << ", " << curConicalPulleyContactGaps[i];
+    //         Info << "Beam " << bI << ": "
+    //              << curConicalPulleyContactGaps[0];
+    //         for (label i=1; i<nPulleys; i++)
+    //         {
+    //             Info << ", " << curConicalPulleyContactGaps[i];
 
-            }
-            Info << endl;
-        }
-    }
+    //         }
+    //         Info << endl;
+    //     }
+    // }
     
-    if (toroidalPulleys().size())
-    {
-        label nBeams = contact().splines().size();
-        label nPulleys = toroidalPulleys().size();
+    // if (toroidalPulleys().size())
+    // {
+    //     label nBeams = contact().splines().size();
+    //     label nPulleys = toroidalPulleys().size();
         
-        for (label bI=0; bI<nBeams; bI++)
-        {
-            const scalarPairList& curToroidalPulleyContactGaps =
-                contact().toroidalPulleyContactGaps()[bI];
+    //     for (label bI=0; bI<nBeams; bI++)
+    //     {
+    //         const scalarPairList& curToroidalPulleyContactGaps =
+    //             contact().toroidalPulleyContactGaps()[bI];
 
-            Info << "Beam " << bI << ": "
-                 << curToroidalPulleyContactGaps[0];
-            for (label i=1; i<nPulleys; i++)
-            {
-                Info << ", " << curToroidalPulleyContactGaps[i];
+    //         Info << "Beam " << bI << ": "
+    //              << curToroidalPulleyContactGaps[0];
+    //         for (label i=1; i<nPulleys; i++)
+    //         {
+    //             Info << ", " << curToroidalPulleyContactGaps[i];
 
-            }
-            Info << endl;
-        }
-    }
+    //         }
+    //         Info << endl;
+    //     }
+    // }
 
     beamModel::updateTotalFields();
 }
@@ -1696,28 +1696,28 @@ void coupledTotalLagNewtonRaphsonBeam::writeFields()
     beamModel::writeFields();
 
     // Plasticity    
-    if (plasticityStressResultantReturnPtr_.valid())
-    {
-        if (runTime().outputTime())
-        {
-            plasticityStressResultantReturnPtr_().writeFields();
+    // if (plasticityStressResultantReturnPtr_.valid())
+    // {
+    //     if (runTime().outputTime())
+    //     {
+    //         plasticityStressResultantReturnPtr_().writeFields();
 
-            // surfaceVectorField dRdS
-            // (
-            //     IOobject
-            //     (
-            //         "dRdS",
-            //         runTime.timeName(),
-            //         mesh(),
-            //         IOobject::NO_READ,
-            //         IOobject::AUTO_WRITE
-            //     ),
-            //     dR0Ds_ + fvc::snGrad(W_)
-            // );
+    //         // surfaceVectorField dRdS
+    //         // (
+    //         //     IOobject
+    //         //     (
+    //         //         "dRdS",
+    //         //         runTime.timeName(),
+    //         //         mesh(),
+    //         //         IOobject::NO_READ,
+    //         //         IOobject::AUTO_WRITE
+    //         //     ),
+    //         //     dR0Ds_ + fvc::snGrad(W_)
+    //         // );
 
-            // dRdS.write();
-        }
-    }    
+    //         // dRdS.write();
+    //     }
+    // }    
 }
 
 

@@ -42,8 +42,8 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-#include "multibeamFvBlockMatrix.H"
-#include "plasticityStressResultantReturn.H"
+//#include "multibeamFvBlockMatrix.H"
+//#include "plasticityStressResultantReturn.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,7 +56,7 @@ namespace beamModels
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class coupledTotalLagNewtonRaphsonBeam Declaration
+              Class coupledTotalLagNewtonRaphsonBeam Declaration
 \*---------------------------------------------------------------------------*/
 
 class coupledTotalLagNewtonRaphsonBeam
@@ -196,7 +196,7 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Block vector field for displacement (first entry) and
         // rotation (second entry)
-        volVector6Field WTheta_;
+        // volVector6Field WTheta_;
         
         //- Total Iterations count for all load steps
         scalar totalIter_;
@@ -260,18 +260,18 @@ class coupledTotalLagNewtonRaphsonBeam
     // Fields related to plasticity
     
         //- Is it elasto-plastic model active
-        bool plasticity_;
+        // bool plasticity_;
     
         //- Plastic strain vector
-        surfaceVectorField GammaP_;
+        // surfaceVectorField GammaP_;
   
         //- Plastic strain vector
-        surfaceVectorField KP_;
+        // surfaceVectorField KP_;
 
         //- Run-time selectable method to calculate DGammaP and DKP
         //- eg radial return
-        autoPtr<plasticityStressResultantReturn>
-            plasticityStressResultantReturnPtr_;
+        // autoPtr<plasticityStressResultantReturn>
+        //     plasticityStressResultantReturnPtr_;
     
         //- Beam cell-centre curvatures
         volScalarField curvature_;
@@ -290,19 +290,19 @@ class coupledTotalLagNewtonRaphsonBeam
     // Private Member Functions
 
         //- Apply line contact force
-        void applyLineContact(multibeamFvBlockMatrix& eqn);
+        // void applyLineContact(multibeamFvBlockMatrix& eqn);
     
-        //- Apply point contact force
-        void applyPointContact(multibeamFvBlockMatrix& eqn);
+        // //- Apply point contact force
+        // void applyPointContact(multibeamFvBlockMatrix& eqn);
     
-        //- Apply conical pulleys contact force
-        void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
     
-        //- Apply conical pulleys contact force
-        void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
     
-        //- Apply conical pulleys contact force
-        void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
+        // //- Apply conical pulleys contact force
+        // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
     
         //- Disallow default bitwise copy construct
         coupledTotalLagNewtonRaphsonBeam
