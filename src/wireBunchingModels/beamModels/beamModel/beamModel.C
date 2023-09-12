@@ -915,7 +915,6 @@ Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
             new vectorField(nPoints, vector::zero)
         );
         vectorField& curPoints = tCurrentPoints.ref();
-
         const surfaceVectorField& curCf = mesh.Cf();
         const vectorField& curCfI = curCf.internalField();
 
