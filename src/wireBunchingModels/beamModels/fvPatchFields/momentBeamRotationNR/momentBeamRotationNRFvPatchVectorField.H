@@ -60,7 +60,7 @@ class momentBeamRotationNRFvPatchVectorField
 
         //- Traction time series
         interpolationTable<vector> momentSeries_;
-  
+
 public:
 
     //- Runtime type information
@@ -138,7 +138,7 @@ public:
             {
                 return moment_;
             }
-  
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
@@ -161,7 +161,8 @@ public:
         //- Evaluate the patch field, sets Updated to false
         virtual void evaluate
         (
-            const Pstream::commsTypes commsType = Pstream::blocking
+            //const Pstream::commsTypes commsType = Pstream::blocking
+            const Pstream::commsTypes::blocking
         );
 
         //- Write
