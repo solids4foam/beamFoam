@@ -47,7 +47,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
         (
             new Field<Type>(nPoints, pTraits<Type>::zero)
         );
-        Field<Type>& pointData = tPointData();
+        Field<Type>& pointData = tPointData.ref();
 
         const Field<Type>& sfI = sf.internalField();
 
@@ -63,14 +63,14 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
                 if (isA<processorFvPatch>(mesh.boundary()[patchI]))
                 {
                     const labelList& fc = mesh.boundary()[patchI].faceCells();
-                
+
                     if (fc[0] == 0)
                     {
                         pointData[0] =
                             sf.boundaryField()[patchI][0];
                     }
                 }
-            }            
+            }
         }
 
         if (sf.boundaryField()[endPatchIndex()].size())
@@ -85,7 +85,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
                 if (isA<processorFvPatch>(mesh.boundary()[patchI]))
                 {
                     const labelList& fc = mesh.boundary()[patchI].faceCells();
-                
+
                     if (fc[0] == (mesh.nCells()-1))
                     {
                         pointData[nPoints-1] =
@@ -120,7 +120,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
         (
             new Field<Type>(nPoints, pTraits<Type>::zero)
         );
-        Field<Type>& pointData = tPointData();
+        Field<Type>& pointData = tPointData.ref();
 
         const Field<Type>& sfI = sf.internalField();
 
@@ -160,14 +160,14 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
                         {
                             label lastPointIndex =
                                 pointData.size()-1;
-                            
+
                             pointData[lastPointIndex] =
                                 sf.boundaryField()[patchI][cI];
                         }
                     }
                 }
             }
-        }            
+        }
 
         const labelList endPatchCells =
             mesh.boundary()[endPatchIndex(bI)].faceCells();
@@ -236,7 +236,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
 	    pointData[0] = sfI[segI-1];
 	    pointData[1] = sfI[segI];
 	}
-	
+
         return tPointData;
     }
     else
@@ -273,7 +273,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
 		{
                     pointData[0] =
                         sf.boundaryField()[startPatchIndex(bI)][faceI];
-		    
+
 		    label glIntFace = glSegI - bI;
 		    pointData[1] = sfI[glIntFace];
 		}
@@ -333,7 +333,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamSegmentData
         const Field<Type>& vfI = vf.internalField();
 
         segmentData[0] = vfI[segI];
-        
+
         return tSegmentData;
     }
     else

@@ -950,7 +950,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh().C();
-        R0.boundaryFieldRef().evaluate();
+        //R0.boundaryFieldRef().evaluateCoupled();
         dR0Ds_ = fvc::snGrad(R0);
         dR0Ds_ /= mag(dR0Ds_);
 
@@ -1222,7 +1222,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar initialResidual = 1;
     scalar currentResidual = 1;
     scalar currentMaterialResidual = 0;
-    bool completedElasticPrediction = false;
+    //bool completedElasticPrediction = false;
     //blockLduMatrix::debug = debug;
 
     scalar curContactResidual = 1;
@@ -1371,9 +1371,9 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
         ThetaIncrement_ =  Theta_ - Theta_.oldTime();
     }
 
-    surfaceVectorField Wf = fvc::interpolate(W_) + refWf_;
+    surfaceVectorField Wf(fvc::interpolate(W_) + refWf_);
 
-    label nCellZones = mesh().cellZones().size();
+    //label nCellZones = mesh().cellZones().size();
 
     const vectorField& WfI = Wf.internalField();
 
@@ -1383,7 +1383,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     const vectorField& points = mesh().points();
 
-    vectorField& pointWI = pointW_.internalField();
+    vectorField& pointWI(pointW_.primitiveFieldRef());
 
     forAll(WfI, faceI)
     {
@@ -1737,8 +1737,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
             new vectorField(nPoints, vector::zero)
         );
 
-        const surfaceVectorField Wf = fvc::interpolate(W_);
-        surfaceVectorField curCf = mesh.Cf() + refWf_ + Wf;
+        const surfaceVectorField Wf(fvc::interpolate(W_));
+        surfaceVectorField curCf(mesh.Cf() + refWf_ + Wf);
 
         // Calculate cell-centre mean line tangents
         vectorField tangents(mesh.nCells(), vector::zero);
@@ -1773,11 +1773,11 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
         }
 
         const volVectorField& C = mesh.C();
-        const volVectorField curC = C + refW_ + W_;
+        const volVectorField curC(C + refW_ + W_);
 
         // Correct internal faces mean line position
-        const unallocLabelList& own = mesh.owner();
-        const unallocLabelList& nei = mesh.neighbour();
+        const labelList& own = mesh.owner();
+        const labelList& nei = mesh.neighbour();
         forAll(curCf, faceI)
         {
             curCf[faceI] =
@@ -1791,7 +1791,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
                 );
         }
 
-        tCurrentPoints() = this->beamPointData(curCf);
+        tCurrentPoints.ref() = this->beamPointData(curCf);
 
         return tCurrentPoints;
     }
@@ -1805,8 +1805,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
             new vectorField(nPoints, vector::zero)
         );
 
-        const surfaceVectorField Wf = fvc::interpolate(W_);
-        surfaceVectorField curCf = mesh.Cf() + refWf_ + Wf;
+        const surfaceVectorField Wf(fvc::interpolate(W_));
+        surfaceVectorField curCf(mesh.Cf() + refWf_ + Wf);
 
         // Calculate cell-centre mean line tangents
         vectorField tangents(mesh.nCells(), vector::zero);
@@ -1861,11 +1861,11 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
         }
 
         const volVectorField& C = mesh.C();
-        const volVectorField curC = C + refW_ + W_;
+        const volVectorField curC(C + refW_ + W_);
 
         // Correct internal faces mean line position
-        const unallocLabelList& own = mesh.owner();
-        const unallocLabelList& nei = mesh.neighbour();
+        const labelList& own = mesh.owner();
+        const labelList& nei = mesh.neighbour();
         forAll(curCf, faceI)
         {
             curCf[faceI] =
@@ -1879,7 +1879,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
                 );
         }
 
-        tCurrentPoints() = this->beamPointData(curCf, bI);
+        tCurrentPoints.ref() = this->beamPointData(curCf, bI);
 
         return tCurrentPoints;
     }
@@ -2007,13 +2007,15 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh.C() + refW_ + W_;
-        R0.boundaryField().evaluateCoupled();
-        surfaceVectorField curTangents = fvc::snGrad(R0);
+
+
+        //R0.boundaryField().evaluateCoupled();
+        surfaceVectorField curTangents(fvc::snGrad(R0));
         curTangents /= mag(curTangents);
 
         if (curTangents.boundaryField()[startPatchIndex()].size())
         {
-            curTangents.boundaryField()[startPatchIndex()] *= -1;
+            curTangents.boundaryFieldRef()[startPatchIndex()] *= -1;
         }
         else
         {
@@ -2027,13 +2029,13 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
 
                     if (fc[0] == 0)
                     {
-                        curTangents.boundaryField()[patchI] *= -1;
+                        curTangents.boundaryFieldRef()[patchI] *= -1;
                     }
                 }
             }
         }
 
-        tCurrentTangents() = this->beamPointData(curTangents);
+        tCurrentTangents.ref() = this->beamPointData(curTangents);
 
         return tCurrentTangents;
     }
@@ -2061,15 +2063,15 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh.C() + refW_ + W_;
-        R0.boundaryField().evaluateCoupled();
-        surfaceVectorField curTangents = fvc::snGrad(R0);
+        //R0.boundaryField().evaluateCoupled();
+        surfaceVectorField curTangents(fvc::snGrad(R0));
         curTangents /= mag(curTangents);
 
         // curTangents.boundaryField()[startPatchIndex(bI)] *= -1;
 
         if (curTangents.boundaryField()[startPatchIndex(bI)].size())
         {
-            curTangents.boundaryField()[startPatchIndex(bI)] *= -1;
+            curTangents.boundaryFieldRef()[startPatchIndex(bI)] *= -1;
         }
         else
         {
@@ -2087,7 +2089,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                         {
                             if (fc[fI] <= min(cz))
                             {
-                                curTangents.boundaryField()[patchI][fI] *= -1;
+                                curTangents.boundaryFieldRef()[patchI][fI] *= -1;
                             }
                         }
                     }
@@ -2095,7 +2097,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             }
         }
 
-        tCurrentTangents() = this->beamPointData(curTangents, bI);
+        tCurrentTangents.ref() = this->beamPointData(curTangents, bI);
 
         return tCurrentTangents;
     }
@@ -2645,11 +2647,13 @@ currentDisplacementIncrement() const
     (
         new vectorField(nPoints, vector::zero)
     );
-    vectorField& DW = tDW();
+    vectorField& DW(tDW.ref());
 
-    const surfaceVectorField DWf =
+    const surfaceVectorField DWf
+    (
         fvc::interpolate(W_)
-      - fvc::interpolate(W_.oldTime());
+      - fvc::interpolate(W_.oldTime())
+    );
 
     const vectorField& DWfI = DWf.internalField();
 
@@ -2672,11 +2676,11 @@ currentRotationIncrement() const
     (
         new tensorField(nPoints, tensor::zero)
     );
-    tensorField& DLambda = tDLambda();
+    tensorField& DLambda(tDLambda.ref());
 
-    const surfaceTensorField DLambdaf = (Lambda_ & inv(Lambda_.oldTime()));
+    const surfaceTensorField DLambdaf((Lambda_ & inv(Lambda_.oldTime())));
 
-    const tensorField& DLambdafI = DLambdaf.internalField();
+    const tensorField& DLambdafI(DLambdaf.internalField());
 
     DLambda[0] = DLambdaf.boundaryField()[startPatchIndex()][0];
     DLambda[nPoints-1] = DLambdaf.boundaryField()[endPatchIndex()][0];
