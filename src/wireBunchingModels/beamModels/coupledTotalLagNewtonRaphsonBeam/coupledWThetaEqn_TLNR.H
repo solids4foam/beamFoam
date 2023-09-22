@@ -694,7 +694,7 @@
     // Calculate equilibrium equations residual
     if (debug)
     {
-        scalar eqResidual = sqrt(gSum(magSqr(source)));
+        scalar eqResidual = sqrt(gSum(magSqr(source))); // magSqr ?
         Info << "L2 norm of the equlibrium equations residual: "
              << eqResidual << endl;
     }
