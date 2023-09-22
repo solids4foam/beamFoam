@@ -950,7 +950,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh().C();
-        R0.boundaryFieldRef().evaluateCoupled();
+        R0.boundaryFieldRef().evaluate();
         dR0Ds_ = fvc::snGrad(R0);
         dR0Ds_ /= mag(dR0Ds_);
 

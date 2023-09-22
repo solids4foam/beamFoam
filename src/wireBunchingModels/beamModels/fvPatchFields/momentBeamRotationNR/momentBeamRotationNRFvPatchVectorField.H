@@ -161,8 +161,10 @@ public:
         //- Evaluate the patch field, sets Updated to false
         virtual void evaluate
         (
+            const Pstream::commsTypes commsType = Pstream::commsTypes::blocking
+
             //const Pstream::commsTypes commsType = Pstream::blocking
-            const Pstream::commsTypes::blocking
+            //const Pstream::commsTypes::blocking
         );
 
         //- Write

@@ -20,22 +20,23 @@
     //tensor6Field& d = WThetaEqn.diag().asSquare();
     //d = tensor6::zero;
     //scalarSquareMatrix myMatrix(6, 6, 0.0); // 6 x 6 matrix with 0.0 values
-    Field<scalarSquareMatrix> d(mesh.size(), scalarSquareMatrix(6, 0.0));
+
+    Field<scalarSquareMatrix> d(mesh().cells().size(), scalarSquareMatrix(6, 0.0));
 
     // Grab off-diagonal and set it to zero
-    Field<scalarSquareMatrix> u(mesh.nInternalFaces(), scalarSquareMatrix(6, 0.0));
+    Field<scalarSquareMatrix> u(mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0));
     // tensor6Field& u = WThetaEqn.upper().asSquare();
     // u = tensor6::zero;
 
     // Grab off-diagonal and set it to zero
-    Field<scalarSquareMatrix> l(mesh.nInternalFaces(), scalarSquareMatrix(6, 0.0));
+    Field<scalarSquareMatrix> l(mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0));
     // tensor6Field& l = WThetaEqn.lower().asSquare();
     // l = tensor6::zero;
 
     // Grap source and set it to zero
     Field<scalarRectangularMatrix> source
     (
-        mesh.size(), scalarRectangularMatrix(6, 1, 0.0)
+        mesh().cells().size(), scalarRectangularMatrix(6, 1, 0.0)
     );
     // vector6Field& source = WThetaEqn.source();
     // source = vector6::zero;
@@ -46,14 +47,14 @@
     // const vectorField& dR0DsI = dR0Ds_.internalField();
     // const vectorField& iI = i_.internalField();
 
-    const unallocLabelList& own = mesh().owner();
-    const unallocLabelList& nei = mesh().neighbour();
+    const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
+    const labelList& nei = mesh().neighbour();
 
-    W_.boundaryField().updateCoeffs();
-    Theta_.boundaryField().updateCoeffs();
+    W_.boundaryFieldRef().updateCoeffs();
+    Theta_.boundaryFieldRef().updateCoeffs();
 
     #include "updateCoefficients_TLNR.H"
-    
+
     // Info << "explicitQ_ \n " << explicitQ_ << endl;
 
     const tensorField& CQWI = CQW_.internalField();
@@ -71,7 +72,7 @@
     // const vectorField& dRdSI = dRdS_.internalField();
     // const tensorField& RMI = RM_.internalField();
     // const tensorField& refRMI = refRM_.internalField();
-    
+
     // Internal faces
     forAll(u, faceI)
     {
@@ -101,11 +102,11 @@
         d[own[faceI]](2,0) += -CQWI[faceI].zx()/deltaf[faceI];
         d[own[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[own[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
-        
+
         l[faceI](0,0) += CQWI[faceI].xx()/deltaf[faceI];
         l[faceI](0,1) += CQWI[faceI].xy()/deltaf[faceI];
         l[faceI](0,2) += CQWI[faceI].xz()/deltaf[faceI];
-        
+
         l[faceI](1,0) += CQWI[faceI].yx()/deltaf[faceI];
         l[faceI](1,1) += CQWI[faceI].yy()/deltaf[faceI];
         l[faceI](1,2) += CQWI[faceI].yz()/deltaf[faceI];
@@ -121,17 +122,17 @@
         d[nei[faceI]](1,0) += -CQWI[faceI].yx()/deltaf[faceI];
         d[nei[faceI]](1,1) += -CQWI[faceI].yy()/deltaf[faceI];
         d[nei[faceI]](1,2) += -CQWI[faceI].yz()/deltaf[faceI];
-        
+
         d[nei[faceI]](2,0) += -CQWI[faceI].zx()/deltaf[faceI];
         d[nei[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
 
         // Theta part: Laplacian
-        
+
         u[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
         u[faceI](0,5) += CQDThetaI[faceI].xz()/deltaf[faceI];
-        
+
         u[faceI](1,3) += CQDThetaI[faceI].yx()/deltaf[faceI];
         u[faceI](1,4) += CQDThetaI[faceI].yy()/deltaf[faceI];
         u[faceI](1,5) += CQDThetaI[faceI].yz()/deltaf[faceI];
@@ -147,7 +148,7 @@
         d[own[faceI]](1,3) += -CQDThetaI[faceI].yx()/deltaf[faceI];
         d[own[faceI]](1,4) += -CQDThetaI[faceI].yy()/deltaf[faceI];
         d[own[faceI]](1,5) += -CQDThetaI[faceI].yz()/deltaf[faceI];
-        
+
         d[own[faceI]](2,3) += -CQDThetaI[faceI].zx()/deltaf[faceI];
         d[own[faceI]](2,4) += -CQDThetaI[faceI].zy()/deltaf[faceI];
         d[own[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
@@ -155,7 +156,7 @@
         l[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
         l[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
         l[faceI](0,5) += CQDThetaI[faceI].xz()/deltaf[faceI];
-        
+
         l[faceI](1,3) += CQDThetaI[faceI].yx()/deltaf[faceI];
         l[faceI](1,4) += CQDThetaI[faceI].yy()/deltaf[faceI];
         l[faceI](1,5) += CQDThetaI[faceI].yz()/deltaf[faceI];
@@ -175,9 +176,9 @@
         d[nei[faceI]](2,3) += -CQDThetaI[faceI].zx()/deltaf[faceI];
         d[nei[faceI]](2,4) += -CQDThetaI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
-        
-        
-        // Theta part 
+
+
+        // Theta part
         u[faceI](0,3) += (1-wf[faceI])*CQThetaI[faceI].xx();
         u[faceI](0,4) += (1-wf[faceI])*CQThetaI[faceI].xy();
         u[faceI](0,5) += (1-wf[faceI])*CQThetaI[faceI].xz();
@@ -185,19 +186,19 @@
         u[faceI](1,3) += (1-wf[faceI])*CQThetaI[faceI].yx();
         u[faceI](1,4) += (1-wf[faceI])*CQThetaI[faceI].yy();
         u[faceI](1,5) += (1-wf[faceI])*CQThetaI[faceI].yz();
-        
+
         u[faceI](2,3) += (1-wf[faceI])*CQThetaI[faceI].zx();
         u[faceI](2,4) += (1-wf[faceI])*CQThetaI[faceI].zy();
         u[faceI](2,5) += (1-wf[faceI])*CQThetaI[faceI].zz();
-        
+
         d[own[faceI]](0,3) += wf[faceI]*CQThetaI[faceI].xx();
         d[own[faceI]](0,4) += wf[faceI]*CQThetaI[faceI].xy();
         d[own[faceI]](0,5) += wf[faceI]*CQThetaI[faceI].xz();
-        
+
         d[own[faceI]](1,3) += wf[faceI]*CQThetaI[faceI].yx();
         d[own[faceI]](1,4) += wf[faceI]*CQThetaI[faceI].yy();
         d[own[faceI]](1,5) += wf[faceI]*CQThetaI[faceI].yz();
-        
+
         d[own[faceI]](2,3) += wf[faceI]*CQThetaI[faceI].zx();
         d[own[faceI]](2,4) += wf[faceI]*CQThetaI[faceI].zy();
         d[own[faceI]](2,5) += wf[faceI]*CQThetaI[faceI].zz();
@@ -242,7 +243,7 @@
         u[faceI](3,3) += CMThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](3,4) += CMThetaI[faceI].xy()/deltaf[faceI];
         u[faceI](3,5) += CMThetaI[faceI].xz()/deltaf[faceI];
-        
+
         u[faceI](4,3) += CMThetaI[faceI].yx()/deltaf[faceI];
         u[faceI](4,4) += CMThetaI[faceI].yy()/deltaf[faceI];
         u[faceI](4,5) += CMThetaI[faceI].yz()/deltaf[faceI];
@@ -258,7 +259,7 @@
         d[own[faceI]](4,3) += -CMThetaI[faceI].yx()/deltaf[faceI];
         d[own[faceI]](4,4) += -CMThetaI[faceI].yy()/deltaf[faceI];
         d[own[faceI]](4,5) += -CMThetaI[faceI].yz()/deltaf[faceI];
-        
+
         d[own[faceI]](5,3) += -CMThetaI[faceI].zx()/deltaf[faceI];
         d[own[faceI]](5,4) += -CMThetaI[faceI].zy()/deltaf[faceI];
         d[own[faceI]](5,5) += -CMThetaI[faceI].zz()/deltaf[faceI];
@@ -266,7 +267,7 @@
         l[faceI](3,3) += CMThetaI[faceI].xx()/deltaf[faceI];
         l[faceI](3,4) += CMThetaI[faceI].xy()/deltaf[faceI];
         l[faceI](3,5) += CMThetaI[faceI].xz()/deltaf[faceI];
-        
+
         l[faceI](4,3) += CMThetaI[faceI].yx()/deltaf[faceI];
         l[faceI](4,4) += CMThetaI[faceI].yy()/deltaf[faceI];
         l[faceI](4,5) += CMThetaI[faceI].yz()/deltaf[faceI];
@@ -339,7 +340,7 @@
         d[nei[faceI]](5,4) += -(1-wf[faceI])*CMTheta2I[faceI].zy();
         d[nei[faceI]](5,5) += -(1-wf[faceI])*CMTheta2I[faceI].zz();
 
-        // Explicit part        
+        // Explicit part
         source[own[faceI]](3) -= explicitMI[faceI].x();
         source[own[faceI]](4) -= explicitMI[faceI].y();
         source[own[faceI]](5) -= explicitMI[faceI].z();
@@ -380,7 +381,7 @@
         l[faceI](3,0) += -CMQWI[faceI].xx()/deltaf[faceI];
         l[faceI](3,1) += -CMQWI[faceI].xy()/deltaf[faceI];
         l[faceI](3,2) += -CMQWI[faceI].xz()/deltaf[faceI];
-        
+
         l[faceI](4,0) += -CMQWI[faceI].yx()/deltaf[faceI];
         l[faceI](4,1) += -CMQWI[faceI].yy()/deltaf[faceI];
         l[faceI](4,2) += -CMQWI[faceI].yz()/deltaf[faceI];
@@ -396,7 +397,7 @@
         d[nei[faceI]](4,0) += CMQWI[faceI].yx()/deltaf[faceI];
         d[nei[faceI]](4,1) += CMQWI[faceI].yy()/deltaf[faceI];
         d[nei[faceI]](4,2) += CMQWI[faceI].yz()/deltaf[faceI];
-        
+
         d[nei[faceI]](5,0) += CMQWI[faceI].zx()/deltaf[faceI];
         d[nei[faceI]](5,1) += CMQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](5,2) += CMQWI[faceI].zz()/deltaf[faceI];
@@ -409,24 +410,24 @@
         u[faceI](4,3) += (1-wf[faceI])*CMQThetaI[faceI].yx();
         u[faceI](4,4) += (1-wf[faceI])*CMQThetaI[faceI].yy();
         u[faceI](4,5) += (1-wf[faceI])*CMQThetaI[faceI].yz();
-        
+
         u[faceI](5,3) += (1-wf[faceI])*CMQThetaI[faceI].zx();
         u[faceI](5,4) += (1-wf[faceI])*CMQThetaI[faceI].zy();
         u[faceI](5,5) += (1-wf[faceI])*CMQThetaI[faceI].zz();
-        
+
         d[own[faceI]](3,3) += wf[faceI]*CMQThetaI[faceI].xx();
         d[own[faceI]](3,4) += wf[faceI]*CMQThetaI[faceI].xy();
         d[own[faceI]](3,5) += wf[faceI]*CMQThetaI[faceI].xz();
-        
+
         d[own[faceI]](4,3) += wf[faceI]*CMQThetaI[faceI].yx();
         d[own[faceI]](4,4) += wf[faceI]*CMQThetaI[faceI].yy();
         d[own[faceI]](4,5) += wf[faceI]*CMQThetaI[faceI].yz();
-        
+
         d[own[faceI]](5,3) += wf[faceI]*CMQThetaI[faceI].zx();
         d[own[faceI]](5,4) += wf[faceI]*CMQThetaI[faceI].zy();
         d[own[faceI]](5,5) += wf[faceI]*CMQThetaI[faceI].zz();
-		
-		
+
+
 		// Shouldn't the lower and diag[nei] coefficients have a negative sign?
         l[faceI](3,3) += wf[faceI]*CMQThetaI[faceI].xx();
         l[faceI](3,4) += wf[faceI]*CMQThetaI[faceI].xy();
@@ -464,7 +465,7 @@
         //         );
 
         //     correctedOwnExplicitMQ.x() = 0;
-            
+
         //     correctedOwnExplicitMQ =
         //         (
         //             RMI[own[faceI]]
@@ -477,7 +478,7 @@
         source[own[faceI]](5) -= correctedOwnExplicitMQ.z();
 
         vector correctedNeiExplicitMQ = explicitMQI[faceI];
-        
+
         // correctedNeiExplicitMQ =
         //     (
         //         refRMI[nei[faceI]].T()
@@ -486,8 +487,8 @@
         // correctedNeiExplicitMQ.x() = 0;
         // correctedNeiExplicitMQ =
         //     (RMI[nei[faceI]] & (refRMI[nei[faceI]] & correctedNeiExplicitMQ));
-		
-		// Similarly here, the explicit term is not in the negative format? // understood this 
+
+		// Similarly here, the explicit term is not in the negative format? // understood this
         source[nei[faceI]](3) -= correctedNeiExplicitMQ.x();
         source[nei[faceI]](4) -= correctedNeiExplicitMQ.y();
         source[nei[faceI]](5) -= correctedNeiExplicitMQ.z();
@@ -497,8 +498,8 @@
     forAll (W_.boundaryField(), patchI)
     {
         const fvPatch& patch = mesh().boundary()[patchI];
-        const unallocLabelList& fc = patch.faceCells();
-       
+        const labelList& fc = patch.faceCells();
+
         if (patch.coupled())
         {
             notImplemented("Not ported for parallel yet!");
@@ -519,7 +520,7 @@
         source[cellI](1) -= q()[cellI].y()*L()[cellI];
         source[cellI](2) -= q()[cellI].z()*L()[cellI];
     }
-    
+
     // Add point forces
     forAll(pointForces(), pfI)
     {
@@ -528,7 +529,7 @@
         scalar zeta = pointForces()[pfI].first().second();
 
         vector F0 = pointForces()[pfI].second()(runTime().value());
-        
+
         source[cellI](0) -= F0.x();
         source[cellI](1) -= F0.y();
         source[cellI](2) -= F0.z();
@@ -536,7 +537,7 @@
         surfaceVectorField dRdS = dR0Ds_ + fvc::snGrad(W_);
 
         const surfaceScalarField& dc = mesh().deltaCoeffs();
-        
+
         vector DR = vector::zero;
 
         if (zeta > SMALL)
@@ -544,7 +545,7 @@
             label faceID = findIndex(own, cellI);
             if (faceID == -1) // last cell
             {
-                const unallocLabelList& faceCells =
+                const labelList& faceCells =
                     mesh().boundary()[endPatchIndex()].faceCells();
 
                 label bFaceID = findIndex(faceCells, cellI);
@@ -562,7 +563,7 @@
             label faceID = findIndex(nei, cellI);
             if (faceID == -1) // first cell
             {
-                const unallocLabelList& faceCells =
+                const labelList& faceCells =
                     mesh().boundary()[startPatchIndex()].faceCells();
 
                 label bFaceID = findIndex(faceCells, cellI);
@@ -575,14 +576,14 @@
                 DR = 0.5*zeta*dRdS.internalField()[faceID]*deltaf[faceID];
             }
         }
-        
+
         vector M0 = (spinTensor(DR) & F0);
 
         source[cellI](3) -= M0.x();
         source[cellI](4) -= M0.y();
         source[cellI](5) -= M0.z();
     }
-    
+
     // Add distributed moment
     forAll(source, cellI)
     {
@@ -620,11 +621,11 @@
             }
         }
 
-        
+
         // Add inertial torque
         {
             volVectorField dotOmega = fvc::ddt(Omega_);
-            volVectorField MRho = 
+            volVectorField MRho =
                 L()*rho()
                *(
                     (RM_ & (CI_ & dotOmega))
@@ -639,7 +640,7 @@
             }
 
             // Add diagonal contribution (N-R method)
-            volTensorField MRhoCoeff = 
+            volTensorField MRhoCoeff =
                 L()*rho()
                *(
                     spinTensor(RM_ & (CI_ & Omega_))/runTime().deltaT()
@@ -664,7 +665,7 @@
                 d[cellI](4,3) += MRhoCoeff[cellI].yx();
                 d[cellI](4,4) += MRhoCoeff[cellI].yy();
                 d[cellI](4,5) += MRhoCoeff[cellI].yz();
- 
+
                 d[cellI](5,3) += MRhoCoeff[cellI].zx();
                 d[cellI](5,4) += MRhoCoeff[cellI].zy();
                 d[cellI](5,5) += MRhoCoeff[cellI].zz();
@@ -683,8 +684,8 @@
 
     // Apply conical pulley contact
     // applyToroidalPulleysContact(WThetaEqn);
-    
-    
+
+
     //scalar nCV = mesh().cellZones().size();
     // Calculate equilibrium equations residual
     if (debug)
@@ -694,7 +695,7 @@
              << eqResidual << endl;
     }
 
-    
+
     // Block coupled solver call
     // PhilipC: we need to replace this with our own solver, e.g. Eigen or PETSc
     notImplemented("We need to implement out own linear solver, e.g. Eigen or PETSc");
@@ -730,7 +731,7 @@
     W_.storePrevIter();
 
     // Info << DW_.internalField() << endl;
-    
+
     // Update displacement increment (for contact calculation)
     WIncrement_ = W_ - W_.oldTime();
 
@@ -744,7 +745,7 @@
     if (objectiveInterpolation())
     {
         // Info << "Using objective interpolation for rotation" << endl;
-        
+
         // Calculate rotation matrix correction from
         // cell-centre rotation vector correction
         volTensorField DLambda = rotationMatrix(DTheta_);
@@ -765,14 +766,14 @@
          //   interpolateRotationMatrix(DLambda);
 
         // Update cell-face rotation matrix
-        //Lambda_ = (DLambdaf & Lambda_);     
+        //Lambda_ = (DLambdaf & Lambda_);
          Lambda_ = interpolateRotationMatrix(RM_); // this does not work
     }
     else
     {
     	Info << "Rotations are not interpolated objectively \n" << endl;
         surfaceVectorField DThetaf = fvc::interpolate(DTheta_);
-        
+
         surfaceScalarField magDThetaf = mag(DThetaf) + SMALL;
         surfaceTensorField DThetaHat = spinTensor(DThetaf);
 
@@ -796,17 +797,17 @@
         // Rodrigues formula
         surfaceTensorField DLambdaf = rotationMatrix(DThetaf);
 
-            
+
         // Update rotation matrix
         Lambda_ = (DLambdaf & Lambda_);
 
-        
+
         // Update cell-centre rotation matrix
         volTensorField DLambda = rotationMatrix(DTheta_);
         RM_ = (DLambda & RM_);
         // interpolateRotationMatrix(*this, Lambda_, RM_);
 
-        
+
         // Update angular velocity
         Omega_ = axialVector(RM_.T() & fvc::ddt(RM_));
     }
@@ -816,7 +817,7 @@
         // W_.correctBoundaryConditions();
 
         surfaceVectorField dRdS = dR0Ds_ + fvc::snGrad(W_);
-        
+
         // Gamma_ =
         //     (
         //         (kirchhoffTransTensor_ & (refLambda_.T() & Lambda_.T()))
@@ -829,7 +830,7 @@
 
     // Q_ = (CQ_ & (Gamma_ - GammaP_));
     // M_ = (CM_ & (K_ - KP_));
-    
+
     // Q_ = ((Lambda_ & refLambda_) & (CQ_ & (Gamma_ - GammaP_)));
     // M_ = ((Lambda_ & refLambda_) & (CM_ & (K_ - KP_)));
 
@@ -838,14 +839,14 @@
     //    // Q_ += (Lambda_ & Q_.oldTime());
     //    M_ += (Lambda_ & M_.oldTime());
     // }
-    
-  
+
+
   //  Info << "explicitQ_ \n " << explicitQ_ << endl;
 
     Q_ = explicitQ_ +
         (CQW_ & fvc::snGrad(DW_)) +
         (CQTheta_ & fvc::interpolate(DTheta_));
-    
+
   //   Info << "Q: \n" << Q_ << endl;
 
     M_ = explicitM_ +
@@ -855,8 +856,8 @@
     // Info << "M: \n" << M << endl;
 
     // surfaceVectorField rPrimeXf = //explicitMQ_;
-    //     explicitMQ_ + 
-    //     (CMQW_ & fvc::snGrad(DW_)) + 
+    //     explicitMQ_ +
+    //     (CMQW_ & fvc::snGrad(DW_)) +
     //     (CMQTheta_ & fvc::interpolate(DTheta_));
 
    //  Info << "rPrimeXf: \n" << rPrimeXf << endl;
@@ -870,7 +871,7 @@
 
         Qa_ = (Lambda_.T() & Q_)().component(0);
     }
-    
+
     // Calculate DTheta residual
     {
         scalar denom =
@@ -937,16 +938,16 @@
     {
         initialResidual = currentResidual;
     }
-    
+
     if (plasticityStressResultantReturnPtr_.valid())
     {
         GammaP_.storePrevIter();
         KP_.storePrevIter();
-    
+
         if (!completedElasticPrediction)
         {
             currentMaterialResidual = 0;
-            
+
             if
             (
                 iOuterCorr()
@@ -961,7 +962,7 @@
                 completedElasticPrediction = true;
             }
         }
-        
+
         if (completedElasticPrediction)
         {
             if (debug)
@@ -1012,7 +1013,7 @@
                     // denom = max(gMax(mag(W_.internalField())), SMALL);
                     denom = 1.0;
                 }
-        
+
                 scalar KPResidual =
                     gMax
                     (
@@ -1038,7 +1039,7 @@
                 currentMaterialResidual = KPResidual;
                 // currentMaterialResidual =
                 //     max(GammaPResidual, KPResidual);
-                
+
                 if (debug)
                 {
                     Info << "Material residual: "
@@ -1048,10 +1049,10 @@
 
             CDQ_ = plasticityStressResultantReturnPtr_().DQDGamma();
             CDM_ = plasticityStressResultantReturnPtr_().DMDK();
-            
+
             CDMDGamma_ = plasticityStressResultantReturnPtr_().DMDGamma();
             CDQDK_ = plasticityStressResultantReturnPtr_().DQDK();
-        
+
             GammaP_.relax();
             KP_.relax();
         }
