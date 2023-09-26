@@ -45,6 +45,7 @@ License
 
 #include "mergePoints.H"
 #include "scalarMatrices.H"
+#include "denseMatrixHelperFunctions.H"
 
 // #include "beamHelperFunctions.H"
 
