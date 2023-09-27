@@ -92,7 +92,9 @@ numerics/permutationTensor/permutationTensor.C
 numerics/Tuples/timeVaryingVector/timeVaryingVector.C
 
 numerics/BlockEigenSolvers/BlockEigenSolver/BlockEigenSolver.C
-
+*/
+numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+/*
 numerics/blockLduMatrix/BlockLduSolvers/BlockBiCGStab/myBlockBiCGStabSolver.C
 numerics/blockLduMatrix/BlockLduPrecons/BlockParCholeskyPrecon/blockParCholeskyPrecons.C
 numerics/blockLduMatrix/BlockLduPrecons/BlockParCholeskyPrecon/scalarBlockParCholeskyPrecon.C

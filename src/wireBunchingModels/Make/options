@@ -1,7 +1,7 @@
 ifeq (Gcc,$(findstring Gcc,$(WM_COMPILER)))
     DISABLE_WARNING_FLAGS = -Wno-old-style-cast -Wno-return-type
 else
-    DISABLE_WARNING_FLAGS =
+    DISABLE_WARNING_FLAGS = -Wno-old-style-cast
 endif
 
 EXE_INC = \
