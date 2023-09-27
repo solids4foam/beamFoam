@@ -194,10 +194,10 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-bool Foam::BlockEigenSolverOF::solve
+Foam::scalar Foam::BlockEigenSolverOF::solve
 (
-    Foam::Field<Foam::scalarRectangularMatrix>& x,
-    const Foam::Field<Foam::scalarRectangularMatrix>& b
+    Foam::Field<Foam::scalarRectangularMatrix>& foamX,
+    const Foam::Field<Foam::scalarRectangularMatrix>& foamB
 )
 {
     if (Pstream::parRun())
@@ -210,12 +210,12 @@ bool Foam::BlockEigenSolverOF::solve
             << abort(FatalError);
     }
 
-    /*
     // Create Eigen sparse matrix and set coeffs
     Eigen::SparseMatrix<scalar> A; //(nRows, nRows);
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
 
+    /*
     convertFoamMatrixToEigenMatrix(matrix_, A, b, x);
 
     label nRows = A.rows();
@@ -412,7 +412,7 @@ bool Foam::BlockEigenSolverOF::solve
     }
         */
 
-    return true;
+    return 0.0;
 }
 
 

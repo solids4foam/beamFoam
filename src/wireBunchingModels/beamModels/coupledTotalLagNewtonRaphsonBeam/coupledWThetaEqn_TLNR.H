@@ -701,11 +701,22 @@
 
 
     // Block coupled solver call
-    // PhilipC: we need to replace this with our own solver, e.g. Eigen or PETSc
-    notImplemented("We need to implement out own linear solver, e.g. Eigen or PETSc");
+
+    // Create Eigen linear solver
+    BlockEigenSolverOF eigenSolver(d, l, u);
+
+    // Create solution vector
+    Field<scalarRectangularMatrix> solVec
+    (
+        mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+    );
+
+    // Solve the linear system
+    currentResidual = eigenSolver.solve(solVec, source);
+
     //vector6 eqnRes = WThetaEqn.solve().initialResidual();
-    vector eqnRes = vector::zero;
-    currentResidual = mag(eqnRes);
+    // vector eqnRes = vector::zero;
+    // currentResidual = mag(eqnRes);
 
 
     if (iOuterCorr() == 0)

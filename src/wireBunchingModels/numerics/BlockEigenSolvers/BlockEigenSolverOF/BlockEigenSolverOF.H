@@ -116,8 +116,9 @@ public:
 
     // Member Functions
 
-        //- Solve the matrix with this solver
-        virtual bool solve
+        //- Solve the matrix with this source and solution vector and return the
+        //  initial residual magnitude
+        scalar solve
         (
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b
