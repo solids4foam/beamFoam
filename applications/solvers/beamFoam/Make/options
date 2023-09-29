@@ -13,7 +13,6 @@ EXE_LIBS = \
     -ldynamicFvMesh \
     -ldynamicMesh \
     -lmeshTools \
-    -llduSolvers
 
 /*
 -fopenmp

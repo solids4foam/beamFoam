@@ -27,12 +27,12 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
-#include "foamTime.H"
+#include "Time.H"
 #include "faceList.H"
 #include "polyMesh.H"
 #include "polyPatch.H"
 #include "emptyPolyPatch.H"
-#include "Xfer.H"
+//#include "Xfer.H"
 #include "IOdictionary.H"
 #include "cellZone.H"
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
             IOobject::NO_WRITE // must be AUTO_WRITE
         )
     );
-    
+
     scalar R = dimensionedScalar(beamProperties.lookup("R")).value();
     scalar L = dimensionedScalar(beamProperties.lookup("L")).value();
     // scalar R = 0.1;
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 
     // Points
     Xfer<vectorField> points(vectorField(nPoints, vector::zero));
+
 
     scalar dTheta = -2*M_PI/nTheta;
 
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
             curPoint.z() = i*dZ;
 
             points()[pI++] = curPoint;
-        } 
+        }
     }
 
 
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
         }
 
         face curFace(curPointLabels);
-        curFace = curFace.reverseFace();    
+        curFace = curFace.reverseFace();
         faces()[fI++] = curFace;
         // faces()[fI++] = face(curPointLabels);
     }
@@ -163,9 +164,9 @@ int main(int argc, char *argv[])
     }
 
     curFace = face(curPointLabels);
-    curFace = curFace.reverseFace();    
+    curFace = curFace.reverseFace();
     faces()[fI++] = curFace;
-        
+
     // faces()[fI++] = face(curPointLabels);
 
     //- Pipe faces
@@ -182,10 +183,10 @@ int main(int argc, char *argv[])
             curPointLabels[3] = (j-1) + (i+1)*nTheta;
 
             face curFace(curPointLabels);
-            curFace = curFace.reverseFace();    
+            curFace = curFace.reverseFace();
             faces()[fI++] = curFace;
 
-            // faces()[fI++] = face(curPointLabels);            
+            // faces()[fI++] = face(curPointLabels);
         }
 
         labelList curPointLabels(4, -1);
@@ -196,10 +197,10 @@ int main(int argc, char *argv[])
         curPointLabels[3] = (nTheta-1) + (i+1)*nTheta;
 
         face curFace(curPointLabels);
-        curFace = curFace.reverseFace();    
+        curFace = curFace.reverseFace();
         faces()[fI++] = curFace;
-    
-        // faces()[fI++] = face(curPointLabels);            
+
+        // faces()[fI++] = face(curPointLabels);
     }
 
 
@@ -220,16 +221,16 @@ int main(int argc, char *argv[])
     {
         for (label j=1; j<nTheta; j++)
         {
-            owners()[fI++] = i;            
+            owners()[fI++] = i;
         }
 
-        owners()[fI++] = i;            
+        owners()[fI++] = i;
     }
-    
+
 
     // Neighbours
     Xfer<labelList> neighbours(labelList(nInternalFaces, -1));
-    
+
     fI = 0;
     for (label i=1; i<=nInternalFaces; i++)
     {
@@ -252,9 +253,9 @@ int main(int argc, char *argv[])
     );
 
     List<polyPatch*> patches(3);
-    
+
     // Inlet patch
-    patches[0] = 
+    patches[0] =
         polyPatch::New
         (
             polyPatch::typeName,
@@ -266,7 +267,7 @@ int main(int argc, char *argv[])
         ).ptr();
 
     // Outlet patch
-    patches[1] = 
+    patches[1] =
         polyPatch::New
         (
             polyPatch::typeName,
@@ -278,7 +279,7 @@ int main(int argc, char *argv[])
         ).ptr();
 
     // Pipe patch
-    patches[2] = 
+    patches[2] =
         polyPatch::New
         (
             emptyPolyPatch::typeName,
@@ -313,7 +314,7 @@ int main(int argc, char *argv[])
         );
 
     mesh.addZones(pz, fz, cz);
-    
+
     mesh.write();
 
     Pout<< "End\n" << endl;
