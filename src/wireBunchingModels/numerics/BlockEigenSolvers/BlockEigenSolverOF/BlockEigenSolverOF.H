@@ -33,7 +33,7 @@ Description
 Author
     Philip Cardiff, UCD
     Amirhossein Taran, UCD
-    Based on class from Zeljko Tukovic, FMENA, Zagreb 
+    Based on class from Zeljko Tukovic, FMENA, Zagreb
 
 SourceFiles
     BlockEigenSolverOF.C
@@ -84,14 +84,16 @@ class BlockEigenSolverOF
 
 protected:
 
-        //- Convert foam matrix to the MKL-PARDISO matrix format
-        // void convertFoamMatrixToEigenMatrix
-        // (
-        //     const BlockLduMatrix<vector6>& matrix,
-        //     Eigen::SparseMatrix<scalar>& A,
-        //     Eigen::Matrix<scalar, Eigen::Dynamic, 1>& b,
-        //     Eigen::Matrix<scalar, Eigen::Dynamic, 1>& x
-        // );
+        //- Convert foam matrix to the Eigen matrix format
+        void convertFoamMatrixToEigenMatrix
+        (
+            const Field<scalarSquareMatrix>& d_,
+            const Field<scalarSquareMatrix>& l_,
+            const Field<scalarSquareMatrix>& u_,
+            const labelList& own,
+            const labelList& nei,
+            Eigen::SparseMatrix<scalar>& A
+        );
 
 public:
 

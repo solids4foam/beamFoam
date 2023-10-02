@@ -703,7 +703,7 @@
     // Block coupled solver call
 
     // Create Eigen linear solver
-    BlockEigenSolverOF eigenSolver(d, l, u);
+    BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
 
     // Create solution vector
     Field<scalarRectangularMatrix> solVec

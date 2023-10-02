@@ -56,124 +56,114 @@ namespace Foam
 
 // * * * * * * * * * * * Protected Data Functions * * * * * * * * * * * * * //
 
-// void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
-// (
-//     const BlockLduMatrix<vector6>& matrix,
-//     Eigen::SparseMatrix<scalar>& A,
-//     Eigen::Matrix<scalar, Eigen::Dynamic, 1>& b,
-//     Eigen::Matrix<scalar, Eigen::Dynamic, 1>& x
-// )
-// {
-//     if (BlockLduSolver::debug)
-//     {
-//         Info<< this->typeName
-//             << ": copying matrix coefficients into Eigen format"
-//             << endl;
-//     }
+void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
+(
+    const Field<scalarSquareMatrix>& d_,
+    const Field<scalarSquareMatrix>& l_,
+    const Field<scalarSquareMatrix>& u_,
+    const labelList& own,
+    const labelList& nei,
+    Eigen::SparseMatrix<scalar>& A
+)
+{
+    if (BlockLduSolver::debug)
+    {
+        Info<< this->typeName
+            << ": copying matrix coefficients into Eigen format"
+            << endl;
+    }
 
-//     multibeamFvBlockMatrix& mbMatrix =
-//         const_cast<multibeamFvBlockMatrix&>
-//         (
-//             static_cast<const multibeamFvBlockMatrix&>(matrix_)
-//         );
+    //label nRows = 6*d.size();
 
-//     label nRows = 0;
+    // Block CSR matrix storage
 
-//     if (mbMatrix.hybrid())
-//     {
-//         // CSR matrix storage
+    //const labelList& rowPointers = mbMatrix.blockRowPointers();
+    //const labelList& columnIndices = mbMatrix.blockColumnIndices();
+    //const scalarField& coeffs = mbMatrix.blockCoeffs();
 
-//         const labelList& rowPointers = mbMatrix.rowPointers();
-//         const labelList& columnIndices = mbMatrix.columnIndices();
-//         const scalarField& coeffs = mbMatrix.coeffs();
+    //label blockSize = ::sqrt(coeffs.size()/columnIndices.size());
 
-//         // Create coefficient matrix: we must copy coeffs from CSR storage
-//         // Maybe it is possible to use CSR storage directly.
-//         std::vector< Eigen::Triplet<scalar> > coefficients;
-//         coefficients.reserve(coeffs.size());
+    // Create coefficient matrix: we must copy coeffs from CSR storage
+    // Maybe it is possible to use CSR storage directly.
+    std::vector< Eigen::Triplet<scalar> > coefficients;
+    coefficients.reserve(coeffs.size());
+    //-----------------------------------------------------------------------------
+    //                  diagonal
+    //-----------------------------------------------------------------------------
+    label globalRowI = 0;
+    forAll(d, cellI)
+    {
+        scalarSquareMatrix& curD = d[cellI];
 
-//         for (label rowI=1; rowI<rowPointers.size(); rowI++)
-//         {
-//             label colStart = rowPointers[rowI-1];
-//             label colEnd = rowPointers[rowI];
+        for (label localRowI = 0; localRowI < 6; localRowI++)
+        {
+            for (label localColI = 0; localColI < 6; localColI++)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        globalRowI + localRowI,
+                        globalRowI + localColI,
+                        curD(localRowI, localColI)
+                    )
+                );
+            }
+        }
 
-//             for (label colI=colStart; colI<colEnd; colI++)
-//             {
-//                 label i = rowI-1;
-//                 label j = columnIndices[colI];
+        globalRowI += 6;
+    }
+//-----------------------------------------------------------------------------
+//                  off-diagonal
+//-----------------------------------------------------------------------------
+    globalRowI = 0;
+    forAll(u, faceI)
+    {
+        scalarSquareMatrix& curU = u[faceI];
+        scalarSquareMatrix& curL = l[faceI];
+        const label owner = own[faceI];
+        const label neighbour = nei[faceI];
 
-//                 coefficients.push_back
-//                 (
-//                     Eigen::Triplet<scalar>(i, j, coeffs[colI])
-//                 );
-//             }
-//         }
 
-//         // Insert triplets into the matrix
-//         nRows = rowPointers.size()-1;
-//         A.resize(nRows, nRows);
-//         A.setFromTriplets(coefficients.begin(), coefficients.end());
-//     }
-//     else
-//     {
-//         // Block CSR matrix storage
+        for (label localRowI = 0; localRowI < 6; localRowI++)
+        {
+            for (label localColI = 0; localColI < 6; localColI++)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        globalRowI + localRowI,
+                        globalRowI + localColI,
+                        curD(localRowI, localColI)
+                    )
+                );
+            }
+        }
 
-//         const labelList& rowPointers = mbMatrix.blockRowPointers();
-//         const labelList& columnIndices = mbMatrix.blockColumnIndices();
-//         const scalarField& coeffs = mbMatrix.blockCoeffs();
+        globalRowI += 6;
+    }
+    //-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
 
-//         label blockSize = ::sqrt(coeffs.size()/columnIndices.size());
+        // Insert triplets into the matrix
+        label bnRows = rowPointers.size()-1;
+        nRows = blockSize*bnRows;
+        A.resize(nRows, nRows);
+        A.setFromTriplets(coefficients.begin(), coefficients.end());
 
-//         // Create coefficient matrix: we must copy coeffs from CSR storage
-//         // Maybe it is possible to use CSR storage directly.
-//         std::vector< Eigen::Triplet<scalar> > coefficients;
-//         coefficients.reserve(coeffs.size());
+    // Compressing matrix is meant to help performance
+    A.makeCompressed();
 
-//         label k=0;
-//         for (label rowI=1; rowI<rowPointers.size(); rowI++)
-//         {
-//             label colStart = rowPointers[rowI-1];
-//             label colEnd = rowPointers[rowI];
-
-//             for (label colI=colStart; colI<colEnd; colI++)
-//             {
-//                 label i = blockSize*(rowI-1);
-
-//                 for (label rI=0; rI<blockSize; rI++)
-//                 {
-//                     label j = blockSize*columnIndices[colI];
-
-//                     for (label cI=0; cI<blockSize; cI++)
-//                     {
-//                         coefficients.push_back
-//                         (
-//                             Eigen::Triplet<scalar>(i, j++, coeffs[k++])
-//                         );
-//                     }
-//                     i++;
-//                 }
-//             }
-//         }
-
-//         // Insert triplets into the matrix
-//         label bnRows = rowPointers.size()-1;
-//         nRows = blockSize*bnRows;
-//         A.resize(nRows, nRows);
-//         A.setFromTriplets(coefficients.begin(), coefficients.end());
-//     }
-
-//     // Compressing matrix is meant to help performance
-//     A.makeCompressed();
-
-//     // Set rhs and solution vectors
-//     b.resize(nRows);
-//     x.resize(nRows);
-//     for (label i=0; i<nRows; i++)
-//     {
-//         b(i) = mbMatrix.rhs()[i];
-//         x(i) = mbMatrix.solution()[i];
-//     }
-// }
+    // Set rhs and solution vectors
+    b.resize(nRows);
+    x.resize(nRows);
+    for (label i=0; i<nRows; i++)
+    {
+        b(i) = mbMatrix.rhs()[i];
+        x(i) = mbMatrix.solution()[i];
+    }
+}
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -182,12 +172,16 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
 (
     const Field<scalarSquareMatrix>& d,
     const Field<scalarSquareMatrix>& l,
-    const Field<scalarSquareMatrix>& u
+    const Field<scalarSquareMatrix>& u,
+    const labelList& own,
+    const labelList& nei,
 )
 :
     d_(d),
     l_(l),
-    u_(u)
+    u_(u),
+    own_(own),
+    nei_(nei)
 {}
 
 // ************************************************************************* //
@@ -216,12 +210,12 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
 
 
-    //convertFoamMatrixToEigenMatrix(matrix_, A, b, x);
+    convertFoamMatrixToEigenMatrix(d, l, u, A);
 
 
     label nRows = A.rows();
     //label nCells = blockB.size();
-    label nCells= foamB.m();
+    label nCells= foamB.size();
     label blockSize = 6;
 
     //Copy source vector into Eigen vector
@@ -230,12 +224,12 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     label index = 0;
     forAll(foamB, cellI)
     {
-        b(index++) = foamB[cellI](0);
-        b(index++) = foamB[cellI](1);
-        b(index++) = foamB[cellI](2);
-        b(index++) = foamB[cellI](3);
-        b(index++) = foamB[cellI](4);
-        b(index++) = foamB[cellI](5);
+        b(index++) = foamB[cellI](0,0);
+        b(index++) = foamB[cellI](1,0);
+        b(index++) = foamB[cellI](2,0);
+        b(index++) = foamB[cellI](3,0);
+        b(index++) = foamB[cellI](4,0);
+        b(index++) = foamB[cellI](5,0);
     }
 
     // Copy solution vector into Eigen vector
@@ -243,39 +237,44 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     index = 0;
     forAll(foamX, cellI)
     {
-        x(index++) = foamX[cellI](0);
-        x(index++) = foamX[cellI](1);
-        x(index++) = foamX[cellI](2);
-        x(index++) = foamX[cellI](3);
-        x(index++) = foamX[cellI](4);
-        x(index++) = foamX[cellI](5);
+        x(index++) = foamX[cellI](0,0);
+        x(index++) = foamX[cellI](1,0);
+        x(index++) = foamX[cellI](2,0);
+        x(index++) = foamX[cellI](3,0);
+        x(index++) = foamX[cellI](4,0);
+        x(index++) = foamX[cellI](5,0);
     }
 
     // Calculate initial residual
+    scalar initialResidual = 0;
     {
+
         Eigen::Matrix<scalar, Eigen::Dynamic, 1> p(nRows);
         p = A*x;
 
         //Field<vector6> blockP(nCells);
-
+        Field<scalarRectangularMatrix> blockP
+    (
+        nCells, scalarRectangularMatrix(6, 1, 0.0)
+    );
         // Convert poroduct
         label k = 0;
         for (label i=0; i<nCells; i++)
         {
             for (label j=0; j<blockSize; j++)
             {
-                blockP[i](j) = p[k++];
+                blockP[i](j,0) = p[k++];
             }
         }
 
-        Field<vector6> blockR(blockB - blockP);
+        Field<scalarRectangularMatrix> blockR(blockB - blockP);
 
-        vector6 norm = vector6::one; //this->normFactor(U, blockB);
+        scalarRectangularMatrix norm(6, 1, 1.0); //this->normFactor(U, blockB);
 
-        solverPerf.initialResidual() =
-            cmptDivide(gSum(cmptMag(blockR)), norm);
+        initialResidual = cmptDivide(gSum(cmptMag(blockR)), norm);
     }
-/*
+
+
     typedef enum {SparseLU, BiCGSTAB, GMRES, DGMRES, MINRES} solvers;
     solvers sol = SparseLU;
 
@@ -289,7 +288,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
                 Eigen::COLAMDOrdering<int>
             > solver(A);
             x = solver.solve(b);
-            solverPerf.nIterations()++;
+            //solverPerf.nIterations()++;
             break;
         }
         case BiCGSTAB:
@@ -303,7 +302,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             > solver;
             solver.compute(A);
             x = solver.solve(b);
-            solverPerf.nIterations() = solver.iterations();
+            //solverPerf.nIterations() = solver.iterations();
             break;
         }
         case GMRES:
@@ -317,7 +316,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             > solver;
             solver.compute(A);
             x = solver.solve(b);
-            solverPerf.nIterations() = solver.iterations();
+            //solverPerf.nIterations() = solver.iterations();
             break;
         }
         case DGMRES:
@@ -331,7 +330,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             > solver;
             solver.compute(A);
             x = solver.solve(b);
-            solverPerf.nIterations() = solver.iterations();
+            //solverPerf.nIterations() = solver.iterations();
             break;
         }
         case MINRES:
@@ -346,7 +345,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             > solver;
             solver.compute(A);
             x = solver.solve(b);
-            solverPerf.nIterations() = solver.iterations();
+            //solverPerf.nIterations() = solver.iterations();
             break;
         }
         default:
@@ -366,56 +365,43 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     label index = 0;
     forAll(U, cellI)
     {
-        U[cellI](0) = x(index++);
-        U[cellI](1) = x(index++);
-        U[cellI](2) = x(index++);
-        U[cellI](3) = x(index++);
-        U[cellI](4) = x(index++);
-        U[cellI](5) = x(index++);
+        foamX[cellI](0,0) = x(index++);
+        foamX[cellI](1,0) = x(index++);
+        foamX[cellI](2,0) = x(index++);
+        foamX[cellI](3,0) = x(index++);
+        foamX[cellI](4,0) = x(index++);
+        foamX[cellI](5,0) = x(index++);
     }
 
     //
-    if (nRows > nCells*blockSize)
-    {
-        multibeamFvBlockMatrix& mbMatrix =
-            const_cast<multibeamFvBlockMatrix&>
-            (
-                static_cast<const multibeamFvBlockMatrix&>(matrix_)
-            );
-
-        for (label i=0; i<nRows; i++)
-        {
-            mbMatrix.solution()[i] = x(i);
-        }
-    }
 
     // Calculate final residual
-    {
-        Eigen::Matrix<scalar, Eigen::Dynamic, 1> p(nRows);
-        p = A*x;
+    // {
+    //     Eigen::Matrix<scalar, Eigen::Dynamic, 1> p(nRows);
+    //     p = A*x;
 
-        Field<vector6> blockP(U.size());
+    //     Field<vector6> blockP(U.size());
 
-        // Convert poroduct
-        label k = 0;
-        for (label i=0; i<nCells; i++)
-        {
-            for (label j=0; j<blockSize; j++)
-            {
-                blockP[i](j) = p[k++];
-            }
-        }
+    //     // Convert poroduct
+    //     label k = 0;
+    //     for (label i=0; i<nCells; i++)
+    //     {
+    //         for (label j=0; j<blockSize; j++)
+    //         {
+    //             blockP[i](j) = p[k++];
+    //         }
+    //     }
 
-        Field<vector6> blockR(blockB - blockP);
+    //     Field<vector6> blockR(blockB - blockP);
 
-        vector6 norm = vector6::one; //this->normFactor(U, blockB);
+    //     vector6 norm = vector6::one; //this->normFactor(U, blockB);
 
-        solverPerf.finalResidual() =
-            cmptDivide(gSum(cmptMag(blockR)), norm);
-    }
-        */
+    //     solverPerf.finalResidual() =
+    //         cmptDivide(gSum(cmptMag(blockR)), norm);
+    // }
 
-    return 0.0;
+
+    return initialResidual;
 }
 
 
