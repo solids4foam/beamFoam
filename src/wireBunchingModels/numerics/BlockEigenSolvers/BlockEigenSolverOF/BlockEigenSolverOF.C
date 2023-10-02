@@ -121,8 +121,9 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     {
         scalarSquareMatrix& curU = u[faceI];
         scalarSquareMatrix& curL = l[faceI];
-        const label owner = own[faceI];
-        const label neighbour = nei[faceI];
+        label owner = own[faceI];
+        label neighbour = nei[faceI];
+
 
 
         for (label localRowI = 0; localRowI < 6; localRowI++)
