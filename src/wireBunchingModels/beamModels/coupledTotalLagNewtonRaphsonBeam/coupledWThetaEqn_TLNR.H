@@ -507,8 +507,6 @@
         }
         else
         {
-            // Philip: we do need this, but you can comment it initially
-            notImplemented("We need to port applyBoundaryConditions.H!");
             #include "applyBoundaryConditions.H"
         }
     }

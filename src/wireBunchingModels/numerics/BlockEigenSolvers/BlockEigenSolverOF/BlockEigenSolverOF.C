@@ -42,7 +42,7 @@ License
 
 namespace Foam
 {
-    //defineTypeNameAndDebug(BlockEigenSolverOF, 0);
+    defineTypeNameAndDebug(BlockEigenSolverOF, 0);
 
     // addToRunTimeSelectionTable
     // (
