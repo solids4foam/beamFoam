@@ -498,7 +498,7 @@
     forAll (W_.boundaryField(), patchI)
     {
         const fvPatch& patch = mesh().boundary()[patchI];
-        //const labelList& fc = patch.faceCells();
+        const labelList& fc = patch.faceCells();
 
         if (patch.coupled())
         {
@@ -509,7 +509,7 @@
         {
             // Philip: we do need this, but you can comment it initially
             notImplemented("We need to port applyBoundaryConditions.H!");
-            //#include "applyBoundaryConditions.H"
+            #include "applyBoundaryConditions.H"
         }
     }
 
@@ -705,6 +705,7 @@
     // Create Eigen linear solver
     BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
 
+
     // Create solution vector
     Field<scalarRectangularMatrix> solVec
     (
@@ -712,7 +713,9 @@
     );
 
     // Solve the linear system
-    currentResidual = eigenSolver.solve(solVec, source);
+    // Currently this residual is not used, Check with Seevani.
+    currentResidual = eigenSolver.solve(solVec, source); // peak RAM
+    Info<< "Equation Residual: " << currentResidual << endl;
 
     //vector6 eqnRes = WThetaEqn.solve().initialResidual();
     // vector eqnRes = vector::zero;
@@ -947,8 +950,9 @@
 	if(false)
 	{
 		//Info << "Iter: " << iOuterCorr() << endl;
-		Info << "Displacement" << W_.boundaryField() << endl;
+		Info<< "Displacement" << W_.boundaryField() << endl;
 	}
+    // this currentResidual is not normalized, check with Seevani
     currentResidual = max(WResidual, ThetaResidual);
 
     if (iOuterCorr() == 0)

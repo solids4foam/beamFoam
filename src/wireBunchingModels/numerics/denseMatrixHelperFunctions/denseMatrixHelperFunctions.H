@@ -52,7 +52,20 @@ tmp<scalarField> magSqr(const Field<scalarRectangularMatrix>& mats)
 
     return tresult;
 }
-  
+
+// tmp<scalarRectangularMatrix> cmptDivide(const Field<scalarRectangularMatrix>& mat1 , const Field<scalarRectangularMatrix>& mat2 )
+// {
+//     tmp<scalarRectangularMatrix> outputMat(new scalarRectangularMatrix(mat1.size(), 0.0));
+//     Field<scalarRectangularMatrix> result = outputMat.ref();
+
+//     forAll(mat1, i)
+//     {
+//         result(i,0) = mat1(i,0)/mat2(i,0);
+//     }
+
+//     return outputMat;
+// }
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

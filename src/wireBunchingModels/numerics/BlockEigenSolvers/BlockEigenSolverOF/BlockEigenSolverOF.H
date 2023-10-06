@@ -74,6 +74,12 @@ class BlockEigenSolverOF
         //- Const-reference to the sparse matrix lower
         const Field<scalarSquareMatrix>& u_;
 
+        //- Const-reference to owner list
+        const labelList& own_;
+
+        //- Const-reference to neighbour list
+        const labelList& nei_;
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -87,9 +93,9 @@ protected:
         //- Convert foam matrix to the Eigen matrix format
         void convertFoamMatrixToEigenMatrix
         (
-            const Field<scalarSquareMatrix>& d_,
-            const Field<scalarSquareMatrix>& l_,
-            const Field<scalarSquareMatrix>& u_,
+            const Field<scalarSquareMatrix>& d,
+            const Field<scalarSquareMatrix>& l,
+            const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei,
             Eigen::SparseMatrix<scalar>& A
@@ -107,7 +113,9 @@ public:
         (
             const Field<scalarSquareMatrix>& d,
             const Field<scalarSquareMatrix>& l,
-            const Field<scalarSquareMatrix>& u
+            const Field<scalarSquareMatrix>& u,
+            const labelList& own,
+            const labelList& nei
             // const dictionary& dict
         );
 

@@ -41,7 +41,7 @@ License
 
 namespace Foam
 {
-    defineTypeNameAndDebug(BlockEigenSolverOF, 0);
+    //defineTypeNameAndDebug(BlockEigenSolverOF, 0);
 
     // addToRunTimeSelectionTable
     // (
@@ -58,22 +58,22 @@ namespace Foam
 
 void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 (
-    const Field<scalarSquareMatrix>& d_,
-    const Field<scalarSquareMatrix>& l_,
-    const Field<scalarSquareMatrix>& u_,
+    const Field<scalarSquareMatrix>& d,
+    const Field<scalarSquareMatrix>& l,
+    const Field<scalarSquareMatrix>& u,
     const labelList& own,
     const labelList& nei,
     Eigen::SparseMatrix<scalar>& A
 )
 {
-    if (BlockLduSolver::debug)
-    {
-        Info<< this->typeName
-            << ": copying matrix coefficients into Eigen format"
-            << endl;
-    }
+    // if (BlockLduSolver::debug)
+    // {
+    //     Info<< this->typeName
+    //         << ": copying matrix coefficients into Eigen format"
+    //         << endl;
+    // }
 
-    //label nRows = 6*d.size();
+    const label nRows = 6*d.size();
 
     // Block CSR matrix storage
 
@@ -86,14 +86,14 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     // Create coefficient matrix: we must copy coeffs from CSR storage
     // Maybe it is possible to use CSR storage directly.
     std::vector< Eigen::Triplet<scalar> > coefficients;
-    coefficients.reserve(coeffs.size());
+    coefficients.reserve(36*(d.size() + l.size() + u.size()));
     //-----------------------------------------------------------------------------
     //                  diagonal
     //-----------------------------------------------------------------------------
     label globalRowI = 0;
     forAll(d, cellI)
     {
-        scalarSquareMatrix& curD = d[cellI];
+        const scalarSquareMatrix& curD = d[cellI];
 
         for (label localRowI = 0; localRowI < 6; localRowI++)
         {
@@ -116,16 +116,16 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 //-----------------------------------------------------------------------------
 //                  off-diagonal
 //-----------------------------------------------------------------------------
-    globalRowI = 0;
+
     forAll(u, faceI)
     {
-        scalarSquareMatrix& curU = u[faceI];
-        scalarSquareMatrix& curL = l[faceI];
-        label owner = own[faceI];
-        label neighbour = nei[faceI];
+        const scalarSquareMatrix& curU = u[faceI];
+        const scalarSquareMatrix& curL = l[faceI];
 
+        const label globalRowI = 6*own[faceI];
+        const label globalColI = 6*nei[faceI];
 
-
+        //upper
         for (label localRowI = 0; localRowI < 6; localRowI++)
         {
             for (label localColI = 0; localColI < 6; localColI++)
@@ -135,35 +135,42 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
                     Eigen::Triplet<scalar>
                     (
                         globalRowI + localRowI,
+                        globalColI + localColI,
+                        curU(localRowI, localColI)
+                    )
+                );
+            }
+        }
+        //lower
+        for (label localRowI = 0; localRowI < 6; localRowI++)
+        {
+            for (label localColI = 0; localColI < 6; localColI++)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        globalColI + localRowI,
                         globalRowI + localColI,
-                        curD(localRowI, localColI)
+                        curL(localRowI, localColI)
                     )
                 );
             }
         }
 
-        globalRowI += 6;
+
     }
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
 
         // Insert triplets into the matrix
-        label bnRows = rowPointers.size()-1;
-        nRows = blockSize*bnRows;
-        A.resize(nRows, nRows);
-        A.setFromTriplets(coefficients.begin(), coefficients.end());
+        //label bnRows = rowPointers.size()-1;
+        //nRows = blockSize*bnRows;
+    A.resize(nRows, nRows);
+    A.setFromTriplets(coefficients.begin(), coefficients.end());
 
     // Compressing matrix is meant to help performance
     A.makeCompressed();
-
-    // Set rhs and solution vectors
-    b.resize(nRows);
-    x.resize(nRows);
-    for (label i=0; i<nRows; i++)
-    {
-        b(i) = mbMatrix.rhs()[i];
-        x(i) = mbMatrix.solution()[i];
-    }
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -175,7 +182,7 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     const Field<scalarSquareMatrix>& l,
     const Field<scalarSquareMatrix>& u,
     const labelList& own,
-    const labelList& nei,
+    const labelList& nei
 )
 :
     d_(d),
@@ -206,20 +213,14 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // Create Eigen sparse matrix and set coeffs
-    Eigen::SparseMatrix<scalar> A; //(nRows, nRows);
-    Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
-    Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
-
-
+    Eigen::SparseMatrix<scalar> A; // initialized in convertFoamMatrixToEigenMatrix funtion
     convertFoamMatrixToEigenMatrix(d, l, u, A);
 
+    // Create Eigen source and solution vector from foam vectors
+    //Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
+    //Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
 
-    label nRows = A.rows();
-    //label nCells = blockB.size();
-    label nCells= foamB.size();
-    label blockSize = 6;
-
-    //Copy source vector into Eigen vector
+    const label nRows = A.rows();
 
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> b(nRows);
     label index = 0;
@@ -247,6 +248,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // Calculate initial residual
+    const label nCells = d.size();
     scalar initialResidual = 0;
     {
 
@@ -262,7 +264,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         label k = 0;
         for (label i=0; i<nCells; i++)
         {
-            for (label j=0; j<blockSize; j++)
+            for (label j=0; j<6; j++)
             {
                 blockP[i](j,0) = p[k++];
             }
@@ -273,6 +275,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         scalarRectangularMatrix norm(6, 1, 1.0); //this->normFactor(U, blockB);
 
         initialResidual = cmptDivide(gSum(cmptMag(blockR)), norm);
+
     }
 
 
@@ -363,8 +366,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // We copy the results from the std::vector into the geometric field
-    label index = 0;
-    forAll(U, cellI)
+    index = 0;
+    forAll(foamX, cellI)
     {
         foamX[cellI](0,0) = x(index++);
         foamX[cellI](1,0) = x(index++);
