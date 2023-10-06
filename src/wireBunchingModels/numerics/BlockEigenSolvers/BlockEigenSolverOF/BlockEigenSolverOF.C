@@ -31,6 +31,7 @@ License
 // #include "fvMesh.H"
 // #include "beamModel.H"
 // #include "multibeamFvBlockMatrix.H"
+#include "denseMatrixHelperFunctions.H"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -214,8 +215,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 
     // Create Eigen sparse matrix and set coeffs
     Eigen::SparseMatrix<scalar> A; // initialized in convertFoamMatrixToEigenMatrix funtion
-    convertFoamMatrixToEigenMatrix(d, l, u, A);
-
+    convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A);
     // Create Eigen source and solution vector from foam vectors
     //Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
     //Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
@@ -248,34 +248,33 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // Calculate initial residual
-    const label nCells = d.size();
+    const label nCells = d_.size();
     scalar initialResidual = 0;
     {
 
-        Eigen::Matrix<scalar, Eigen::Dynamic, 1> p(nRows);
-        p = A*x;
+        Eigen::Matrix<scalar, Eigen::Dynamic, 1> Ax(nRows);
+        Ax = A*x;
 
-        //Field<vector6> blockP(nCells);
-        Field<scalarRectangularMatrix> blockP
-    (
-        nCells, scalarRectangularMatrix(6, 1, 0.0)
-    );
+        Field<scalarRectangularMatrix> foamAx
+        (
+            nCells, scalarRectangularMatrix(6, 1, 0.0)
+        );
+
         // Convert poroduct
         label k = 0;
         for (label i=0; i<nCells; i++)
         {
             for (label j=0; j<6; j++)
             {
-                blockP[i](j,0) = p[k++];
+                foamAx[i](j,0) = Ax[k++];
             }
         }
 
-        Field<scalarRectangularMatrix> blockR(blockB - blockP);
+        Field<scalarRectangularMatrix> blockR(foamB - foamAx);
 
-        scalarRectangularMatrix norm(6, 1, 1.0); //this->normFactor(U, blockB);
-
-        initialResidual = cmptDivide(gSum(cmptMag(blockR)), norm);
-
+        //scalarRectangularMatrix norm(6, 1, 1.0); //this->normFactor(U, blockB);
+        //initialResidual = cmptDivide(gSum(cmptMag(blockR)), norm);
+        initialResidual = sqrt(gSum(magSqr(blockR)));
     }
 
 

@@ -94,6 +94,7 @@ numerics/Tuples/timeVaryingVector/timeVaryingVector.C
 numerics/BlockEigenSolvers/BlockEigenSolver/BlockEigenSolver.C
 */
 numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+numerics/denseMatrixHelperFunctions/denseMatrixHelperFunctions.C
 /*
 numerics/blockLduMatrix/BlockLduSolvers/BlockBiCGStab/myBlockBiCGStabSolver.C
 numerics/blockLduMatrix/BlockLduPrecons/BlockParCholeskyPrecon/blockParCholeskyPrecons.C

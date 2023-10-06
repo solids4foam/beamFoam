@@ -22,45 +22,31 @@ License
     along with OpenFOAM; if not, write to the Free Software Foundation,
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-Description
-    Helper functions for the dense matrix class
-
-Author
-    Philip Cardiff, UCD
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef denseMatrixHelperFunctions_H
-#define denseMatrixHelperFunctions_H
+#include "denseMatrixHelperFunctions.H"
 
-#include "scalarMatrices.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-    tmp<scalarField> magSqr(const Field<scalarRectangularMatrix>& mats);
+tmp<scalarField> magSqr(const Field<scalarRectangularMatrix>& mats)
+{
+    tmp<scalarField> tresult(new scalarField(mats.size(), 0.0));
+    scalarField& result = tresult.ref();
 
-// tmp<scalarRectangularMatrix> cmptDivide(const Field<scalarRectangularMatrix>& mat1 , const Field<scalarRectangularMatrix>& mat2 )
-// {
-//     tmp<scalarRectangularMatrix> outputMat(new scalarRectangularMatrix(mat1.size(), 0.0));
-//     Field<scalarRectangularMatrix> result = outputMat.ref();
+    forAll(mats, i)
+    {
+        result[i] = mats[i].norm(true);
+    }
 
-//     forAll(mat1, i)
-//     {
-//         result(i,0) = mat1(i,0)/mat2(i,0);
-//     }
+    return tresult;
+}
 
-//     return outputMat;
-// }
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#endif
 
 // ************************************************************************* //
