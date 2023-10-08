@@ -67,16 +67,19 @@ beamModels/plasticityStressResultantReturnMethods/linearElasticMisesPlastic/line
 */
 
 boundaryConditions = beamModels/fvPatchFields
-$(boundaryConditions)/axialForceTransverseDisplacement/axialForceTransverseDisplacementFvPatchVectorField.C
-/*
-$(boundaryConditions)/axialForceTransverseDisplacementNR/axialForceTransverseDisplacementNRFvPatchVectorField.C
-$(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
-$(boundaryConditions)/followerDisplacement/followerDisplacementFvPatchVectorField.C
-$(boundaryConditions)/forceBeamDisplacement/forceBeamDisplacementFvPatchVectorField.C
-$(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVectorField.C
-$(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
-$(boundaryConditions)/momentBeamRotation/momentBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/momentBeamRotationNR/momentBeamRotationNRFvPatchVectorField.C
+$(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVectorField.C
+$(boundaryConditions)/axialForceTransverseDisplacementNR/axialForceTransverseDisplacementNRFvPatchVectorField.C
+$(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
+/*
+$(boundaryConditions)/followerDisplacement/followerDisplacementFvPatchVectorField.C
+
+$(boundaryConditions)/axialForceTransverseDisplacement/axialForceTransverseDisplacementFvPatchVectorField.C
+$(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
+$(boundaryConditions)/forceBeamDisplacement/forceBeamDisplacementFvPatchVectorField.C
+
+
+$(boundaryConditions)/momentBeamRotation/momentBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/extrapolatedBeamRotation/extrapolatedBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/fixedPathDisplacement/fixedPathDisplacementFvPatchVectorField.C
 $(boundaryConditions)/fixedPathRotation/fixedPathRotationFvPatchVectorField.C

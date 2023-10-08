@@ -263,7 +263,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
     const vectorField& dR0Ds =
         patch().lookupPatchField<surfaceVectorField, vector>("dR0Ds");
 
-    vectorField t = (Lambda & dR0Ds);
+    vectorField t(Lambda & dR0Ds);
 
     const tensorField& CQW =
         patch().lookupPatchField<surfaceTensorField, tensor>("CQW");
@@ -274,20 +274,21 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
     const vectorField& explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
-    const scalarField delta = 1.0/patch().deltaCoeffs();
+    const scalarField delta (1.0/patch().deltaCoeffs());
  
-    tensorField invCQW = inv(CQW);
+    tensorField invCQW (inv(CQW));
 
-    vectorField DDW =
-    (
-        invCQW
-      & (
-            axialForce_*t
-          - ((t*t) & explicitQ)
-          - (((t*t) & CQTheta) & DTheta)
-        )
-    )*delta;
-
+    vectorField DDW
+	(
+	    (
+	        invCQW
+	      & (
+	            axialForce_*t
+	          - ((t*t) & explicitQ)
+	          - (((t*t) & CQTheta) & DTheta)
+	        )
+	    )*delta
+	);	
     DDW +=
     (
         (I-(t*t))
@@ -297,9 +298,10 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
         )
     );
 
-    vectorField newDW =
-        DW.patchInternalField() + DDW;
-
+    vectorField newDW
+	(
+		DW.patchInternalField() + DDW
+	);
     // Info << "newDW = " << newDW << endl;
 
     DW = newDW;

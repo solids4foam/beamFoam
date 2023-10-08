@@ -203,11 +203,11 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
     {
         // Info << "Objective interpolation in fixed moment bC" << endl;
         
-        const scalarField Lb = 2/patch().deltaCoeffs();
+        const scalarField Lb (2/patch().deltaCoeffs());
 
-        tensorField dRMP = rotationMatrix(DTheta.patchInternalField());
-        tensorField prevRMP = pRM.patchInternalField();
-        tensorField RMP = (dRMP & prevRMP);
+        tensorField dRMP (rotationMatrix(DTheta.patchInternalField()));
+        tensorField prevRMP (pRM.patchInternalField());
+        tensorField RMP ((dRMP & prevRMP));
 
         // Constitutive matrix (check for multi-beam cases)
         diagTensor CM
@@ -227,15 +227,16 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
         {
             // Required curvature
             // vectorField pK = (inv(pRMnew & CM) & moment_);
-            vectorField pK = (inv((pRMnew & pRefRM) & CM) & moment_);
+            vectorField pK ((inv((pRMnew & pRefRM) & CM) & moment_));
 
             // Rotation angle objective increment
-            vectorField psiPN = pK*Lb;
+            vectorField psiPN(pK*Lb);
 
             // Corrected patch neighbour cell rotation matrix
-            tensorField RMN =
-                (RMP & rotationMatrix(psiPN));
-
+            tensorField RMN
+		(
+                (RMP & rotationMatrix(psiPN))
+		);
             tensorField pRMprev = pRMnew;
             pRMnew =
             (
@@ -255,8 +256,8 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
         // Info << "iCorr: " << iCorr << endl;
         // Info << "res: " << res << endl;
 
-        tensorField DRM = (pRMnew & pRM.T());
-        vectorField newDTheta = pseudoVector(DRM);
+        tensorField DRM ((pRMnew & pRM.T()));
+        vectorField newDTheta (pseudoVector(DRM));
 
         fixedValueFvPatchField<vector>::operator==
         (
@@ -277,14 +278,15 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
         const vectorField& explicitM =
             patch().lookupPatchField<surfaceVectorField, vector>("explicitM");
 
-        const scalarField delta = 1.0/patch().deltaCoeffs();
+        const scalarField delta (1.0/patch().deltaCoeffs());
 
-        tensorField invA = inv(CMTheta/delta + CMTheta2);
+        tensorField invA (inv(CMTheta/delta + CMTheta2));
 
-        vectorField newDTheta =
+        vectorField newDTheta 
+	(
             (invA & (moment_ - explicitM)) +
-            ((invA & (CMTheta/delta)) & DTheta.patchInternalField());
-
+            ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
+	);
         fixedValueFvPatchField<vector>::operator==
         (
             (*this)

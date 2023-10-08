@@ -187,7 +187,7 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
     // }
 
     
-    if (dimensionedInternalField().name() == "DW")
+    if (internalField().name() == "DW")
     {
         const tensorField DLambda =
             patch().lookupPatchField<surfaceTensorField, tensor>("DLambda");

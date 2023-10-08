@@ -207,9 +207,11 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
         vectorField t = dRdS/(mag(dRdS) + SMALL);      
         */
       
-	const tensorField& Lambda =
-            patch().lookupPatchField<surfaceTensorField, tensor>("Lambda");
-	
+	const tensorField& Lambda 
+	(	
+            patch().lookupPatchField<surfaceTensorField, tensor>("Lambda")
+	  
+	);
 	// Extraction of column vectors from the rotation matrix
 	// to construct the body-attached coordinate
 	// frame t1,t2,t3

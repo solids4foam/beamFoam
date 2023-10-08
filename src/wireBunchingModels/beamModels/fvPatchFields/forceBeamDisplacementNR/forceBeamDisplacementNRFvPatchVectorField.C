@@ -247,9 +247,9 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
         // Info << pRefLambda << endl;
         // Info << pDR0Ds << endl;
 
-        tensorField pDLambda = rotationMatrix(pDTheta);
+        tensorField pDLambda (rotationMatrix(pDTheta));
 
-        tensorField pNewLambda = (pDLambda & pPrevLambda);
+        tensorField pNewLambda ((pDLambda & pPrevLambda));
 
         tensor CF
         (
@@ -258,22 +258,24 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
             0, 0, bm.GA().value()
         );
 
-        tensorField cf = (pNewLambda & (pRefLambda & (CF & pRefLambda.T())));
+        tensorField cf ((pNewLambda & (pRefLambda & (CF & pRefLambda.T()))));
 
-        vectorField dRdS =
+        vectorField dRdS
+	(
         (
             inv(cf & pNewLambda.T()) &
             (force() + (cf & pDR0Ds))
-        );
-
+        )
+	);
         // vectorField dR0dS(dRdS.size(), i);
 
-        vectorField dWdS = dRdS - pDR0Ds;
+        vectorField dWdS (dRdS - pDR0Ds);
 
-        vectorField newW =
+        vectorField newW 
+	(
             this->patchInternalField() +
-            dWdS/patch().deltaCoeffs();
-
+            dWdS/patch().deltaCoeffs()
+	);
         DW = newW - (*this);
         
         fixedValueFvPatchField<vector>::operator==(newW);
@@ -304,15 +306,17 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
         const vectorField explicitQ = 
             patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
-        const scalarField delta = 1.0/patch().deltaCoeffs();
+        const scalarField delta  (1.0/patch().deltaCoeffs());
 
-        tensorField invA = inv(CQW/delta);
+        tensorField invA (inv(CQW/delta));
         
-        vectorField newDW = 
+        vectorField newDW  
+	(
             (invA & (force() - explicitQ)) -
             (invA & (CQTheta & DTheta)) -
             (invA & (CQDTheta & (DTheta - DTheta.patchInternalField())))/delta // usuly zero
-          + DW.patchInternalField();
+          + DW.patchInternalField()
+	);
 
         DW = newDW;
 
