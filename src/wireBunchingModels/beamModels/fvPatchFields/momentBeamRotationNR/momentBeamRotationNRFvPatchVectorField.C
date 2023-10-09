@@ -105,7 +105,7 @@ momentBeamRotationNRFvPatchVectorField
         moment_ = vectorField("moment", dict, p.size());
 	//Info << "Moment value: " << moment_ << endl;
     }
-    
+
 }
 
 
@@ -155,10 +155,10 @@ void momentBeamRotationNRFvPatchVectorField::rmap
 )
 {
     fixedValueFvPatchVectorField::rmap(ptf, addr);
-    
+
     const momentBeamRotationNRFvPatchVectorField& dmptf =
         refCast<const momentBeamRotationNRFvPatchVectorField>(ptf);
-    
+
     moment_.rmap(dmptf.moment_, addr);
 }
 
@@ -190,10 +190,10 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
 
     const fvPatchField<tensor>& pRM =
         patch().lookupPatchField<volTensorField, tensor>("RM");
-        
+
     const fvPatchField<tensor>& pRefRM =
         patch().lookupPatchField<volTensorField, tensor>("refRM");
-    
+
     // Lookup the solidModel object
     const beamModel& bm =
         lookupBeamModel(patch().boundaryMesh().mesh());
@@ -202,7 +202,7 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
     if (false)
     {
         // Info << "Objective interpolation in fixed moment bC" << endl;
-        
+
         const scalarField Lb (2/patch().deltaCoeffs());
 
         tensorField dRMP (rotationMatrix(DTheta.patchInternalField()));
@@ -282,7 +282,7 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
 
         tensorField invA (inv(CMTheta/delta + CMTheta2));
 
-        vectorField newDTheta 
+        vectorField newDTheta
 	(
             (invA & (moment_ - explicitM)) +
             ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
@@ -317,9 +317,9 @@ void momentBeamRotationNRFvPatchVectorField::write(Ostream& os) const
         momentSeries_.write(os);
         os << token::END_BLOCK << nl;
     }
-    
+
     moment_.writeEntry("moment", os);
-    
+
     // writeEntry("value", os);
 }
 

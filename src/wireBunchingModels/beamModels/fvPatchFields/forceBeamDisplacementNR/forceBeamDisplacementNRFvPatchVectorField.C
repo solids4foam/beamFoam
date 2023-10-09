@@ -106,9 +106,9 @@ forceBeamDisplacementNRFvPatchVectorField
         Info<< "force is time-varying using transition function" << endl;
         transitionSeries_ =
             interpolationTable<scalar>(dict.subDict("transitionSeries"));
-        
+
         force_ = vectorField("force", dict, p.size());
-        
+
         curForce_ =
             transitionSeries_(this->db().time().timeOutputValue())
            *force_;
@@ -118,7 +118,7 @@ forceBeamDisplacementNRFvPatchVectorField
         Info<< "force is time-varying" << endl;
         forceSeries_ =
             interpolationTable<vector>(dict.subDict("forceSeries"));
-        
+
         curForce_ = forceSeries_(this->db().time().timeOutputValue());
         force_ = curForce_;
     }
@@ -180,10 +180,10 @@ void forceBeamDisplacementNRFvPatchVectorField::rmap
 )
 {
     fixedValueFvPatchVectorField::rmap(ptf, addr);
-    
+
     const forceBeamDisplacementNRFvPatchVectorField& dmptf =
         refCast<const forceBeamDisplacementNRFvPatchVectorField>(ptf);
-    
+
     force_.rmap(dmptf.force_, addr);
     curForce_.rmap(dmptf.force_, addr);
 }
@@ -234,7 +234,7 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     {
         const fvPatchField<vector>& pDTheta =
             patch().lookupPatchField<volVectorField, vector>("DTheta");
-        
+
         const fvsPatchField<tensor>& pPrevLambda =
             patch().lookupPatchField<surfaceTensorField, tensor>("Lambda");
 
@@ -271,13 +271,13 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
 
         vectorField dWdS (dRdS - pDR0Ds);
 
-        vectorField newW 
+        vectorField newW
 	(
             this->patchInternalField() +
             dWdS/patch().deltaCoeffs()
 	);
         DW = newW - (*this);
-        
+
         fixedValueFvPatchField<vector>::operator==(newW);
 
         // Info << CF << endl;
@@ -285,32 +285,32 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     }
     else
     {
-        fvPatchField<vector>& DW = 
+        fvPatchField<vector>& DW =
             const_cast<fvPatchField<vector>& >
             (
                 patch().lookupPatchField<volVectorField, vector>("DW")
             );
 
-        const fvPatchField<vector>& DTheta = 
+        const fvPatchField<vector>& DTheta =
             patch().lookupPatchField<volVectorField, vector>("DTheta");
 
-        const tensorField& CQW = 
+        const tensorField& CQW =
             patch().lookupPatchField<surfaceTensorField, tensor>("CQW");
 
-        const tensorField& CQTheta = 
+        const tensorField& CQTheta =
             patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
 
-        const tensorField& CQDTheta = 
+        const tensorField& CQDTheta =
             patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
-    
-        const vectorField explicitQ = 
+
+        const vectorField explicitQ =
             patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
         const scalarField delta  (1.0/patch().deltaCoeffs());
 
         tensorField invA (inv(CQW/delta));
-        
-        vectorField newDW  
+
+        vectorField newDW
 	(
             (invA & (force() - explicitQ)) -
             (invA & (CQTheta & DTheta)) -
@@ -323,7 +323,7 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
         fixedValueFvPatchField<vector>::operator==((*this) + newDW); // Setting W_ field
     }
 
-    
+
     fixedValueFvPatchVectorField::evaluate();
 }
 
@@ -332,7 +332,7 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
 void forceBeamDisplacementNRFvPatchVectorField::write(Ostream& os) const
 {
     fixedValueFvPatchVectorField::write(os);
-    
+
     if (forceSeries_.size())
     {
         os.writeKeyword("forceSeries") << nl;

@@ -170,7 +170,7 @@ void followerForceBeamDisplacementNRFvPatchVectorField::rmap
 )
 {
     forceBeamDisplacementNRFvPatchVectorField::rmap(ptf, addr);
-    
+
     const followerForceBeamDisplacementNRFvPatchVectorField& dmptf =
         refCast<const followerForceBeamDisplacementNRFvPatchVectorField>(ptf);
 
@@ -185,7 +185,7 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
     {
         return;
     }
-    
+
         followerForce_ = followerForceSeries_
         (
             this->db().time().timeOutputValue()
@@ -204,57 +204,57 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
         //    .boundaryField()[this->patch().index()].snGrad();
 
         vectorField dRdS = dR0Ds + dWdS;
-        vectorField t = dRdS/(mag(dRdS) + SMALL);      
+        vectorField t = dRdS/(mag(dRdS) + SMALL);
         */
-      
-	const tensorField& Lambda= 
+
+	const tensorField& Lambda=
 
             patch().lookupPatchField<surfaceTensorField, tensor>("Lambda");
-	  
+
 
 	// Extraction of column vectors from the rotation matrix
 	// to construct the body-attached coordinate
 	// frame t1,t2,t3
-	
+
 	// 1st column
 	const scalarField txx = Lambda.component(tensor::XX);
 	const scalarField tyx = Lambda.component(tensor::YX);
 	const scalarField tzx = Lambda.component(tensor::ZX);
-	
+
 	// 2nd Column
 	const scalarField txy = Lambda.component(tensor::XY);
 	const scalarField tyy = Lambda.component(tensor::YY);
 	const scalarField tzy = Lambda.component(tensor::ZY);
-	
+
 	// 3rd Column
 	const scalarField txz = Lambda.component(tensor::XZ);
 	const scalarField tyz = Lambda.component(tensor::YZ);
 	const scalarField tzz = Lambda.component(tensor::ZZ);
-	
-	// Fixed reference coordinate system	
+
+	// Fixed reference coordinate system
 	const vector i(1, 0, 0);
 	const vector j(0, 1, 0);
 	const vector k(0, 0, 1);
-	
+
 	// Body-attached coordinate frame
 	vectorField t1 = (i*txx + j*tyx + k*tzx);
-	vectorField t2 = (i*txy + j*tyy + k*tzy);	
+	vectorField t2 = (i*txy + j*tyy + k*tzy);
 	vectorField t3 = (i*txz + j*tyz + k*tzz);
-				
+
 	// t3 = t3/mag(t3);
 	// followerForceDir_ = t3;
-	
+
         // Current force vector
 	vectorField curForce =
 	      followerForce_.component(0)*t1
 	    + followerForce_.component(1)*t2
-	    + followerForce_.component(2)*t3;	
-	    
+	    + followerForce_.component(2)*t3;
+
 	//vectorField followerForceDir_ = curForce/mag(curForce);
-        
+
         //vectorField curForce =
-        //    followerForce_.component(0)*followerForceDir_;	
-        
+        //    followerForce_.component(0)*followerForceDir_;
+
         force() = curForce;
 
 
@@ -266,7 +266,7 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 void followerForceBeamDisplacementNRFvPatchVectorField::write(Ostream& os) const
 {
     forceBeamDisplacementNRFvPatchVectorField::write(os);
-    
+
     if (followerForceSeries_.size())
     {
         os.writeKeyword("followerForceSeries") << nl;
