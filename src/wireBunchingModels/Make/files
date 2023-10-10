@@ -71,18 +71,17 @@ $(boundaryConditions)/momentBeamRotationNR/momentBeamRotationNRFvPatchVectorFiel
 $(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/axialForceTransverseDisplacementNR/axialForceTransverseDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
-/*
-$(boundaryConditions)/followerDisplacement/followerDisplacementFvPatchVectorField.C
-
-$(boundaryConditions)/axialForceTransverseDisplacement/axialForceTransverseDisplacementFvPatchVectorField.C
 $(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
+$(boundaryConditions)/axialForceTransverseDisplacement/axialForceTransverseDisplacementFvPatchVectorField.C
 $(boundaryConditions)/forceBeamDisplacement/forceBeamDisplacementFvPatchVectorField.C
-
-
 $(boundaryConditions)/momentBeamRotation/momentBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/extrapolatedBeamRotation/extrapolatedBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/fixedPathDisplacement/fixedPathDisplacementFvPatchVectorField.C
 $(boundaryConditions)/fixedPathRotation/fixedPathRotationFvPatchVectorField.C
+
+/*
+
+
 
 $(boundaryConditions)/myFixedRotation/myFixedRotationFvPatchVectorField.C
 $(boundaryConditions)/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDisplacementNRFvPatchVectorField.C

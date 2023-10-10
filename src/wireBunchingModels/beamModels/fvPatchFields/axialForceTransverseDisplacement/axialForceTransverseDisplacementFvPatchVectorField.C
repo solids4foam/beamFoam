@@ -169,7 +169,7 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
     {
         axialForce_ = axialForceSeries_(this->db().time().timeOutputValue());
     }
-    
+
     // if (dispSeries_.size())
     // {
     //     disp = dispSeries_(this->db().time().timeOutputValue());
@@ -186,7 +186,7 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
     //     disp -= Wold.boundaryField()[patch().index()];
     // }
 
-    
+
     if (internalField().name() == "DW")
     {
         const tensorField DLambda =
@@ -212,17 +212,20 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
 
         const scalarField deltaCoeffs = patch().deltaCoeffs();
 
-        vectorField t = (DLambda & dRuDs);
+        vectorField t ((DLambda & dRuDs));
 
         // Current transverse force
-        vectorField Qt =
+        vectorField Qt
+	(
             (CQDW & (refDisp_ - patchInternalField()))*deltaCoeffs
-          + (CQDTheta & DTheta) + oldForce + dQ;
-        Qt += t*axialForce_ - ((t*t) & Qt);
+          + (CQDTheta & DTheta) + oldForce + dQ
+	);
+	  Qt += t*axialForce_ - ((t*t) & Qt);
 
         // Current displacement
-        tensorField invCQDW = inv(CQDW);
-        vectorField disp =
+        tensorField invCQDW (inv(CQDW));
+        vectorField disp
+	(
             patchInternalField()
           + (
                 invCQDW
@@ -231,8 +234,8 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
                   - (CQDTheta & DTheta)
                   - oldForce - dQ
                 )
-            )/deltaCoeffs;
-    
+            )/deltaCoeffs
+    	);
         fvPatchField<vector>::operator==(disp);
     }
     else
@@ -260,25 +263,28 @@ void axialForceTransverseDisplacementFvPatchVectorField::updateCoeffs()
 
         const scalarField deltaCoeffs = patch().deltaCoeffs();
 
-        vectorField t = (Lambda & dR0Ds);
+        vectorField t ((Lambda & dR0Ds));
 
         // Current transverse force
-        vectorField Qt =
+        vectorField Qt
+	(
             (CQW & (refDisp_ - patchInternalField()))*deltaCoeffs
-          + (CQTheta & Theta) + explicitQ;
+          + (CQTheta & Theta) + explicitQ
+	);
         Qt += t*axialForce_ - ((t*t) & Qt);
 
         // Current displacement
-        tensorField invCQW = inv(CQW);
-        vectorField disp =
+        tensorField invCQW (inv(CQW));
+        vectorField disp
+	(
             patchInternalField()
           + (
                 invCQW
               & (
                     Qt - (CQTheta & Theta) - explicitQ
                 )
-            )/deltaCoeffs;
-    
+            )/deltaCoeffs
+	);
         fvPatchField<vector>::operator==(disp);
     }
 

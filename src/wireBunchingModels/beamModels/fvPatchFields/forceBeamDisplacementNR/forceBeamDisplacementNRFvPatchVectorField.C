@@ -28,7 +28,7 @@ License
 #include "volFields.H"
 #include "lookupBeamModel.H"
 #include "pseudoVector.H"
-
+#include "surfaceFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam

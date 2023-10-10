@@ -26,6 +26,7 @@ License
 #include "followerForceBeamDisplacementNRFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -217,19 +218,20 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 	// frame t1,t2,t3
 
 	// 1st column
-	const scalarField txx = Lambda.component(tensor::XX);
-	const scalarField tyx = Lambda.component(tensor::YX);
-	const scalarField tzx = Lambda.component(tensor::ZX);
+	const scalarField txx(Lambda.component(tensor::XX));
+	const scalarField tyx(Lambda.component(tensor::YX));
+	const scalarField tzx(Lambda.component(tensor::ZX));
 
-	// 2nd Column
-	const scalarField txy = Lambda.component(tensor::XY);
-	const scalarField tyy = Lambda.component(tensor::YY);
-	const scalarField tzy = Lambda.component(tensor::ZY);
+	// 2nd column
+	const scalarField txy(Lambda.component(tensor::XY));
+	const scalarField tyy(Lambda.component(tensor::YY));
+	const scalarField tzy(Lambda.component(tensor::ZY));
 
-	// 3rd Column
-	const scalarField txz = Lambda.component(tensor::XZ);
-	const scalarField tyz = Lambda.component(tensor::YZ);
-	const scalarField tzz = Lambda.component(tensor::ZZ);
+	// 3rd column
+	const scalarField txz(Lambda.component(tensor::XZ));
+	const scalarField tyz(Lambda.component(tensor::YZ));
+	const scalarField tzz(Lambda.component(tensor::ZZ));
+
 
 	// Fixed reference coordinate system
 	const vector i(1, 0, 0);
@@ -237,19 +239,20 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 	const vector k(0, 0, 1);
 
 	// Body-attached coordinate frame
-	vectorField t1 = (i*txx + j*tyx + k*tzx);
-	vectorField t2 = (i*txy + j*tyy + k*tzy);
-	vectorField t3 = (i*txz + j*tyz + k*tzz);
+	vectorField t1 ((i*txx + j*tyx + k*tzx));
+	vectorField t2 ((i*txy + j*tyy + k*tzy));
+	vectorField t3 ((i*txz + j*tyz + k*tzz));
 
 	// t3 = t3/mag(t3);
 	// followerForceDir_ = t3;
 
         // Current force vector
-	vectorField curForce =
+	vectorField curForce
+	(
 	      followerForce_.component(0)*t1
 	    + followerForce_.component(1)*t2
-	    + followerForce_.component(2)*t3;
-
+	    + followerForce_.component(2)*t3
+	);
 	//vectorField followerForceDir_ = curForce/mag(curForce);
 
         //vectorField curForce =

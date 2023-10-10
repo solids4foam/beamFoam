@@ -26,7 +26,7 @@ License
 #include "forceBeamDisplacementFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
-
+#include "surfaceFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -86,7 +86,7 @@ forceBeamDisplacementFvPatchVectorField
     {
         gradient() = vector::zero;
     }
-  
+
     if (dict.found("value"))
     {
         Field<vector>::operator=(vectorField("value", dict, p.size()));
@@ -95,10 +95,10 @@ forceBeamDisplacementFvPatchVectorField
     {
         fvPatchVectorField::operator=(patchInternalField());
     }
-    
+
     // fvPatchVectorField::operator=(patchInternalField());
     // gradient() = vector::zero;
-    
+
     // Check if traction is time-varying
     if (dict.found("forceSeries"))
     {
@@ -158,10 +158,10 @@ void forceBeamDisplacementFvPatchVectorField::rmap
 )
 {
     fixedGradientFvPatchVectorField::rmap(ptf, addr);
-    
+
     const forceBeamDisplacementFvPatchVectorField& dmptf =
         refCast<const forceBeamDisplacementFvPatchVectorField>(ptf);
-    
+
     force_.rmap(dmptf.force_, addr);
 }
 
@@ -176,13 +176,13 @@ void forceBeamDisplacementFvPatchVectorField::updateCoeffs()
 
     // Info << "forceBeamDisplacementFvPatchVectorField::updateCoeffs()"
     //      << endl;
-    
+
     if (forceSeries_.size())
     {
         force_ = forceSeries_(this->db().time().timeOutputValue());
     }
 
-    if (dimensionedInternalField().name() == "DW")
+    if (internalField().name() == "DW")
     {
         const vectorField DTheta =
             patch().lookupPatchField<volVectorField, vector>("DTheta");
@@ -240,7 +240,7 @@ void forceBeamDisplacementFvPatchVectorField::updateCoeffs()
             );
         }
     }
-    
+
     // fixedGradientFvPatchVectorField::updateCoeffs();
 }
 
@@ -249,7 +249,7 @@ void forceBeamDisplacementFvPatchVectorField::updateCoeffs()
 void forceBeamDisplacementFvPatchVectorField::write(Ostream& os) const
 {
     fixedGradientFvPatchVectorField::write(os);
-    
+
     if (forceSeries_.size())
     {
         os.writeKeyword("forceSeries") << nl;
@@ -261,7 +261,7 @@ void forceBeamDisplacementFvPatchVectorField::write(Ostream& os) const
     // {
         force_.writeEntry("force", os);
     // }
-    
+
     writeEntry("value", os);
 }
 
