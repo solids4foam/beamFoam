@@ -6,7 +6,7 @@ endif
 
 EXE_INC = \
     $(DISABLE_WARNING_FLAGS) \
-    -I./numerics/BlockEigenSolvers/BlockEigenSolver \
+    -I./numerics/BlockEigenSolvers/BlockEigenSolverOF \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
     -I$(LIB_SRC)/finiteVolume/lnInclude  \

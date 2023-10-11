@@ -246,6 +246,7 @@ Foam::beamModel::beamModel
     U_(),
     // R_(this->lookup("R")),
     E_(beamProperties().lookup("E")),
+    //E_("E" , beamProperties()),
     G_(beamProperties().lookup("G")),
     rho_("rho", dimDensity, 0),
     // A_("A", dimArea, M_PI*sqr(R())),

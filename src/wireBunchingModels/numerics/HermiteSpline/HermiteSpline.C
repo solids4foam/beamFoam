@@ -28,7 +28,7 @@ License
 #include "HermiteSpline.H"
 #include "scalarMatrices.H"
 #include "demandDrivenData.H"
-
+#include "LUscalarMatrix.H"
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void Foam::HermiteSpline::calcParam()
@@ -39,7 +39,7 @@ void Foam::HermiteSpline::calcParam()
     {
         param_[0] = 0.0;
 
-        scalarField segLen = segLengths();
+        scalarField segLen (segLengths());
 
         for (label i=1; i < param_.size(); i++)
         {
@@ -95,7 +95,7 @@ void Foam::HermiteSpline::calcMidPointDerivatives() const
     }
 
     midPointDerivativesPtr_ = new vectorField(nSegments(), vector::zero);
-    vectorField& midPointDerivatives = *midPointDerivativesPtr_; 
+    vectorField& midPointDerivatives = *midPointDerivativesPtr_;
 
     forAll(midPointDerivatives, sI)
     {
@@ -123,7 +123,7 @@ void Foam::HermiteSpline::calcMidPointCurvatures() const
     }
 
     midPointCurvaturesPtr_ = new scalarField(nSegments(), 0);
-    scalarField& midPointCurvatures = *midPointCurvaturesPtr_; 
+    scalarField& midPointCurvatures = *midPointCurvaturesPtr_;
 
     forAll(midPointCurvatures, sI)
     {
@@ -230,7 +230,7 @@ Foam::HermiteSpline::HermiteSpline(Istream& s)
 {
     points_ = vectorField(s);
     tangents_ = vectorField(s);
-    
+
     tangents_ /= mag(tangents_);
 
     for (label i=0; i < c_.size(); i++)
@@ -328,7 +328,7 @@ Foam::scalar Foam::HermiteSpline::localParameter
         scalar f1 = arcLength(segment, zeta1) - arcLen;
 
         zeta2 = zeta1 - f1*(zeta1 - zeta0)/(f1 - f0);
-        
+
         residual = mag(zeta2 - zeta1)/2;
 
         zeta0 = zeta1;
@@ -362,7 +362,7 @@ Foam::scalar Foam::HermiteSpline::arcLength
     {
         n = 2;
     }
-    
+
     scalar h = (zeta+1)/n;
 
     // Composite Simpson's rule
@@ -377,7 +377,7 @@ Foam::scalar Foam::HermiteSpline::arcLength
             + mag(paramFirstDerivative(segment, -1 + (2*i)*h))
           )/3;
     }
-    
+
     return arcLen;
 }
 
@@ -419,7 +419,7 @@ Foam::point Foam::HermiteSpline::position
     const point& p1 = points()[segment+1];
     const point& t0 = tangents()[segment];
     const point& t1 = tangents()[segment+1];
-    
+
     // special cases - no calculation needed
     if (zeta <= -1.0)
     {
@@ -479,7 +479,7 @@ Foam::point Foam::HermiteSpline::firstDerivative
 
     const point& t0 = tangents()[segment];
     const point& t1 = tangents()[segment+1];
-        
+
     // special cases - no calculation needed
     if (zeta <= -1)
     {
@@ -524,7 +524,7 @@ Foam::point Foam::HermiteSpline::paramFirstDerivative
 
     const point& p0 = points()[segment];
     const point& p1 = points()[segment+1];
-    
+
     vector dRdZeta = p0*dH0dZeta + p1*dH1dZeta
       + c_[segment]*(t0*dHt0dZeta + t1*dHt1dZeta)/2;
 
@@ -547,7 +547,7 @@ Foam::point Foam::HermiteSpline::paramSecondDerivative
 
     const point& p0 = points()[segment];
     const point& p1 = points()[segment+1];
-    
+
     vector d2RdZeta2 = p0*d2H0dZeta2 + p1*d2H1dZeta2
       + c_[segment]*(t0*d2Ht0dZeta2 + t1*d2Ht1dZeta2)/2;
 
@@ -564,12 +564,12 @@ Foam::point Foam::HermiteSpline::paramSecondDerivative
 //     scalar dH1dZeta = -3*(sqr(zeta) - 1)/4;
 //     scalar dHt0dZeta = (3*sqr(zeta) - 2*zeta - 1)/4;
 //     scalar dHt1dZeta = (3*sqr(zeta) + 2*zeta - 1)/4;
-  
+
 //     const point& p0 = points()[segment];
 //     const point& p1 = points()[segment+1];
 //     const point& t0 = tangents()[segment];
 //     const point& t1 = tangents()[segment+1];
-    
+
 //     vector dRdZeta = p0*dH0dZeta + p1*dH1dZeta
 //       + c_[segment]*(t0*dHt0dZeta + t1*dHt1dZeta)/2;
 
@@ -638,7 +638,7 @@ Foam::tmp<Foam::vectorField> Foam::HermiteSpline::firstDerivativeParam
 
     forAll(tFirstDerivative(), pI)
     {
-        tFirstDerivative()[pI] =
+        tFirstDerivative.ref()[pI] =
             paramFirstDerivative
             (
                 points[pI].first(),
@@ -661,7 +661,7 @@ Foam::tmp<Foam::vectorField> Foam::HermiteSpline::secondDerivativeParam
 
     forAll(tSecondDerivative(), pI)
     {
-        tSecondDerivative()[pI] =
+        tSecondDerivative.ref()[pI] =
             paramSecondDerivative
             (
                 points[pI].first(),
@@ -730,7 +730,7 @@ Foam::labelScalar Foam::HermiteSpline::nearestPoint
     {
         scalar err = GREAT;
         label nIter = 0;
-	
+
         do
         {
             scalar df1 = (f1-f0)/(mu1-mu0);
@@ -765,7 +765,7 @@ Foam::labelScalar Foam::HermiteSpline::nearestPoint
         // }
 
 	// Info << segI << ", " << mu << ", " << nIter << ", " << err << endl;
-	
+
 	if
 	(
 	    (mu < -1)
@@ -795,11 +795,11 @@ Foam::labelScalar Foam::HermiteSpline::findNearestPoint
 	    "Foam::HermiteSpline::findNearestPoint(...) const"
 	)
 	  << "Number of neighbour segments must be >= 0"
-	  << abort(FatalError);	    
+	  << abort(FatalError);
     }
-  
+
     labelScalar np(-1, -2);
-	
+
     {
         // First segment
         label fSegI = segI - nNeighbours;
@@ -814,7 +814,7 @@ Foam::labelScalar Foam::HermiteSpline::findNearestPoint
 	{
             lSegI = nSegments() - 1;
 	}
-	
+
 	for (label sI=fSegI; sI<=lSegI; sI++)
 	{
             scalar testValue =
@@ -845,13 +845,13 @@ Foam::labelScalar Foam::HermiteSpline::findNearestPoint
                 "Foam::HermiteSpline::findNearestPoint(...) const"
 	    )
                 << "Problem with finding nearest point"
-		<< abort(FatalError);	    
+		<< abort(FatalError);
 	}
     }
 
     return np;
 }
-  
+
 Foam::Tuple2<Foam::scalar, Foam::scalar>
 Foam::HermiteSpline::checkPointContact
 (
@@ -867,17 +867,17 @@ Foam::HermiteSpline::checkPointContact
     // Calculating potential contact angle
     vector tan0 = firstDerivative(segI, 0);
     tan0 /= mag(tan0) + SMALL;
-                    
+
     vector tan1 = neiSpline.firstDerivative(neiSegI, 0);
     tan1 /= mag(tan1) + SMALL;
 
     scalar contactAngle = mag(::acos(tan0 & tan1)*180.0/M_PI);
-    
+
     if (contactAngle > lowerContactAngleLimit)
     {
         // Find initial solution using assumption of linear segment
         // Peter Wriggers and Zavarise paper - Meier point contact paper cited
-      
+
         const vector& p0 = points()[segI];
         const vector& p1 = points()[segI+1];
 
@@ -907,24 +907,24 @@ Foam::HermiteSpline::checkPointContact
                    /((barT & barT)*(t & t) - sqr(barT & t))
                 )
             );
-	    
+
 	//   Info << "segI" << tab << segI << tab << "zetaC" << tab << zetaC
-	     //   << "\nneiSegI" << tab << neiSegI << tab << "neiZetaC" 
+	     //   << "\nneiSegI" << tab << neiSegI << tab << "neiZetaC"
 	     //   << tab << neiZetaC << endl;
-	     
+
         // Refine for Hermite spline using Newton-Raphson
         if
         (
             (zetaC >= -1.05) && (zetaC <= 1.05)
          && (neiZetaC >= -1.05) && (neiZetaC <= 1.05)
         )
-        {		 
+        {
             scalar residual = GREAT;
             label nIter = 0;
             do
             {
                 nIter++;
-                
+
                 vector Rc = position(segI, zetaC);
                 vector dRc = paramFirstDerivative(segI, zetaC);
                 vector d2Rc = paramSecondDerivative(segI, zetaC);
@@ -934,18 +934,21 @@ Foam::HermiteSpline::checkPointContact
                     neiSpline.paramFirstDerivative(neiSegI, neiZetaC);
                 vector neiD2Rc =
                     neiSpline.paramSecondDerivative(neiSegI, neiZetaC);
-               
+
                 scalarSquareMatrix M(2, 0.0);
                 M[0][0] = -(dRc & dRc) + ((neiRc - Rc) & d2Rc);
                 M[0][1] =  (dRc & neiDRc);
                 M[1][0] = -(dRc & neiDRc);
                 M[1][1] =  (neiDRc & neiDRc) + ((neiRc - Rc) & neiD2Rc);
-               
+
                 scalarField rhs(2, 0);
                 rhs[0] = -((neiRc - Rc) & dRc);
                 rhs[1] = -((neiRc - Rc) & neiDRc);
 
-                scalarSquareMatrix invM = M.LUinvert();
+                //scalarSquareMatrix invM = M.LUinvert();
+
+		LUscalarMatrix invM(M);
+		invM.inv(M);
 
                 scalarField DZeta(2, 0);
                 for (label i=0; i<2; i++)
@@ -964,7 +967,7 @@ Foam::HermiteSpline::checkPointContact
             }
             while(residual > 1e-4 && nIter < 100);
         }
-        
+
         // if
         // (
         //     (zetaC > -1) && (zetaC <= 1)
@@ -974,18 +977,18 @@ Foam::HermiteSpline::checkPointContact
         //     Info << segI << ", " << zetaC << ", "
         //          << neiSegI << ", " << neiZetaC << endl;
         //     Info << DZeta << endl;
-        // }        
+        // }
     }
-    // Comment SB: 
+    // Comment SB:
     // Can an else loop be added here to make it more clear
     // that if contactangle < lowerContactAngle limit then
-    // multiple point contact points might occur, and single 
+    // multiple point contact points might occur, and single
     // point contact can never be found.
-    
-    // Also nIter=100 in CheckPointContact loop might not 
-    // be enough for angles (between 10-15 deg especially) 
-    // around the lowerContactAngle limit. 
-    // Beaware of this, ask ZT. 
+
+    // Also nIter=100 in CheckPointContact loop might not
+    // be enough for angles (between 10-15 deg especially)
+    // around the lowerContactAngle limit.
+    // Beaware of this, ask ZT.
 
     return Tuple2<scalar, scalar>(zetaC, neiZetaC);
 }
@@ -1004,9 +1007,9 @@ Foam::tmp<Foam::scalarField> Foam::HermiteSpline::segLengths() const
 
     forAll(tSegLengths(), segI)
     {
-        tSegLengths()[segI] = arcLength(segI, 1);
+        tSegLengths.ref()[segI] = arcLength(segI, 1);
     }
-    
+
     return tSegLengths;
 }
 
@@ -1017,11 +1020,11 @@ Foam::tmp<Foam::scalarField> Foam::HermiteSpline::midPointParameters() const
         new scalarField(nSegments(), 0)
     );
 
-    const scalarField segLen = segLengths();
+    const scalarField segLen (segLengths());
 
     forAll(tMidParameters(), segI)
     {
-        tMidParameters()[segI] = param_[segI] + segLen[segI]/2;
+        tMidParameters.ref()[segI] = param_[segI] + segLen[segI]/2;
     }
 
     return tMidParameters;
@@ -1030,13 +1033,14 @@ Foam::tmp<Foam::scalarField> Foam::HermiteSpline::midPointParameters() const
 Foam::tmp<Foam::vectorField> Foam::HermiteSpline::segmentToPointInterpolate
 (
     const vectorField& midPhi
-) const
+)
+const
 {
     tmp<vectorField> tResult
     (
         new vectorField(points_.size(), vector::zero)
     );
-    vectorField& result = tResult();
+     vectorField& result = tResult.ref();
 
     // Calculate tangent
     vectorField Dt(result.size(), vector::zero);
