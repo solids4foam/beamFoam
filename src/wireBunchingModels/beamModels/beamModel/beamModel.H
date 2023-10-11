@@ -40,7 +40,7 @@ SourceFiles
 #define beamModel_H
 
 #include "fvMesh.H"
-#include "fvMeshCsrAddressing.H"
+//#include "fvMeshCsrAddressing.H"
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
@@ -84,7 +84,7 @@ class beamModel
         autoPtr<dynamicFvMesh> meshPtr_;
 
         //- Compressed sparse row addressing
-        fvMeshCsrAddressing csrAddressing_;
+        // fvMeshCsrAddressing csrAddressing_;
 
         //- Local to global cell addressing
         labelList localToGlobalCellAddressing_;
@@ -301,10 +301,10 @@ public:
             }
 
             //- Return CSR addressing
-            const fvMeshCsrAddressing& csrAddr() const
-            {
-                return csrAddressing_;
-            }
+            // const fvMeshCsrAddressing& csrAddr() const
+            // {
+            //     return csrAddressing_;
+            // }
 
             // //- Return list of conical pulleys
             // const PtrList<conicalPulley>& conicalPulleys() const
@@ -384,7 +384,7 @@ public:
             label whichCell(const label beamIndex, const label segIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
-            label localCellIndex(const label globalCellIndex) const;
+            // label localCellIndex(const label globalCellIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
             labelPair procLocalCellIndex(const label globalCellIndex) const;

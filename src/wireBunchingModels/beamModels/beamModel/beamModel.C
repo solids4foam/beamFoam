@@ -227,7 +227,7 @@ Foam::beamModel::beamModel
             )
         )
     ),
-    csrAddressing_(meshPtr_()),
+    // csrAddressing_(meshPtr_()),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
     localToGlobalBeamPointsAddressing_(),
@@ -1521,26 +1521,26 @@ Foam::label Foam::beamModel::whichCell
 }
 
 
-Foam::label Foam::beamModel::localCellIndex
-(
-    const label globalCellIndex
-) const
-{
-    if (Pstream::parRun())
-    {
-        label lci =
-            globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
+// Foam::label Foam::beamModel::localCellIndex
+// (
+//     const label globalCellIndex
+// ) const
+// {
+//     if (Pstream::parRun())
+//     {
+//         label lci =
+//             globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
 
-        if (lci != -1)
-        {
-            lci -= csrAddr().globalNCellsOffset();
-        }
+//         if (lci != -1)
+//         {
+//             lci -= csrAddr().globalNCellsOffset();
+//         }
 
-        return lci;
-    }
+//         return lci;
+//     }
 
-    return globalCellIndex;
-}
+//     return globalCellIndex;
+// }
 
 
 Foam::labelPair Foam::beamModel::procLocalCellIndex

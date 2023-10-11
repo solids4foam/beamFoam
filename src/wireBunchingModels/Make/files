@@ -28,10 +28,10 @@ beamContactModel/contactModels/frictionContactModels/slipPenaltyFriction/slipPen
 */
 
 beamModels/beamModel/beamModel.C
+beamModels/beamModel/newBeamModel.C
 
 /*
 beamModels/beamModel/fvMeshCsrAddressing.C
-beamModels/beamModel/newBeamModel.C
 beamModels/beamModel/pulleys/conicalPulley/conicalPulley.C
 beamModels/beamModel/pulleys/toroidalPulley/toroidalPulley.C
 beamModels/beamModel/crossSections/crossSection/crossSectionModel.C

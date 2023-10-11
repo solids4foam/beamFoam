@@ -946,9 +946,9 @@ Foam::HermiteSpline::checkPointContact
                 rhs[1] = -((neiRc - Rc) & neiDRc);
 
                 //scalarSquareMatrix invM = M.LUinvert();
-
-		LUscalarMatrix invM(M);
-		invM.inv(M);
+		LUscalarMatrix LUOfM(M);
+                scalarSquareMatrix invM;
+		LUOfM.inv(invM);
 
                 scalarField DZeta(2, 0);
                 for (label i=0; i<2; i++)
