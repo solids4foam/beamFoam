@@ -78,22 +78,18 @@ $(boundaryConditions)/momentBeamRotation/momentBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/extrapolatedBeamRotation/extrapolatedBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/fixedPathDisplacement/fixedPathDisplacementFvPatchVectorField.C
 $(boundaryConditions)/fixedPathRotation/fixedPathRotationFvPatchVectorField.C
-
-/*
-
-
-
 $(boundaryConditions)/myFixedRotation/myFixedRotationFvPatchVectorField.C
 $(boundaryConditions)/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDisplacementNRFvPatchVectorField.C
-
+/*
 beamsBunchingModel/beamsBunchingModel.C
 */
 
 numerics/HermiteSpline/HermiteSpline.C
-
-*/
 numerics/cubicSpline/cubicSpline.C
 numerics/spinTensor/spinTensor.C
+/*
+
+
 numerics/pseudoVector/pseudoVector.C
 numerics/permutationTensor/permutationTensor.C
 numerics/Tuples/timeVaryingVector/timeVaryingVector.C

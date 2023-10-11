@@ -26,7 +26,7 @@ License
 #include "myFollowerForceBeamDisplacementNRFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
-
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -218,7 +218,7 @@ void myFollowerForceBeamDisplacementNRFvPatchVectorField::rmap
 )
 {
     forceBeamDisplacementNRFvPatchVectorField::rmap(ptf, addr);
-    
+
     const myFollowerForceBeamDisplacementNRFvPatchVectorField& dmptf =
         refCast<const myFollowerForceBeamDisplacementNRFvPatchVectorField>(ptf);
 
@@ -236,7 +236,7 @@ void myFollowerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
     {
         return;
     }
-    
+
     if (timeIndex_ < this->db().time().timeIndex())
     {
         timeIndex_ = this->db().time().timeIndex();
@@ -279,36 +279,37 @@ void myFollowerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 //		followerForceDir_ = (followerPlaneNormal_ ^ t);
 
 
-		const scalarField tx = Lambda.component(tensor::XZ);
-		const scalarField ty = Lambda.component(tensor::YZ);
-		const scalarField tz = Lambda.component(tensor::ZZ);
-		
+		const scalarField tx (Lambda.component(tensor::XZ));
+		const scalarField ty (Lambda.component(tensor::YZ));
+		const scalarField tz (Lambda.component(tensor::ZZ));
+
 		const vector i(1, 0, 0);
 		const vector j(0, 1, 0);
 		const vector k(0, 0, 1);
-		
-		const vectorField tnew = (i*tx + j*ty + k*tz);
+
+		const vectorField tnew ((i*tx + j*ty + k*tz));
 		Info << "tnew " << tnew << endl;
-		
-		const vectorField t = tnew/mag(tnew);
-		
+
+		const vectorField t (tnew/mag(tnew));
+
 //		tnew = tnew/magt;
-		
+
 //		Info << "tnew normalised: " << tnew << endl;
 //		const vectorField tnew = (tx, ty, tz);
 //		t = t/mag(t);
-		
+
 		followerForceDir_ = t;
-      
+
         Info << "Lambda " << Lambda << endl;
 //        Info << "tnew " << tnew << endl;
         Info << "followerForceDir: " << followerForceDir_ << endl;
         Info << "followerForce: " << followerForce_ << endl;
-        
-        vectorField curForce =
-            followerForce_*followerForceDir_;
+
+        vectorField curForce
+	(
+            followerForce_*followerForceDir_
           // + outOfPlaneForce_*followerPlaneNormal_;
-        
+	);
         Info << "curForce: " << curForce << endl;
         force() = curForce;
     }
@@ -321,7 +322,7 @@ void myFollowerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 void myFollowerForceBeamDisplacementNRFvPatchVectorField::write(Ostream& os) const
 {
     forceBeamDisplacementNRFvPatchVectorField::write(os);
-    
+
     if (followerForceSeries_.size())
     {
         os.writeKeyword("followerForceSeries") << nl;

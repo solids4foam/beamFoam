@@ -9,9 +9,9 @@ EXE_INC = \
     -I./numerics/BlockEigenSolvers/BlockEigenSolverOF \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
-    -I$(LIB_SRC)/finiteVolume/lnInclude  \
-    -I$(LIB_SRC)/meshTools/lnInclude \
-    -I$(LIB_SRC)/dynamicFvMesh/lnInclude \
+    -I$(FOAM_SRC)/finiteVolume/lnInclude  \
+    -I$(FOAM_SRC)/meshTools/lnInclude \
+    -I$(FOAM_SRC)/dynamicFvMesh/lnInclude \
 
 
 LIB_LIBS = \
