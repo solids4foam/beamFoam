@@ -41,7 +41,7 @@ namespace Foam
 tmp<volVectorField> pseudoVector(const volTensorField& rotationMatrix)
 {
     tmp<volVectorField> tresult
-    (    
+    (
         new volVectorField
         (
             IOobject
@@ -57,10 +57,10 @@ tmp<volVectorField> pseudoVector(const volTensorField& rotationMatrix)
         )
     );
 
-    vectorField& resultI = tresult().internalField();
+    vectorField& resultI = tresult.ref().primitiveFieldRef();
 
     const tensorField& rotationMatrixI = rotationMatrix.internalField();
-    
+
     forAll(resultI, cellI)
     {
         resultI[cellI] = pseudoVector(rotationMatrixI[cellI]);
@@ -68,11 +68,11 @@ tmp<volVectorField> pseudoVector(const volTensorField& rotationMatrix)
 
     forAll (rotationMatrix.boundaryField(), patchI)
     {
-        vectorField& pResultI = tresult().boundaryField()[patchI];
-        
+        vectorField& pResultI = tresult.ref().boundaryFieldRef()[patchI];
+
         const tensorField& pRotationMatrixI =
             rotationMatrix.boundaryField()[patchI];
-        
+
         forAll(pResultI, faceI)
         {
             pResultI[faceI] = pseudoVector(pRotationMatrixI[faceI]);
@@ -81,7 +81,7 @@ tmp<volVectorField> pseudoVector(const volTensorField& rotationMatrix)
 
     return tresult;
 }
-    
+
 tmp<vectorField> pseudoVector(const tensorField& rotationMatrix)
 {
     tmp<vectorField> tresult
@@ -89,7 +89,7 @@ tmp<vectorField> pseudoVector(const tensorField& rotationMatrix)
         new vectorField(rotationMatrix.size(), vector::zero)
     );
 
-    vectorField& result = tresult();
+    vectorField& result = tresult.ref();
 
     forAll(result, cellI)
     {
@@ -98,7 +98,7 @@ tmp<vectorField> pseudoVector(const tensorField& rotationMatrix)
 
     return tresult;
 }
-  
+
 vector pseudoVector(const tensor& R)
 {
     vector result = vector::zero;
@@ -153,7 +153,7 @@ vector pseudoVector(const tensor& R)
 
         // Info << D << endl;
         // Info << "a = " << a << endl;
- 
+
         switch(i)
         {
             case 0:
@@ -201,44 +201,44 @@ vector pseudoVector(const tensor& R)
     return result;
 }
 
-    
+
 tmp<tensorField> rotationMatrix(const vectorField& rotationAngle)
 {
     tmp<tensorField> tRotMat
-    (    
+    (
         new tensorField(rotationAngle.size(), tensor::I)
     );
 
     if (false)
     {
-        scalarField magAngle = mag(rotationAngle);
-        vectorField rotAxis = rotationAngle/(magAngle + SMALL);
-        tensorField rotAxisHat = spinTensor(rotAxis);
+        scalarField magAngle (mag(rotationAngle));
+        vectorField rotAxis (rotationAngle/(magAngle + SMALL));
+        tensorField rotAxisHat (spinTensor(rotAxis));
 
-        tRotMat() =
+        tRotMat.ref() =
             Foam::cos(magAngle)*I +
             Foam::sin(magAngle)*rotAxisHat +
             (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
     }
     else
     {
-        scalarField magAngle = mag(rotationAngle) + SMALL;
-        tensorField angleHat = spinTensor(rotationAngle);
-    
-        tRotMat() =
+        scalarField magAngle( mag(rotationAngle) + SMALL);
+        tensorField angleHat( spinTensor(rotationAngle));
+
+        tRotMat.ref() =
             I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
     }
-    
+
     return tRotMat;
 }
 
-    
+
 tmp<volTensorField> rotationMatrix(const volVectorField& rotationAngle)
 {
     tmp<volTensorField> tRotMat
-    (    
+    (
         new volTensorField
         (
             IOobject
@@ -256,34 +256,34 @@ tmp<volTensorField> rotationMatrix(const volVectorField& rotationAngle)
 
     if (false)
     {
-        volScalarField magAngle = mag(rotationAngle);
-        volVectorField rotAxis = rotationAngle/(magAngle + SMALL);
-        volTensorField rotAxisHat = spinTensor(rotAxis);
+        volScalarField magAngle( mag(rotationAngle));
+        volVectorField rotAxis (rotationAngle/(magAngle + SMALL));
+        volTensorField rotAxisHat( spinTensor(rotAxis));
 
-        tRotMat() =
+        tRotMat.ref() =
             Foam::cos(magAngle)*I +
             Foam::sin(magAngle)*rotAxisHat +
             (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
     }
     else
     {
-        volScalarField magAngle = mag(rotationAngle) + SMALL;
-        volTensorField angleHat = spinTensor(rotationAngle);
-    
-        tRotMat() =
+        volScalarField magAngle( mag(rotationAngle) + SMALL);
+        volTensorField angleHat( spinTensor(rotationAngle));
+
+        tRotMat.ref() =
             I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
     }
-    
+
     return tRotMat;
 }
 
-  
+
 tmp<surfaceTensorField> rotationMatrix(const surfaceVectorField& rotationAngle)
 {
     tmp<surfaceTensorField> tRotMat
-    (    
+    (
         new surfaceTensorField
         (
             IOobject
@@ -301,32 +301,32 @@ tmp<surfaceTensorField> rotationMatrix(const surfaceVectorField& rotationAngle)
 
     if (false)
     {
-        surfaceScalarField magAngle = mag(rotationAngle);
-        surfaceVectorField rotAxis = rotationAngle/(magAngle + SMALL);
-        surfaceTensorField rotAxisHat = spinTensor(rotAxis);
+        surfaceScalarField magAngle ( mag(rotationAngle));
+        surfaceVectorField rotAxis (rotationAngle/(magAngle + SMALL));
+        surfaceTensorField rotAxisHat ( spinTensor(rotAxis));
 
-        tRotMat() =
+        tRotMat.ref() =
             Foam::cos(magAngle)*I +
             Foam::sin(magAngle)*rotAxisHat +
             (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
     }
     else
     {
-        surfaceScalarField magAngle = mag(rotationAngle) + SMALL;
-        surfaceTensorField angleHat = spinTensor(rotationAngle);
-    
-        tRotMat() =
+        surfaceScalarField magAngle (mag(rotationAngle) + SMALL);
+        surfaceTensorField angleHat (spinTensor(rotationAngle));
+
+        tRotMat.ref() =
             I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
     }
     return tRotMat;
 }
-    
+
 tensor rotationMatrix(const vector& rotationAngle)
 {
     tensor R = tensor::zero;
-    
+
     if (false)
     {
         scalar magAngle = mag(rotationAngle);
@@ -350,7 +350,7 @@ tensor rotationMatrix(const vector& rotationAngle)
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
     }
-    
+
     return R;
 }
 
@@ -360,7 +360,7 @@ tmp<surfaceTensorField> interpolateRotationMatrix
 )
 {
     tmp<surfaceTensorField> tRf
-    (    
+    (
         new surfaceTensorField
         (
             IOobject
@@ -376,32 +376,32 @@ tmp<surfaceTensorField> interpolateRotationMatrix
         )
     );
 
-    surfaceTensorField& Rf = tRf();
+    surfaceTensorField& Rf = tRf.ref();
 
     forAll(Rf.boundaryField(), patchI)
     {
     	// For boundary faces, why are we substituting the cell centre rotation values?
-        Rf.boundaryField()[patchI] =
+        Rf.boundaryFieldRef()[patchI] =
             R.boundaryField()[patchI];
     }
 
     const tensorField& RI = R.internalField();
 
-    tensorField& RfI = Rf.internalField();
-    
+    tensorField& RfI = Rf.primitiveFieldRef();
+
     const fvMesh& mesh = R.mesh();
-    const unallocLabelList& own = mesh.owner();
-    const unallocLabelList& nei = mesh.neighbour();
+    const labelList& own = mesh.owner();
+    const labelList& nei = mesh.neighbour();
 
     forAll(RfI, faceI)
     {
         tensor DR = (RI[own[faceI]].T() & RI[nei[faceI]]);
-        
+
         vector DRotAngle = pseudoVector(DR);
 
         // scalar s = 0.5/deltaCoeffsI[faceI];
         RfI[faceI] = RI[own[faceI]] & rotationMatrix(0.5*DRotAngle);
-      
+
     }
 
     return tRf;
@@ -414,7 +414,7 @@ tmp<surfaceVectorField> meanLineCurvature
 )
 {
     tmp<surfaceVectorField> tKf
-    (    
+    (
         new surfaceVectorField
         (
             IOobject
@@ -430,15 +430,15 @@ tmp<surfaceVectorField> meanLineCurvature
         )
     );
 
-    surfaceVectorField& Kf = tKf();
+    surfaceVectorField& Kf = tKf.ref();
 
     const tensorField& RI = R.internalField();
 
-    vectorField& KfI = Kf.internalField();
-    
+    vectorField& KfI = Kf.primitiveFieldRef();
+
     const fvMesh& mesh = R.mesh();
-    const unallocLabelList& own = mesh.owner();
-    const unallocLabelList& nei = mesh.neighbour();
+    const labelList& own = mesh.owner();
+    const labelList& nei = mesh.neighbour();
     const scalarField& deltaCoeffsI = mesh.deltaCoeffs();
 
     forAll(KfI, faceI)
@@ -452,7 +452,7 @@ tmp<surfaceVectorField> meanLineCurvature
 
     forAll(Kf.boundaryField(), patchI)
     {
-        vectorField& pKf = Kf.boundaryField()[patchI];
+        vectorField& pKf = Kf.boundaryFieldRef()[patchI];
         const tensorField& pR = R.boundaryField()[patchI];
 
         labelList faceCells = mesh.boundary()[patchI].faceCells();
@@ -465,10 +465,10 @@ tmp<surfaceVectorField> meanLineCurvature
             vector DRotAngle = pseudoVector(DR);
 
             tensor RN = (RI[faceCells[faceI]] & rotationMatrix(2*DRotAngle));
-            
+
             DR = (RI[faceCells[faceI]].T() & RN);
             DRotAngle = pseudoVector(DR);
-                        
+
             pKf[faceI] = DRotAngle*pDeltaCoeffs[faceI]/2;
         }
     }
@@ -486,17 +486,17 @@ void interpolateRotationMatrix
 {
     forAll(Rf.boundaryField(), patchI)
     {
-        Rf.boundaryField()[patchI] = R.boundaryField()[patchI];
+        Rf.boundaryFieldRef()[patchI] = R.boundaryField()[patchI];//here
     }
 
     const tensorField& RI = R.internalField();
 
-    tensorField& RfI = Rf.internalField();
+    tensorField& RfI = Rf.primitiveFieldRef();
     vectorField& snGradRotAngleI = snGradRotAngle;
 
     const fvMesh& mesh = R.mesh();
-    const unallocLabelList& own = mesh.owner();
-    const unallocLabelList& nei = mesh.neighbour();
+    const labelList& own = mesh.owner();
+    const labelList& nei = mesh.neighbour();
     const scalarField& deltaCoeffsI = mesh.deltaCoeffs();
 
     forAll(snGradRotAngleI, faceI)
@@ -517,7 +517,7 @@ void interpolateRotationMatrix
 
         // tensorField& RfI = Rf.boundaryField()[patchI];
         vectorField& snGradRotAngleI =
-            snGradRotAngle.boundaryField()[patchI];
+            snGradRotAngle.boundaryFieldRef()[patchI];
 
         const labelList& own =
             mesh.boundary()[patchI].faceCells();
@@ -547,7 +547,7 @@ void interpolateRotationMatrix
     {
         if (!R.boundaryField()[patchI].coupled())
         {
-            R.boundaryField()[patchI] = Rf.boundaryField()[patchI];
+            R.boundaryFieldRef()[patchI] = Rf.boundaryField()[patchI];
         }
     }
 
@@ -559,7 +559,7 @@ void interpolateRotationMatrix
     // Pout << "y1" << endl;
     // sleep(5);
 
-    tensorField& RI = R.internalField();
+    tensorField& RI = R.primitiveFieldRef();
 
     const fvMesh& mesh = R.mesh();
     // const unallocLabelList& own = mesh.owner();
@@ -664,7 +664,7 @@ tmp<surfaceVectorField> rotationAngleDerivative
 )
 {
     tmp<surfaceVectorField> tRotAngDeriv
-    (    
+    (
         new surfaceVectorField
         (
             IOobject
@@ -680,13 +680,13 @@ tmp<surfaceVectorField> rotationAngleDerivative
         )
     );
 
-    vectorField& snGradRotAngleI = tRotAngDeriv().internalField();
+    vectorField& snGradRotAngleI = tRotAngDeriv.ref().primitiveFieldRef();
 
     const tensorField& RI = rotMat.internalField();
-    
+
     const fvMesh& mesh = rotMat.mesh();
-    const unallocLabelList& own = mesh.owner();
-    const unallocLabelList& nei = mesh.neighbour();
+    const labelList& own = mesh.owner();
+    const labelList& nei = mesh.neighbour();
     const scalarField& deltaCoeffsI = mesh.deltaCoeffs();
 
     forAll(snGradRotAngleI, faceI)
@@ -703,7 +703,7 @@ tmp<surfaceVectorField> rotationAngleDerivative
         const tensorField& RI = rotMat.boundaryField()[patchI];
 
         vectorField& snGradRotAngleI =
-            tRotAngDeriv().boundaryField()[patchI];
+            tRotAngDeriv.ref().boundaryFieldRef()[patchI];
 
         const labelList& own =
             mesh.boundary()[patchI].faceCells();
@@ -719,7 +719,7 @@ tmp<surfaceVectorField> rotationAngleDerivative
             snGradRotAngleI[faceI] = DRotAngle*deltaCoeffsI[faceI];
         }
     }
-    
+
     return tRotAngDeriv;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -31,7 +31,7 @@ Author
 
 #include "permutationTensor.H"
 #include "emptyFvPatchFields.H"
-
+#include "surfaceFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -60,8 +60,8 @@ tmp<surfaceTensorField> mulByPermutationTensor
         )
     );
 
-    surfaceTensorField& result = tresult();
-    tensorField& resultI = result.internalField();
+    surfaceTensorField& result = tresult.ref();
+    tensorField& resultI = result.primitiveFieldRef();
 
     const vectorField& svfI = svf.internalField();
 
@@ -78,7 +78,7 @@ tmp<surfaceTensorField> mulByPermutationTensor
          != emptyFvPatchField<vector>::typeName
         )
         {
-            tensorField& pResult = result.boundaryField()[patchI];
+            tensorField& pResult = result.boundaryFieldRef()[patchI];
             const vectorField& pSvf = svf.boundaryField()[patchI];
 
             forAll(pResult, faceI)
@@ -118,16 +118,16 @@ tensor mulByPermutationTensor(const vector& v, const bool right)
         0, 0, 0
     );
 
-    result.xx() = -(E0.xx()*v.x() + E0.xy()*v.y() + E0.xz()*v.z()); 
-    result.xy() = -(E0.yx()*v.x() + E0.yy()*v.y() + E0.yz()*v.z()); 
+    result.xx() = -(E0.xx()*v.x() + E0.xy()*v.y() + E0.xz()*v.z());
+    result.xy() = -(E0.yx()*v.x() + E0.yy()*v.y() + E0.yz()*v.z());
     result.xz() = -(E0.zx()*v.x() + E0.zy()*v.y() + E0.zz()*v.z());
-        
-    result.yx() = -(E1.xx()*v.x() + E1.xy()*v.y() + E1.xz()*v.z()); 
-    result.yy() = -(E1.yx()*v.x() + E1.yy()*v.y() + E1.yz()*v.z()); 
+
+    result.yx() = -(E1.xx()*v.x() + E1.xy()*v.y() + E1.xz()*v.z());
+    result.yy() = -(E1.yx()*v.x() + E1.yy()*v.y() + E1.yz()*v.z());
     result.yz() = -(E1.zx()*v.x() + E1.zy()*v.y() + E1.zz()*v.z());
 
-    result.zx() = -(E2.xx()*v.x() + E2.xy()*v.y() + E2.xz()*v.z()); 
-    result.zy() = -(E2.yx()*v.x() + E2.yy()*v.y() + E2.yz()*v.z()); 
+    result.zx() = -(E2.xx()*v.x() + E2.xy()*v.y() + E2.xz()*v.z());
+    result.zy() = -(E2.yx()*v.x() + E2.yy()*v.y() + E2.yz()*v.z());
     result.zz() = -(E2.zx()*v.x() + E2.zy()*v.y() + E2.zz()*v.z());
 
     if (right)
