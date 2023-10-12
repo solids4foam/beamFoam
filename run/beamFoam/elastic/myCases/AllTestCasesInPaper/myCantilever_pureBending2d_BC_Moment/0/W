@@ -34,7 +34,7 @@ boundaryField
         
         forceSeries
         {
-            fileName        "$FOAM_CASE/constant/timeVsForce";
+            file        "$FOAM_CASE/constant/timeVsForce";
             outOfBounds     clamp;
         }
         

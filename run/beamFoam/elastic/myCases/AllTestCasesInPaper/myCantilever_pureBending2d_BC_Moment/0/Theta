@@ -31,7 +31,7 @@ boundaryField
         type momentBeamRotationNR;
         momentSeries
         {
-            fileName        "$FOAM_CASE/constant/timeVsMoment";
+            file        "$FOAM_CASE/constant/timeVsMoment";
             outOfBounds     clamp;
         }        
         value uniform (0 0 0);
