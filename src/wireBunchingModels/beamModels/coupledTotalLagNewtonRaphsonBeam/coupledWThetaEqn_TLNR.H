@@ -725,29 +725,51 @@
         initialResidual = currentResidual;
     }
 
+    // Copy the solution from solVec into the DW and DTheta fields
     //WThetaEqn.retrieveSolution(3, DTheta_.internalField());
     //DTheta_.boundaryField().evaluateCoupled();
-    notImplemented("We need to implement Retrieve solution");
-    // DTheta_.correctBoundaryConditions();
+    vectorField& DWI = DW_;
+    vectorField& DThetaI = DTheta_;
+    forAll(solVec, cellI)
+    {
+        DWI[cellI][vector::X] = solVec[cellI](0, 0);
+        DWI[cellI][vector::Y] = solVec[cellI](1, 0);
+        DWI[cellI][vector::Z] = solVec[cellI](2, 0);
+
+        DThetaI[cellI][vector::X] = solVec[cellI](3, 0);
+        DThetaI[cellI][vector::Y] = solVec[cellI](4, 0);
+        DThetaI[cellI][vector::Z] = solVec[cellI](5, 0);
+    }
+
+    DW_.correctBoundaryConditions();
+    DTheta_.correctBoundaryConditions();
+
+    Info<< __LINE__ << endl;
 
     // DTheta_.internalField().replace(0, 0);
 
     Theta_.primitiveFieldRef() +=
         (RM_.internalField().T() & DTheta_.internalField()); // Get back to this
 
+    Info<< __LINE__ << endl;
+
     // Theta_.internalField().replace(0, 0);
 
     Theta_.correctBoundaryConditions();
+    Info<< __LINE__ << endl;
     Theta_.storePrevIter();
 
     //WThetaEqn.retrieveSolution(0, DW_.internalField());
     //DW_.boundaryField().evaluateCoupled();
     W_.primitiveFieldRef() += DW_.internalField();
 
+    Info<< __LINE__ << endl;
     W_.correctBoundaryConditions();
+    Info<< __LINE__ << endl;
     W_.storePrevIter();
 
     // Info << DW_.internalField() << endl;
+    Info<< __LINE__ << endl;
 
     // Update displacement increment (for contact calculation)
     WIncrement_ = W_ - W_.oldTime();
@@ -758,6 +780,7 @@
     // Retrieve lagrange multipliers
     //WThetaEqn.retriveLagrangeMultipliers();
 
+    Info<< __LINE__ << endl;
 
     if (objectiveInterpolation())
     {
@@ -858,6 +881,7 @@
     //    M_ += (Lambda_ & M_.oldTime());
     // }
 
+    Info<< __LINE__ << endl;
 
   //  Info << "explicitQ_ \n " << explicitQ_ << endl;
 
@@ -913,6 +937,7 @@
         // ThetaResidual =
         //     gMax(mag(DTheta_.internalField()))/denom;
     }
+    Info<< __LINE__ << endl;
 
     // Calculate DW residual
     {
@@ -957,6 +982,7 @@
     {
         initialResidual = currentResidual;
     }
+    Info<< "end of file " << __LINE__ << endl;
 
     // if (plasticityStressResultantReturnPtr_.valid())
     // {

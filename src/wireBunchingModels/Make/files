@@ -57,7 +57,11 @@ beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
 
 /*
 beamModels/coupledTotalLagNewtonRaphsonBeam/applyContacts.C
+*/
+
 beamModels/beamModel/lookupBeamModel.C
+
+/*
 
 
 beamModels/plasticityStressResultantReturnMethods/plasticityStressResultantReturn/plasticityStressResultantReturn.C
