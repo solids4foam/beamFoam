@@ -89,16 +89,11 @@ numerics/cubicSpline/cubicSpline.C
 numerics/spinTensor/spinTensor.C
 numerics/pseudoVector/pseudoVector.C
 numerics/permutationTensor/permutationTensor.C
-
-
-/*
-
-
 numerics/Tuples/timeVaryingVector/timeVaryingVector.C
-numerics/BlockEigenSolvers/BlockEigenSolver/BlockEigenSolver.C
-*/
 numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
 numerics/denseMatrixHelperFunctions/denseMatrixHelperFunctions.C
+numerics/beamHelperFunctions/beamHelperFunctions.C
+
 /*
 numerics/blockLduMatrix/BlockLduSolvers/BlockBiCGStab/myBlockBiCGStabSolver.C
 numerics/blockLduMatrix/BlockLduPrecons/BlockParCholeskyPrecon/blockParCholeskyPrecons.C
@@ -109,7 +104,6 @@ numerics/blockLduMatrix/blockVectorNSolvers.C
 numerics/blockLduMatrix/BlockLduPrecons/blockVectorNParCholeskyPrecons.C
 numerics/blockLduMatrix/BlockLduSolvers/BlockTDMSolver/BlockTDMSolver.C
 
-numerics/beamHelperFunctions/beamHelperFunctions.C
 
 */
 

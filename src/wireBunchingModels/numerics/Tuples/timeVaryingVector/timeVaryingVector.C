@@ -127,17 +127,18 @@ Foam::Istream& Foam::operator>>
 )
 {
     fileName forceFileName;
+    //bounds::repeatableBounding::CLAMP;
 
     is >> forceFileName;
 
-    tvv.timeSeries() = interpolationTable<vector>(forceFileName);
-    tvv.timeSeries().outOfBounds(interpolationTable<vector>::CLAMP);
+    tvv.timeSeries() = interpolationTable<vector>(forceFileName); //AT : bounds::repeatableBounds::CLAMP, needs to be implemented.
+    //tvv.timeSeries().outOfBounds(interpolationTable<vector>::CLAMP);
 
     // Info << forceFileName << endl;
-    
+
     vector& v = tvv;
     v = tvv.timeSeries()(0);
-    
+
     // is >> v;
 
     return is;
