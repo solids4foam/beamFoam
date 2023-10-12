@@ -428,7 +428,7 @@
         d[own[faceI]](5,5) += wf[faceI]*CMQThetaI[faceI].zz();
 
 
-		// Shouldn't the lower and diag[nei] coefficients have a negative sign?
+                // Shouldn't the lower and diag[nei] coefficients have a negative sign?
         l[faceI](3,3) += wf[faceI]*CMQThetaI[faceI].xx();
         l[faceI](3,4) += wf[faceI]*CMQThetaI[faceI].xy();
         l[faceI](3,5) += wf[faceI]*CMQThetaI[faceI].xz();
@@ -488,7 +488,7 @@
         // correctedNeiExplicitMQ =
         //     (RMI[nei[faceI]] & (refRMI[nei[faceI]] & correctedNeiExplicitMQ));
 
-		// Similarly here, the explicit term is not in the negative format? // understood this
+                // Similarly here, the explicit term is not in the negative format? // understood this
         source[nei[faceI]](3,0) -= correctedNeiExplicitMQ.x();
         source[nei[faceI]](4,0) -= correctedNeiExplicitMQ.y();
         source[nei[faceI]](5,0) -= correctedNeiExplicitMQ.z();
@@ -744,32 +744,24 @@
     DW_.correctBoundaryConditions();
     DTheta_.correctBoundaryConditions();
 
-    Info<< __LINE__ << endl;
-
     // DTheta_.internalField().replace(0, 0);
 
     Theta_.primitiveFieldRef() +=
         (RM_.internalField().T() & DTheta_.internalField()); // Get back to this
 
-    Info<< __LINE__ << endl;
-
     // Theta_.internalField().replace(0, 0);
 
     Theta_.correctBoundaryConditions();
-    Info<< __LINE__ << endl;
     Theta_.storePrevIter();
 
     //WThetaEqn.retrieveSolution(0, DW_.internalField());
     //DW_.boundaryField().evaluateCoupled();
     W_.primitiveFieldRef() += DW_.internalField();
 
-    Info<< __LINE__ << endl;
     W_.correctBoundaryConditions();
-    Info<< __LINE__ << endl;
     W_.storePrevIter();
 
     // Info << DW_.internalField() << endl;
-    Info<< __LINE__ << endl;
 
     // Update displacement increment (for contact calculation)
     WIncrement_ = W_ - W_.oldTime();
@@ -780,11 +772,9 @@
     // Retrieve lagrange multipliers
     //WThetaEqn.retriveLagrangeMultipliers();
 
-    Info<< __LINE__ << endl;
-
     if (objectiveInterpolation())
     {
-        // Info << "Using objective interpolation for rotation" << endl;
+        // Info<< "Using objective interpolation for rotation" << endl;
 
         // Calculate rotation matrix correction from
         // cell-centre rotation vector correction
@@ -797,7 +787,7 @@
          K_ = refLambda_.T() & meanLineCurvature(RM_); // this does not work
         //K_ +=
         //    (
-        // 	    (refLambda_.T() & Lambda_.T()) &
+        //          (refLambda_.T() & Lambda_.T()) &
         //        meanLineCurvature(DLambda)
         //    );
 
@@ -811,7 +801,7 @@
     }
     else
     {
-    	Info << "Rotations are not interpolated objectively \n" << endl;
+        //Info<< "Rotations are not interpolated objectively \n" << endl;
         surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
         surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
@@ -881,21 +871,29 @@
     //    M_ += (Lambda_ & M_.oldTime());
     // }
 
-    Info<< __LINE__ << endl;
+    // Calculate Q, where we ignore the orientation check
+    {
+        explicitQ_.setOriented(true);
+        surfaceVectorField implicitQ(CQW_ & fvc::snGrad(DW_));
+        implicitQ.setOriented(false);
+        implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
+        implicitQ.setOriented(true);
+        Q_ = explicitQ_ + implicitQ;
 
-  //  Info << "explicitQ_ \n " << explicitQ_ << endl;
+        //Info<< "Q: \n" << Q_ << endl;
+    }
 
-    Q_ = explicitQ_ +
-        (CQW_ & fvc::snGrad(DW_)) +
-        (CQTheta_ & fvc::interpolate(DTheta_));
+    // Calculate M, where we ignore the orientation check
+    {
+        explicitM_.setOriented(true);
+        surfaceVectorField implicitM(CMTheta_ & fvc::snGrad(DTheta_));
+        implicitM.setOriented(false);
+        implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
+        implicitM.setOriented(true);
+        M_ = explicitM_ + implicitM;
 
-  //   Info << "Q: \n" << Q_ << endl;
-
-    M_ = explicitM_ +
-        (CMTheta_ & fvc::snGrad(DTheta_)) +
-        (CMTheta2_ & fvc::interpolate(DTheta_));
-
-    // Info << "M: \n" << M << endl;
+        //Info<< "M: \n" << M << endl;
+    }
 
     // surfaceVectorField rPrimeXf = //explicitMQ_;
     //     explicitMQ_ +
@@ -937,7 +935,6 @@
         // ThetaResidual =
         //     gMax(mag(DTheta_.internalField()))/denom;
     }
-    Info<< __LINE__ << endl;
 
     // Calculate DW residual
     {
@@ -970,11 +967,11 @@
     }
 
 
-	if(false)
-	{
-		//Info << "Iter: " << iOuterCorr() << endl;
-		Info<< "Displacement" << W_.boundaryField() << endl;
-	}
+        if(false)
+        {
+                //Info << "Iter: " << iOuterCorr() << endl;
+                Info<< "Displacement" << W_.boundaryField() << endl;
+        }
     // this currentResidual is not normalized, check with Seevani
     currentResidual = max(WResidual, ThetaResidual);
 
@@ -982,7 +979,6 @@
     {
         initialResidual = currentResidual;
     }
-    Info<< "end of file " << __LINE__ << endl;
 
     // if (plasticityStressResultantReturnPtr_.valid())
     // {

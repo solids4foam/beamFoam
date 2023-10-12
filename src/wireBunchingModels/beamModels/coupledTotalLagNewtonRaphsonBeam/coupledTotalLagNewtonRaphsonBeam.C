@@ -1178,11 +1178,18 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
 
     // Set Kirchhoff beam transformation tensor
-    if (kirchhoffBeam_)
-    {
-        // kirchhoffTransTensor_ = vector(1,0,0)*vector(1,0,0);
-        // Info << kirchhoffTransTensor_ << endl;
-    }
+    // if (kirchhoffBeam_)
+    // {
+    //     // kirchhoffTransTensor_ = vector(1,0,0)*vector(1,0,0);
+    //     // Info << kirchhoffTransTensor_ << endl;
+    // }
+
+
+    // Set fields as oriented
+    explicitQ_.setOriented(true);
+    explicitM_.setOriented(true);
+    Q_.setOriented(true);
+    M_.setOriented(true);
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
