@@ -1,0 +1,17 @@
+// For simulatneous loading use:
+(
+    ( 0  ( 0 0 0 ) )
+    ( 10 ( 0 0 628.832) )
+   
+)
+
+// For successive loading use:
+/*
+(
+    ( 0  ( 0 0 0 ) )
+    ( 5  ( 0 0 628.832 ) )
+    ( 10 ( 0 0 628.832) )
+   
+)
+*/
+
