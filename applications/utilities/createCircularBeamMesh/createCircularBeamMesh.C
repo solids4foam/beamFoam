@@ -51,10 +51,10 @@ int main(int argc, char *argv[])
     word regionName;
     fileName polyMeshDir;
 
-    if (args.optionFound("region"))
+    if (args.found("region"))
     {
         // constant/<region>/polyMesh/blockMeshDict
-        regionName  = args.option("region");
+        regionName  = args.get("region");
         polyMeshDir = regionName/polyMesh::meshSubDir;
 
         Info<< nl << "Generating mesh for region " << regionName << endl;
@@ -95,7 +95,9 @@ int main(int argc, char *argv[])
 
 
     // Points
-    Xfer<vectorField> points(vectorField(nPoints, vector::zero));
+    // Xfer<vectorField> points(vectorField(nPoints, vector::zero));
+
+    vectorField points(nPoints, vector::zero);
 
 
     scalar dTheta = -2*M_PI/nTheta;
@@ -117,13 +119,13 @@ int main(int argc, char *argv[])
             vector curPoint = circumferencePoints[j];
             curPoint.z() = i*dZ;
 
-            points()[pI++] = curPoint;
+            points[pI++] = curPoint;
         }
     }
 
 
     // Faces
-    Xfer<faceList> faces(faceList(nFaces, face()));
+    faceList faces(nFaces, face());
 
     //-Internal faces
 
@@ -138,7 +140,9 @@ int main(int argc, char *argv[])
 
         face curFace(curPointLabels);
         curFace = curFace.reverseFace();
-        faces()[fI++] = curFace;
+        //faces()[fI++] = curFace;
+	faces[fI++] = curFace;
+
         // faces()[fI++] = face(curPointLabels);
     }
 
@@ -153,7 +157,7 @@ int main(int argc, char *argv[])
     face curFace(curPointLabels);
     // curFace = curFace.reverseFace();
 
-    faces()[fI++] = curFace;
+    faces[fI++] = curFace;
 
     //- Outlet face
 
@@ -165,7 +169,7 @@ int main(int argc, char *argv[])
 
     curFace = face(curPointLabels);
     curFace = curFace.reverseFace();
-    faces()[fI++] = curFace;
+    faces[fI++] = curFace;
 
     // faces()[fI++] = face(curPointLabels);
 
@@ -184,7 +188,7 @@ int main(int argc, char *argv[])
 
             face curFace(curPointLabels);
             curFace = curFace.reverseFace();
-            faces()[fI++] = curFace;
+            faces[fI++] = curFace;
 
             // faces()[fI++] = face(curPointLabels);
         }
@@ -198,43 +202,44 @@ int main(int argc, char *argv[])
 
         face curFace(curPointLabels);
         curFace = curFace.reverseFace();
-        faces()[fI++] = curFace;
+        faces[fI++] = curFace;
 
         // faces()[fI++] = face(curPointLabels);
     }
 
 
     // Owners
-    Xfer<labelList> owners(labelList(nFaces, -1));
+    //Xfer<labelList> owners(labelList(nFaces, -1));
+	labelList owners(nFaces, -1);
 
     fI = 0;
     for (label i=1; i<=nInternalFaces; i++)
     {
-        owners()[fI++] = i-1;
+        owners[fI++] = i-1;
     }
 
-    owners()[fI++] = 0;
+    owners[fI++] = 0;
 
-    owners()[fI++] = nZ-1;
+    owners[fI++] = nZ-1;
 
     for (label i=0; i<nZ; i++)
     {
         for (label j=1; j<nTheta; j++)
         {
-            owners()[fI++] = i;
+            owners[fI++] = i;
         }
 
-        owners()[fI++] = i;
+        owners[fI++] = i;
     }
 
 
     // Neighbours
-    Xfer<labelList> neighbours(labelList(nInternalFaces, -1));
+    labelList neighbours(nInternalFaces, -1);
 
     fI = 0;
     for (label i=1; i<=nInternalFaces; i++)
     {
-        neighbours()[fI++] = i;
+        neighbours[fI++] = i;
     }
 
     // Create mesh
@@ -244,12 +249,14 @@ int main(int argc, char *argv[])
         (
             regionName,
             runTime.constant(),
-            runTime
+            runTime,
+	    IOobject::NO_READ,
+	    IOobject::AUTO_WRITE
         ),
-        points,
-        faces,
-        owners,
-        neighbours
+        std::move(points),
+        std::move(faces),
+        std::move(owners),
+        std::move(neighbours)
     );
 
     List<polyPatch*> patches(3);
@@ -292,7 +299,7 @@ int main(int argc, char *argv[])
 
     mesh.addPatches(patches);
 
-    mesh.removeZones();
+    mesh.removeFiles();
 
     List<pointZone*> pz(0);
     List<faceZone*> fz(0);
