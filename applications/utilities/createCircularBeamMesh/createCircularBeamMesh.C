@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
 
     mesh.addPatches(patches);
 
-    mesh.removeFiles();
+    //mesh.removeFiles();
 
     List<pointZone*> pz(0);
     List<faceZone*> fz(0);
