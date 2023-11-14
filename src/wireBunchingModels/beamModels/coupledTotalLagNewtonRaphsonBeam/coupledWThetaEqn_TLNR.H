@@ -519,6 +519,12 @@
         source[cellI](2,0) -= q()[cellI].z()*L()[cellI];
     }
 
+    forAll(source, cellI)
+     {
+         source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
+         source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
+         source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
+     }
     // Add point forces
     forAll(pointForces(), pfI)
     {

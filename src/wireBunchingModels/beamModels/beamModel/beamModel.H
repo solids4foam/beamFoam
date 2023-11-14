@@ -58,7 +58,7 @@ SourceFiles
 
 // #include "beamContactModel.H"
 #include "labelPair.H"
-
+#include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -142,6 +142,7 @@ class beamModel
 
         //- Density
         dimensionedScalar rho_;
+        autoPtr<uniformDimensionedVectorField> gPtr_;
 
         // //- Beam cross-section area
         // dimensionedScalar A_;
@@ -468,6 +469,18 @@ public:
             const dimensionedScalar& rho() const
             {
                 return rho_;
+            }
+
+            //- Return const reference to the gravitational acceleration
+            UniformDimensionedField<vector>& g()
+            {
+            if (gPtr_.empty())
+            {
+              FatalError
+                  << "g pointer for gravity not set" << abort(FatalError);
+            }
+
+          return gPtr_();
             }
 
             const dimensionedScalar& E() const

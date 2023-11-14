@@ -249,6 +249,7 @@ Foam::beamModel::beamModel
     //E_("E" , beamProperties()),
     G_(beamProperties().lookup("G")),
     rho_("rho", dimDensity, 0),
+    gPtr_(),
     // A_("A", dimArea, M_PI*sqr(R())),
     // I_("I", dimArea*dimArea, M_PI*pow(R(), 4)/4),
     // J_("J", dimArea*dimArea, M_PI*pow(R(), 4)/2),
@@ -340,6 +341,76 @@ Foam::beamModel::beamModel
     //     EI().value() = 1e2;
     // }
 
+  if (beamProperties().found("rho"))
+     {
+         rho_ = dimensionedScalar(beamProperties().lookup("rho"));
+     }
+
+     // Header for gravitational acceleration
+     IOobject gHeader
+     (
+         "g",
+         runTime.constant(),
+         mesh(),
+         IOobject::MUST_READ
+     );
+
+     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
+     {
+ 	gPtr_.set
+ 	(
+ 	    new uniformDimensionedVectorField
+ 	    (
+ 	        IOobject
+ 	        (
+ 		    "g",
+ 	            runTime.caseConstant(),
+ 	            this->mesh(),
+                     IOobject::MUST_READ,
+                     IOobject::NO_WRITE
+ 	        )
+             )
+ 	);
+
+ 	Info << "g is set for gravitational body force: "
+              << g()
+ 	     << endl;
+
+
+ 	if (!beamProperties().found("rho"))
+ 	{
+ 	    FatalError
+ 		<< "rho field not set in beamProperties for"
+ 		<< " calculating the gravity body force"
+ 		<< abort(FatalError);
+
+ 	}
+ 	else if (rho().value()==0.0)
+ 	{
+ 	    WarningIn("Constructor of beamModel.C")
+ 		<< "rho field in constant/beamProperties = "
+ 		<< "zero --> gravitational body force = 0"
+ 		<< nl << endl;
+         }
+     }
+     else
+     {
+ 	gPtr_.set
+ 	(
+ 	    new uniformDimensionedVectorField
+ 	    (
+ 	        IOobject
+ 	        (
+ 		    "g",
+ 	            runTime.caseConstant(),
+ 	            this->mesh(),
+                     IOobject::NO_READ,
+                     IOobject::NO_WRITE
+ 	        ),
+ 		dimensionedVector("g", dimVelocity/dimTime, vector::zero)
+             )
+ 	);
+     }
 
     // Read cross-sections of beams
     if (found("beams"))
@@ -749,10 +820,10 @@ Foam::beamModel::beamModel
     // }
 
     // Read density if present
-    if (beamProperties().found("rho"))
-    {
-        rho_ = dimensionedScalar(beamProperties().lookup("rho"));
-    }
+    //    if (beamProperties().found("rho"))
+    //    {
+    //        rho_ = dimensionedScalar(beamProperties().lookup("rho"));
+    //    }
 
     // Check if deltaT is time-varying
     if (beamProperties().found("deltaTseries"))
