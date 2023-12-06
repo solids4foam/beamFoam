@@ -142,6 +142,7 @@ class beamModel
 
         //- Density
         dimensionedScalar rho_;
+        dimensionedScalar rhof_;
         autoPtr<uniformDimensionedVectorField> gPtr_;
 
         // //- Beam cross-section area
@@ -185,6 +186,7 @@ class beamModel
 
         //- Use objective interpolation for rotation
         bool objectiveInterpolation_;
+        scalar kCI_;
 
         //- Conical pullys
         // mutable PtrList<conicalPulley> conicalPulleys_;
@@ -470,6 +472,10 @@ public:
             {
                 return rho_;
             }
+            const dimensionedScalar& rhoFluid() const
+             {
+                 return rhof_;
+             }
 
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
@@ -522,6 +528,27 @@ public:
             {
                 return E_*Izz(bI);
             }
+            // Additional member functions added fo mass and rotation
+ 	          // inertia tensors for dynamics calculation
+            inline dimensionedScalar ARho(label bI = 0) const
+              {
+                  return A(bI)*rho();
+              }
+
+            inline dimensionedScalar IyyRho(label bI = 0) const
+              {
+                  return rho()*Iyy(bI);
+              }
+
+ 	          inline dimensionedScalar IzzRho(label bI = 0) const
+              {
+                  return rho()*Izz(bI);
+              }
+
+ 	          inline dimensionedScalar JRho(label bI = 0) const
+              {
+                  return rho()*J(bI);
+              }
 
             //- Return segment length
             const volScalarField& L() const
@@ -762,6 +789,11 @@ public:
             {
                 return objectiveInterpolation_;
             }
+            //- Rotation inertia tensor scaling
+ 	          scalar kCI() const
+ 	          {
+ 		            return kCI_;
+ 	          }
 
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;

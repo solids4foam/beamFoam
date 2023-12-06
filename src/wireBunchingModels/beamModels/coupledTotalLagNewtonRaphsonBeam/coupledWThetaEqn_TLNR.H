@@ -72,6 +72,25 @@
     // const vectorField& dRdSI = dRdS_.internalField();
     // const tensorField& RMI = RM_.internalField();
     // const tensorField& refRMI = refRM_.internalField();
+    // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
+     // Newmark-beta integration scheme
+     if(!steadyState() && newmark_)
+     {
+ 	  if(iOuterCorr() == 0)
+ 	  {
+ 	    Accl_ = - (1/(runTime().deltaT()*betaN_))*U_.oldTime()
+ 		    - (0.5/betaN_ - 1)*Accl_.oldTime();
+
+ 	    U_ = U_.oldTime()
+ 		+ runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
+
+ 	   dotOmega_ = - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
+ 		    - (0.5/betaN_ - 1)*dotOmega_.oldTime();
+
+ 	    Omega_ = Omega_.oldTime()
+ 		+ runTime().deltaT()*((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
+ 	  }
+    }
 
     // Internal faces
     forAll(u, faceI)
@@ -595,89 +614,194 @@
         source[cellI](4,0) -= m()[cellI].y()*L()[cellI];
         source[cellI](5,0) -= m()[cellI].z()*L()[cellI];
     }
+      // Add body force due to gravity and buoyancy if fluid is present
+       // Note that for buoyant force calculation it is assumed
+       // that the entire beam is submerged in the fluid
+       forAll(source, cellI)
+       {
+           source[cellI](0,0) -=
+        (
+      rho().value() - rhoFluid().value()
+        )*L()[cellI]*A().value()*g().component(0).value();
+           source[cellI](1,0) -=
+        (
+      rho().value() - rhoFluid().value()
+        )*L()[cellI]*A().value()*g().component(1).value();
+           source[cellI](2,0) -=
+        (
+      rho().value() - rhoFluid().value()
+        )*L()[cellI]*A().value()*g().component(2).value();
+       }
 
-    // Add inertial forces
+      // Add inertial forces
     if (!steadyState())
     {
         // First order Euler scheme
 
         // Add inertial force
         {
-            volVectorField a(fvc::ddt(U_));
-            vectorField QRho = rho().value()*A().value()*L()*a;
+          // SB modified - (10/11/2023)
+ 	    if(newmark_)
+ 	    {
+ 		volVectorField a = Accl_;
+ 		vectorField QRho = ARho_*L()*a;
 
-            forAll(source, cellI)
-            {
-                source[cellI](0,0) += QRho[cellI].x();
-                source[cellI](1,0) += QRho[cellI].y();
-                source[cellI](2,0) += QRho[cellI].z();
-            }
+ 		forAll(source, cellI)
+ 		{
+ 		    source[cellI](0,0) += QRho[cellI].x();
+ 		    source[cellI](1,0) += QRho[cellI].y();
+ 		    source[cellI](2,0) += QRho[cellI].z();
+ 		}
 
-            // Add diagonal contribution (N-R method)
-            scalarField QRhoCoeff =
-                -L()*rho().value()*A().value()/sqr(runTime().deltaT().value());
+ 		// Add diagonal contribution (N-R method)
+ 		scalarField QRhoCoeff =
+                 -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
 
-            forAll(d, cellI)
-            {
-                d[cellI](0,0) += QRhoCoeff[cellI];
-                d[cellI](1,1) += QRhoCoeff[cellI];
-                d[cellI](2,2) += QRhoCoeff[cellI];
-            }
-        }
+ 		forAll(d, cellI)
+ 		{
+ 		    d[cellI](0,0) += QRhoCoeff[cellI];
+ 		    d[cellI](1,1) += QRhoCoeff[cellI];
+ 		    d[cellI](2,2) += QRhoCoeff[cellI];
+ 		}
+
+ 	    }
+ 	    else
+ 	    {
+ 		volVectorField a(fvc::ddt(U_));
+ 		vectorField QRho = rho().value()*A().value()*L()*a;
+
+ 		forAll(source, cellI)
+ 		{
+ 		    source[cellI](0,0) += QRho[cellI].x();
+ 		    source[cellI](1,0) += QRho[cellI].y();
+ 		    source[cellI](2,0) += QRho[cellI].z();
+ 		}
+
+ 		// Add diagonal contribution (N-R method)
+ 		scalarField QRhoCoeff =
+ 		    -L()*rho().value()*A().value()/sqr(runTime().deltaT().value());
+
+ 		forAll(d, cellI)
+ 		    {
+ 		    d[cellI](0,0) += QRhoCoeff[cellI];
+ 		    d[cellI](1,1) += QRhoCoeff[cellI];
+ 		    d[cellI](2,2) += QRhoCoeff[cellI];
+ 		    }
+      }
+    }
 
 
         // Add inertial torque
         {
-            volVectorField dotOmega(fvc::ddt(Omega_));
-            volVectorField MRho
-            (
-                L()*rho()
-               *(
-                    (RM_ & (CI_ & dotOmega))
-                  + (RM_ & (Omega_ ^ (CI_ & Omega_)))
-                )
-            );
+           if(newmark_)
+ 	    {
+ 		// Angular acceleration
+ 		volVectorField dotOmega = dotOmega_;
 
-            forAll(source, cellI)
-            {
-                source[cellI](3,0) += MRho[cellI].x();
-                source[cellI](4,0) += MRho[cellI].y();
-                source[cellI](5,0) += MRho[cellI].z();
-            }
+ 		volVectorField MRho
+      (
 
-            // Add diagonal contribution (N-R method)
-            volTensorField MRhoCoeff
-            (
-                L()*rho()
-               *(
-                    spinTensor(RM_ & (CI_ & Omega_))/runTime().deltaT()
+                 L()
+                *(
+                     (RM_ & (CIRho_ & dotOmega))
+                   + (RM_ & (Omega_ ^ (CIRho_ & Omega_)))
+                 )
+      );
+ 		forAll(source, cellI)
+ 		{
+ 		    source[cellI](3,0) += MRho[cellI].x();
+ 		    source[cellI](4,0) += MRho[cellI].y();
+ 		    source[cellI](5,0) += MRho[cellI].z();
+ 		}
 
-                  - (RM_ & (CI_ & RM_.T()))/sqr(runTime().deltaT())
+ 		// Add diagonal contribution (N-R method)- SB : Nov 2023
+ 		// Implicit contrbution without tangent space
+ 		volTensorField MRhoCoeff
+      (
+ 		     L()
+ 		     *(
+ 			spinTensor((RM_ & (Omega_ ^ (CIRho_ & Omega_))) + (RM_ & (CIRho_ & dotOmega)))
 
-                    - spinTensor(RM_ & (CI_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
+ 			+ (gammaN_/(betaN_*runTime().deltaT()))
+ 			  *(
+ 				(spinTensor(RM_ & (CIRho_ & Omega_)))
+ 			      - (RM_ & (spinTensor(Omega_) & (CIRho_ &  RM_.T())))
+ 			   )
 
-                  - spinTensor(RM_ & (spinTensor(Omega_) & (CI_ & Omega_)))
+ 			- (1/(betaN_*sqr(runTime().deltaT())))
+ 			  *(
+ 				RM_ & (CIRho_ & RM_.T())
+ 			   )
+ 		      )
+      );
+ 		forAll(d, cellI)
+ 		{
+ 		    d[cellI](3,3) += MRhoCoeff[cellI].xx();
+ 		    d[cellI](3,4) += MRhoCoeff[cellI].xy();
+ 		    d[cellI](3,5) += MRhoCoeff[cellI].xz();
 
-                    - spinTensor(RM_ & (CI_ & Omega_))/runTime().deltaT() // - sign
+ 		    d[cellI](4,3) += MRhoCoeff[cellI].yx();
+ 		    d[cellI](4,4) += MRhoCoeff[cellI].yy();
+ 		    d[cellI](4,5) += MRhoCoeff[cellI].yz();
 
-                  + (RM_ & (spinTensor(Omega_) & (CI_ & RM_.T())))/runTime().deltaT()
-               )
-            );
+ 		    d[cellI](5,3) += MRhoCoeff[cellI].zx();
+ 		    d[cellI](5,4) += MRhoCoeff[cellI].zy();
+ 		    d[cellI](5,5) += MRhoCoeff[cellI].zz();
+ 		}
+ 	    }
+ 	    else
+ 	    {
+ 		// Angular acceleration
+ 		volVectorField dotOmega(fvc::ddt(Omega_));
 
-            forAll(d, cellI)
-            {
-                d[cellI](3,3) += MRhoCoeff[cellI].xx();
-                d[cellI](3,4) += MRhoCoeff[cellI].xy();
-                d[cellI](3,5) += MRhoCoeff[cellI].xz();
+ 		volVectorField MRho
+      (
+                 L()
+                *(
+                     (RM_ & (CIRho_ & dotOmega))
+                   + (RM_ & (Omega_ ^ (CIRho_ & Omega_)))
+                 )
+      );
+ 		forAll(source, cellI)
+ 		{
+ 		    source[cellI](3,0) += MRho[cellI].x();
+ 		    source[cellI](4,0) += MRho[cellI].y();
+ 		    source[cellI](5,0) += MRho[cellI].z();
+ 		}
 
-                d[cellI](4,3) += MRhoCoeff[cellI].yx();
-                d[cellI](4,4) += MRhoCoeff[cellI].yy();
-                d[cellI](4,5) += MRhoCoeff[cellI].yz();
+ 		// Add diagonal contribution (N-R method)-ZT code
+ 		volTensorField MRhoCoeff
+      (
+ 		    L()
+ 		   *(
+ 			spinTensor(RM_ & (CIRho_ & Omega_))/runTime().deltaT()
 
-                d[cellI](5,3) += MRhoCoeff[cellI].zx();
-                d[cellI](5,4) += MRhoCoeff[cellI].zy();
-                d[cellI](5,5) += MRhoCoeff[cellI].zz();
-            }
+ 		      - (RM_ & (CIRho_ & RM_.T()))/sqr(runTime().deltaT())
+
+ 			- spinTensor(RM_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
+
+ 		      - spinTensor(RM_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
+
+ 			- spinTensor(RM_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
+
+ 		      + (RM_ & (spinTensor(Omega_) & (CIRho_ & RM_.T())))/runTime().deltaT()
+ 		    )
+      );
+ 		forAll(d, cellI)
+ 		{
+ 		    d[cellI](3,3) += MRhoCoeff[cellI].xx();
+ 		    d[cellI](3,4) += MRhoCoeff[cellI].xy();
+ 		    d[cellI](3,5) += MRhoCoeff[cellI].xz();
+
+ 		    d[cellI](4,3) += MRhoCoeff[cellI].yx();
+ 		    d[cellI](4,4) += MRhoCoeff[cellI].yy();
+ 		    d[cellI](4,5) += MRhoCoeff[cellI].yz();
+
+ 		    d[cellI](5,3) += MRhoCoeff[cellI].zx();
+ 		    d[cellI](5,4) += MRhoCoeff[cellI].zy();
+ 		    d[cellI](5,5) += MRhoCoeff[cellI].zz();
+ 		}
+ 	    }
         }
     }
 
@@ -773,8 +897,19 @@
     WIncrement_ = W_ - W_.oldTime();
 
     // Update mean line velocity field
-    U_ = fvc::ddt(W_);
+    //  SB added: (10/11/2023) Update mean line velocity field
+     if(newmark_)
+     {
+ 	        U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
 
+ 	// SB added: (19/04/2023) Update mean line acceleration field
+ 	        Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
+
+     }
+     else
+     {
+ 	      U_ = fvc::ddt(W_);
+     }
     // Retrieve lagrange multipliers
     //WThetaEqn.retriveLagrangeMultipliers();
 
@@ -844,9 +979,20 @@
         RM_ = (DLambda & RM_);
         // interpolateRotationMatrix(*this, Lambda_, RM_);
 
+        if(newmark_)
+ 	  {
+ 	    // Update angular velocity
+ 	    // without tangent space
+ 	    Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(RM_.T() &  DTheta_);
 
-        // Update angular velocity
-        Omega_ = axialVector(RM_.T() & fvc::ddt(RM_));
+ 	    // Update angular acceleration
+ 	    dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(RM_.T() &  DTheta_);
+ 	  }
+ 	  else // First order Euler scheme
+ 	  {
+ 	      Omega_ = axialVector(RM_.T() & fvc::ddt(RM_));
+
+ 	  }
     }
 
     // Update axial and shear strain vector
@@ -973,11 +1119,11 @@
     }
 
 
-        if(false)
-        {
-                //Info << "Iter: " << iOuterCorr() << endl;
-                Info<< "Displacement" << W_.boundaryField() << endl;
-        }
+   //     if(false)
+   //     {
+   //             //Info << "Iter: " << iOuterCorr() << endl;
+   //             Info<< "Displacement" << W_.boundaryField() << endl;
+   //     }
     // this currentResidual is not normalized, check with Seevani
     currentResidual = max(WResidual, ThetaResidual);
 

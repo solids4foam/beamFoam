@@ -249,6 +249,7 @@ Foam::beamModel::beamModel
     //E_("E" , beamProperties()),
     G_(beamProperties().lookup("G")),
     rho_("rho", dimDensity, 0),
+    rhof_("rhoFluid", dimDensity, 0),
     gPtr_(),
     // A_("A", dimArea, M_PI*sqr(R())),
     // I_("I", dimArea*dimArea, M_PI*pow(R(), 4)/4),
@@ -305,6 +306,7 @@ Foam::beamModel::beamModel
     (
         beamProperties_.lookupOrDefault<bool>("objectiveInterpolation", false)
     ),
+    kCI_(beamProperties_.lookupOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     //conicalPulleys_(),
     //toroidalPulleys_(),
@@ -390,6 +392,19 @@ Foam::beamModel::beamModel
  	    WarningIn("Constructor of beamModel.C")
  		<< "rho field in constant/beamProperties = "
  		<< "zero --> gravitational body force = 0"
+ 		<< nl << endl;
+         }
+  // To check whether density of fluid is specified to calculate
+ 	// buoyant body force
+ 	if (beamProperties().found("rhoFluid"))
+ 	{
+ 	    rhof_ = dimensionedScalar(beamProperties().lookup("rhoFluid"));
+ 	}
+ 	else
+ 	{
+ 	    WarningIn("Constructor of beamModel.C")
+ 		<< "density of fluid rhoFluid is not set in constant/beamProperties "
+ 		<< "--> buoyant body force = 0"
  		<< nl << endl;
          }
      }

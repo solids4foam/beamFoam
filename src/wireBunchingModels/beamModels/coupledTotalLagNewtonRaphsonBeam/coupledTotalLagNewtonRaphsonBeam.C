@@ -117,8 +117,23 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        fvc::ddt(W_)
-    ),
+        mesh(),
+         //   fvc::ddt(W_)
+ 	      dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
+      ),
+        Accl_
+        (
+ 	      IOobject
+ 	  (
+ 	    "Accl",
+ 	    runTime.timeName(),
+ 	    mesh(),
+ 	    IOobject::NO_READ,
+ 	    IOobject::AUTO_WRITE
+ 	  ),
+ 	  mesh(),
+ 	  dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
+        ),
     DW_
     (
         IOobject
@@ -167,7 +182,22 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        fvc::ddt(Theta_)
+        mesh(),
+      //   fvc::ddt(Theta_)
+ 	    dimensionedVector("0", Theta_.dimensions()/dimTime, vector::zero)
+      ),
+      dotOmega_
+      (
+         IOobject
+         (
+             "dotOmega",
+             runTime.timeName(),
+             mesh(),
+             IOobject::NO_READ,
+             IOobject::AUTO_WRITE
+         ),
+ 	        mesh(),
+         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
     ),
     DTheta_
     (
@@ -789,17 +819,39 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             tensor::zero
         )
     ),
-    CI_
-    (
-        "CI",
-        I().dimensions(),
-        tensor
-        (
-            J().value(),  0,           0,
-            0,            Iyy().value(), 0,
-            0,            0,           Izz().value()
-        )
-    ),
+    ARho_
+     (
+ 	  "ARho",
+ 	  A().dimensions()*rho().dimensions(),
+ 	  scalar(ARho().value())
+     ),
+     //   CI_
+     //   (
+         //   "CI",
+         //   I().dimensions(),
+         //   tensor
+         //   (
+             //   kCI_*J().value(),  0,           0,
+             //   0,            kCI_*Iyy().value(), 0,
+             //   0,            0,           kCI_*Izz().value()
+         //   )
+     //   ),
+      CIRho_
+      (
+         "CIRho",
+         I().dimensions()*rho().dimensions(),
+         tensor
+         (
+             kCI()*JRho().value(),  0,           0,
+             0,            kCI()*IyyRho().value(), 0,
+             0,            0,           kCI()*IzzRho().value()
+         )
+      ),
+     newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
+     //   tangentSpace_(beamProperties().lookupOrDefault<bool>("tangentSpace", false)),
+     betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
+     gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
+
     // Plasticity related fields
     // plasticity_(lookupOrDefault<bool>("plasticity", false)),
     // GammaP_
