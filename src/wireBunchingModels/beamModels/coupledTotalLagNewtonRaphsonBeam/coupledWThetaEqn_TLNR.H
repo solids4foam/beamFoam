@@ -633,6 +633,14 @@
         )*L()[cellI]*A().value()*g().component(2).value();
        }
 
+	   // ground contact - AT 
+	   /* const vector coord = mesh.C()[cellI] + W[cellI]; */
+	   /* forAll(source, cellI) */
+	   /* { */
+		   /* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
+	   /* } */
+
+
       // Add inertial forces
     if (!steadyState())
     {

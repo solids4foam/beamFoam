@@ -1,3 +1,0 @@
-setEndPointsDisplacement.C
-
-LIB = $(FOAM_USER_LIBBIN)/libsetEndPointsDisplacement

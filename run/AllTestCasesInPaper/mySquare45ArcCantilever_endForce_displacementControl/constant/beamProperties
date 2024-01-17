@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+nBeams 1;
+R R [0 1 0 0 0 0 0] 0.570732;//0.564189584; //0.570732; //0.5642; //0.570732; //unit square equivalent
+L L [0 1 0 0 0 0 0] 78.53981634; //78.54;
+nSegments 100;
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    E E [1 -1 -2 0 0 0 0] 1.0e7;
+    G G [1 -1 -2 0 0 0 0] 0.5e7; // nu=0
+
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 30;
+    convergenceTol 1e-10;
+
+    debug no;
+    updatedLagrangian no;
+
+    objectiveInterpolation true;
+}
+
+// ************************************************************************* //

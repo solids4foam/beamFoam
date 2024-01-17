@@ -1,4 +1,0 @@
-
-beamDisplacements.C
-
-LIB = $(FOAM_USER_LIBBIN)/libbeamDisplacements

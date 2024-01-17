@@ -85,7 +85,6 @@ void Foam::beamContactModel::initializeLineContact
 			break;
 		}
     }
-
     label nbSegI = curNearestPoint.first();
     scalar nbZeta = curNearestPoint.second();
 
