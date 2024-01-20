@@ -154,5 +154,6 @@ PlyParser_FoamFileParser_parsetab.py
 # ignore .tags in the main directory
 /.tags
 #ignore vscode introductory files
-.vscode
+.vscode/
 # end-of-file
+

@@ -637,11 +637,15 @@
 
 	    forAll(source, cellI)
         {
-            const vector coord = mesh().C()[cellI] + solutionW()[cellI];
+            label cellsInContact = 0 ;
+            const vector coord = refW_[cellI] + W_[cellI];
+            //Info << "coord.z() = " << coord.z() << endl;
             if (coord.z() < -0.5)
 				{
+                    cellsInContact+=1;
+                    Info<< "Number of cells in contact : " << cellsInContact << endl;
 					/* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
-					source[cellI](2,0) -= 8.736E06 * (coord.z() + 0.5);
+					source[cellI](2,0) += 8.736E01 * (coord.z() + 0.5);
 				}
 	    }
 
