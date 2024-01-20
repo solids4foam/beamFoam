@@ -407,7 +407,7 @@ public:
                 return R_[bI];
             }
 
-            //- Return beam cross-section radius
+            //- Return beam convection velocity
             const scalar& U(label bI = 0) const
             {
                 return U_[bI];
@@ -476,7 +476,6 @@ public:
              {
                  return rhof_;
              }
-
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {

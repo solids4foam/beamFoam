@@ -632,9 +632,10 @@
       rho().value() - rhoFluid().value()
         )*L()[cellI]*A().value()*g().component(2).value();
        }
-
 	   // ground contact contribution
-
+        label segNo(readInt(beamProperties().lookup("nSegments")));
+        scalar gDamping (readDouble(beamProperties().lookup("gDamping")));
+        scalar gStiffness (readDouble(beamProperties().lookup("gStiffness")));
 	    forAll(source, cellI)
         {
             label cellsInContact = 0 ;
@@ -644,8 +645,8 @@
 				{
                     cellsInContact+=1;
                     Info<< "Number of cells in contact : " << cellsInContact << endl;
-					/* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
-					source[cellI](2,0) += 8.736E01 * (coord.z() + 0.5) - 0.00531948*U_[cellI];
+                    /* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
+					source[cellI](2,0) +=  ( 2 * gStiffness * R() * L()[cellI] * segNo * (coord.z() + 0.5)) - ( 2 * gDamping * R() * segNo * L()[cellI] * U_[cellI].component(2));
 				}
 	    }
 

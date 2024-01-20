@@ -227,7 +227,6 @@ Foam::beamModel::beamModel
             )
         )
     ),
-    // csrAddressing_(meshPtr_()),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
     localToGlobalBeamPointsAddressing_(),
@@ -244,22 +243,11 @@ Foam::beamModel::beamModel
     crossSections_(),
     R_(),
     U_(),
-    // R_(this->lookup("R")),
     E_(beamProperties().lookup("E")),
-    //E_("E" , beamProperties()),
     G_(beamProperties().lookup("G")),
     rho_("rho", dimDensity, 0),
     rhof_("rhoFluid", dimDensity, 0),
     gPtr_(),
-    // A_("A", dimArea, M_PI*sqr(R())),
-    // I_("I", dimArea*dimArea, M_PI*pow(R(), 4)/4),
-    // J_("J", dimArea*dimArea, M_PI*pow(R(), 4)/2),
-    // EI_(E_*I()),
-    // GJ_(G_*J()),
-    // EA_(E_*A()),
-    // EA_(E_*A_),
-    // GA_(G_*A()),
-    // GA_(G_*A_),
     L_
     (
         IOobject
@@ -308,8 +296,6 @@ Foam::beamModel::beamModel
     ),
     kCI_(beamProperties_.lookupOrDefault<scalar>("scalingInertiaTensor", 1)),
 
-    //conicalPulleys_(),
-    //toroidalPulleys_(),
     startToRelaxTime_
     (
         lookupOrDefault<scalar>
@@ -329,20 +315,6 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
-    // // For Ibrahimbegovic's test case
-    // bool ibrahimovicCase
-    // (
-    //     beamProperties_.lookupOrDefault<bool>("ibrahimovicCase", false)
-    // );
-    // if (ibrahimovicCase)
-    // {
-    //     EA().value() = 1e4;
-    //     GA().value() = 1e4;
-
-    //     GJ().value() = 1e2;
-    //     EI().value() = 1e2;
-    // }
-
   if (beamProperties().found("rho"))
      {
          rho_ = dimensionedScalar(beamProperties().lookup("rho"));
