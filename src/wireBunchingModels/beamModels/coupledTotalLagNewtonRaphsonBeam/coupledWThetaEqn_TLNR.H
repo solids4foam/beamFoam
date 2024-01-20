@@ -645,7 +645,7 @@
                     cellsInContact+=1;
                     Info<< "Number of cells in contact : " << cellsInContact << endl;
 					/* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
-					source[cellI](2,0) += 8.736E01 * (coord.z() + 0.5);
+					source[cellI](2,0) += 8.736E01 * (coord.z() + 0.5) - 0.00531948*U_[cellI];
 				}
 	    }
 
