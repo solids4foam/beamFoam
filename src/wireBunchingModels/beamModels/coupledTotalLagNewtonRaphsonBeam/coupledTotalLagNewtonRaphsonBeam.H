@@ -282,24 +282,16 @@ class coupledTotalLagNewtonRaphsonBeam
 
  	      //- Newmark gamma coefficient
  	      scalar gammaN_;
-        //- Beam cross-section constant
-        //dimensionedTensor CI_;
+          //- Fields related to drag forces due to Morrison's equation
+          //- Boolean to activate drag forces
+          bool dragActive_;
 
-    // Fields related to plasticity
+          //- Normal drag coefficient
+          scalar Cdn_;
 
-        //- Is it elasto-plastic model active
-        // bool plasticity_;
+          //- Normal drag coefficient
+          scalar Cdt_;
 
-        //- Plastic strain vector
-        // surfaceVectorField GammaP_;
-
-        //- Plastic strain vector
-        // surfaceVectorField KP_;
-
-        //- Run-time selectable method to calculate DGammaP and DKP
-        //- eg radial return
-        // autoPtr<plasticityStressResultantReturn>
-        //     plasticityStressResultantReturnPtr_;
 
         //- Beam cell-centre curvatures
         volScalarField curvature_;

@@ -785,7 +785,70 @@
  		    source[cellI](4,0) += MRho[cellI].y();
  		    source[cellI](5,0) += MRho[cellI].z();
  		}
+        //- Drag forces due to Morison's Equation
+     if (dragActive_ && !steadyState())
+     {
+ 	// Create spline using current beam points and tangents data
+ 	HermiteSpline spline
+             (
+                 currentBeamPoints(),
+                 currentBeamTangents()
+             );
 
+ 	// Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
+ 	const vectorField& dRdScell = spline.midPointDerivatives();
+
+ 	// Tangential component of velocity vector
+ 	vectorField Ut
+ 	    (
+        (
+ 		(U_.internalField() & dRdScell)
+ 		*dRdScell
+        )
+        );
+
+ 	vectorField UtHat (Ut/(mag(Ut) + SMALL));
+
+ 	// Normal component of velocity vector
+ 	vectorField Un
+        (
+ 	    (
+ 		U_.internalField()
+ 	      - (
+ 		    (U_.internalField() & dRdScell)
+ 		    *dRdScell
+ 		)
+        )
+ 	    );
+
+ 	vectorField UnHat (Un/(mag(Un) + SMALL));
+
+ 	// Scalar values of drag force (normal and tangential)
+ 	scalarField Fdn ((rho().value()*Cdn_*R()*L()*(Un & Un)));
+ 	scalarField Fdt ((rho().value()*Cdt_*R()*L()*(Ut & Ut)));
+
+ 	// Explicit drag forces included in the source vector
+ 	forAll(source, cellI)
+ 	{
+ 	    source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
+ 	    source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
+ 	    source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
+
+ 	    source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
+ 	    source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
+ 	    source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
+ 	}
+
+     }
+     else
+     {
+ 	WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
+ 	<< "Drag forces are zero for steady state calculation"
+ 	<< nl << tab
+ 	<< "Set both 'steadyState' flag to false and 'dragActive' flag to true"
+ 	<< "\n to include drag force contributions"
+ 	<< nl << endl;
+     }
  		// Add diagonal contribution (N-R method)-ZT code
  		volTensorField MRhoCoeff
       (
@@ -822,17 +885,6 @@
         }
     }
 
-    // Apply beam-to-beam line contact
-    //applyPointContact(WThetaEqn);
-
-    // Apply beam-to-beam line contact
-    //applyLineContact(WThetaEqn);
-
-    // Apply conical pulley contact
-    // applyConicalPulleysContactNew(WThetaEqn);
-
-    // Apply conical pulley contact
-    // applyToroidalPulleysContact(WThetaEqn);
 
 
     //scalar nCV = mesh().cellZones().size();

@@ -852,6 +852,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
      betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
      gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
 
+     // Drag Force related fields
+     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
+     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+
     // Plasticity related fields
     // plasticity_(lookupOrDefault<bool>("plasticity", false)),
     // GammaP_
