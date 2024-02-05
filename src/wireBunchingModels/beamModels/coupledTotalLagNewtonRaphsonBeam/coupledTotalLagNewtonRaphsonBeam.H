@@ -292,6 +292,23 @@ class coupledTotalLagNewtonRaphsonBeam
           //- Normal drag coefficient
           scalar Cdt_;
 
+          // Ground contact related parameters.
+
+          //- Boolean to check wether ground contact is active or not
+          bool groundContactActive_;
+
+          //- number of beam segments, this also could be read from the top of the dict.
+          label segNo_;
+
+          //-  damping coefficient for spring/damper ground model.
+          scalar gDamping_;
+
+          //- damping coefficient for spring/damper ground model.
+          scalar gStiffness_;
+
+          //- ground coordinate.
+          scalar groundZ_;
+
 
         //- Beam cell-centre curvatures
         volScalarField curvature_;

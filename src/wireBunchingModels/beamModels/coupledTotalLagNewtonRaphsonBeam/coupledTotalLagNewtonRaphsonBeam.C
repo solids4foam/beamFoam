@@ -848,14 +848,21 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
          )
       ),
      newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
-     //   tangentSpace_(beamProperties().lookupOrDefault<bool>("tangentSpace", false)),
      betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
      gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
 
-     // Drag Force related fields
-     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
-     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
-     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+    // Drag Force related fields
+    dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
+    Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+
+
+    // ground contact fields
+    groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
+    segNo_(readInt(beamProperties().lookup("nSegments"))),
+    gDamping_ (readDouble(beamProperties().lookup("gDamping"))),
+    gStiffness_ (readDouble(beamProperties().lookup("gStiffness"))),
+    groundZ_ (readDouble(beamProperties().lookup("groundZ"))),
 
     // Plasticity related fields
     // plasticity_(lookupOrDefault<bool>("plasticity", false)),

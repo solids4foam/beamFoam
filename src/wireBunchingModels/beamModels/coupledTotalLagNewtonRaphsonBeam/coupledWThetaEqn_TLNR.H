@@ -632,23 +632,23 @@
       rho().value() - rhoFluid().value()
         )*L()[cellI]*A().value()*g().component(2).value();
        }
+
 	   // ground contact contribution
-        label segNo(readInt(beamProperties().lookup("nSegments")));
-        scalar gDamping (readDouble(beamProperties().lookup("gDamping")));
-        scalar gStiffness (readDouble(beamProperties().lookup("gStiffness")));
-	    forAll(source, cellI)
+        if (groundContactActive_)
         {
-            label cellsInContact = 0 ;
-            const vector coord = refW_[cellI] + W_[cellI];
-            //Info << "coord.z() = " << coord.z() << endl;
-            if (coord.z() < -0.5)
-				{
-                    cellsInContact+=1;
-                    Info<< "Number of cells in contact : " << cellsInContact << endl;
-                    /* source[cellI](2,0) -=penaltyStiffness*(coord.z() - groundZ_); */
-					source[cellI](2,0) +=  ( 2 * gStiffness * R() * L()[cellI] * segNo * (coord.z() + 0.5)) - ( 2 * gDamping * R() * segNo * L()[cellI] * U_[cellI].component(2));
-				}
-	    }
+            forAll(source, cellI)
+            {
+                label cellsInContact = 0 ;
+                const vector coord = refW_[cellI] + W_[cellI];
+                //Info << "coord.z() = " << coord.z() << endl;
+                if (coord.z() < groundZ_)
+                    {
+                        cellsInContact+=1;
+                        Info<< "Number of cells in contact : " << cellsInContact << endl;
+                        source[cellI](2,0) +=  ( 2 * gStiffness_ * R() * (coord.z() - groundZ_)) - ( 2 * gDamping_ * R() * max(U_[cellI].component(2),0));
+                    }
+            }
+        }
 
       // Add inertial forces
     if (!steadyState())
