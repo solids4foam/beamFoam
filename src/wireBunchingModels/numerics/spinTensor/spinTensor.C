@@ -31,7 +31,7 @@ Author
 
 #include "spinTensor.H"
 #include "emptyFvPatchFields.H"
-
+#include "surfaceFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -56,8 +56,8 @@ tmp<surfaceTensorField> spinTensor(const surfaceVectorField& axialVector)
         )
     );
 
-    surfaceTensorField& result = tresult();
-    tensorField& resultI = result.internalField();
+    surfaceTensorField& result = tresult.ref();
+    tensorField& resultI = result.primitiveFieldRef();
 
     const vectorField& axialVectorI = axialVector.internalField();
 
@@ -74,7 +74,7 @@ tmp<surfaceTensorField> spinTensor(const surfaceVectorField& axialVector)
          != emptyFvPatchField<vector>::typeName
         )
         {
-            tensorField& pResult = result.boundaryField()[patchI];
+            tensorField& pResult = result.boundaryFieldRef()[patchI];
             const vectorField& pAxialVector =
                 axialVector.boundaryField()[patchI];
 
@@ -109,8 +109,8 @@ tmp<volTensorField> spinTensor(const volVectorField& axialVector)
         )
     );
 
-    volTensorField& result = tresult();
-    tensorField& resultI = result.internalField();
+    volTensorField& result = tresult.ref();
+    tensorField& resultI = result.primitiveFieldRef();
 
     const vectorField& axialVectorI = axialVector.internalField();
 
@@ -127,7 +127,7 @@ tmp<volTensorField> spinTensor(const volVectorField& axialVector)
          != emptyFvPatchField<vector>::typeName
         )
         {
-            tensorField& pResult = result.boundaryField()[patchI];
+            tensorField& pResult = result.boundaryFieldRef()[patchI];
             const vectorField& pAxialVector =
                 axialVector.boundaryField()[patchI];
 
@@ -150,7 +150,7 @@ tmp<tensorField> spinTensor(const vectorField& axialVector)
         new tensorField(axialVector.size(), tensor::zero)
     );
 
-    tensorField& result = tresult();
+    tensorField& result = tresult.ref();
 
     forAll(result, cellI)
     {
@@ -159,17 +159,17 @@ tmp<tensorField> spinTensor(const vectorField& axialVector)
 
     return tresult;
 }
-  
+
 tensor spinTensor(const vector& v)
 {
     tensor result = tensor::zero;
 
     result.xy() = -v.z();
     result.xz() = v.y();
-    
+
     result.yx() = v.z();
     result.yz() = -v.x();
-    
+
     result.zx() = -v.y();
     result.zy() = v.x();
 
@@ -196,8 +196,8 @@ tmp<surfaceVectorField> axialVector(const surfaceTensorField& spinTensor)
         )
     );
 
-    surfaceVectorField& result = tresult();
-    vectorField& resultI = result.internalField();
+    surfaceVectorField& result = tresult.ref();
+    vectorField& resultI = result.primitiveFieldRef();
 
     const tensorField& spinTensorI = spinTensor.internalField();
 
@@ -214,7 +214,7 @@ tmp<surfaceVectorField> axialVector(const surfaceTensorField& spinTensor)
          != emptyFvPatchField<tensor>::typeName
         )
         {
-            vectorField& pResult = result.boundaryField()[patchI];
+            vectorField& pResult = result.boundaryFieldRef()[patchI];
             const tensorField& pSpinTensor =
                 spinTensor.boundaryField()[patchI];
 
@@ -249,8 +249,8 @@ tmp<volVectorField> axialVector(const volTensorField& spinTensor)
         )
     );
 
-    volVectorField& result = tresult();
-    vectorField& resultI = result.internalField();
+    volVectorField& result = tresult.ref();
+    vectorField& resultI = result.primitiveFieldRef();
 
     const tensorField& spinTensorI = spinTensor.internalField();
 
@@ -267,7 +267,7 @@ tmp<volVectorField> axialVector(const volTensorField& spinTensor)
          != emptyFvPatchField<tensor>::typeName
         )
         {
-            vectorField& pResult = result.boundaryField()[patchI];
+            vectorField& pResult = result.boundaryFieldRef()[patchI];
             const tensorField& pSpinTensor =
                 spinTensor.boundaryField()[patchI];
 
@@ -290,7 +290,7 @@ tmp<vectorField> axialVector(const tensorField& spinTensor)
         new vectorField(spinTensor.size(), vector::zero)
     );
 
-    vectorField& result = tresult();
+    vectorField& result = tresult.ref();
 
     forAll(result, cellI)
     {
@@ -299,7 +299,7 @@ tmp<vectorField> axialVector(const tensorField& spinTensor)
 
     return tresult;
 }
-  
+
 vector axialVector(const tensor& T)
 {
     vector result = vector::zero;

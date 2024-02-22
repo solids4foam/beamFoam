@@ -126,7 +126,7 @@ void extrapolatedBeamRotationFvPatchVectorField::rmap
 )
 {
     fixedValueFvPatchVectorField::rmap(ptf, addr);
-    
+
     // const extrapolatedBeamRotationFvPatchVectorField& dmptf =
     //     refCast<const extrapolatedBeamRotationFvPatchVectorField>(ptf);
 }
@@ -143,23 +143,23 @@ void extrapolatedBeamRotationFvPatchVectorField::updateCoeffs()
     if (timeIndex_ < this->db().time().timeIndex())
     {
         timeIndex_ = this->db().time().timeIndex();
-        
-        vectorField theta = this->patchInternalField();
+
+        vectorField theta (this->patchInternalField());
         forAll(theta, faceI)
         {
             // Prevent torsion
             theta[faceI].x() = 0;
-            
+
             // Prevent bending
             // theta[faceI].y() = 0;
             // theta[faceI].z() = 0;
         }
 
         // Info << theta << endl;
-        
+
         fvPatchField<vector>::operator==(theta);
     }
-    
+
     fixedValueFvPatchVectorField::updateCoeffs();
 }
 

@@ -18,7 +18,8 @@ wmake applications/solvers/beamFoam
 #wmake applications/solvers/beamsBunchingFoam
 
 
-# wmake applications/utilities/createCircularBeamMesh
+wmake applications/utilities/createCircularBeamMesh
+wmake applications/utilities/setInitialPositionBeam
 # wmake applications/utilities/createMultipleCircularBeamMesh
 # wmake applications/utilities/createMultipleBeamMesh
 # wmake applications/utilities/moveBeam

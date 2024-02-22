@@ -1,3 +1,0 @@
-BlockPetscSolver.C
-
-LIB = $(FOAM_USER_LIBBIN)/libblockPetscSolver

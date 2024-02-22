@@ -26,21 +26,21 @@
             const forceBeamDisplacementNRFvPatchVectorField& pW =
                 refCast<forceBeamDisplacementNRFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
+                    W_.boundaryFieldRef()[patchI]
                 );
             // Source contribution
             forAll (pW, faceI)
             {
-                source[fc[faceI]](0) -= pW.force()[faceI].x();
-                source[fc[faceI]](1) -= pW.force()[faceI].y();
-                source[fc[faceI]](2) -= pW.force()[faceI].z();
+                source[fc[faceI]](0,0) -= pW.force()[faceI].x();
+                source[fc[faceI]](1,0) -= pW.force()[faceI].y();
+                source[fc[faceI]](2,0) -= pW.force()[faceI].z();
 
                 // This part will be subtracted later
-                source[fc[faceI]](0) += pExplicitQ[faceI].x();
-                source[fc[faceI]](1) += pExplicitQ[faceI].y();
-                source[fc[faceI]](2) += pExplicitQ[faceI].z();
+                source[fc[faceI]](0,0) += pExplicitQ[faceI].x();
+                source[fc[faceI]](1,0) += pExplicitQ[faceI].y();
+                source[fc[faceI]](2,0) += pExplicitQ[faceI].z();
             }
-	    
+
 	    if
 	    (
 		isA<followerForceBeamDisplacementNRFvPatchVectorField>
@@ -50,9 +50,9 @@
 	    )
 	    {
 		vectorField followerForce = pW.force();
-		
-		tensorField ffDiag = -spinTensor(followerForce);
-		
+
+		tensorField ffDiag(-spinTensor(followerForce));
+
 
 		forAll (pW, faceI)
 		{
@@ -82,25 +82,29 @@
             const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
                 refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
+                    W_.boundaryFieldRef()[patchI]
                 );
 
-            scalarField pDelta =
-                1.0/mesh().deltaCoeffs().boundaryField()[patchI];
-
-            vectorField tang =
+            scalarField pDelta
+            (
+                1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            );
+            vectorField tang
+            (
             (
                 Lambda_.boundaryField()[patchI]
               & dR0Ds_.boundaryField()[patchI]
+            )
             );
 
-            const vectorField& pWPrev =
-                W_.prevIter().boundaryField()[patchI];
+            const vectorField& pWPrev
+            (
+                W_.prevIter().boundaryField()[patchI]
+            );
+            vectorField pWCorr(pW.refDisp() - pWPrev);
 
-            vectorField pWCorr = pW.refDisp() - pWPrev;
-
-            tensorField pCQWt = pCQW - ((tang*tang) & pCQW);
-            tensorField pCQThetat = pCQTheta - ((tang*tang) & pCQTheta);
+            tensorField pCQWt(pCQW - ((tang*tang) & pCQW));
+            tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
 
             // Diag contribution
             forAll (pW, faceI)
@@ -124,9 +128,9 @@
                 vector WContrib =
                     (pCQWt[faceI] & pWCorr[faceI])/pDelta[faceI];
 
-                source[fc[faceI]](0) -= WContrib.x();
-                source[fc[faceI]](1) -= WContrib.y();
-                source[fc[faceI]](2) -= WContrib.z();
+                source[fc[faceI]](0,0) -= WContrib.x();
+                source[fc[faceI]](1,0) -= WContrib.y();
+                source[fc[faceI]](2,0) -= WContrib.z();
             }
 
             if
@@ -137,13 +141,14 @@
                 )
             )
             {
-                const momentBeamRotationNRFvPatchVectorField& pTheta =
+                const momentBeamRotationNRFvPatchVectorField& pTheta
+                (
                     refCast<momentBeamRotationNRFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
-                    );
-
-                tensorField invCM = inv(pCMTheta/pDelta + pCMTheta2);
+                        Theta_.boundaryFieldRef()[patchI]
+                    )
+                );
+                tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
                 // Diag contribution
                 forAll (pTheta, faceI)
@@ -183,9 +188,9 @@
                             )
                         );
 
-                    source[fc[faceI]](0) -= thetaContrib.x();
-                    source[fc[faceI]](1) -= thetaContrib.y();
-                    source[fc[faceI]](2) -= thetaContrib.z();
+                    source[fc[faceI]](0,0) -= thetaContrib.x();
+                    source[fc[faceI]](1,0) -= thetaContrib.y();
+                    source[fc[faceI]](2,0) -= thetaContrib.z();
                 }
             }
             else if
@@ -196,53 +201,57 @@
                 )
             )
             {
-                const fixedValueFvPatchVectorField& pTheta =
+                const fixedValueFvPatchVectorField& pTheta
+                (
                     refCast<fixedValueFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
-                    );
+                        Theta_.boundaryFieldRef()[patchI]
+                    )
+                );
 
                 const vectorField& pThetaPrev =
                     Theta_.prevIter().boundaryField()[patchI];
 
-                vectorField& pThetaCorr = 
-                    DTheta_.boundaryField()[patchI];
-
+                vectorField& pThetaCorr
+                (
+                    DTheta_.boundaryFieldRef()[patchI]
+                );
                 // pThetaCorrSta = (pLambda & pThetaCorrStar);
                 // pThetaCorrStar = (pTheta - pThetaPrev);
-                
+
                 pThetaCorr = (pLambda & (pTheta - pThetaPrev));
 
                 // Info << "(ax) pThetaCorr = " << pThetaCorr << endl;
-                
+
                 // Source contribution
                 forAll (pTheta, faceI)
                 {
-                    vector thetaContrib =
-                        (pCQThetat[faceI] & pThetaCorr[faceI]);
-
-                    source[fc[faceI]](0) -= thetaContrib.x();
-                    source[fc[faceI]](1) -= thetaContrib.y();
-                    source[fc[faceI]](2) -= thetaContrib.z();
+                    vector thetaContrib
+                    (
+                        (pCQThetat[faceI] & pThetaCorr[faceI])
+                    );
+                    source[fc[faceI]](0,0) -= thetaContrib.x();
+                    source[fc[faceI]](1,0) -= thetaContrib.y();
+                    source[fc[faceI]](2,0) -= thetaContrib.z();
                 }
             }
 
             // Add axial component of force
-            vectorField pQa = tang*pW.axialForce();
+            vectorField pQa(tang*pW.axialForce());
             forAll (pQa, faceI)
             {
-                source[fc[faceI]](0) -= pQa[faceI].x();
-                source[fc[faceI]](1) -= pQa[faceI].y();
-                source[fc[faceI]](2) -= pQa[faceI].z();
+                source[fc[faceI]](0,0) -= pQa[faceI].x();
+                source[fc[faceI]](1,0) -= pQa[faceI].y();
+                source[fc[faceI]](2,0) -= pQa[faceI].z();
             }
-            
+
             // Subtract explicit force contribution
-            vectorField pExplicitQt = ((tang*tang) & pExplicitQ);
+            vectorField pExplicitQt(((tang*tang) & pExplicitQ));
             forAll (pExplicitQ, faceI)
             {
-                source[fc[faceI]](0) += pExplicitQt[faceI].x();
-                source[fc[faceI]](1) += pExplicitQt[faceI].y();
-                source[fc[faceI]](2) += pExplicitQt[faceI].z();
+                source[fc[faceI]](0,0) += pExplicitQt[faceI].x();
+                source[fc[faceI]](1,0) += pExplicitQt[faceI].y();
+                source[fc[faceI]](2,0) += pExplicitQt[faceI].z();
             }
         }
         else if
@@ -253,22 +262,26 @@
             )
         )
         {
-            const fixedValueFvPatchVectorField& pW =
+            const fixedValueFvPatchVectorField& pW
+            (
                 refCast<fixedValueFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
-                );
+                    W_.boundaryFieldRef()[patchI]
+                )
+            );
 
-            const vectorField& pWPrev =
-                W_.prevIter().boundaryField()[patchI];
+            const vectorField& pWPrev
+            (
+                W_.prevIter().boundaryField()[patchI]
+            );
+            vectorField& pWCorr(DW_.boundaryFieldRef()[patchI]);
 
-            vectorField& pWCorr = DW_.boundaryField()[patchI];
-            
             pWCorr = pW - pWPrev;
-            
-            scalarField pDelta =
-                1.0/mesh().deltaCoeffs().boundaryField()[patchI];
 
+            scalarField pDelta
+            (
+                1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            );
             // Diag contribution
             forAll (pW, faceI)
             {
@@ -298,9 +311,9 @@
                 )
                /pDelta[faceI];
 
-                source[fc[faceI]](0) -= WContrib.x();
-                source[fc[faceI]](1) -= WContrib.y();
-                source[fc[faceI]](2) -= WContrib.z();
+                source[fc[faceI]](0,0) -= WContrib.x();
+                source[fc[faceI]](1,0) -= WContrib.y();
+                source[fc[faceI]](2,0) -= WContrib.z();
             }
 
             if
@@ -314,11 +327,11 @@
                 const momentBeamRotationNRFvPatchVectorField& pTheta =
                     refCast<momentBeamRotationNRFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
-                tensorField invCM = inv(pCMTheta/pDelta + pCMTheta2);
-                
+                tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+
                 // Diag contribution
                 forAll (pTheta, faceI)
                 {
@@ -357,9 +370,9 @@
                             )
                         );
 
-                    source[fc[faceI]](0) -= thetaContrib.x();
-                    source[fc[faceI]](1) -= thetaContrib.y();
-                    source[fc[faceI]](2) -= thetaContrib.z();
+                    source[fc[faceI]](0,0) -= thetaContrib.x();
+                    source[fc[faceI]](1,0) -= thetaContrib.y();
+                    source[fc[faceI]](2,0) -= thetaContrib.z();
                 }
             }
             else if
@@ -371,42 +384,42 @@
             )
             {
                 // Info << Theta_.boundaryField()[patchI].type() << endl;
-                
+
                 const fixedValueFvPatchVectorField& pTheta =
                     refCast<fixedValueFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
                 const vectorField& pThetaPrev =
                     Theta_.prevIter().boundaryField()[patchI];
 
-                vectorField& pThetaCorr = 
-                    DTheta_.boundaryField()[patchI];
+                vectorField& pThetaCorr =
+                    DTheta_.boundaryFieldRef()[patchI];
 
                 // pThetaCorrStar = (pTheta - pThetaPrev);
                 pThetaCorr = (pLambda & (pTheta - pThetaPrev));
 
                 // Info << "pThetaCorr = " << pThetaCorr << endl;
-                
+
                 // Source contribution
                 forAll (pTheta, faceI)
                 {
-                    vector thetaContrib = 
+                    vector thetaContrib =
                     (
                         pCQTheta[faceI]
                       & pThetaCorr[faceI]
                     )
                   + (
                         pCQDTheta[faceI]
-                      & pThetaCorr[faceI]                      
+                      & pThetaCorr[faceI]
                     )
                    /pDelta[faceI];
                     // (pCQTheta[faceI] & pTheta[faceI]);
 
-                    source[fc[faceI]](0) -= thetaContrib.x();
-                    source[fc[faceI]](1) -= thetaContrib.y();
-                    source[fc[faceI]](2) -= thetaContrib.z();
+                    source[fc[faceI]](0,0) -= thetaContrib.x();
+                    source[fc[faceI]](1,0) -= thetaContrib.y();
+                    source[fc[faceI]](2,0) -= thetaContrib.z();
                 }
 
                 // Diag contribution
@@ -430,14 +443,14 @@
         // Add explicit force conribution
         forAll (pExplicitQ, faceI)
         {
-            source[fc[faceI]](0) -= pExplicitQ[faceI].x();
-            source[fc[faceI]](1) -= pExplicitQ[faceI].y();
-            source[fc[faceI]](2) -= pExplicitQ[faceI].z();
+            source[fc[faceI]](0,0) -= pExplicitQ[faceI].x();
+            source[fc[faceI]](1,0) -= pExplicitQ[faceI].y();
+            source[fc[faceI]](2,0) -= pExplicitQ[faceI].z();
         }
 
 
         //////////// Theta equation
-        
+
         if
         (
             isA<momentBeamRotationNRFvPatchVectorField>
@@ -449,7 +462,7 @@
             const momentBeamRotationNRFvPatchVectorField& pTheta =
                 refCast<momentBeamRotationNRFvPatchVectorField>
                 (
-                    Theta_.boundaryField()[patchI]
+                    Theta_.boundaryFieldRef()[patchI]
                 );
 
             // scalarField pDelta =
@@ -480,12 +493,12 @@
             // }
 
             // Source contribution
-            vectorField dM = (pTheta.moment() - pExplicitM);
+            vectorField dM((pTheta.moment() - pExplicitM));
             forAll (pTheta, faceI)
             {
-                source[fc[faceI]](3) -= dM[faceI].x();
-                source[fc[faceI]](4) -= dM[faceI].y();
-                source[fc[faceI]](5) -= dM[faceI].z();    
+                source[fc[faceI]](3,0) -= dM[faceI].x();
+                source[fc[faceI]](4,0) -= dM[faceI].y();
+                source[fc[faceI]](5,0) -= dM[faceI].z();
             }
         }
         else if
@@ -499,23 +512,25 @@
             const fixedValueFvPatchVectorField& pTheta =
                 refCast<fixedValueFvPatchVectorField>
                 (
-                    Theta_.boundaryField()[patchI]
+                    Theta_.boundaryFieldRef()[patchI]
                 );
 
             const vectorField& pThetaPrev =
                 Theta_.prevIter().boundaryField()[patchI];
 
-            vectorField& pThetaCorr =
-                DTheta_.boundaryField()[patchI];
-
+            vectorField& pThetaCorr
+            (
+                DTheta_.boundaryFieldRef()[patchI]
+            );
             // pThetaCorrStar = (pTheta - pThetaPrev);
             pThetaCorr = (pLambda & (pTheta - pThetaPrev));
 
             // Info << patchI << ", " << pThetaCorr << endl;
-            
-            scalarField pDelta =
-                1.0/mesh().deltaCoeffs().boundaryField()[patchI];
 
+            scalarField pDelta
+            (
+                1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            );
             // Diag contribution from laplacian term
             forAll (pTheta, faceI)
             {
@@ -536,7 +551,7 @@
             forAll (pTheta, faceI)
             {
                 // Source contribution from laplacian term
-                source[fc[faceI]](3) -=
+                source[fc[faceI]](3,0) -=
                     (
                         pCMTheta[faceI].xx()*pThetaCorr[faceI].x()
                       + pCMTheta[faceI].xy()*pThetaCorr[faceI].y()
@@ -544,7 +559,7 @@
                     )
                    /pDelta[faceI];
 
-                source[fc[faceI]](4) -=
+                source[fc[faceI]](4,0) -=
                     (
                         pCMTheta[faceI].yx()*pThetaCorr[faceI].x()
                       + pCMTheta[faceI].yy()*pThetaCorr[faceI].y()
@@ -552,7 +567,7 @@
                     )
                    /pDelta[faceI];
 
-                source[fc[faceI]](5) -=
+                source[fc[faceI]](5,0) -=
                     (
                         pCMTheta[faceI].zx()*pThetaCorr[faceI].x()
                       + pCMTheta[faceI].zy()*pThetaCorr[faceI].y()
@@ -561,21 +576,21 @@
                    /pDelta[faceI];
 
                 // Theta part
-                source[fc[faceI]](3) -=
+                source[fc[faceI]](3,0) -=
                     (
                         pCMTheta2[faceI].xx()*pThetaCorr[faceI].x()
                       + pCMTheta2[faceI].xy()*pThetaCorr[faceI].y()
                       + pCMTheta2[faceI].xz()*pThetaCorr[faceI].z()
                     );
 
-                source[fc[faceI]](4) -=
+                source[fc[faceI]](4,0) -=
                     (
                         pCMTheta2[faceI].yx()*pThetaCorr[faceI].x()
                       + pCMTheta2[faceI].yy()*pThetaCorr[faceI].y()
                       + pCMTheta2[faceI].yz()*pThetaCorr[faceI].z()
                     );
 
-                source[fc[faceI]](5) -=
+                source[fc[faceI]](5,0) -=
                     (
                         pCMTheta2[faceI].zx()*pThetaCorr[faceI].x()
                       + pCMTheta2[faceI].zy()*pThetaCorr[faceI].y()
@@ -587,17 +602,18 @@
         // Explicit moment
         forAll (pExplicitM, faceI)
         {
-            source[fc[faceI]](3) -= pExplicitM[faceI].x();
-            source[fc[faceI]](4) -= pExplicitM[faceI].y();
-            source[fc[faceI]](5) -= pExplicitM[faceI].z();
-        }        
+            source[fc[faceI]](3,0) -= pExplicitM[faceI].x();
+            source[fc[faceI]](4,0) -= pExplicitM[faceI].y();
+            source[fc[faceI]](5,0) -= pExplicitM[faceI].z();
+        }
 
 
         // dr x Q term
 
-        scalarField pDelta =
-            1.0/mesh().deltaCoeffs().boundaryField()[patchI];
-
+        scalarField pDelta
+        (
+            1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+        );
         if
         (
             isA<forceBeamDisplacementNRFvPatchVectorField>
@@ -609,10 +625,10 @@
             const forceBeamDisplacementNRFvPatchVectorField& pW =
                 refCast<forceBeamDisplacementNRFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
+                    W_.boundaryFieldRef()[patchI]
                 );
 
-            tensorField invCQW = inv(pCQW);
+            tensorField invCQW(inv(pCQW));
             // vectorField dwds0 = (invCQW & (pW.force() - pExplicitQ));
 
             vectorField pDRdS = dRdS.boundaryField()[patchI];
@@ -631,9 +647,9 @@
                     )
                    *pDelta[faceI];
 
-                    source[fc[faceI]](3) -= curSource.x();
-                    source[fc[faceI]](4) -= curSource.y();
-                    source[fc[faceI]](5) -= curSource.z();
+                    source[fc[faceI]](3,0) -= curSource.x();
+                    source[fc[faceI]](4,0) -= curSource.y();
+                    source[fc[faceI]](5,0) -= curSource.z();
                 }
             }
 
@@ -648,41 +664,48 @@
                 const momentBeamRotationNRFvPatchVectorField& pTheta =
                     refCast<momentBeamRotationNRFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
                 if (false)
                 {
-                    tensorField A = pCQW;
+                    tensorField A(pCQW);
 
-                    tensorField B = pCMTheta;
+                    tensorField B(pCMTheta);
 
-                    tensorField C =
+                    tensorField C
+                    (
                         B/pDelta
-                      - spinTensor(pExplicitM);
+                      - spinTensor(pExplicitM)
+                    );
 
-                    tensorField D =
+                    tensorField D
+                    (
                         (inv(A) & spinTensor(pExplicitQ))
-                      - spinTensor(pDRdS);
+                      - spinTensor(pDRdS)
+                    );
 
-                    vectorField src =
+                    vectorField src
+                    (
                         (D & (inv(C) & (pTheta.moment() - pExplicitM)))
-                      - (inv(A) & (pW.force() - pExplicitQ));
+                      - (inv(A) & (pW.force() - pExplicitQ))
+                    );
                     src = -(spinTensor(pW.force()) & src)*pDelta;
+
                     // src = -(spinTensor(pExplicitQ) & src)*pDelta;
 
-                    tensorField diag = (D & (inv(C) & B))/pDelta;
+                    tensorField diag((D & (inv(C) & B))/pDelta);
                     diag = -(spinTensor(pW.force()) & diag)*pDelta;
                     // diag = -(spinTensor(pExplicitQ) & diag)*pDelta;
-                    
+
                     // Source contribution
                     forAll (pTheta, faceI)
                     {
-                        source[fc[faceI]](3) -= src[faceI].x();
-                        source[fc[faceI]](4) -= src[faceI].y();
-                        source[fc[faceI]](5) -= src[faceI].z();
+                        source[fc[faceI]](3,0) -= src[faceI].x();
+                        source[fc[faceI]](4,0) -= src[faceI].y();
+                        source[fc[faceI]](5,0) -= src[faceI].z();
                     }
-                    
+
                     // Diag contribution
                     forAll (diag, faceI)
                     {
@@ -702,19 +725,20 @@
 
                 if (true)
                 {
-                    scalarField pDelta =
-                        1.0/mesh().deltaCoeffs().boundaryField()[patchI];
+                    scalarField pDelta
+                    (
+                        1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+                    );
+                    tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    tensorField invCM = inv(pCMTheta/pDelta + pCMTheta2);
+                    vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                    tensorField B((invCM & (pCMTheta/pDelta)));
 
-                    vectorField A = (invCM & (pTheta.moment() - pExplicitM));
-                    tensorField B = (invCM & (pCMTheta/pDelta));
+                    vectorField src((pCMQTheta & A)
+                        - (pCMQW & ((invCQW & pCQTheta) & A)));
 
-                    vectorField src = (pCMQTheta & A)
-                        - (pCMQW & ((invCQW & pCQTheta) & A));
-
-                    tensorField diag = (pCMQTheta & B)
-                        - (pCMQW & ((invCQW & pCQTheta) & B));
+                    tensorField diag((pCMQTheta & B)
+                        - (pCMQW & ((invCQW & pCQTheta) & B)));
 
                     // Diag contribution
                     forAll (pTheta, faceI)
@@ -735,13 +759,13 @@
                     // Source contribution
                     forAll (pTheta, faceI)
                     {
-                        source[fc[faceI]](3) -= src[faceI].x();
-                        source[fc[faceI]](4) -= src[faceI].y();
-                        source[fc[faceI]](5) -= src[faceI].z();
+                        source[fc[faceI]](3,0) -= src[faceI].x();
+                        source[fc[faceI]](4,0) -= src[faceI].y();
+                        source[fc[faceI]](5,0) -= src[faceI].z();
                     }
                 }
             }
-	    
+
 	    if
 	    (
 		isA<followerForceBeamDisplacementNRFvPatchVectorField>
@@ -750,23 +774,26 @@
 		)
 	    )
 	    {
-		scalarField pDelta =
-                        1.0/mesh().deltaCoeffs().boundaryField()[patchI];
-			
+		scalarField pDelta
+        (
+                1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+        );
 		vectorField pDRdS = dRdS.boundaryField()[patchI];
-			
+
 		vectorField followerForce = pW.force();
-		
+
 		//tensorField ffdRcrossQDiag(pW.size(),tensor::zero);
-		
-	    		
-		tensorField ffdRcrossQDiag =
+
+
+		tensorField ffdRcrossQDiag
+        (
 				-pDelta*
 				(
 				    spinTensor(pDRdS)
 				    & spinTensor(followerForce)
-				);
-		
+				)
+        );
+
 		// Diag contribution
 		forAll (pW, faceI)
 		{
@@ -784,7 +811,7 @@
 
 		}
 	    }
-	    
+
             else if
             (
                 isA<fixedValueFvPatchVectorField>
@@ -796,19 +823,21 @@
                 const fixedValueFvPatchVectorField& pTheta =
                     refCast<fixedValueFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
-                const vectorField& pThetaPrev =
-                    Theta_.prevIter().boundaryField()[patchI];
-
-                vectorField& pThetaCorr =
-                    DTheta_.boundaryField()[patchI];
-
+                const vectorField& pThetaPrev
+                (
+                    Theta_.prevIter().boundaryField()[patchI]
+                );
+                vectorField& pThetaCorr
+                (
+                    DTheta_.boundaryFieldRef()[patchI]
+                );
                 // pThetaCorrStar = (pTheta - pThetaPrev);
                 pThetaCorr = (pLambda & (pTheta - pThetaPrev));
 
-                vectorField dwds1 = -((invCQW & pCQTheta) & pThetaCorr);
+                vectorField dwds1(-((invCQW & pCQTheta) & pThetaCorr));
 
                 // Source contribution
                 forAll (pTheta, faceI)
@@ -817,9 +846,9 @@
                         (pCMQW[faceI] & dwds1[faceI])
                       + (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
-                    source[fc[faceI]](3) -= curSource.x();
-                    source[fc[faceI]](4) -= curSource.y();
-                    source[fc[faceI]](5) -= curSource.z();
+                    source[fc[faceI]](3,0) -= curSource.x();
+                    source[fc[faceI]](4,0) -= curSource.y();
+                    source[fc[faceI]](5,0) -= curSource.z();
                 }
             }
         }
@@ -834,30 +863,35 @@
             const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
                 refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
+                    W_.boundaryFieldRef()[patchI]
                 );
 
-            scalarField pDelta =
-                1.0/mesh().deltaCoeffs().boundaryField()[patchI];
-
-            vectorField tang =
+            scalarField pDelta
+            (
+                1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            );
+            vectorField tang
+            (
             (
                 Lambda_.boundaryField()[patchI]
               & dR0Ds_.boundaryField()[patchI]
+            )
             );
 
             // tensorField pCQWt = pCQW - ((tang*tang) & pCQW);
-            tensorField pCQThetat = pCQTheta - ((tang*tang) & pCQTheta);
+            tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
 
-            tensorField invCQW = inv(pCQW);
+            tensorField invCQW(inv(pCQW));
 
-            vectorField dwds0 =
+            vectorField dwds0
+            (
             (
                 invCQW
               & (
                     pW.axialForce()*tang
                   - ((tang*tang) & pExplicitQ)
                 )
+            )
             );
 
             // Source contribution
@@ -865,9 +899,9 @@
             {
                 vector curSource = (pCMQW[faceI] & dwds0[faceI]);
 
-                source[fc[faceI]](3) -= curSource.x();
-                source[fc[faceI]](4) -= curSource.y();
-                source[fc[faceI]](5) -= curSource.z();
+                source[fc[faceI]](3,0) -= curSource.x();
+                source[fc[faceI]](4,0) -= curSource.y();
+                source[fc[faceI]](5,0) -= curSource.z();
             }
 
             if
@@ -881,21 +915,28 @@
                 const momentBeamRotationNRFvPatchVectorField& pTheta =
                     refCast<momentBeamRotationNRFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
-                scalarField pDelta =
-                    1.0/mesh().deltaCoeffs().boundaryField()[patchI];
+                scalarField pDelta
+                (
+                    1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+                );
+                tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                tensorField invCM = inv(pCMTheta/pDelta + pCMTheta2);
+                vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                tensorField B((invCM & (pCMTheta/pDelta)));
 
-                vectorField A = (invCM & (pTheta.moment() - pExplicitM));
-                tensorField B = (invCM & (pCMTheta/pDelta));
-
-                vectorField src = (pCMQTheta & A)
-                  - (pCMQW & ((invCQW & pCQThetat) & A));
-                tensorField diag = (pCMQTheta & B)
-                  - (pCMQW & ((invCQW & pCQThetat) & B));
+                vectorField src
+                (
+                 (pCMQTheta & A)
+                 - (pCMQW & ((invCQW & pCQThetat) & A))
+                );
+                tensorField diag
+                (
+                    (pCMQTheta & B)
+                  - (pCMQW & ((invCQW & pCQThetat) & B))
+                );
 
                 // Diag contribution
                 forAll (pTheta, faceI)
@@ -916,9 +957,9 @@
                 // Source contribution
                 forAll (pTheta, faceI)
                 {
-                    source[fc[faceI]](3) -= src[faceI].x();
-                    source[fc[faceI]](4) -= src[faceI].y();
-                    source[fc[faceI]](5) -= src[faceI].z();
+                    source[fc[faceI]](3,0) -= src[faceI].x();
+                    source[fc[faceI]](4,0) -= src[faceI].y();
+                    source[fc[faceI]](5,0) -= src[faceI].z();
                 }
             }
             else if
@@ -932,19 +973,20 @@
                 const fixedValueFvPatchVectorField& pTheta =
                     refCast<fixedValueFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
                 const vectorField& pThetaPrev =
                     Theta_.prevIter().boundaryField()[patchI];
 
-                vectorField& pThetaCorrStar =
-                    DTheta_.boundaryField()[patchI];
-
+                vectorField& pThetaCorrStar
+                (
+                    DTheta_.boundaryFieldRef()[patchI]
+                );
                 pThetaCorrStar = (pTheta - pThetaPrev);
-                vectorField pThetaCorr = (pLambda & pThetaCorrStar);
+                vectorField pThetaCorr((pLambda & pThetaCorrStar));
 
-                vectorField dwds1 = -((invCQW & pCQThetat) & pThetaCorr);
+                vectorField dwds1(-((invCQW & pCQThetat) & pThetaCorr));
 
                 // Source contribution
                 forAll (pTheta, faceI)
@@ -953,9 +995,9 @@
                         (pCMQW[faceI] & dwds1[faceI])
                       + (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
-                    source[fc[faceI]](3) -= curSource.x();
-                    source[fc[faceI]](4) -= curSource.y();
-                    source[fc[faceI]](5) -= curSource.z();
+                    source[fc[faceI]](3,0) -= curSource.x();
+                    source[fc[faceI]](4,0) -= curSource.y();
+                    source[fc[faceI]](5,0) -= curSource.z();
                 }
             }
         }
@@ -970,14 +1012,14 @@
             const fixedValueFvPatchVectorField& pW =
                 refCast<fixedValueFvPatchVectorField>
                 (
-                    W_.boundaryField()[patchI]
+                    W_.boundaryFieldRef()[patchI]
                 );
 
             const vectorField& pWPrev =
                 W_.prevIter().boundaryField()[patchI];
 
             vectorField& pWCorr =
-                DW_.boundaryField()[patchI];
+                DW_.boundaryFieldRef()[patchI];
 
             pWCorr = pW - pWPrev;
 
@@ -1009,9 +1051,9 @@
                     )
                 )/pDelta[faceI];
 
-                source[fc[faceI]](3) -= curSource.x();
-                source[fc[faceI]](4) -= curSource.y();
-                source[fc[faceI]](5) -= curSource.z();
+                source[fc[faceI]](3,0) -= curSource.x();
+                source[fc[faceI]](4,0) -= curSource.y();
+                source[fc[faceI]](5,0) -= curSource.z();
             }
 
             if
@@ -1025,19 +1067,20 @@
                 const momentBeamRotationNRFvPatchVectorField& pTheta =
                     refCast<momentBeamRotationNRFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
-                scalarField pDelta =
-                    1.0/mesh().deltaCoeffs().boundaryField()[patchI];
+                scalarField pDelta
+                (
+                    1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+                );
+                tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                tensorField invCM = inv(pCMTheta/pDelta + pCMTheta2);
+                vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                tensorField B((invCM & (pCMTheta/pDelta)));
 
-                vectorField A = (invCM & (pTheta.moment() - pExplicitM));
-                tensorField B = (invCM & (pCMTheta/pDelta));
-
-                vectorField src = (pCMQTheta & A);
-                tensorField diag = (pCMQTheta & B);
+                vectorField src((pCMQTheta & A));
+                tensorField diag((pCMQTheta & B));
 
                 // Diag contribution
                 forAll (pTheta, faceI)
@@ -1058,9 +1101,9 @@
                 // Source contribution
                 forAll (pTheta, faceI)
                 {
-                    source[fc[faceI]](3) -= src[faceI].x();
-                    source[fc[faceI]](4) -= src[faceI].y();
-                    source[fc[faceI]](5) -= src[faceI].z();
+                    source[fc[faceI]](3,0) -= src[faceI].x();
+                    source[fc[faceI]](4,0) -= src[faceI].y();
+                    source[fc[faceI]](5,0) -= src[faceI].z();
                 }
             }
             else if
@@ -1074,14 +1117,14 @@
                 const fixedValueFvPatchVectorField& pTheta =
                     refCast<fixedValueFvPatchVectorField>
                     (
-                        Theta_.boundaryField()[patchI]
+                        Theta_.boundaryFieldRef()[patchI]
                     );
 
                 const vectorField& pThetaPrev =
                     Theta_.prevIter().boundaryField()[patchI];
 
                 vectorField& pThetaCorr =
-                    DTheta_.boundaryField()[patchI];
+                    DTheta_.boundaryFieldRef()[patchI];
 
                 // pThetaCorrStar = (pTheta - pThetaPrev);
                 pThetaCorr = (pLambda & (pTheta - pThetaPrev));
@@ -1094,9 +1137,9 @@
                     vector curSource =
                         (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
-                    source[fc[faceI]](3) -= curSource.x();
-                    source[fc[faceI]](4) -= curSource.y();
-                    source[fc[faceI]](5) -= curSource.z();
+                    source[fc[faceI]](3,0) -= curSource.x();
+                    source[fc[faceI]](4,0) -= curSource.y();
+                    source[fc[faceI]](5,0) -= curSource.z();
                 }
             }
         }
@@ -1107,7 +1150,7 @@
             if (true)
             {
                 vector correctedOwnExplicitMQ = pExplicitMQ[faceI];
-            
+
                 // correctedOwnExplicitMQ =
                 // (
                 //     refRMI[fc[faceI]].T()
@@ -1120,9 +1163,9 @@
                 //  & (refRMI[fc[faceI]] & correctedOwnExplicitMQ)
                 // );
 
-                source[fc[faceI]](3) -= correctedOwnExplicitMQ.x();
-                source[fc[faceI]](4) -= correctedOwnExplicitMQ.y();
-                source[fc[faceI]](5) -= correctedOwnExplicitMQ.z();
+                source[fc[faceI]](3,0) -= correctedOwnExplicitMQ.x();
+                source[fc[faceI]](4,0) -= correctedOwnExplicitMQ.y();
+                source[fc[faceI]](5,0) -= correctedOwnExplicitMQ.z();
             }
         }
     }

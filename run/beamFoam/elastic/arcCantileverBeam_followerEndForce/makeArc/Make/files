@@ -1,3 +1,0 @@
-makeArc.C  
-
-EXE = $(FOAM_USER_APPBIN)/makeArc

@@ -40,7 +40,7 @@ SourceFiles
 #define beamModel_H
 
 #include "fvMesh.H"
-#include "fvMeshCsrAddressing.H"
+//#include "fvMeshCsrAddressing.H"
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
@@ -51,14 +51,14 @@ SourceFiles
 #include "labelScalarTimeVaryingVector.H"
 #include "interpolationTable.H"
 
-#include "crossSectionModel.H"
+//#include "crossSectionModel.H"
 
 // #include "conicalPulley.H"
 // #include "toroidalPulley.H"
 
 // #include "beamContactModel.H"
 #include "labelPair.H"
-
+#include "uniformDimensionedFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,7 +84,7 @@ class beamModel
         autoPtr<dynamicFvMesh> meshPtr_;
 
         //- Compressed sparse row addressing
-        fvMeshCsrAddressing csrAddressing_;
+        // fvMeshCsrAddressing csrAddressing_;
 
         //- Local to global cell addressing
         labelList localToGlobalCellAddressing_;
@@ -126,7 +126,7 @@ class beamModel
         labelList nBeamCells_;
 
         //- Beam cross-section model
-        mutable PtrList<crossSectionModel> crossSections_;
+        //mutable PtrList<crossSectionModel> crossSections_;
 
         //- Beam cross-section radius
         scalarField R_;
@@ -142,6 +142,8 @@ class beamModel
 
         //- Density
         dimensionedScalar rho_;
+        dimensionedScalar rhof_;
+        autoPtr<uniformDimensionedVectorField> gPtr_;
 
         // //- Beam cross-section area
         // dimensionedScalar A_;
@@ -184,6 +186,7 @@ class beamModel
 
         //- Use objective interpolation for rotation
         bool objectiveInterpolation_;
+        scalar kCI_;
 
         //- Conical pullys
         // mutable PtrList<conicalPulley> conicalPulleys_;
@@ -301,10 +304,10 @@ public:
             }
 
             //- Return CSR addressing
-            const fvMeshCsrAddressing& csrAddr() const
-            {
-                return csrAddressing_;
-            }
+            // const fvMeshCsrAddressing& csrAddr() const
+            // {
+            //     return csrAddressing_;
+            // }
 
             // //- Return list of conical pulleys
             // const PtrList<conicalPulley>& conicalPulleys() const
@@ -384,7 +387,7 @@ public:
             label whichCell(const label beamIndex, const label segIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
-            label localCellIndex(const label globalCellIndex) const;
+            // label localCellIndex(const label globalCellIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
             labelPair procLocalCellIndex(const label globalCellIndex) const;
@@ -393,10 +396,10 @@ public:
             label globalCellIndex(const label localCellIndex) const;
 
             //- Beam cross-section model
-            const PtrList<crossSectionModel>& crossSections() const
-            {
-                return crossSections_;
-            }
+          //  const PtrList<crossSectionModel>& crossSections() const
+          //  {
+          //      return crossSections_;
+          //  }
 
             //- Return beam cross-section radius
             const scalar& R(label bI = 0) const
@@ -404,7 +407,7 @@ public:
                 return R_[bI];
             }
 
-            //- Return beam cross-section radius
+            //- Return beam convection velocity
             const scalar& U(label bI = 0) const
             {
                 return U_[bI];
@@ -412,10 +415,10 @@ public:
 
             inline dimensionedScalar A(label bI = 0) const
             {
-                if (crossSections_.size())
-                {
-                    return dimensionedScalar("A", dimArea, crossSections_[bI].A());
-                }
+            //    if (crossSections_.size())
+            //    {
+            //        return dimensionedScalar("A", dimArea, crossSections_[bI].A());
+            //    }
 
                 return dimensionedScalar("A", dimArea, M_PI*sqr(R(bI)));
                 // return A_;
@@ -423,10 +426,10 @@ public:
 
             inline dimensionedScalar I(label bI = 0) const
             {
-                if (crossSections_.size())
-                {
-                    return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
-                }
+                //if (crossSections_.size())
+                //{
+                //    return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
+                //}
 
                 return dimensionedScalar("I", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
                 // return I_;
@@ -434,10 +437,10 @@ public:
 
             inline dimensionedScalar Iyy(label bI = 0) const
             {
-                if (crossSections_.size())
-                {
-                    return dimensionedScalar("Iyy", dimArea*dimArea, crossSections_[bI].Iyy());
-                }
+                //if (crossSections_.size())
+                //{
+                //    return dimensionedScalar("Iyy", dimArea*dimArea, crossSections_[bI].Iyy());
+                //}
 
                 return dimensionedScalar("Iyy", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
                 // return I_;
@@ -445,10 +448,10 @@ public:
 
             inline dimensionedScalar Izz(label bI = 0) const
             {
-                if (crossSections_.size())
-                {
-                    return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
-                }
+                //if (crossSections_.size())
+                //{
+                //    return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
+                //}
 
                 return dimensionedScalar("Izz", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
                 // return I_;
@@ -456,10 +459,10 @@ public:
 
             inline dimensionedScalar J(label bI = 0) const
             {
-                if (crossSections_.size())
-                {
-                    return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
-                }
+                //if (crossSections_.size())
+                //{
+                //    return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
+                //}
 
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
                 // return J_;
@@ -468,6 +471,21 @@ public:
             const dimensionedScalar& rho() const
             {
                 return rho_;
+            }
+            const dimensionedScalar& rhoFluid() const
+             {
+                 return rhof_;
+             }
+            //- Return const reference to the gravitational acceleration
+            UniformDimensionedField<vector>& g()
+            {
+            if (gPtr_.empty())
+            {
+              FatalError
+                  << "g pointer for gravity not set" << abort(FatalError);
+            }
+
+          return gPtr_();
             }
 
             const dimensionedScalar& E() const
@@ -509,6 +527,27 @@ public:
             {
                 return E_*Izz(bI);
             }
+            // Additional member functions added fo mass and rotation
+ 	          // inertia tensors for dynamics calculation
+            inline dimensionedScalar ARho(label bI = 0) const
+              {
+                  return A(bI)*rho();
+              }
+
+            inline dimensionedScalar IyyRho(label bI = 0) const
+              {
+                  return rho()*Iyy(bI);
+              }
+
+ 	          inline dimensionedScalar IzzRho(label bI = 0) const
+              {
+                  return rho()*Izz(bI);
+              }
+
+ 	          inline dimensionedScalar JRho(label bI = 0) const
+              {
+                  return rho()*J(bI);
+              }
 
             //- Return segment length
             const volScalarField& L() const
@@ -749,6 +788,11 @@ public:
             {
                 return objectiveInterpolation_;
             }
+            //- Rotation inertia tensor scaling
+ 	          scalar kCI() const
+ 	          {
+ 		            return kCI_;
+ 	          }
 
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;

@@ -1,7 +1,0 @@
-solvers/petscSolver.C
-utils/petscUtils.C
-utils/petscControls.C
-utils/petscLinearSolverContexts.C
-utils/petscCacheManager.C
-
-LIB = $(FOAM_USER_LIBBIN)/libpetscFoam

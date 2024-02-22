@@ -42,8 +42,8 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-#include "multibeamFvBlockMatrix.H"
-#include "plasticityStressResultantReturn.H"
+//#include "multibeamFvBlockMatrix.H"
+//#include "plasticityStressResultantReturn.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -56,7 +56,7 @@ namespace beamModels
 {
 
 /*---------------------------------------------------------------------------*\
-                        Class coupledTotalLagNewtonRaphsonBeam Declaration
+              Class coupledTotalLagNewtonRaphsonBeam Declaration
 \*---------------------------------------------------------------------------*/
 
 class coupledTotalLagNewtonRaphsonBeam
@@ -70,25 +70,30 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Mean line displacement field increment
         mutable volVectorField WIncrement_;
-    
+
         //- Mean line velocity field
         mutable volVectorField U_;
-  
+
+        //- Mean line acceleration field
+ 	      mutable volVectorField Accl_;
+
         //- Mean line displacement field increment
         volVectorField DW_;
-  
+
         //- Cross-section rotation field
         mutable volVectorField Theta_;
 
         //- Cross-section rotation field
         mutable volVectorField ThetaIncrement_;
-    
-        //- Cross-section angular velocita field
+
+        //- Cross-section angular velocity field
         mutable volVectorField Omega_;
-  
+        //- Cross-section angular acceleration field
+        mutable volVectorField dotOmega_;
+
         //- Cross-section rotation field increment
         volVectorField DTheta_;
-  
+
         //- Switch to updated Lagrangian formulation
         bool updatedLagrangian_;
 
@@ -97,79 +102,79 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Mean line displacement field
         mutable volVectorField totW_;
-  
+
         //- Cross-section force
         surfaceVectorField Q_;
-  
+
         //- Explicit contribution to cross-section force
         surfaceVectorField explicitQ_;
-  
+
         //- Cross-section axial force
         surfaceScalarField Qa_;
 
         //- Cross-section moment
         surfaceVectorField M_;
-    
+
         //- Cross-section moment (material)
         surfaceVectorField Mref_;
-    
+
         //- Explicit contribution to cross-section moment
         surfaceVectorField explicitM_;
-  
+
         //- Explicit contribution to cross-section moment
         surfaceVectorField explicitMQ_;
-  
+
         //- Cross-section rotation tensor
         mutable surfaceTensorField Lambda_;
 
         //- Cell-centre rotation matrix
         volTensorField RM_;
-      
+
         // //- Cell-centre torsion error
         // volScalarField torsionError_;
 
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
-    
+
         // //- Cross-section rotation tensor
         // surfaceTensorField T_;
-        
+
         //- Cross-section reference point displacement field
         // surfaceVectorField refWf_;
-        
+
 		//- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
-    
+
         //- Mean line reference displacement at cell-centres
         volVectorField refW_;
 
         //- Cross-section rotation tensor
         surfaceTensorField refLambda_;
-  
+
         //- Cell-centre rotation matrix
         volTensorField refRM_;
-    
+
         //- Mid-line tangent vector
         surfaceVectorField refTangent_;
-  
+
         //- Axial stretch ration
         surfaceScalarField stretchRatio_;
-  
+
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQW_;
 
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQTheta_;
-        
+
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQDTheta_;
-    
+
         //- Coefficient in the moment equilibrium equation
         surfaceTensorField CMTheta_;
-        
+
         //- Coefficient in the moment equilibrium equation
         surfaceTensorField CMTheta2_;
-  
+
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CMQW_;
 
@@ -187,7 +192,7 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Strain vector (rotational)
         surfaceVectorField K_;
-      
+
         //- Point mesh
         pointMesh pMesh_;
 
@@ -196,23 +201,23 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Block vector field for displacement (first entry) and
         // rotation (second entry)
-        volVector6Field WTheta_;
-        
+        // volVector6Field WTheta_;
+
         //- Total Iterations count for all load steps
         scalar totalIter_;
-        
+
         //- Number of CVs
        // scalar nCV_;
 
         // //- Young modulus
         // dimensionedScalar E_;
-  
+
         // //- Shear modulus
         // dimensionedScalar G_;
 
         // //- Density
         // dimensionedScalar rho_;
-  
+
         // //- Beam cross-section area
         // dimensionedScalar A_;
 
@@ -221,58 +226,90 @@ class coupledTotalLagNewtonRaphsonBeam
 
         // //- Beam cross-section constant
         // dimensionedScalar J_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar EI_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar GJ_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar EA_;
-  
+
         // //- Beam cross-section constant
         // dimensionedScalar GA_;
-  
+
         //- Beam cross-section constant
         mutable surfaceTensorField CQ_;
         // dimensionedDiagTensor CQ_;
-  
+
         //- Beam cross-section constant
         mutable surfaceTensorField CDQ_;
-    
+
         //- Beam cross-section constant
         surfaceTensorField CM_;
         // dimensionedDiagTensor CM_;
-  
+
         //- Beam cross-section constant
         surfaceTensorField CDM_;
-    
+
         //- Beam cross-section constant
         surfaceTensorField CDMDGamma_;
-    
+
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
-    
-        //- Beam cross-section constant
-        dimensionedTensor CI_;
+        //   //- Beam cross-section constant
+         //   dimensionedTensor CI_;
 
-    // Fields related to plasticity
-    
-        //- Is it elasto-plastic model active
-        bool plasticity_;
-    
-        //- Plastic strain vector
-        surfaceVectorField GammaP_;
-  
-        //- Plastic strain vector
-        surfaceVectorField KP_;
+ 	      //- Beam momentum inertial term constant
+ 	      dimensionedScalar ARho_;
 
-        //- Run-time selectable method to calculate DGammaP and DKP
-        //- eg radial return
-        autoPtr<plasticityStressResultantReturn>
-            plasticityStressResultantReturnPtr_;
-    
+         //- Beam cross-section constant
+         //   dimensionedTensor CI_;
+ 	      dimensionedTensor CIRho_;
+
+        // Fields related to Newmark-beta time integration scheme
+
+ 	      //- Boolean to activate Newmark-beta time-integration scheme
+ 	      bool newmark_;
+
+ 	      //   //- Boolean to activate the tangent space version
+ 	      //   //- in time integration Newmark scheme
+ 	      //   bool tangentSpace_;
+
+ 	      //- Newmark beta coefficient
+ 	      scalar betaN_;
+
+ 	      //- Newmark gamma coefficient
+ 	      scalar gammaN_;
+          //- Fields related to drag forces due to Morrison's equation
+          //- Boolean to activate drag forces
+          bool dragActive_;
+
+          //- Normal drag coefficient
+          scalar Cdn_;
+
+          //- Normal drag coefficient
+          scalar Cdt_;
+
+          // Ground contact related parameters.
+
+          //- Boolean to check wether ground contact is active or not
+          bool groundContactActive_;
+
+          //- number of beam segments, this also could be read from the top of the dict.
+          label segNo_;
+
+          //-  damping coefficient for spring/damper ground model.
+          scalar gDamping_;
+
+          //- damping coefficient for spring/damper ground model.
+          scalar gStiffness_;
+
+          //- ground coordinate.
+          scalar groundZ_;
+
+
         //- Beam cell-centre curvatures
         volScalarField curvature_;
 
@@ -280,30 +317,30 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Total time spend on contact update
         scalar totalContactTime_;
-    
+
         //- Total time spend on solution of equilibrium equation
         scalar totalSolutionTime_;
-    
+
         //- Processor index
         volScalarField proc_;
 
     // Private Member Functions
 
         //- Apply line contact force
-        void applyLineContact(multibeamFvBlockMatrix& eqn);
-    
-        //- Apply point contact force
-        void applyPointContact(multibeamFvBlockMatrix& eqn);
-    
-        //- Apply conical pulleys contact force
-        void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
-    
-        //- Apply conical pulleys contact force
-        void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
-    
-        //- Apply conical pulleys contact force
-        void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
-    
+        // void applyLineContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply point contact force
+        // void applyPointContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
+
         //- Disallow default bitwise copy construct
         coupledTotalLagNewtonRaphsonBeam
         (
@@ -343,7 +380,7 @@ public:
                 // This model solves for W
                 return W_;
             }
-  
+
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
             virtual volVectorField& solutionDW() const
@@ -351,7 +388,7 @@ public:
                 // This model solves for W
                 return WIncrement_;
             }
-    
+
             //- Each beamModel must indicate whether Theta or DTheta
             //  is the primary solution variable
             virtual volVectorField& solutionTheta() const
@@ -382,7 +419,7 @@ public:
             //     // This model works with Lambda
             //     return dRdS_;
             // }
-    
+
             //- Return current beam points (orderd from start to end patch)
             //  (face centres in 3d representation)
             virtual tmp<vectorField> currentBeamPoints
@@ -396,7 +433,7 @@ public:
             (
                 const label bI = 0
             ) const;
-    
+
             //- Return current beam mid-line tangents (orderd from
             //  start to end patch) (face centres in 3d representation)
             virtual tmp<vectorField> currentBeamTangents
@@ -411,7 +448,7 @@ public:
             (
                 const label bI = 0
             ) const;
-    
+
             //- Return beam points and tangents
             virtual void currentGlobalBeamPointsAndTangents
             (
@@ -435,7 +472,7 @@ public:
 
             //-
             virtual tmp<tensorField> currentRotationIncrement() const;
-  
+
         // Edit
 
             //- Evolve the solid solver and solve the mathematical model
@@ -443,7 +480,7 @@ public:
 
             //- Update total fields
             virtual void updateTotalFields();
-    
+
             //- Write fields
             virtual void writeFields();
 };

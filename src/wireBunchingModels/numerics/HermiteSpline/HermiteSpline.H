@@ -38,9 +38,9 @@ SourceFiles
 
 #include "pointField.H"
 #include "scalarList.H"
-// #include "Tuple2.H"
 #include "labelScalar.H"
-
+#include "LUscalarMatrix.H"
+#include "scalarMatrices.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -57,7 +57,7 @@ namespace Foam
 class HermiteSpline
 {
 private:
-  
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -75,10 +75,10 @@ protected:
 
         //- The end points tangents
         pointField tangents_;
-  
+
         //- Hermite parameter
         scalarField c_;
-  
+
         //- The mid points of segments
         mutable vectorField* midPointsPtr_;
 
@@ -87,10 +87,10 @@ protected:
 
         //- The segement mid point curvatures
         mutable scalarField* midPointCurvaturesPtr_;
-    
+
         //- The derivative at end points
         mutable vectorField* dRdSPtr_;
-  
+
         //- The real line length
         scalar lineLength_;
 
@@ -121,10 +121,10 @@ protected:
 
         //- Calculate segment mid points
         void calcMidPoints() const;
-  
+
         //- Calculate segment mid point derivatives
         void calcMidPointDerivatives() const;
-  
+
         //- Calculate segment mid point curvatures
         void calcMidPointCurvatures() const;
 
@@ -137,7 +137,7 @@ public:
 
         //-
         HermiteSpline();
-  
+
         //- Construct from components
         HermiteSpline
         (
@@ -150,11 +150,11 @@ public:
         (
             Istream& stream
         );
-    
+
     // Destructor
 
         virtual ~HermiteSpline();
-  
+
     // Member Functions
 
         //- Return const-access to the control-points
@@ -162,7 +162,7 @@ public:
 
         //- Return const-access to the tangents
         const pointField& tangents() const;
-  
+
         //- Return the number of line segments
         label nSegments() const;
 
@@ -182,22 +182,22 @@ public:
 
         //- Return the first derivative corresponding to the local parameter
         point paramFirstDerivative(const label segment, const scalar) const;
-  
+
         //- Return the second derivative corresponding to the local parameter
         point paramSecondDerivative(const label segment, const scalar) const;
-  
+
         // //- Return the Jacobian corresponding to the local parameter
         // scalar Jacobian(const label segment, const scalar) const;
-  
+
         //- Return the length of the curve
         scalar length() const;
-  
+
         //- Return the length of the curve
         scalar length(const label segI, const scalar zeta) const;
-  
+
         //- Return midpoints of spline segments
         const vectorField& midPoints() const;
-  
+
         //- Return segment midpoint derivatives
         const vectorField& midPointDerivatives() const;
 
@@ -210,17 +210,17 @@ public:
         (
             const labelScalarList& points
         ) const;
-  
+
         //- Return second derivative for specified points
         //  (segment ID and parameter)
         tmp<vectorField> secondDerivativeParam
         (
             const labelScalarList& points
         ) const;
-  
+
         //- Return tangents of spline segments
         const vectorField& dRdS() const;
-  
+
         //- Nearest segment point for given point
         labelScalar nearestPoint
 	(
@@ -244,16 +244,16 @@ public:
             const label neiSegI,
             const scalar contactAngleLimit
         ) const;
-  
+
         //- Return segment lengths
         tmp<scalarField> segLengths() const;
-  
+
         //- Return segment length
         scalar segLength(const label segI) const;
-  
+
         //- Return midpoint paremeters (arc-length) of spline segments
         tmp<scalarField> midPointParameters() const;
-  
+
         //- Interpolate field from segments to points
         tmp<vectorField> segmentToPointInterpolate
         (

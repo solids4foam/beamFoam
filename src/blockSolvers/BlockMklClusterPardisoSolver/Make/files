@@ -1,3 +1,0 @@
-BlockMklClusterPardisoSolver.C
-
-LIB = $(FOAM_USER_LIBBIN)/libblockMklClusterParadisoSolver

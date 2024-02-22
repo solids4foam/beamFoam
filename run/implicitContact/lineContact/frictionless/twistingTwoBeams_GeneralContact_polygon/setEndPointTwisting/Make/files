@@ -1,4 +1,0 @@
-
-setEndPointTwisting.C
-
-LIB = $(FOAM_USER_LIBBIN)/libsetEndPointTwisting

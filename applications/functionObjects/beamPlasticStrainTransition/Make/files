@@ -1,4 +1,0 @@
-
-beamPlasticStrainTransition.C
-
-LIB = $(FOAM_USER_LIBBIN)/libbeamPlasticStrainTransition

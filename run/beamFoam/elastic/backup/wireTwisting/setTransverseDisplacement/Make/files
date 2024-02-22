@@ -1,4 +1,0 @@
-
-setTransverseDisplacement.C
-
-LIB = $(FOAM_USER_LIBBIN)/libsetTransverseDisplacement

@@ -1,1 +1,0 @@
-../conicalPulleyFrictionControl.C

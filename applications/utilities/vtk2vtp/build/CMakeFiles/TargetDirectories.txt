@@ -1,3 +1,0 @@
-/home/ztukovic/Work/Projects/Bekaert/bekaert-wirebunching/applications/utilities/vtk2vtp/build/CMakeFiles/rebuild_cache.dir
-/home/ztukovic/Work/Projects/Bekaert/bekaert-wirebunching/applications/utilities/vtk2vtp/build/CMakeFiles/vtk2vtp.dir
-/home/ztukovic/Work/Projects/Bekaert/bekaert-wirebunching/applications/utilities/vtk2vtp/build/CMakeFiles/edit_cache.dir

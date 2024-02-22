@@ -58,13 +58,13 @@ class forceBeamDisplacementNRFvPatchVectorField
         //- Specified force
         vectorField force_;
         vectorField curForce_;
-  
+
         //- Traction time series
         interpolationTable<vector> forceSeries_;
-  
+
         //- Transition function time series
         interpolationTable<scalar> transitionSeries_;
-  
+
 public:
 
     //- Runtime type information
@@ -142,13 +142,13 @@ public:
            {
                return curForce_;
            }
-  
+
            // Return current force vector
            vectorField& force()
            {
                return curForce_;
            }
-    
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
@@ -171,9 +171,9 @@ public:
         //- Evaluate the patch field, sets Updated to false
         virtual void evaluate
         (
-            const Pstream::commsTypes commsType = Pstream::blocking
+            const Pstream::commsTypes commsType = Pstream::commsTypes::blocking
         );
-  
+
         //- Write
         virtual void write(Ostream&) const;
 };

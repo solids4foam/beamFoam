@@ -185,7 +185,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
     }
     cellIndicator.correctBoundaryConditions();
 
-    tIndicator() = fvc::interpolate(cellIndicator);
+    tIndicator.ref() = fvc::interpolate(cellIndicator);
 
     return tIndicator;
 }
@@ -227,7 +227,6 @@ Foam::beamModel::beamModel
             )
         )
     ),
-    csrAddressing_(meshPtr_()),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
     localToGlobalBeamPointsAddressing_(),
@@ -241,22 +240,14 @@ Foam::beamModel::beamModel
     endPatchIndex_(),
     startCells_(),
     nBeamCells_(),
-    crossSections_(),
+    //crossSections_(),
     R_(),
     U_(),
-    // R_(this->lookup("R")),
     E_(beamProperties().lookup("E")),
     G_(beamProperties().lookup("G")),
     rho_("rho", dimDensity, 0),
-    // A_("A", dimArea, M_PI*sqr(R())),
-    // I_("I", dimArea*dimArea, M_PI*pow(R(), 4)/4),
-    // J_("J", dimArea*dimArea, M_PI*pow(R(), 4)/2),
-    // EI_(E_*I()),
-    // GJ_(G_*J()),
-    // EA_(E_*A()),
-    // EA_(E_*A_),
-    // GA_(G_*A()),
-    // GA_(G_*A_),
+    rhof_("rhoFluid", dimDensity, 0),
+    gPtr_(),
     L_
     (
         IOobject
@@ -303,9 +294,8 @@ Foam::beamModel::beamModel
     (
         beamProperties_.lookupOrDefault<bool>("objectiveInterpolation", false)
     ),
+    kCI_(beamProperties_.lookupOrDefault<scalar>("scalingInertiaTensor", 1)),
 
-    //conicalPulleys_(),
-    //toroidalPulleys_(),
     startToRelaxTime_
     (
         lookupOrDefault<scalar>
@@ -325,56 +315,125 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
-    // // For Ibrahimbegovic's test case
-    // bool ibrahimovicCase
-    // (
-    //     beamProperties_.lookupOrDefault<bool>("ibrahimovicCase", false)
-    // );
-    // if (ibrahimovicCase)
-    // {
-    //     EA().value() = 1e4;
-    //     GA().value() = 1e4;
+  if (beamProperties().found("rho"))
+     {
+         rho_ = dimensionedScalar(beamProperties().lookup("rho"));
+     }
 
-    //     GJ().value() = 1e2;
-    //     EI().value() = 1e2;
-    // }
+     // Header for gravitational acceleration
+     IOobject gHeader
+     (
+         "g",
+         runTime.constant(),
+         mesh(),
+         IOobject::MUST_READ
+     );
 
+     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
+     {
+ 	gPtr_.set
+ 	(
+ 	    new uniformDimensionedVectorField
+ 	    (
+ 	        IOobject
+ 	        (
+ 		    "g",
+ 	            runTime.caseConstant(),
+ 	            this->mesh(),
+                     IOobject::MUST_READ,
+                     IOobject::NO_WRITE
+ 	        )
+             )
+ 	);
+
+ 	Info << "g is set for gravitational body force: "
+              << g()
+ 	     << endl;
+
+
+ 	if (!beamProperties().found("rho"))
+ 	{
+ 	    FatalError
+ 		<< "rho field not set in beamProperties for"
+ 		<< " calculating the gravity body force"
+ 		<< abort(FatalError);
+
+ 	}
+ 	else if (rho().value()==0.0)
+ 	{
+ 	    WarningIn("Constructor of beamModel.C")
+ 		<< "rho field in constant/beamProperties = "
+ 		<< "zero --> gravitational body force = 0"
+ 		<< nl << endl;
+         }
+  // To check whether density of fluid is specified to calculate
+ 	// buoyant body force
+ 	if (beamProperties().found("rhoFluid"))
+ 	{
+ 	    rhof_ = dimensionedScalar(beamProperties().lookup("rhoFluid"));
+ 	}
+ 	else
+ 	{
+ 	    WarningIn("Constructor of beamModel.C")
+ 		<< "density of fluid rhoFluid is not set in constant/beamProperties "
+ 		<< "--> buoyant body force = 0"
+ 		<< nl << endl;
+         }
+     }
+     else
+     {
+ 	gPtr_.set
+ 	(
+ 	    new uniformDimensionedVectorField
+ 	    (
+ 	        IOobject
+ 	        (
+ 		    "g",
+ 	            runTime.caseConstant(),
+ 	            this->mesh(),
+                     IOobject::NO_READ,
+                     IOobject::NO_WRITE
+ 	        ),
+ 		dimensionedVector("g", dimVelocity/dimTime, vector::zero)
+             )
+ 	);
+     }
 
     // Read cross-sections of beams
     if (found("beams"))
     {
-        Info << "Beam properties from cross-section model" << endl;
-
-        const PtrList<entry> entries(lookup("beams"));
-
-        label nBeams = entries.size();
-
-        // Info << "nBeams: " << nBeams << endl;
-
-        crossSections_.setSize(nBeams);
-
-        forAll(entries, beamI)
-        {
-            crossSections_.set
-            (
-                beamI,
-                crossSectionModel::New
-                (
-                    word(entries[beamI].dict().lookup("crossSectionModel")),
-                    entries[beamI].dict()
-                )
-            );
-        }
-
-        R_.setSize(nBeams);
-        U_.setSize(nBeams);
-        forAll(crossSections_, beamI)
-        {
-            R_[beamI] = crossSections_[beamI].R();
-            // U_[beamI] = crossSections_[beamI].U();
-        }
-
-        Pout << "R: " << R_ << endl;
+//        Info << "Beam properties from cross-section model" << endl;
+//
+//        const PtrList<entry> entries(lookup("beams"));
+//
+//        label nBeams = entries.size();
+//
+//        // Info << "nBeams: " << nBeams << endl;
+//
+//        crossSections_.setSize(nBeams);
+//
+//        forAll(entries, beamI)
+//        {
+//            crossSections_.set
+//            (
+//                beamI,
+//                crossSectionModel::New
+//                (
+//                    word(entries[beamI].dict().lookup("crossSectionModel")),
+//                    entries[beamI].dict()
+//                )
+//            );
+//        }
+//
+//        R_.setSize(nBeams);
+//        U_.setSize(nBeams);
+//        forAll(crossSections_, beamI)
+//        {
+//            R_[beamI] = crossSections_[beamI].R();
+//            // U_[beamI] = crossSections_[beamI].U();
+//        }
+//
+//        Pout << "R: " << R_ << endl;
     }
     else if (this->found("nBeams")) // Read beam radius
     {
@@ -748,10 +807,10 @@ Foam::beamModel::beamModel
     // }
 
     // Read density if present
-    if (beamProperties().found("rho"))
-    {
-        rho_ = dimensionedScalar(beamProperties().lookup("rho"));
-    }
+    //    if (beamProperties().found("rho"))
+    //    {
+    //        rho_ = dimensionedScalar(beamProperties().lookup("rho"));
+    //    }
 
     // Check if deltaT is time-varying
     if (beamProperties().found("deltaTseries"))
@@ -842,7 +901,7 @@ void Foam::beamModel::writeVTK() const
     vtkFile << "\nDATASET UNSTRUCTURED_GRID" << endl;
 
     // Write points
-    vectorField curPoints = currentBeamPoints();
+    vectorField curPoints(currentBeamPoints());
     vtkFile << "\nPOINTS " << curPoints.size() << " float" << endl;
     for (label i=0; i<curPoints.size(); i++)
     {
@@ -890,9 +949,9 @@ Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
         (
             new vectorField(nPoints, vector::zero)
         );
-        vectorField& curPoints = tCurrentPoints();
+        vectorField& curPoints = tCurrentPoints.ref();
 
-        surfaceVectorField curCf = mesh.Cf();
+        const surfaceVectorField& curCf = mesh.Cf();
         const vectorField& curCfI = curCf.internalField();
 
         curPoints[0] = curCf.boundaryField()[startPatchIndex()][0];
@@ -914,9 +973,8 @@ Foam::tmp<Foam::vectorField> Foam::beamModel::points(const label bI) const
         (
             new vectorField(nPoints, vector::zero)
         );
-        vectorField& curPoints = tCurrentPoints();
-
-        surfaceVectorField curCf = mesh.Cf();
+        vectorField& curPoints = tCurrentPoints.ref();
+        const surfaceVectorField& curCf = mesh.Cf();
         const vectorField& curCfI = curCf.internalField();
 
         const labelList startPatchCells =
@@ -1521,26 +1579,26 @@ Foam::label Foam::beamModel::whichCell
 }
 
 
-Foam::label Foam::beamModel::localCellIndex
-(
-    const label globalCellIndex
-) const
-{
-    if (Pstream::parRun())
-    {
-        label lci =
-            globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
+// Foam::label Foam::beamModel::localCellIndex
+// (
+//     const label globalCellIndex
+// ) const
+// {
+//     if (Pstream::parRun())
+//     {
+//         label lci =
+//             globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
 
-        if (lci != -1)
-        {
-            lci -= csrAddr().globalNCellsOffset();
-        }
+//         if (lci != -1)
+//         {
+//             lci -= csrAddr().globalNCellsOffset();
+//         }
 
-        return lci;
-    }
+//         return lci;
+//     }
 
-    return globalCellIndex;
-}
+//     return globalCellIndex;
+// }
 
 
 Foam::labelPair Foam::beamModel::procLocalCellIndex
@@ -1619,13 +1677,13 @@ Foam::tmp<Foam::labelField> Foam::beamModel::globalPointsIndices
 
         forAll(tGlPtIndices(), pI)
         {
-            tGlPtIndices()[pI] = pI;
+            tGlPtIndices.ref()[pI] = pI;
         }
 
         if (Pstream::parRun())
         {
             // Apply offset
-            tGlPtIndices() += globalCellIndex(0);
+            tGlPtIndices.ref() += globalCellIndex(0);
         }
 
         return tGlPtIndices;
@@ -1646,11 +1704,11 @@ Foam::tmp<Foam::labelField> Foam::beamModel::globalPointsIndices
             label glCellIndex = globalCellIndex(locCellIndex);
 
             label glSegIndex = whichSegment(glCellIndex);
-            tGlPtIndices()[i] = glSegIndex;
+            tGlPtIndices.ref()[i] = glSegIndex;
         }
         // add last point
-        tGlPtIndices()[nPoints-1] =
-            tGlPtIndices()[nPoints-2] + 1;
+        tGlPtIndices.ref()[nPoints-1] =
+            tGlPtIndices.ref()[nPoints-2] + 1;
 
         return tGlPtIndices;
     }
@@ -1689,10 +1747,10 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
         for (label i=0; i<mesh.nCells(); i++)
         {
             curGlPtIndex = globalCellIndexOffset + i;
-            tLocPtIndices()[curGlPtIndex] = i;
+            tLocPtIndices.ref()[curGlPtIndex] = i;
         }
         curGlPtIndex++;
-        tLocPtIndices()[curGlPtIndex] = mesh.nCells();
+        tLocPtIndices.ref()[curGlPtIndex] = mesh.nCells();
 
         return tLocPtIndices;
     }
@@ -1717,12 +1775,12 @@ Foam::tmp<Foam::labelField> Foam::beamModel::localPointsIndices
             label glCellIndex = globalCellIndex(locCellIndex);
 
             glSegIndex = whichSegment(glCellIndex);
-            tLocPtIndices()[glSegIndex] = i;
+            tLocPtIndices.ref()[glSegIndex] = i;
         }
 
         // add last point
         glSegIndex++;
-        tLocPtIndices()[glSegIndex] = cz.size();
+        tLocPtIndices.ref()[glSegIndex] = cz.size();
 
 
         // if (Pstream::myProcNo() == 0)

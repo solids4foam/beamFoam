@@ -87,7 +87,7 @@ void Foam::cubicSpline::calcCubicSpline
 
         D_[0] = b - 2*c*hm;
     }
-    
+
     D_[nSegments()] = endDerivative;
     if (endBC == CLAMPED_CALC)
     {
@@ -101,8 +101,8 @@ void Foam::cubicSpline::calcCubicSpline
 
         D_[nSegments()] = b + 2*c*hp;
     }
-    
-    
+
+
     for (label i=1; i<(a.size()-1); i++)
     {
         a[i] = mag(points_[i] - points_[i-1]);
@@ -129,7 +129,7 @@ void Foam::cubicSpline::calcCubicSpline
         )
         {
             b[i] -= 0.5*mag(points_[i+1] - points_[i]);
-            
+
             d[i] += 3*(points_[i+1]-points_[i])/mag(points_[i+1]-points_[i])
               - 3*D_[nSegments()];
         }
@@ -214,8 +214,8 @@ void Foam::cubicSpline::calcMidPoints() const
     }
 
     midPointsPtr_ = new vectorField(nSegments(), vector::zero);
-    vectorField& midPoints = *midPointsPtr_; 
-  
+    vectorField& midPoints = *midPointsPtr_;
+
     forAll(midPoints, sI)
     {
         midPoints[sI] = position(sI, 0.5);
@@ -237,8 +237,8 @@ void Foam::cubicSpline::calcMidPointDerivatives() const
     }
 
     midPointDerivativesPtr_ = new vectorField(nSegments(), vector::zero);
-    vectorField& midPointDerivatives = *midPointDerivativesPtr_; 
-  
+    vectorField& midPointDerivatives = *midPointDerivativesPtr_;
+
     forAll(midPointDerivatives, sI)
     {
         midPointDerivatives[sI] = firstDerivative(sI, 0.5);
@@ -390,12 +390,12 @@ Foam::point Foam::cubicSpline::position
     else
     {
         // cubic spline interpolation
-      
+
         scalar h = param_[segment+1] - param_[segment];
         scalar t = param_[segment] + mu*h;
         scalar h0 = t - param_[segment];
         scalar h1 = param_[segment+1] - t;
-        
+
         vector curR =
             DD_[segment+1]*Foam::pow(h0, 3)/(6*h)
           + DD_[segment]*Foam::pow(h1, 3)/(6*h)
@@ -409,7 +409,7 @@ Foam::point Foam::cubicSpline::position
         //        /(param_[segment+1]-param_[segment])
         //     )
         //    *(t-param_[segment]);
-        
+
         return curR;
     }
 }
@@ -463,7 +463,7 @@ Foam::point Foam::cubicSpline::firstDerivative
     else
     {
         // cubic spline interpolation
-      
+
         scalar h = param_[segment+1] - param_[segment];
         scalar t = param_[segment] + mu*h;
         scalar h0 = t - param_[segment];
@@ -530,7 +530,7 @@ Foam::labelScalar Foam::cubicSpline::nearestPoint
     scalar f1 = (D_[segI+1] & (p - points_[segI+1]));
 
     scalar mu = 0;
-        
+
     if ((f0*f1) > SMALL)
     {
         FatalErrorIn
@@ -591,9 +591,9 @@ Foam::tmp<Foam::scalarField> Foam::cubicSpline::segLengths() const
 
     forAll(tSegLengths(), segI)
     {
-        tSegLengths()[segI] = mag(points_[segI+1] - points_[segI]);
+        tSegLengths.ref()[segI] = mag(points_[segI+1] - points_[segI]);
     }
-    
+
     return tSegLengths;
 }
 
@@ -604,11 +604,11 @@ Foam::tmp<Foam::scalarField> Foam::cubicSpline::midPointParameters() const
         new scalarField(nSegments(), 0)
     );
 
-    const scalarField segLen = segLengths();
+    const scalarField segLen (segLengths());
 
     forAll(tMidParameters(), segI)
     {
-        tMidParameters()[segI] = param_[segI] + segLen[segI]/2;
+        tMidParameters.ref()[segI] = param_[segI] + segLen[segI]/2;
     }
 
     return tMidParameters;
@@ -624,7 +624,7 @@ Foam::tmp<Foam::vectorField> Foam::cubicSpline::segmentToPointInterpolate
     (
         new vectorField(points_.size(), vector::zero)
     );
-    vectorField& result = tResult();
+    vectorField& result = tResult.ref();
 
     label n = nSegments() + 2;
 
@@ -638,7 +638,7 @@ Foam::tmp<Foam::vectorField> Foam::cubicSpline::segmentToPointInterpolate
 
     vectorField points = midPhi;
 
-    scalarField midPointParam = midPointParameters();
+    scalarField midPointParam (midPointParameters());
 
     const bcType startBC = CLAMPED;
     // const bcType startBC = CLAMPED_CALC;

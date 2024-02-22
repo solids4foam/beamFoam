@@ -104,7 +104,7 @@ axialForceTransverseDisplacementNRFvPatchVectorField
             patchInternalField()
         );
     }
-    
+
     // Check if axial force is time-varying
     if (dict.found("axialForceSeries"))
     {
@@ -118,7 +118,7 @@ axialForceTransverseDisplacementNRFvPatchVectorField
     {
         axialForce_ = scalarField("axialForce", dict, p.size());
     }
-    
+
     // Check if refDisp is time-varying
     if (dict.found("refDispSeries"))
     {
@@ -214,7 +214,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::updateCoeffs()
     }
 
     const fvMesh& mesh = patch().boundaryMesh().mesh();
-    
+
     if
     (
         mesh.moving() // Updated lagrangian
@@ -232,7 +232,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::updateCoeffs()
             Info << refDisp_ << endl;
         }
         else
-        {        
+        {
             const volVectorField& totW =
                 db().lookupObject<volVectorField>("totW");
             refDisp_ -= totW.boundaryField()[patch().index()];
@@ -263,7 +263,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
     const vectorField& dR0Ds =
         patch().lookupPatchField<surfaceVectorField, vector>("dR0Ds");
 
-    vectorField t = (Lambda & dR0Ds);
+    vectorField t(Lambda & dR0Ds);
 
     const tensorField& CQW =
         patch().lookupPatchField<surfaceTensorField, tensor>("CQW");
@@ -274,20 +274,21 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
     const vectorField& explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
-    const scalarField delta = 1.0/patch().deltaCoeffs();
- 
-    tensorField invCQW = inv(CQW);
+    const scalarField delta (1.0/patch().deltaCoeffs());
 
-    vectorField DDW =
-    (
-        invCQW
-      & (
-            axialForce_*t
-          - ((t*t) & explicitQ)
-          - (((t*t) & CQTheta) & DTheta)
-        )
-    )*delta;
+    tensorField invCQW (inv(CQW));
 
+    vectorField DDW
+	(
+	    (
+	        invCQW
+	      & (
+	            axialForce_*t
+	          - ((t*t) & explicitQ)
+	          - (((t*t) & CQTheta) & DTheta)
+	        )
+	    )*delta
+	);
     DDW +=
     (
         (I-(t*t))
@@ -297,19 +298,20 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::evaluate
         )
     );
 
-    vectorField newDW =
-        DW.patchInternalField() + DDW;
-
+    vectorField newDW
+	(
+		DW.patchInternalField() + DDW
+	);
     // Info << "newDW = " << newDW << endl;
 
     DW = newDW;
 
     fixedValueFvPatchField<vector>::operator==((*this) + newDW);
-    
+
     fixedValueFvPatchVectorField::evaluate();
 }
 
-  
+
 void axialForceTransverseDisplacementNRFvPatchVectorField::write
 (
     Ostream& os
@@ -318,7 +320,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::write
     fixedValueFvPatchVectorField::write(os);
     refDisp_.writeEntry("refDisp", os);
     axialForce_.writeEntry("axialForce", os);
-    
+
     if (axialForceSeries_.size())
     {
         os.writeKeyword("axialForceSeries") << nl;
@@ -326,7 +328,7 @@ void axialForceTransverseDisplacementNRFvPatchVectorField::write
         axialForceSeries_.write(os);
         os << token::END_BLOCK << nl;
     }
-    
+
     if (refDispSeries_.size())
     {
         os.writeKeyword("refDispSeries") << nl;

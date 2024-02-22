@@ -45,6 +45,8 @@ License
 
 #include "mergePoints.H"
 #include "scalarMatrices.H"
+#include "denseMatrixHelperFunctions.H"
+#include "BlockEigenSolverOF.H"
 
 // #include "beamHelperFunctions.H"
 
@@ -68,9 +70,7 @@ addToRunTimeSelectionTable
     dictionary
 );
 
-// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-   
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
@@ -115,8 +115,23 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        fvc::ddt(W_)
-    ),
+        mesh(),
+         //   fvc::ddt(W_)
+ 	      dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
+      ),
+        Accl_
+        (
+ 	      IOobject
+ 	  (
+ 	    "Accl",
+ 	    runTime.timeName(),
+ 	    mesh(),
+ 	    IOobject::NO_READ,
+ 	    IOobject::AUTO_WRITE
+ 	  ),
+ 	  mesh(),
+ 	  dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
+        ),
     DW_
     (
         IOobject
@@ -165,7 +180,22 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_READ,
             IOobject::AUTO_WRITE
         ),
-        fvc::ddt(Theta_)
+        mesh(),
+      //   fvc::ddt(Theta_)
+ 	    dimensionedVector("0", Theta_.dimensions()/dimTime, vector::zero)
+      ),
+      dotOmega_
+      (
+         IOobject
+         (
+             "dotOmega",
+             runTime.timeName(),
+             mesh(),
+             IOobject::NO_READ,
+             IOobject::AUTO_WRITE
+         ),
+ 	        mesh(),
+         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
     ),
     DTheta_
     (
@@ -592,19 +622,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         pMesh_,
         dimensionedVector("0", dimLength, vector::zero)
     ),
-    WTheta_
-    (
-        IOobject
-        (
-            "WTheta",
-            runTime.timeName(),
-            mesh(),
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector6("zero", dimless, vector6(1e-6))
-    ), 
+    // WTheta_
+    // (
+    //     IOobject
+    //     (
+    //         "WTheta",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::NO_READ,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector6("zero", dimless, vector6(1e-6))
+    // ),
     totalIter_(0),
   //  nCV_(beamProperties().lookup("nSegments")),
     // E_(beamProperties().lookup("E")),
@@ -709,7 +739,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 GJ().value(), 0,              0,
                 0,            EIyy().value(), 0,
                 0,            0,              EIzz().value()
-            ) 
+            )
         )
     ),
     // CM_
@@ -748,7 +778,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 GJ().value(), 0,              0,
                 0,            EIyy().value(), 0,
                 0,            0,              EIzz().value()
-            ) 
+            )
         )
     ),
     CDMDGamma_
@@ -787,46 +817,80 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             tensor::zero
         )
     ),
-    CI_
-    (
-        "CI",
-        I().dimensions(),
-        tensor
-        (
-            J().value(),  0,           0,
-            0,            Iyy().value(), 0,
-            0,            0,           Izz().value()
-        )
-    ),
+    ARho_
+     (
+ 	  "ARho",
+ 	  A().dimensions()*rho().dimensions(),
+ 	  scalar(ARho().value())
+     ),
+     //   CI_
+     //   (
+         //   "CI",
+         //   I().dimensions(),
+         //   tensor
+         //   (
+             //   kCI_*J().value(),  0,           0,
+             //   0,            kCI_*Iyy().value(), 0,
+             //   0,            0,           kCI_*Izz().value()
+         //   )
+     //   ),
+      CIRho_
+      (
+         "CIRho",
+         I().dimensions()*rho().dimensions(),
+         tensor
+         (
+             kCI()*JRho().value(),  0,           0,
+             0,            kCI()*IyyRho().value(), 0,
+             0,            0,           kCI()*IzzRho().value()
+         )
+      ),
+     newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
+     betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
+     gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
+
+    // Drag Force related fields
+    dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
+    Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+
+
+    // ground contact fields
+    groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
+    segNo_(readInt(beamProperties().lookup("nSegments"))),
+    gDamping_ (readDouble(beamProperties().lookup("gDamping"))),
+    gStiffness_ (readDouble(beamProperties().lookup("gStiffness"))),
+    groundZ_ (readDouble(beamProperties().lookup("groundZ"))),
+
     // Plasticity related fields
-    plasticity_(lookupOrDefault<bool>("plasticity", false)),
-    GammaP_
-    (
-        IOobject
-        (
-            "GammaP",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimless, vector::zero)
-    ),
-    KP_
-    (
-        IOobject
-        (
-            "KP",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimless/dimLength, vector::zero)
-    ),
-    plasticityStressResultantReturnPtr_(NULL),
+    // plasticity_(lookupOrDefault<bool>("plasticity", false)),
+    // GammaP_
+    // (
+    //     IOobject
+    //     (
+    //         "GammaP",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector("0", dimless, vector::zero)
+    // ),
+    // KP_
+    // (
+    //     IOobject
+    //     (
+    //         "KP",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector("0", dimless/dimLength, vector::zero)
+    // ),
+    // plasticityStressResultantReturnPtr_(NULL),
     curvature_
     (
         IOobject
@@ -860,7 +924,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     U_.oldTime();
     Omega_.oldTime();
     RM_.oldTime();
-    
+
     Gamma_.oldTime();
     K_.oldTime();
     Lambda_.oldTime();
@@ -888,7 +952,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                         0, 0, GA(i).value()
                     )
                 );
-            
+
             CM_ +=
                 indicator(i)
                *dimensionedTensor
@@ -909,19 +973,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     }
 
     // Plasticity
-    if (beamProperties().found("plasticityModel"))
-    {
-        // Info << "Plasticity model found" << endl;
-        plasticityStressResultantReturnPtr_ =
-            plasticityStressResultantReturn::New
-            (
-                beamProperties().lookup("plasticityModel"),
-                *this
-            );
-    }
-    
-    GammaP_.oldTime();
-    KP_.oldTime();
+    // if (beamProperties().found("plasticityModel"))
+    // {
+    //     // Info << "Plasticity model found" << endl;
+    //     plasticityStressResultantReturnPtr_ =
+    //         plasticityStressResultantReturn::New
+    //         (
+    //             beamProperties().lookup("plasticityModel"),
+    //             *this
+    //         );
+    // }
+
+    // GammaP_.oldTime();
+    // KP_.oldTime();
 
     // Calculate tangents if it is not read
     IOobject refTangentHeader
@@ -931,11 +995,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refTangentHeader.headerOk())
+    if (!refTangentHeader.typeHeaderOk<labelIOList>(true))
     {
-        Info << "Calculating mean line tangents for initial configuration"
-             << endl;
-        
+        Info<< "Calculating mean line tangents for initial configuration"
+            << endl;
+
         volVectorField R0
         (
             IOobject
@@ -950,20 +1014,20 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh().C();
-        R0.boundaryField().evaluateCoupled();
+        //R0.boundaryFieldRef().evaluateCoupled();
         dR0Ds_ = fvc::snGrad(R0);
         dR0Ds_ /= mag(dR0Ds_);
 
         // Info << mesh().C() << endl;
         // Info << mesh().magSf() << endl;
-    
+
         refTangent_ = dR0Ds_;
 
         if (nBeams < 2)
         {
-            if (refTangent_.boundaryField()[startPatchIndex()].size())
+            if (refTangent_.boundaryFieldRef()[startPatchIndex()].size())
             {
-                refTangent_.boundaryField()[startPatchIndex()] *= -1;
+                refTangent_.boundaryFieldRef()[startPatchIndex()] *= -1;
             }
             else
             {
@@ -974,13 +1038,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                     {
                         const labelList& fc =
                             mesh().boundary()[patchI].faceCells();
-                
+
                         if (fc[0] == 0)
                         {
-                            refTangent_.boundaryField()[patchI] *= -1;
+                            refTangent_.boundaryFieldRef()[patchI] *= -1;
                         }
                     }
-                }            
+                }
             }
         }
         else
@@ -991,9 +1055,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 label firstCell = min(cz);
                 // Pout << bI << ", " << firstCell << endl;
 
-                if (refTangent_.boundaryField()[startPatchIndex(bI)].size())
+                if (refTangent_.boundaryFieldRef()[startPatchIndex(bI)].size())
                 {
-                    refTangent_.boundaryField()[startPatchIndex(bI)] *= -1;
+                    refTangent_.boundaryFieldRef()[startPatchIndex(bI)] *= -1;
                 }
                 else
                 {
@@ -1021,14 +1085,14 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                                         //     Pout << fc[cI] << " == " << firstCell << endl;
                                         //     Pout << refTangent_.boundaryField()[patchI] << endl;
                                         // }
-                                        
-                                        refTangent_.boundaryField()[patchI][cI]
+
+                                        refTangent_.boundaryFieldRef()[patchI][cI]
                                             *= -1;
                                     }
                                 }
                             }
                         }
-                    }     
+                    }
                 }
             }
         }
@@ -1045,19 +1109,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
         // Pout << "Mean line tangent...done" << endl;
         // sleep(5);
-            
+
     }
     else
     {
         dR0Ds_ = refTangent_;
         for (label pI=0; pI<nBeams; pI++)
         {
-            dR0Ds_.boundaryField()[startPatchIndex(pI)] *= -1;
+            dR0Ds_.boundaryFieldRef()[startPatchIndex(pI)] *= -1;
         }
     }
 
     // Info << refTangent_ << endl;
-    
+
     // Calculate cell-centre reference rotation matrix
     // if it is not read
     IOobject refRMheader
@@ -1067,18 +1131,22 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refRMheader.headerOk())
+    if (!refRMheader.typeHeaderOk<labelIOList>(true))
     {
-        Info << "Calculating cell-centre reference rotation matrix" << endl;
-        
+        Info<< "Calculating cell-centre reference rotation matrix" << endl;
+
         // Calc cell-centre reference rotation matrix
         interpolateRotationMatrix(*this, refLambda_, refRM_);
 
-        Info << refRM_ << endl;
+        if (debug)
+        {
+            Info<< refRM_ << endl;
+        }
     }
 
-    
+
     // Calc element lengths
+    if (mesh().nCells() > 0)
     {
         // // For correcting cell centres
         // dynamicFvMesh& m = const_cast<dynamicFvMesh&>(this->mesh());
@@ -1090,9 +1158,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
         if (nBeams < 2)
         {
-	    surfaceVectorField curCf = mesh().Cf() + refWf_;
-            vectorField beamPoints = this->beamPointData(curCf);
-            vectorField beamTangents = this->beamPointData(refTangent_);
+	    surfaceVectorField curCf(mesh().Cf() + refWf_);
+            vectorField beamPoints(this->beamPointData(curCf));
+            vectorField beamTangents(this->beamPointData(refTangent_));
 
             HermiteSpline spline
             (
@@ -1101,21 +1169,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             );
 
             // Set segment lengths
-            this->L().internalField() = spline.segLengths();
- 
+            this->L().primitiveFieldRef() = spline.segLengths();
+
             // cellCentres = spline.midPoints();
 
-            Pout << "Beam length: " << spline.length() << endl;
+            Pout<< "Beam length: " << spline.length() << endl;
         }
         else
         {
-	    surfaceVectorField curCf = mesh().Cf() + refWf_;
+	    surfaceVectorField curCf(mesh().Cf() + refWf_);
             for (label i=0; i<nBeams; i++)
-            {            
-                vectorField beamPoints =
-                    this->beamPointData(curCf, i);
-                vectorField beamTangents =
-                    this->beamPointData(refTangent_, i);
+            {
+                vectorField beamPoints(this->beamPointData(curCf, i));
+                vectorField beamTangents(this->beamPointData(refTangent_, i));
 
                 if (beamPoints.size())
                 {
@@ -1134,7 +1200,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                     // sleep(5);
 
                     const labelList& curBeamCells = mesh().cellZones()[i];
-                    scalarField curSegLengths = spline.segLengths();
+                    scalarField curSegLengths(spline.segLengths());
                     // vectorField newCellCentres = spline.midPoints();
 
                     // Pout << i << " Length ... 2" << endl;
@@ -1144,7 +1210,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                     {
                         // Set segment lengths
                         label curCell = curBeamCells[cellI];
-                        this->L().internalField()[curCell] =
+                        this->L().primitiveFieldRef()[curCell] =
                             curSegLengths[cellI];
 
                         // // Correct cell centres
@@ -1154,35 +1220,43 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             }
         }
     }
-    
+    Pout<< __FILE__ << " " << __LINE__ << endl;
+
     W_.storePrevIter();
     Theta_.storePrevIter();
 
-        
+
     // Update contact for restart
-    if (contactActive())
-    {
-        if (runTime.timeIndex()>1)
-        {
-	    // Info << "Inside if" << endl;
-            contact().update();
-            contact().finalUpdate();
-        }
-        else
-        {
-	    // Info << "else loop" << endl;
-            contact();
-        }
-    }
+    // if (contactActive())
+    // {
+    //     if (runTime.timeIndex()>1)
+    //     {
+	//     // Info << "Inside if" << endl;
+    //         contact().update();
+    //         contact().finalUpdate();
+    //     }
+    //     else
+    //     {
+	//     // Info << "else loop" << endl;
+    //         contact();
+    //     }
+    // }
 
 
-    
+
     // Set Kirchhoff beam transformation tensor
-    if (kirchhoffBeam_)
-    {
-        // kirchhoffTransTensor_ = vector(1,0,0)*vector(1,0,0);
-        // Info << kirchhoffTransTensor_ << endl;
-    }
+    // if (kirchhoffBeam_)
+    // {
+    //     // kirchhoffTransTensor_ = vector(1,0,0)*vector(1,0,0);
+    //     // Info << kirchhoffTransTensor_ << endl;
+    // }
+
+
+    // Set fields as oriented
+    explicitQ_.setOriented(true);
+    explicitM_.setOriented(true);
+    Q_.setOriented(true);
+    M_.setOriented(true);
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -1210,7 +1284,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             curConvergenceTol
         )
     );
-    
+
     // const scalar relConvergenceTol
     // (
     //     beamProperties().lookupOrDefault<scalar>("relConvergenceTol", 0)
@@ -1224,11 +1298,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar initialResidual = 1;
     scalar currentResidual = 1;
     scalar currentMaterialResidual = 0;
-    bool completedElasticPrediction = false;
-    blockLduMatrix::debug = debug;
+    //bool completedElasticPrediction = false;
+    //blockLduMatrix::debug = debug;
 
     scalar curContactResidual = 1;
-	
+
     iOuterCorr() = 0;
     do
     {
@@ -1237,35 +1311,35 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             Info << "iOuterCorr: " << iOuterCorr() << endl;
         }
 
-        if (contactActive())
-        {
-            if (debug)
-            {
-                Info << "Updating contact: start" << endl;
-            }
+        // if (contactActive())
+        // {
+        //     if (debug)
+        //     {
+        //         Info << "Updating contact: start" << endl;
+        //     }
 
-            scalar tStart = runTime().elapsedCpuTime();
-            
-            // Info << "tstart in CTLNRB file: \n " << tStart << endl;
-            curContactResidual = contact().update();
-            scalar tEnd = runTime().elapsedCpuTime();
+        //     scalar tStart = runTime().elapsedCpuTime();
 
-            totalContactTime_ += tEnd - tStart;
+        //     // Info << "tstart in CTLNRB file: \n " << tStart << endl;
+        //     curContactResidual = contact().update();
+        //     scalar tEnd = runTime().elapsedCpuTime();
 
-            if (debug)
-            {
-                Pout << "Current total contact update time: "
-                     << totalContactTime_ << endl;
-            }
-            
-            if (debug)
-            {
-                Info << "curContactResidual: "
-                    << curContactResidual << endl;
+        //     totalContactTime_ += tEnd - tStart;
 
-                Info << "Updating contact: end" << endl;
-            }
-        }
+        //     if (debug)
+        //     {
+        //         Pout << "Current total contact update time: "
+        //              << totalContactTime_ << endl;
+        //     }
+
+        //     if (debug)
+        //     {
+        //         Info << "curContactResidual: "
+        //             << curContactResidual << endl;
+
+        //         Info << "Updating contact: end" << endl;
+        //     }
+        // }
 
         scalar tStart = runTime().elapsedCpuTime();
         #include "coupledWThetaEqn_TLNR.H"
@@ -1275,10 +1349,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
         if (debug)
         {
-            Pout << "Current total solution update time: "
-                 << totalSolutionTime_ << endl;
+            Pout<< "Current total solution update time: "
+                << totalSolutionTime_ << endl;
         }
-   
+
         // curConvergenceTol = initialResidual*relConvergenceTol;
         // if (curConvergenceTol < convergenceTol)
         // {
@@ -1288,23 +1362,21 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     while
     (
         (++iOuterCorr() < nCorr)
-     &&
-        (
+     && (
             (currentResidual > curConvergenceTol)
          || (currentMaterialResidual > materialTol)
         )
     );
-    
-    totalIter_ += iOuterCorr();
-    
 
-    Info << "\nInitial residual: " << initialResidual
-         << ", current residual: " << currentResidual
-         << ", current material residual: " << currentMaterialResidual
-         << ", current contact force residual: " << curContactResidual
-         << ",\n iCorr = " << iOuterCorr() << endl;
-	
-	Info << "total Iterations " << totalIter_ << endl;
+    totalIter_ += iOuterCorr();
+
+    Info<< "\nInitial residual: " << initialResidual
+        << ", current residual: " << currentResidual
+        << ", current material residual: " << currentMaterialResidual
+        << ", current contact force residual: " << curContactResidual
+        << ",\n iCorr = " << iOuterCorr() << nl
+        << "total Iterations " << totalIter_ << endl;
+
     return initialResidual;
 }
 
@@ -1322,23 +1394,23 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     //     ThetaIncrement_ = (RM_.oldTime().T() & relTheta);
 
     //     Info << "relRM: " << relRM.boundaryField()[1] << endl;
-        
+
     //     Theta_ = Theta_.oldTime() + ThetaIncrement_;
 
     //     // ThetaIncrement_ = Theta_ - Theta_.oldTime();
-        
+
     //     Info << "relTheta[1]: "
     //          << relTheta.boundaryField()[1] << endl;
-        
+
     //     Info << "ThetaIncrement[1]: "
     //          << ThetaIncrement_.boundaryField()[1] << endl;
-        
+
     //     Info << "Theta[1]: "
     //          << Theta_.boundaryField()[1] << endl;
-        
+
     //     Info << "oldTheta[1]: "
     //          << Theta_.oldTime().boundaryField()[1] << endl;
-        
+
     //     Info << "DTheta[1]: "
     //          << Theta_.boundaryField()[1]
     //           - Theta_.oldTime().boundaryField()[1] << endl;
@@ -1351,14 +1423,14 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     //     tensor oldRM1star =
     //         rotationMatrix(Theta_.oldTime().boundaryField()[1][0]);
-        
+
     //     tensor relRMstar = (RM1star & oldRM1star.T());
-        
+
     //     Info << "relRMstar: " << relRMstar << endl;
 
     //     vector relAngle = pseudoVector(relRMstar);
     //     vector AngleIncrement =  (oldRM1star.T() & relAngle);
-        
+
     //     Info << "RM[1]: " << RM1 << endl;
     //     Info << "RM*[1]: " << RM1star << endl;
 
@@ -1373,11 +1445,11 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
         ThetaIncrement_ =  Theta_ - Theta_.oldTime();
     }
 
-    surfaceVectorField Wf = fvc::interpolate(W_) + refWf_;
+    surfaceVectorField Wf(fvc::interpolate(W_) + refWf_);
 
-    label nCellZones = mesh().cellZones().size();
+    //label nCellZones = mesh().cellZones().size();
 
-    const vectorField& WfI = Wf.internalField();    
+    const vectorField& WfI = Wf.internalField();
 
     const tensorField& LambdaI = Lambda_.internalField();
     const tensorField& refLambdaI = refLambda_.internalField();
@@ -1385,7 +1457,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     const vectorField& points = mesh().points();
 
-    vectorField& pointWI = pointW_.internalField();
+    vectorField& pointWI(pointW_.primitiveFieldRef());
 
     forAll(WfI, faceI)
     {
@@ -1397,12 +1469,12 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
         forAll(curFace, pointI)
         {
-            label curPoint = curFace[pointI];  
+            label curPoint = curFace[pointI];
 
             vector oldR = points[curPoint] - C0;
 
             // Info << faceI << ", " << oldR << endl;
-            
+
             vector newR = C0 + WfI[faceI] + //(LambdaI[faceI] & oldR);
                 (LambdaI[faceI] & (refLambdaI[faceI] & oldR));
 
@@ -1420,7 +1492,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
        const tensorField& pRefLambda =
             refLambda_.boundaryField()[patchI];
-            
+
         const label start =
             mesh().boundaryMesh()[patchI].start();
 
@@ -1459,7 +1531,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     //         const scalarField& segCurvature =
     //             spline.midPointCurvatures();
-            
+
     //         // Set radius of curvature
     //         curvature_.internalField() = segCurvature;
     //     }
@@ -1495,7 +1567,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     // Pout << "updateTotalFields 0" << endl;
     // sleep(5);
-        
+
     // if (updatedLagrangian_)
     // {
     //     totW_ += W_;
@@ -1504,7 +1576,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     //     // Calc cell-centre reference rotation matrix
     //     interpolateRotationMatrix(*this, refLambda_, refRM_);
-      
+
     //     volVectorField R0
     //     (
     //         IOobject
@@ -1531,7 +1603,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     //     }
 
     //     // Info << refTangent_.boundaryField() << endl;
-        
+
     //     Lambda_ == dimensionedTensor("I", Lambda_.dimensions(), tensor::I);
     //     RM_ == dimensionedTensor("I", RM_.dimensions(), tensor::I);
     //     Gamma_ == dimensionedVector("0", Gamma_.dimensions(), vector::zero);
@@ -1539,17 +1611,17 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     //     W_ == dimensionedVector("0", W_.dimensions(), vector::zero);
     //     W_.storePrevIter();
-        
+
     //     Theta_ == dimensionedVector("0", Theta_.dimensions(), vector::zero);
     //     Theta_.storePrevIter();
-        
+
     //     // if (contactActive())
     //     // {
     //     //     W_ = dimensionedVector("0", W_.dimensions(), vector::zero);
     //     //     W_.storePrevIter();
     //     // }
 
-    //     vectorField newPoints = points + pointWI;    
+    //     vectorField newPoints = points + pointWI;
     //     const_cast<dynamicFvMesh&>(this->mesh()).movePoints(newPoints);
 
     //     // Calc element lengths and currect cell centres
@@ -1562,7 +1634,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     //         {
     //             vectorField beamPoints = this->beamPointData(mesh().Cf());
     //             vectorField beamTangents = this->beamPointData(refTangent_);
-            
+
     //             HermiteSpline spline
     //             (
     //                 beamPoints,
@@ -1571,7 +1643,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     //             // Set segment lengths
     //             this->L().internalField() = spline.segLengths();
- 
+
     //             cellCentres = spline.midPoints();
 
     //             Info << "Beam length: " << spline.length() << endl;
@@ -1592,7 +1664,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     //                         beamPoints,
     //                         beamTangents
     //                     );
-            
+
     //                     const labelList& curBeamCells = mesh().cellZones()[i];
     //                     scalarField curSegLengths = spline.segLengths();
     //                     vectorField newCellCentres = spline.midPoints();
@@ -1615,77 +1687,77 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     // Pout << "updateTotalFields 1" << endl;
     // sleep(5);
-    
-    // Plasticity    
-    if (plasticityStressResultantReturnPtr_.valid())
-    {
-        plasticityStressResultantReturnPtr_().updateYieldStress();
 
-        CDQ_ = CQ_;
-        CDM_ = CM_;
+    // Plasticity
+    // if (plasticityStressResultantReturnPtr_.valid())
+    // {
+    //     plasticityStressResultantReturnPtr_().updateYieldStress();
 
-            // dimensionedTensor
-            // (
-            //     "CM",
-            //     CM_.dimensions(),
-            //     tensor
-            //     (
-            //         GJ().value(), 0, 0,
-            //         0, EI().value(), 0,
-            //         0, 0, EI().value()
-            //     )
-            // );
+    //     CDQ_ = CQ_;
+    //     CDM_ = CM_;
 
-        CDMDGamma_ =
-            dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
+    //         // dimensionedTensor
+    //         // (
+    //         //     "CM",
+    //         //     CM_.dimensions(),
+    //         //     tensor
+    //         //     (
+    //         //         GJ().value(), 0, 0,
+    //         //         0, EI().value(), 0,
+    //         //         0, 0, EI().value()
+    //         //     )
+    //         // );
 
-        CDQDK_ =
-            dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
+    //     CDMDGamma_ =
+    //         dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
 
-        plasticityStressResultantReturnPtr_().writeInfo();
-    }
+    //     CDQDK_ =
+    //         dimensionedTensor("zero", dimForce*dimLength, tensor::zero);
 
-    if (conicalPulleys().size())
-    {
-        label nBeams = contact().splines().size();
-        label nPulleys = conicalPulleys().size();
-        
-        for (label bI=0; bI<nBeams; bI++)
-        {
-            const scalarPairList& curConicalPulleyContactGaps =
-                contact().conicalPulleyContactGaps()[bI];
+    //     plasticityStressResultantReturnPtr_().writeInfo();
+    // }
 
-            Info << "Beam " << bI << ": "
-                 << curConicalPulleyContactGaps[0];
-            for (label i=1; i<nPulleys; i++)
-            {
-                Info << ", " << curConicalPulleyContactGaps[i];
+    // if (conicalPulleys().size())
+    // {
+    //     label nBeams = contact().splines().size();
+    //     label nPulleys = conicalPulleys().size();
 
-            }
-            Info << endl;
-        }
-    }
-    
-    if (toroidalPulleys().size())
-    {
-        label nBeams = contact().splines().size();
-        label nPulleys = toroidalPulleys().size();
-        
-        for (label bI=0; bI<nBeams; bI++)
-        {
-            const scalarPairList& curToroidalPulleyContactGaps =
-                contact().toroidalPulleyContactGaps()[bI];
+    //     for (label bI=0; bI<nBeams; bI++)
+    //     {
+    //         const scalarPairList& curConicalPulleyContactGaps =
+    //             contact().conicalPulleyContactGaps()[bI];
 
-            Info << "Beam " << bI << ": "
-                 << curToroidalPulleyContactGaps[0];
-            for (label i=1; i<nPulleys; i++)
-            {
-                Info << ", " << curToroidalPulleyContactGaps[i];
+    //         Info << "Beam " << bI << ": "
+    //              << curConicalPulleyContactGaps[0];
+    //         for (label i=1; i<nPulleys; i++)
+    //         {
+    //             Info << ", " << curConicalPulleyContactGaps[i];
 
-            }
-            Info << endl;
-        }
-    }
+    //         }
+    //         Info << endl;
+    //     }
+    // }
+
+    // if (toroidalPulleys().size())
+    // {
+    //     label nBeams = contact().splines().size();
+    //     label nPulleys = toroidalPulleys().size();
+
+    //     for (label bI=0; bI<nBeams; bI++)
+    //     {
+    //         const scalarPairList& curToroidalPulleyContactGaps =
+    //             contact().toroidalPulleyContactGaps()[bI];
+
+    //         Info << "Beam " << bI << ": "
+    //              << curToroidalPulleyContactGaps[0];
+    //         for (label i=1; i<nPulleys; i++)
+    //         {
+    //             Info << ", " << curToroidalPulleyContactGaps[i];
+
+    //         }
+    //         Info << endl;
+    //     }
+    // }
 
     beamModel::updateTotalFields();
 }
@@ -1695,29 +1767,29 @@ void coupledTotalLagNewtonRaphsonBeam::writeFields()
 {
     beamModel::writeFields();
 
-    // Plasticity    
-    if (plasticityStressResultantReturnPtr_.valid())
-    {
-        if (runTime().outputTime())
-        {
-            plasticityStressResultantReturnPtr_().writeFields();
+    // Plasticity
+    // if (plasticityStressResultantReturnPtr_.valid())
+    // {
+    //     if (runTime().outputTime())
+    //     {
+    //         plasticityStressResultantReturnPtr_().writeFields();
 
-            // surfaceVectorField dRdS
-            // (
-            //     IOobject
-            //     (
-            //         "dRdS",
-            //         runTime.timeName(),
-            //         mesh(),
-            //         IOobject::NO_READ,
-            //         IOobject::AUTO_WRITE
-            //     ),
-            //     dR0Ds_ + fvc::snGrad(W_)
-            // );
+    //         // surfaceVectorField dRdS
+    //         // (
+    //         //     IOobject
+    //         //     (
+    //         //         "dRdS",
+    //         //         runTime.timeName(),
+    //         //         mesh(),
+    //         //         IOobject::NO_READ,
+    //         //         IOobject::AUTO_WRITE
+    //         //     ),
+    //         //     dR0Ds_ + fvc::snGrad(W_)
+    //         // );
 
-            // dRdS.write();
-        }
-    }    
+    //         // dRdS.write();
+    //     }
+    // }
 }
 
 
@@ -1739,8 +1811,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
             new vectorField(nPoints, vector::zero)
         );
 
-        const surfaceVectorField Wf = fvc::interpolate(W_);
-        surfaceVectorField curCf = mesh.Cf() + refWf_ + Wf;
+        const surfaceVectorField Wf(fvc::interpolate(W_));
+        surfaceVectorField curCf(mesh.Cf() + refWf_ + Wf);
 
         // Calculate cell-centre mean line tangents
         vectorField tangents(mesh.nCells(), vector::zero);
@@ -1770,16 +1842,16 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
                 label patchID = -lowerFace - 1;
                 tangents[cellI] -= curCf.boundaryField()[patchID][0];
             }
-            
+
             tangents[cellI] /= mag(tangents[cellI]) + SMALL;
         }
 
         const volVectorField& C = mesh.C();
-        const volVectorField curC = C + refW_ + W_;
+        const volVectorField curC(C + refW_ + W_);
 
         // Correct internal faces mean line position
-        const unallocLabelList& own = mesh.owner();
-        const unallocLabelList& nei = mesh.neighbour();
+        const labelList& own = mesh.owner();
+        const labelList& nei = mesh.neighbour();
         forAll(curCf, faceI)
         {
             curCf[faceI] =
@@ -1793,7 +1865,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
                 );
         }
 
-        tCurrentPoints() = this->beamPointData(curCf);
+        tCurrentPoints.ref() = this->beamPointData(curCf);
 
         return tCurrentPoints;
     }
@@ -1807,8 +1879,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
             new vectorField(nPoints, vector::zero)
         );
 
-        const surfaceVectorField Wf = fvc::interpolate(W_);
-        surfaceVectorField curCf = mesh.Cf() + refWf_ + Wf;
+        const surfaceVectorField Wf(fvc::interpolate(W_));
+        surfaceVectorField curCf(mesh.Cf() + refWf_ + Wf);
 
         // Calculate cell-centre mean line tangents
         vectorField tangents(mesh.nCells(), vector::zero);
@@ -1863,11 +1935,11 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
         }
 
         const volVectorField& C = mesh.C();
-        const volVectorField curC = C + refW_ + W_;
+        const volVectorField curC(C + refW_ + W_);
 
         // Correct internal faces mean line position
-        const unallocLabelList& own = mesh.owner();
-        const unallocLabelList& nei = mesh.neighbour();
+        const labelList& own = mesh.owner();
+        const labelList& nei = mesh.neighbour();
         forAll(curCf, faceI)
         {
             curCf[faceI] =
@@ -1881,7 +1953,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamPoints
                 );
         }
 
-        tCurrentPoints() = this->beamPointData(curCf, bI);
+        tCurrentPoints.ref() = this->beamPointData(curCf, bI);
 
         return tCurrentPoints;
     }
@@ -1927,7 +1999,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPoints
                     // Parallel data exchange
                     OPstream::write
                     (
-                        Pstream::blocking,
+                        Pstream::commsTypes::blocking,
                         domainI,
                         reinterpret_cast<const char*>
                         (
@@ -1952,7 +2024,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPoints
                     // Parallel data exchange
                     IPstream::read
                     (
-                        Pstream::blocking,
+                        Pstream::commsTypes::blocking,
                         domainI,
                         reinterpret_cast<char*>(allPoints[domainI].begin()),
                         allPoints[domainI].byteSize()
@@ -2009,13 +2081,15 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh.C() + refW_ + W_;
-        R0.boundaryField().evaluateCoupled();
-        surfaceVectorField curTangents = fvc::snGrad(R0);
+
+
+        //R0.boundaryField().evaluateCoupled();
+        surfaceVectorField curTangents(fvc::snGrad(R0));
         curTangents /= mag(curTangents);
 
         if (curTangents.boundaryField()[startPatchIndex()].size())
         {
-            curTangents.boundaryField()[startPatchIndex()] *= -1;
+            curTangents.boundaryFieldRef()[startPatchIndex()] *= -1;
         }
         else
         {
@@ -2026,16 +2100,16 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                 {
                     const labelList& fc =
                         mesh.boundary()[patchI].faceCells();
-                    
+
                     if (fc[0] == 0)
                     {
-                        curTangents.boundaryField()[patchI] *= -1;
+                        curTangents.boundaryFieldRef()[patchI] *= -1;
                     }
                 }
             }
         }
- 
-        tCurrentTangents() = this->beamPointData(curTangents);
+
+        tCurrentTangents.ref() = this->beamPointData(curTangents);
 
         return tCurrentTangents;
     }
@@ -2063,15 +2137,15 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             dimensionedVector("R0", dimLength, vector::zero)
         );
         R0 = mesh.C() + refW_ + W_;
-        R0.boundaryField().evaluateCoupled();
-        surfaceVectorField curTangents = fvc::snGrad(R0);
+        //R0.boundaryField().evaluateCoupled();
+        surfaceVectorField curTangents(fvc::snGrad(R0));
         curTangents /= mag(curTangents);
-        
+
         // curTangents.boundaryField()[startPatchIndex(bI)] *= -1;
-            
+
         if (curTangents.boundaryField()[startPatchIndex(bI)].size())
         {
-            curTangents.boundaryField()[startPatchIndex(bI)] *= -1;
+            curTangents.boundaryFieldRef()[startPatchIndex(bI)] *= -1;
         }
         else
         {
@@ -2089,7 +2163,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                         {
                             if (fc[fI] <= min(cz))
                             {
-                                curTangents.boundaryField()[patchI][fI] *= -1;
+                                curTangents.boundaryFieldRef()[patchI][fI] *= -1;
                             }
                         }
                     }
@@ -2097,7 +2171,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
             }
         }
 
-        tCurrentTangents() = this->beamPointData(curTangents, bI);
+        tCurrentTangents.ref() = this->beamPointData(curTangents, bI);
 
         return tCurrentTangents;
     }
@@ -2144,7 +2218,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamTangents
                     // Parallel data exchange
                     OPstream::write
                     (
-                        Pstream::blocking,
+                        Pstream::commsTypes::blocking,
                         domainI,
                         reinterpret_cast<const char*>
                         (
@@ -2169,7 +2243,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamTangents
                     // Parallel data exchange
                     IPstream::read
                     (
-                        Pstream::blocking,
+                        Pstream::commsTypes::blocking,
                         domainI,
                         reinterpret_cast<char*>(allTangents[domainI].begin()),
                         allTangents[domainI].byteSize()
@@ -2317,7 +2391,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
         // labelList procNPoints(Pstream::nProcs(), 0);
         // procNPoints[Pstream::myProcNo()] =
         //     allPoints[Pstream::myProcNo()].size();
-        
+
         // Pstream::gatherList(procNPoints);
         // Pstream::scatterList(procNPoints);
 
@@ -2330,7 +2404,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                     // procReceivePoints[procI].size();
 
                 // Pout << curProcNumReceivePoints << endl;
-                
+
                 allPoints[procI] =
                     pointField(curProcNumReceivePoints, vector::zero);
                 allTangents[procI] =
@@ -2358,7 +2432,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                         // Parallel data exchange
                         OPstream::write
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<const char*>
                             (
@@ -2385,7 +2459,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                         // Parallel data exchange
                         IPstream::read
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<char*>
                             (
@@ -2397,7 +2471,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                 }
             }
         }
-        
+
         // sleep(5);
 
         // PstreamBuffers pBufs(Pstream::nonBlocking);
@@ -2419,7 +2493,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                         // Parallel data exchange
                         OPstream::write
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<const char*>
                             (
@@ -2443,7 +2517,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                         // Parallel data exchange
                         IPstream::read
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<char*>(allPoints[domainI].begin()),
                             allPoints[domainI].byteSize()
@@ -2469,7 +2543,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
 
                         OPstream::write
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<const char*>
                             (
@@ -2493,7 +2567,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                         // Parallel data exchange
                         IPstream::read
                         (
-                            Pstream::blocking,
+                            Pstream::commsTypes::blocking,
                             domainI,
                             reinterpret_cast<char*>
                             (
@@ -2531,7 +2605,7 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
                 {
                     label glPointIndex =
                         localToGlobalBeamPointsAddressing()[bI][procI][pI];
-                    
+
                     points[glPointIndex] = allPoints[procI][pI];
                     tangents[glPointIndex] = allTangents[procI][pI];
 
@@ -2584,9 +2658,9 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
         points = globalPoints;
         tangents = globalTangents;
         }
-        
+
         // Pout << "nPoints: " << points.size() << ", " << nPoints << endl;
-        
+
         // if (false)
         // {
         // // Merge
@@ -2613,20 +2687,20 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
         //     // forAll(tangents, pI)
         //     // {
         //     //     label oldIndex = findIndex(oldToNew, pI);
-        //     //     tangents[pI] = globalTangents[oldIndex];                
+        //     //     tangents[pI] = globalTangents[oldIndex];
         //     // }
 
         //     forAll(globalTangents, gpI)
         //     {
         //         tangents[oldToNew[gpI]] = globalTangents[gpI];
         //     }
-            
+
         //     points = newGlobalPoints;
         // }
         // else
         // {
         //     points = globalPoints;
-        //     tangents = globalTangents;            
+        //     tangents = globalTangents;
         // }
         // }
     }
@@ -2647,11 +2721,13 @@ currentDisplacementIncrement() const
     (
         new vectorField(nPoints, vector::zero)
     );
-    vectorField& DW = tDW();
+    vectorField& DW(tDW.ref());
 
-    const surfaceVectorField DWf =
+    const surfaceVectorField DWf
+    (
         fvc::interpolate(W_)
-      - fvc::interpolate(W_.oldTime());
+      - fvc::interpolate(W_.oldTime())
+    );
 
     const vectorField& DWfI = DWf.internalField();
 
@@ -2674,11 +2750,11 @@ currentRotationIncrement() const
     (
         new tensorField(nPoints, tensor::zero)
     );
-    tensorField& DLambda = tDLambda();
+    tensorField& DLambda(tDLambda.ref());
 
-    const surfaceTensorField DLambdaf = (Lambda_ & inv(Lambda_.oldTime()));
+    const surfaceTensorField DLambdaf((Lambda_ & inv(Lambda_.oldTime())));
 
-    const tensorField& DLambdafI = DLambdaf.internalField();
+    const tensorField& DLambdafI(DLambdaf.internalField());
 
     DLambda[0] = DLambdaf.boundaryField()[startPatchIndex()][0];
     DLambda[nPoints-1] = DLambdaf.boundaryField()[endPatchIndex()][0];
@@ -2689,7 +2765,7 @@ currentRotationIncrement() const
 
     return tDLambda;
 }
-  
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace solidModels

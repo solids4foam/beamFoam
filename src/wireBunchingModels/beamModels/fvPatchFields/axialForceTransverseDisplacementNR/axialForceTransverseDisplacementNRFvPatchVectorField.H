@@ -63,10 +63,10 @@ class axialForceTransverseDisplacementNRFvPatchVectorField
 
         //- Displacement time series
         interpolationTable<vector> refDispSeries_;
-  
+
         //- Axial force
         scalarField axialForce_;
-  
+
         //- Displacement time series
         interpolationTable<scalar> axialForceSeries_;
 
@@ -152,7 +152,7 @@ public:
             {
                 return refDisp_;
             }
-  
+
             //- Return reference displacement
             vectorField& refDisp()
             {
@@ -164,7 +164,7 @@ public:
             {
                 return axialForce_;
             }
-  
+
         // Evaluation functions
 
             //- Update the coefficients associated with the patch field
@@ -173,7 +173,7 @@ public:
             //- Evaluate the patch field, sets Updated to false
             virtual void evaluate
             (
-                const Pstream::commsTypes commsType = Pstream::blocking
+                const Pstream::commsTypes commsType = Pstream::commsTypes::blocking
             );
 
         // Mapping functions

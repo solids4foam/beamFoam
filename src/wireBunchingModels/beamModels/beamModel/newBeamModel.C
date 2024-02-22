@@ -24,7 +24,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "beamModel.H"
-#include "foamTime.H"
+//#include "foamTime.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -60,14 +60,14 @@ Foam::autoPtr<Foam::beamModel> Foam::beamModel::New
     }
 
     Info<< "Selecting beamModel " << beamModelTypeName << endl;
+    
+    // changes to be compiled with OFv23  
+    auto* cstrIter = dictionaryConstructorTable(beamModelTypeName);
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(beamModelTypeName);
-
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!cstrIter)
     {
         FatalErrorIn
-        (
+	(
             "beamModel::New(Time&, const word&)"
         )   << "Unknown beamModel type " << beamModelTypeName
             << endl << endl
@@ -76,7 +76,24 @@ Foam::autoPtr<Foam::beamModel> Foam::beamModel::New
             << exit(FatalError);
     }
 
-    return autoPtr<beamModel>(cstrIter()(runTime, region));
+
+
+    //dictionaryConstructorTable::iterator cstrIter =
+    //    dictionaryConstructorTablePtr_->find(beamModelTypeName);
+
+    //if (cstrIter == dictionaryConstructorTablePtr_->end())
+    //{
+    //    FatalErrorIn
+    //    (
+    //        "beamModel::New(Time&, const word&)"
+    //    )   << "Unknown beamModel type " << beamModelTypeName
+    //        << endl << endl
+    //        << "Valid beamModel types are :" << endl
+    //        << dictionaryConstructorTablePtr_->toc()
+    //        << exit(FatalError);
+    //}
+
+    return autoPtr<beamModel>(cstrIter(runTime, region));
 }
 
 

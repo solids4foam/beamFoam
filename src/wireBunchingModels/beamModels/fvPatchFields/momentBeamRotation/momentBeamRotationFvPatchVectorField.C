@@ -26,7 +26,7 @@ License
 #include "momentBeamRotationFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
-
+#include "surfaceFields.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -86,7 +86,7 @@ momentBeamRotationFvPatchVectorField
     {
         gradient() = vector::zero;
     }
-  
+
     if (dict.found("value"))
     {
         Field<vector>::operator=(vectorField("value", dict, p.size()));
@@ -98,7 +98,7 @@ momentBeamRotationFvPatchVectorField
 
     // fvPatchVectorField::operator=(patchInternalField());
     // gradient() = vector::zero;
-    
+
     // Check if traction is time-varying
     if (dict.found("momentSeries"))
     {
@@ -110,7 +110,7 @@ momentBeamRotationFvPatchVectorField
     {
         moment_ = vectorField("moment", dict, p.size());
     }
-    
+
 }
 
 
@@ -159,10 +159,10 @@ void momentBeamRotationFvPatchVectorField::rmap
 )
 {
     fixedGradientFvPatchVectorField::rmap(ptf, addr);
-    
+
     const momentBeamRotationFvPatchVectorField& dmptf =
         refCast<const momentBeamRotationFvPatchVectorField>(ptf);
-    
+
     moment_.rmap(dmptf.moment_, addr);
 }
 
@@ -177,41 +177,43 @@ void momentBeamRotationFvPatchVectorField::updateCoeffs()
 
     // Info << "void momentBeamRotationFvPatchVectorField::updateCoeffs()"
     //      << endl;
-      
+
     if (momentSeries_.size())
     {
         moment_ = momentSeries_(this->db().time().timeOutputValue());
     }
 
-    if (dimensionedInternalField().name() == "DTheta")
+    if (internalField().name() == "DTheta")
     {
         const tensorField CMDTheta =
             patch().lookupPatchField<surfaceTensorField, tensor>("CMDTheta");
- 
+
         const tensorField CMDTheta2 =
             patch().lookupPatchField<surfaceTensorField, tensor>("CMDTheta2");
 
-        const scalarField delta = 1.0/patch().deltaCoeffs();
-    
+        const scalarField delta(1.0/patch().deltaCoeffs());
+
         const vectorField explicitM =
-            patch().lookupPatchField<surfaceVectorField, vector>("explicitM");        
+            patch().lookupPatchField<surfaceVectorField, vector>("explicitM");
         // const vectorField explicitM =
         //     patch().lookupPatchField<surfaceVectorField, vector>("M_0");
 
-        const vectorField DThetaP = this->patchInternalField();
+        const vectorField DThetaP (this->patchInternalField());
 
         // const tensorField invCM = inv(CMDTheta/delta);
-        const tensorField invCM = inv(CMDTheta/delta + CMDTheta2);
-    
-        vectorField DTheta =
-        (
-            invCM
-          & (
-                moment_ - explicitM
-              + (CMDTheta & DThetaP)/delta
-            )
+        const tensorField invCM(inv(CMDTheta/delta + CMDTheta2));
+
+        vectorField DTheta
+	(
+		(
+		    invCM
+		  & (
+			moment_ - explicitM
+		      + (CMDTheta & DThetaP)/delta
+		    )
+		)
         );
-    
+
         gradient() = (DTheta - DThetaP)/delta;
     }
     else
@@ -221,25 +223,27 @@ void momentBeamRotationFvPatchVectorField::updateCoeffs()
 
         const tensorField CMTheta2 =
             patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta2");
-        
+
         const vectorField explicitM =
             patch().lookupPatchField<surfaceVectorField, vector>("explicitM");
 
-        const scalarField delta = 1.0/patch().deltaCoeffs();
-    
-        const vectorField ThetaP = this->patchInternalField();
+        const scalarField delta (1.0/patch().deltaCoeffs());
 
-        const tensorField invCM = inv(CMTheta/delta + CMTheta2);
-    
-        vectorField Theta =
-        (
-            invCM
-          & (
-                moment_ - explicitM
-              + (CMTheta & ThetaP)/delta
-            )
+        const vectorField ThetaP (this->patchInternalField());
+
+        const tensorField invCM (inv(CMTheta/delta + CMTheta2));
+
+        vectorField Theta
+	(
+		(
+		    invCM
+		  & (
+			moment_ - explicitM
+		      + (CMTheta & ThetaP)/delta
+		    )
+		)
         );
-    
+
         gradient() = (Theta - ThetaP)/delta;
     }
 

@@ -1,2 +1,0 @@
-boundaryConditions = beamModels/fvPatchFields
-LIB = $(FOAM_USER_LIBBIN)/libwireBunchingModels
