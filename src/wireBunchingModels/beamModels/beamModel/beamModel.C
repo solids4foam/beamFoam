@@ -209,8 +209,8 @@ Foam::beamModel::beamModel
           ? fileName(runTime.caseConstant())
           : fileName(runTime.caseConstant()/region),
             runTime,
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
         )
     ),
     runTime_(runTime),
@@ -240,7 +240,6 @@ Foam::beamModel::beamModel
     endPatchIndex_(),
     startCells_(),
     nBeamCells_(),
-    //crossSections_(),
     R_(),
     U_(),
     E_(beamProperties().lookup("E")),

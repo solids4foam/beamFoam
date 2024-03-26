@@ -945,7 +945,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refTangentHeader.typeHeaderOk<labelIOList>(true))
+    if (!refTangentHeader.typeHeaderOk<surfaceVectorField>(true))
     {
         Info<< "Calculating mean line tangents for initial configuration"
             << endl;
@@ -1081,7 +1081,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refRMheader.typeHeaderOk<labelIOList>(true))
+    if (!refRMheader.typeHeaderOk<volTensorField>(true))
     {
         Info<< "Calculating cell-centre reference rotation matrix" << endl;
 
@@ -2024,8 +2024,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                 "R0",
                 runTime().timeName(),
                 mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
+                IOobject::READ_IF_PRESENT,
+                IOobject::AUTO_WRITE
              ),
             mesh,
             dimensionedVector("R0", dimLength, vector::zero)
@@ -2080,8 +2080,8 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                 "R0",
                 runTime().timeName(),
                 mesh,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
+                IOobject::READ_IF_PRESENT,
+                IOobject::AUTO_WRITE
             ),
             mesh,
             dimensionedVector("R0", dimLength, vector::zero)
