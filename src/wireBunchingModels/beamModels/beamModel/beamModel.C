@@ -154,8 +154,8 @@ Foam::beamModel::indicator(const Foam::label bI) const
                 "beamIndicator",
                 runTime().timeName(),
                 mesh(),
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
+                IOobject::READ_IF_PRESENT,
+                IOobject::AUTO_WRITE
             ),
             mesh(),
             dimensionedScalar("zero", dimless, 0)
@@ -171,8 +171,8 @@ Foam::beamModel::indicator(const Foam::label bI) const
             "cellIndicator",
             runTime().timeName(),
             mesh(),
-            IOobject::NO_READ,
-            IOobject::NO_WRITE
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedScalar("zero", dimless, 0),
@@ -209,8 +209,8 @@ Foam::beamModel::beamModel
           ? fileName(runTime.caseConstant())
           : fileName(runTime.caseConstant()/region),
             runTime,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE // must be AUTO_WRITE
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         )
     ),
     runTime_(runTime),
@@ -255,8 +255,8 @@ Foam::beamModel::beamModel
             "L",
             runTime.timeName(),
             this->mesh(),
-            IOobject::NO_READ,
-            IOobject::NO_WRITE
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         ),
         this->mesh(),
         dimensionedScalar("L", dimLength, 0)

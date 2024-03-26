@@ -656,7 +656,8 @@
     if (!steadyState())
     {
         // First order Euler scheme
-
+		Info << " hello we entered the time loop " << endl;		
+		Info << "dt for Beam is :" << runTime().deltaT() << endl;
         // Add inertial force
         {
             // SB modified - (10/11/2023)
@@ -664,6 +665,7 @@
             {
                 volVectorField a = Accl_;
                 vectorField QRho = ARho_*L()*a;
+
 
                 forAll(source, cellI)
                 {
