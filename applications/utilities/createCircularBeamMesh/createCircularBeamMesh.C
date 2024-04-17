@@ -23,6 +23,7 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Description
+Custom beam meshing utility 
 
 \*---------------------------------------------------------------------------*/
 
@@ -323,6 +324,8 @@ int main(int argc, char *argv[])
     mesh.addZones(pz, fz, cz);
 
     mesh.write();
+
+     #include "printMeshSummary.H"
 
     Pout<< "End\n" << endl;
 
