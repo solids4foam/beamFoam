@@ -7,7 +7,10 @@ if (true)
     // Total rotation matrix
     surfaceTensorField Lambda((Lambda_ & refLambda_));
 
-    CQW_ = (Lambda & (CDQ_ & Lambda.T()));
+    // CQW_ = (Lambda & (CDQ_ & Lambda.T()));
+
+    CQW_ = (Lambda & (CQ_ & Lambda.T()));
+    
     // CQW_ = (Lambda & (CDQ_ & (kirchhoffTransTensor_ & Lambda.T())));
 
     // Pout << Lambda.boundaryFieldRef() << endl;
@@ -33,18 +36,18 @@ if (true)
 
     explicitM_ =  (Lambda & (CM_ & (K_)));
 
-    if (updatedLagrangian_) // Check for Kirchhoff beam and plasticity
-    {
-        explicitQ_ += (Lambda_ & Q_.oldTime());
-        explicitM_ += (Lambda_ & M_.oldTime());
-    }
+    // if (updatedLagrangian_) // Check for Kirchhoff beam and plasticity
+    // {
+    //     explicitQ_ += (Lambda_ & Q_.oldTime());
+    //     explicitM_ += (Lambda_ & M_.oldTime());
+    // }
 
     // #include "correctBoundaryForcesAndMoments.H"
 
     CQTheta_ =
         (
             (
-                Lambda & (CDQ_ & Lambda.T() )
+                Lambda & (CQ_ & Lambda.T() )
             )
           & spinTensor(dRdS)
         )
@@ -53,7 +56,7 @@ if (true)
 
     CQDTheta_ = (Lambda & (CDQDK_ & Lambda.T())); // Check for Kirchhoff beam
 
-    CMTheta_ = ( Lambda & (CDM_ & Lambda.T()) );
+    CMTheta_ = ( Lambda & (CM_ & Lambda.T()) );
 
     // CMTheta2_ = -spinTensor(Lambda & (CM_ & (K_ - KP_)))
 
@@ -67,7 +70,7 @@ if (true)
        *(
             (
                 spinTensor(dRdS)
-              & ( Lambda & (CDQ_ & Lambda.T()) )
+              & ( Lambda & (CQ_ & Lambda.T()) )
             )
           - spinTensor(Q_)
           // - spinTensor(explicitQ_)
@@ -80,7 +83,7 @@ if (true)
             (
                 (
                     spinTensor(dRdS)
-                  & ( Lambda & (CDQ_ & Lambda.T()) )
+                  & ( Lambda & (CQ_ & Lambda.T()) )
                 )
               & spinTensor(dRdS)
             )

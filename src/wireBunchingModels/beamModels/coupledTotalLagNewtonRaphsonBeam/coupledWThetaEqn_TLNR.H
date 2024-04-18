@@ -146,7 +146,7 @@
         d[nei[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
 
-        // Theta part: Laplacian
+        // // Theta part: Laplacian
 
         u[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
@@ -969,7 +969,7 @@
 
     // Info << DW_.internalField() << endl;
 
-    // Update displacement increment (for contact calculation)
+    // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
 
     // Update mean line velocity field

@@ -29,6 +29,7 @@ Description
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
+    Seevani Bali, UCD.
 
 SourceFiles
     coupledTotalLagNewtonRaphsonBeam.C
@@ -84,7 +85,7 @@ class coupledTotalLagNewtonRaphsonBeam
         mutable volVectorField Theta_;
 
         //- Cross-section rotation field
-        mutable volVectorField ThetaIncrement_;
+        // mutable volVectorField ThetaIncrement_;
 
         //- Cross-section angular velocity field
         mutable volVectorField Omega_;
@@ -95,10 +96,10 @@ class coupledTotalLagNewtonRaphsonBeam
         volVectorField DTheta_;
 
         //- Switch to updated Lagrangian formulation
-        bool updatedLagrangian_;
+        // bool updatedLagrangian_;
 
         //- Switch to Kirchhoff beam
-        bool kirchhoffBeam_;
+        // bool kirchhoffBeam_;
 
         //- Mean line displacement field
         mutable volVectorField totW_;
@@ -158,7 +159,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceVectorField refTangent_;
 
         //- Axial stretch ration
-        surfaceScalarField stretchRatio_;
+        // surfaceScalarField stretchRatio_;
 
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQW_;
@@ -188,7 +189,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceVectorField Gamma_;
 
         //- Kirchoff transformation tensor
-        surfaceTensorField kirchhoffTransTensor_;
+        // surfaceTensorField kirchhoffTransTensor_;
 
         //- Strain vector (rotational)
         surfaceVectorField K_;
@@ -244,20 +245,21 @@ class coupledTotalLagNewtonRaphsonBeam
         // dimensionedDiagTensor CQ_;
 
         //- Beam cross-section constant
-        mutable surfaceTensorField CDQ_;
+        // mutable surfaceTensorField CDQ_;
 
         //- Beam cross-section constant
         surfaceTensorField CM_;
         // dimensionedDiagTensor CM_;
 
         //- Beam cross-section constant
-        surfaceTensorField CDM_;
+        // surfaceTensorField CDM_;
 
         //- Beam cross-section constant
-        surfaceTensorField CDMDGamma_;
+        // surfaceTensorField CDMDGamma_;
 
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
+
         //   //- Beam cross-section constant
          //   dimensionedTensor CI_;
 
@@ -311,7 +313,7 @@ class coupledTotalLagNewtonRaphsonBeam
 
 
         //- Beam cell-centre curvatures
-        volScalarField curvature_;
+        // volScalarField curvature_;
 
     // Parallel performance data
 

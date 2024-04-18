@@ -157,19 +157,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh()
     ),
-    ThetaIncrement_
-    (
-        IOobject
-        (
-            "ThetaIncrement",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", Theta_.dimensions(), vector::zero)
-    ),
+    // ThetaIncrement_
+    // (
+    //     IOobject
+    //     (
+    //         "ThetaIncrement",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedVector("0", Theta_.dimensions(), vector::zero)
+    // ),
     Omega_
     (
         IOobject
@@ -210,14 +210,14 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", Theta_.dimensions(), vector::zero)
     ),
-    updatedLagrangian_
-    (
-        beamProperties().lookupOrDefault<bool>("updatedLagrangian", false)
-    ),
-    kirchhoffBeam_
-    (
-        beamProperties().lookupOrDefault<bool>("kirchhoffBeam", false)
-    ),
+    // updatedLagrangian_
+    // (
+    //     beamProperties().lookupOrDefault<bool>("updatedLagrangian", false)
+    // ),
+    // kirchhoffBeam_
+    // (
+    //     beamProperties().lookupOrDefault<bool>("kirchhoffBeam", false)
+    // ),
     totW_
     (
         IOobject
@@ -413,19 +413,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("x-axis", dimless, vector(1, 0, 0))
     ),
-    stretchRatio_
-    (
-        IOobject
-        (
-            "stretchRatio",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("1", dimless, 1.0)
-    ),
+    // stretchRatio_
+    // (
+    //     IOobject
+    //     (
+    //         "stretchRatio",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedScalar("1", dimless, 1.0)
+    // ),
     CQW_
     (
         IOobject
@@ -543,19 +543,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimless, vector::zero)
     ),
-    kirchhoffTransTensor_
-    (
-        IOobject
-        (
-            "kirchhoffTransTensor",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor("0", dimless, tensor::I)
-    ),
+    // kirchhoffTransTensor_
+    // (
+    //     IOobject
+    //     (
+    //         "kirchhoffTransTensor",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedTensor("0", dimless, tensor::I)
+    // ),
     K_
     (
         IOobject
@@ -643,31 +643,31 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             )
         )
     ),
-    CDQ_
-    (
-        IOobject
-        (
-            "CDQ",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        // mesh(),
-        indicator(0)
-       *dimensionedTensor
-        (
-            "CQ",
-            EA().dimensions(),
-            tensor
-            (
-                EA().value(), 0, 0,
-                0, GA().value(), 0,
-                0, 0, GA().value()
-            )
-        )
-        // CQ_
-    ),
+    // CDQ_
+    // (
+    //     IOobject
+    //     (
+    //         "CDQ",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     // mesh(),
+    //     indicator(0)
+    //    *dimensionedTensor
+    //     (
+    //         "CQ",
+    //         EA().dimensions(),
+    //         tensor
+    //         (
+    //             EA().value(), 0, 0,
+    //             0, GA().value(), 0,
+    //             0, 0, GA().value()
+    //         )
+    //     )
+    //     // CQ_
+    // ),
     CM_
     (
         IOobject
@@ -708,47 +708,47 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     //     //     0,           0,           EI().value()
     //     // )
     // ),
-    CDM_
-    (
-        IOobject
-        (
-            "CDM",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(), //CM_
-        dimensionedTensor
-        (
-            "CDM",
-            EI().dimensions(),
-            tensor
-            (
-                GJ().value(), 0,              0,
-                0,            EIyy().value(), 0,
-                0,            0,              EIzz().value()
-            )
-        )
-    ),
-    CDMDGamma_
-    (
-        IOobject
-        (
-            "CDMDGamma",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(), //CM_
-        dimensionedTensor
-        (
-            "CDMDGamma",
-            dimForce*dimLength,
-            tensor::zero
-        )
-    ),
+    // CDM_
+    // (
+    //     IOobject
+    //     (
+    //         "CDM",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(), //CM_
+    //     dimensionedTensor
+    //     (
+    //         "CDM",
+    //         EI().dimensions(),
+    //         tensor
+    //         (
+    //             GJ().value(), 0,              0,
+    //             0,            EIyy().value(), 0,
+    //             0,            0,              EIzz().value()
+    //         )
+    //     )
+    // ),
+    // CDMDGamma_
+    // (
+    //     IOobject
+    //     (
+    //         "CDMDGamma",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(), //CM_
+    //     dimensionedTensor
+    //     (
+    //         "CDMDGamma",
+    //         dimForce*dimLength,
+    //         tensor::zero
+    //     )
+    // ),
     CDQDK_
     (
         IOobject
@@ -841,19 +841,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     //     dimensionedVector("0", dimless/dimLength, vector::zero)
     // ),
     // plasticityStressResultantReturnPtr_(NULL),
-    curvature_
-    (
-        IOobject
-        (
-            "curvature",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("zero", dimless/dimLength, 1)
-    ),
+    // curvature_
+    // (
+    //     IOobject
+    //     (
+    //         "curvature",
+    //         runTime.timeName(),
+    //         mesh(),
+    //         IOobject::READ_IF_PRESENT,
+    //         IOobject::AUTO_WRITE
+    //     ),
+    //     mesh(),
+    //     dimensionedScalar("zero", dimless/dimLength, 1)
+    // ),
     totalContactTime_(0),
     totalSolutionTime_(),
     proc_
@@ -918,8 +918,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 );
         }
 
-        CDQ_ = CQ_;
-        CDM_ = CM_;
+        // CDQ_ = CQ_;
+        // CDM_ = CM_;
     }
 
     // Plasticity
@@ -1391,9 +1391,11 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     //     Info << "AngleIncrement: " << AngleIncrement << endl;
     // }
     // else
-    {
-        ThetaIncrement_ =  Theta_ - Theta_.oldTime();
-    }
+
+    // SB Commented this - 18 April 2024
+    // {
+    //     ThetaIncrement_ =  Theta_ - Theta_.oldTime();
+    // }
 
     surfaceVectorField Wf(fvc::interpolate(W_) + refWf_);
 
