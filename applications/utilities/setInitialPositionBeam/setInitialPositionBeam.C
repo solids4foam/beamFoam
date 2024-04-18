@@ -26,11 +26,23 @@ Application
     setInitialPositionBeam
 
 Description
-    Sets the initial configuration of the beams
+    This utility sets the initial configuration of the beams:
+
+    There are two configurations of beam:
+    1. Reference Config:
+    - Beam mesh when created always lies such that the length direction of beam is aligned to x-axis.
+    - The tangents at the face centres of the beam cells are set to (1 0 0) direction.
+
+    2. Initial Configuration of beam: 
+    - To start with any other orientation of the beam, one needs to set the position vector of the beam curve.
+    - The tangents at the face centres of the beam need to be set from (1 0 0) to the cross-section orientation
+        of the beam spatial curve.
+    
     * valid arguments are:
-    * -cellZone
-    * -translate
-    * -rotateAlongVector
+    * -cellZone : this command grabs the specififed subset of mesh cells
+    * -translate : translate the beam position by the specified vector (x y z)
+    * -rotateAlongVector : rotate the beam about a vector with a specified angle - arg reqd ((x y z) angleInDegrees)
+    * -rotate : rotate the beam s
 
 \*---------------------------------------------------------------------------*/
 
@@ -64,18 +76,20 @@ int main(int argc, char *argv[])
 //#   include "createMesh.H"
 
 	const word regionName = args.optionRead<word>("region");
-	Info<<regionName<<endl;
+
+	Info << regionName << endl;
+
 	Foam::fvMesh mesh
-(
-    Foam::IOobject
     (
-        //Foam::fvMesh::defaultRegion,
-        regionName,
-        runTime.timeName(),
-        runTime,
-        Foam::IOobject::MUST_READ
-    )
-);
+        Foam::IOobject
+        (
+            //Foam::fvMesh::defaultRegion,
+            regionName,
+            runTime.timeName(),
+            runTime,
+            Foam::IOobject::MUST_READ
+        )
+    );
 	//meshPtr=&(time_.lookupObject<fvMesh>(regionName));
 	//const fvMesh& mesh= *meshPtr;
 
@@ -185,45 +199,45 @@ int main(int argc, char *argv[])
     {
         vector transVector(args.optionLookup("translate")());
 
-	tensor T = tensor::I;
+	    tensor T = tensor::I;
 
-        // Info<< "Translating beam points by " << transVector << endl;
+        // Info << "Translating beam points by " << transVector << endl;
 
-	if (args.optionFound("rotateAlongVector"))// AT: this needs a minor fix, sth not working here :|||||
-	{
-	    vector rotationAxis;
-	    scalar rotationAngle;
+        if (args.optionFound("rotateAlongVector"))// AT: this needs a minor fix, sth not working here :|||||
+        {
+            vector rotationAxis;
+            scalar rotationAngle;
 
-	    args.optionLookup("rotateAlongVector")()
-		>> rotationAxis
-		>> rotationAngle;
-	    scalar rotationAngleRadians = rotationAngle * (3.14159265359/180);
-	    //Info << rotationAngleRadians << endl;
+            args.optionLookup("rotateAlongVector")()
+            >> rotationAxis
+            >> rotationAngle;
+            scalar rotationAngleRadians = rotationAngle * (3.14159265359/180);
+            //Info << rotationAngleRadians << endl;
 
-	    T = Ra(rotationAxis, rotationAngleRadians);
-	    //Info << T << endl;
-	    Info << "Rotation tensor\n" << T << endl;
-	}
-	else
-	{
-	    T  = tensor::I;
-	}
-	if (args.optionFound("rotate"))
-    {
-        Pair<vector> n1n2(args.optionLookup("rotate")());
-        n1n2[0] /= mag(n1n2[0]);
-        n1n2[1] /= mag(n1n2[1]);
-        T = rotationTensor(n1n2[0], n1n2[1]);
+            T = Ra(rotationAxis, rotationAngleRadians);
+            //Info << T << endl;
+            Info << "Rotation tensor\n" << T << endl;
+        }
+        else
+        {
+            T  = tensor::I;
+        }
+        if (args.optionFound("rotate"))
+        {
+            Pair<vector> n1n2(args.optionLookup("rotate")());
+            n1n2[0] /= mag(n1n2[0]);
+            n1n2[1] /= mag(n1n2[1]);
+            T = rotationTensor(n1n2[0], n1n2[1]);
 
-        Info<< "Rotating points by " << T << endl;
+            Info<< "Rotating points by " << T << endl;
 
-        //points = transform(T, points);
+            //points = transform(T, points);
 
-        //if (args.optionFound("rotateFields"))
-        //{
-          //  rotateFields(args, runTime, T);
-        //}
-    }
+            //if (args.optionFound("rotateFields"))
+            //{
+            //  rotateFields(args, runTime, T);
+            //}
+        }
 
         const label zoneID = mesh.cellZones().findZoneID(cellZoneName);
 
