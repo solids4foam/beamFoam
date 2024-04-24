@@ -281,7 +281,11 @@ int main(int argc, char *argv[])
 
 		refLambdaI[faceI] = T;
 
-		refTangentI[faceI] = (refLambdaI[faceI] & refTangentI[faceI]);
+                // PC: refTang shoudl be wrt to the reference frame, not
+                // incremental; otherwise, refTang would be inconsistent with
+                // refWf and refW
+		//refTangentI[faceI] = (refLambdaI[faceI] & refTangentI[faceI]);
+		refTangentI[faceI] = (refLambdaI[faceI] & vector(1, 0, 0));
 	    }
 	}
 
@@ -329,7 +333,9 @@ int main(int argc, char *argv[])
 		    pRefLambda[faceI] = T;
 		    pRefRM[faceI] = pRefLambda[faceI];
 
-		    pRefTangent[faceI] = (pRefLambda[faceI] & pRefTangent[faceI]);
+                    // PC: see comment above
+		    // pRefTangent[faceI] = (pRefLambda[faceI] & pRefTangent[faceI]);
+		    pRefTangent[faceI] = (pRefLambda[faceI] & vector(1, 0, 0));
 		}
 	    }
 	}

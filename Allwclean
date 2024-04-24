@@ -3,30 +3,12 @@ set -x
 
 # clean library
 wclean src/wireBunchingModels
-wclean applications/functionObjects/writeBeamData
-wclean applications/functionObjects/patchForceMomentHistory
-wclean applications/functionObjects/beamPlasticStrainTransition
-wclean applications/functionObjects/conicalPulleyFrictionControl
-wclean applications/functionObjects/conicalPulleyContactHistory
-
-# clean external solver
-wclean petsc4Foam
 
 # clean solvers
-wclean applications/solvers/coupledUpdatedLagrangianBeamFoam
-wclean applications/solvers/beamFoam
-wclean applications/solvers/beamsBunchingFoam
+(cd applications/solvers && wclean all)
 
 # clean utilities
-wclean applications/utilities/createCircularBeamMesh
-wclean applications/utilities/createMultipleCircularBeamMesh
-wclean applications/utilities/createMultipleBeamMesh
-wclean applications/utilities/moveBeam
-wclean applications/utilities/createConicalPulleys
-wclean applications/utilities/createConicalPulleysPath
-wclean applications/utilities/createRegimeConicalPulleysPath
-wclean applications/utilities/createToroidalPulleys
-wclean applications/utilities/createToroidalPulleysPath
+(cd applications/utilities && wclean all)
 
 # Intel MKL library
 echo "Checking Intel MKL installation"
