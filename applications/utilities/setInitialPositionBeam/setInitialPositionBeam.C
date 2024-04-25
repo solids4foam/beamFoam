@@ -65,35 +65,15 @@ using namespace Foam::constant::mathematical;
 
 int main(int argc, char *argv[])
 {
-	#include "addRegionOption.H"
+    #include "addRegionOption.H"
     argList::validOptions.insert("cellZone", "name");
     argList::validOptions.insert("translate", "vector");
     argList::validOptions.insert("rotateAlongVector", "(vector angleInDegree)");
-    argList::validOptions.insert("rotate", "(vector vector)"); //AT-Added- the type of vector needs to be fixed
+    argList::validOptions.insert("rotate", "(vector vector)"); //AT-Added
 
-#   include "setRootCase.H"
-#   include "createTime.H"
-//#   include "createMesh.H"
-
-	const word regionName = args.optionRead<word>("region");
-
-	Info << regionName << endl;
-
-	Foam::fvMesh mesh
-    (
-        Foam::IOobject
-        (
-            //Foam::fvMesh::defaultRegion,
-            regionName,
-            runTime.timeName(),
-            runTime,
-            Foam::IOobject::MUST_READ
-        )
-    );
-	//meshPtr=&(time_.lookupObject<fvMesh>(regionName));
-	//const fvMesh& mesh= *meshPtr;
-
-
+    #include "setRootCase.H"
+    #include "createTime.H"
+    #include "createMesh.H"
     if (args.options().empty())
     {
         FatalErrorIn(args.executable())
@@ -201,27 +181,6 @@ int main(int argc, char *argv[])
 
 	    tensor T = tensor::I;
 
-        // Info << "Translating beam points by " << transVector << endl;
-
-        if (args.optionFound("rotateAlongVector"))// AT: this needs a minor fix, sth not working here :|||||
-        {
-            vector rotationAxis;
-            scalar rotationAngle;
-
-            args.optionLookup("rotateAlongVector")()
-            >> rotationAxis
-            >> rotationAngle;
-            scalar rotationAngleRadians = rotationAngle * (3.14159265359/180);
-            //Info << rotationAngleRadians << endl;
-
-            T = Ra(rotationAxis, rotationAngleRadians);
-            //Info << T << endl;
-            Info << "Rotation tensor\n" << T << endl;
-        }
-        else
-        {
-            T  = tensor::I;
-        }
         if (args.optionFound("rotate"))
         {
             Pair<vector> n1n2(args.optionLookup("rotate")());
@@ -230,18 +189,9 @@ int main(int argc, char *argv[])
             T = rotationTensor(n1n2[0], n1n2[1]);
 
             Info<< "Rotating points by " << T << endl;
-
-            //points = transform(T, points);
-
-            //if (args.optionFound("rotateFields"))
-            //{
-            //  rotateFields(args, runTime, T);
-            //}
         }
 
         const label zoneID = mesh.cellZones().findZoneID(cellZoneName);
-
-		//const label regionName = args.optionRead<word>("region");
 
 
 	  Info << "zoneID" << zoneID << endl;
@@ -258,20 +208,6 @@ int main(int argc, char *argv[])
 		<< "e.g. beam_0"
 		<< abort(FatalError);
 	}
-
-        //   const cellZone& cz = mesh.cellZones()[zoneID];
-
-        //   const labelListList& pc = mesh.pointCells();
-
-        //   forAll(pc, pI)
-        //   {
-            //   if (cz.whichCell(pc[pI][0]) > -1)
-            //   {
-                //   points[pI] += transVector;
-            //   }
-        //   }
-
-        // points += transVector;
 
 	vectorField& refWfI = refWf.primitiveFieldRef();
 	vectorField& refWI = refW.primitiveFieldRef();
@@ -363,10 +299,7 @@ int main(int argc, char *argv[])
 
     refWf.write();
     refW.write();
-    //Info<< refW<<endl;
     refLambda.write();
-    //Info<<"some Space"<<endl;
-    //Info<< refLambda<<endl;
     refTangent.write();
     refRM.write();
 
