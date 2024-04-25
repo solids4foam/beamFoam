@@ -1,26 +1,8 @@
 {
-    // Info << "Using coupled solver for DW and DTheta" << endl;
-
     scalar ThetaResidual = GREAT;
     scalar WResidual = GREAT;
 
-    // Theta_.storePrevIter();
-    // W_.storePrevIter();
-    // Lambda_.storePrevIter();
-    // Gamma_.storePrevIter();
-    // K_.storePrevIter();
-
     // Initialise the block system
-    // multibeamFvBlockMatrix WThetaEqn(WTheta_, *this);
-    // fvBlockMatrix<vector6> WThetaEqn(WTheta_);
-
-    // Pout << WTheta_.boundaryField() << endl;
-
-    // Grab block diagonal and set it to zero
-    //tensor6Field& d = WThetaEqn.diag().asSquare();
-    //d = tensor6::zero;
-    //scalarSquareMatrix myMatrix(6, 6, 0.0); // 6 x 6 matrix with 0.0 values
-
     Field<scalarSquareMatrix> d(mesh().nCells(), scalarSquareMatrix(6, 0.0));
 
     // Grab off-diagonal and set it to zero
@@ -53,9 +35,7 @@
     W_.boundaryFieldRef().updateCoeffs();
     Theta_.boundaryFieldRef().updateCoeffs();
 
-        #include "updateCoefficients_TLNR.H"
-
-    // Info << "explicitQ_ \n " << explicitQ_ << endl;
+    #include "updateCoefficients_TLNR.H"
 
     const tensorField& CQWI = CQW_.internalField();
     const tensorField& CQDThetaI = CQDTheta_.internalField();
@@ -95,9 +75,7 @@
     // Internal faces
     forAll(u, faceI)
     {
-        ////// W equation
-
-        // W part (Laplacian)
+        //-W part (Laplacian)
         u[faceI](0,0) += CQWI[faceI].xx()/deltaf[faceI];
         u[faceI](0,1) += CQWI[faceI].xy()/deltaf[faceI];
         u[faceI](0,2) += CQWI[faceI].xz()/deltaf[faceI];
@@ -146,7 +124,7 @@
         d[nei[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
 
-        // // Theta part: Laplacian
+        //- Theta part: Laplacian
 
         u[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
@@ -197,7 +175,7 @@
         d[nei[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
 
 
-        // Theta part
+        //- Theta part
         u[faceI](0,3) += (1-wf[faceI])*CQThetaI[faceI].xx();
         u[faceI](0,4) += (1-wf[faceI])*CQThetaI[faceI].xy();
         u[faceI](0,5) += (1-wf[faceI])*CQThetaI[faceI].xz();
@@ -257,7 +235,7 @@
 
         ////// Theta equation
 
-        // Laplacian part
+        //- Laplacian part
 
         u[faceI](3,3) += CMThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](3,4) += CMThetaI[faceI].xy()/deltaf[faceI];
@@ -308,7 +286,7 @@
         d[nei[faceI]](5,5) += -CMThetaI[faceI].zz()/deltaf[faceI];
 
 
-        // Theta part
+        //- Theta part
 
         u[faceI](3,3) += (1-wf[faceI])*CMTheta2I[faceI].xx();
         u[faceI](3,4) += (1-wf[faceI])*CMTheta2I[faceI].xy();
@@ -656,8 +634,6 @@
     if (!steadyState())
     {
         // First order Euler scheme
-		Info << " hello we entered the time loop " << endl;		
-		Info << "dt for Beam is :" << runTime().deltaT() << endl;
         // Add inertial force
         {
             // SB modified - (10/11/2023)
@@ -967,7 +943,6 @@
     W_.correctBoundaryConditions();
     W_.storePrevIter();
 
-    // Info << DW_.internalField() << endl;
 
     // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
@@ -1107,8 +1082,6 @@
         implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
         implicitQ.setOriented(true);
         Q_ = explicitQ_ + implicitQ;
-
-        //Info<< "Q: \n" << Q_ << endl;
     }
 
     // Calculate M, where we ignore the orientation check
@@ -1119,8 +1092,6 @@
         implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
         implicitM.setOriented(true);
         M_ = explicitM_ + implicitM;
-
-        //Info<< "M: \n" << M << endl;
     }
 
     // surfaceVectorField rPrimeXf = //explicitMQ_;

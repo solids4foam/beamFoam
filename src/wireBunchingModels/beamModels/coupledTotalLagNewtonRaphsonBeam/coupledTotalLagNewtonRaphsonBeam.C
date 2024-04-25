@@ -1123,7 +1123,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
             // cellCentres = spline.midPoints();
 
-            Pout<< "Beam length: " << spline.length() << endl;
+            // Pout<< "Beam length: " << spline.length() << endl;
         }
         else
         {
@@ -1170,7 +1170,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             }
         }
     }
-    Pout<< __FILE__ << " " << __LINE__ << endl;
 
     W_.storePrevIter();
     Theta_.storePrevIter();
