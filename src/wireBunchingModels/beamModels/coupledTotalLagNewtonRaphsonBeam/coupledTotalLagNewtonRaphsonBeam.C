@@ -29,7 +29,6 @@ License
 #include "fvc.H"
 #include "fvMatrices.H"
 #include "addToRunTimeSelectionTable.H"
-#include "cubicSpline.H"
 #include "HermiteSpline.H"
 #include "spinTensor.H"
 #include "pseudoVector.H"
