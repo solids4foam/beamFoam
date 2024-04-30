@@ -23,10 +23,20 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Description
-    Conversion between pseudo vector (rotation angle) and rotation matrix
+    This class contains the mathematical formulae to:
+    1. Construct a 3 x 3 rotation matrix from a 3-D rotation vector using the Rodrigues' formula (member functions 'rotationMatrix') 
+    2. Construct a (pseudo-)vector from a specified rotation matrix using the Spurrier algorithm, wherein
+       quaternions are calculated from the rotation matix and then using the quaternions, the corresponding
+       3-D (pseudo)-rotation matrix is calculated (member functions 'pseudoVector')
+    3. Interpolate rotation matrices between cell-centre and face-centre values of a
+       beam cell-segment (member function 'interpolatedRotationMatrix')
+    4. Interpolate rotational strains between cell-centre and face-centre values of a
+       beam cell-segment (member function 'meanLineCurvature')
+    5. Calculation of spatial derivative of the rotation matrix (member function 'rotationAngleDerivative')
 
 Author
     Zeljko Tukovic, FSB Zagreb
+    Seevani Bali, UCD.
 
 \*---------------------------------------------------------------------------*/
 

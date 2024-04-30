@@ -23,9 +23,11 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Description
+    Check pseudoVector.H file
 
 Author
     Zeljko Tukovic, FSB Zagreb
+    Seevani Bali, UCD.
 
 \*---------------------------------------------------------------------------*/
 
@@ -103,24 +105,6 @@ vector pseudoVector(const tensor& R)
 {
     vector result = vector::zero;
 
-    if (false)
-    {
-        vector rotAxis
-        (
-            R.zy() - R.yz(),
-            R.xz() - R.zx(),
-            R.yx() - R.xy()
-        );
-
-        scalar magRotAngle = asin(mag(rotAxis)/2);
-
-        rotAxis /= mag(rotAxis) + SMALL;
-
-        result = magRotAngle*rotAxis;
-
-        return result;
-    }
-
     scalar q0 = 0;
     vector q = vector::zero;
 
@@ -132,14 +116,6 @@ vector pseudoVector(const tensor& R)
 
     scalar a = max(D);
 
-    // if ( mag(a-D[3]) < SMALL )
-    // {
-    //     q0 = 0.5*::sqrt(1+a);
-    //     q.x() = (R.zy()-R.yz())/(4*q0);
-    //     q.y() = (R.xz()-R.zx())/(4*q0);
-    //     q.z() = (R.yz()-R.zy())/(4*q0);
-    // }
-    // else
     {
         label i = -1;
         for (label j=0; j<4; j++)
@@ -150,9 +126,6 @@ vector pseudoVector(const tensor& R)
                 break;
             }
         }
-
-        // Info << D << endl;
-        // Info << "a = " << a << endl;
 
         switch(i)
         {
@@ -209,27 +182,13 @@ tmp<tensorField> rotationMatrix(const vectorField& rotationAngle)
         new tensorField(rotationAngle.size(), tensor::I)
     );
 
-    if (false)
-    {
-        scalarField magAngle (mag(rotationAngle));
-        vectorField rotAxis (rotationAngle/(magAngle + SMALL));
-        tensorField rotAxisHat (spinTensor(rotAxis));
+    scalarField magAngle( mag(rotationAngle) + SMALL);
+    tensorField angleHat( spinTensor(rotationAngle));
 
-        tRotMat.ref() =
-            Foam::cos(magAngle)*I +
-            Foam::sin(magAngle)*rotAxisHat +
-            (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
-    }
-    else
-    {
-        scalarField magAngle( mag(rotationAngle) + SMALL);
-        tensorField angleHat( spinTensor(rotationAngle));
-
-        tRotMat.ref() =
-            I + (Foam::sin(magAngle)/magAngle)*angleHat
+    tRotMat.ref() =
+        I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
-           *(angleHat & angleHat);
-    }
+            *(angleHat & angleHat);
 
     return tRotMat;
 }
@@ -254,28 +213,14 @@ tmp<volTensorField> rotationMatrix(const volVectorField& rotationAngle)
         )
     );
 
-    if (false)
-    {
-        volScalarField magAngle( mag(rotationAngle));
-        volVectorField rotAxis (rotationAngle/(magAngle + SMALL));
-        volTensorField rotAxisHat( spinTensor(rotAxis));
+    volScalarField magAngle( mag(rotationAngle) + SMALL);
+    volTensorField angleHat( spinTensor(rotationAngle));
 
-        tRotMat.ref() =
-            Foam::cos(magAngle)*I +
-            Foam::sin(magAngle)*rotAxisHat +
-            (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
-    }
-    else
-    {
-        volScalarField magAngle( mag(rotationAngle) + SMALL);
-        volTensorField angleHat( spinTensor(rotationAngle));
-
-        tRotMat.ref() =
-            I + (Foam::sin(magAngle)/magAngle)*angleHat
+    tRotMat.ref() =
+        I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
-           *(angleHat & angleHat);
-    }
-
+            *(angleHat & angleHat);
+    
     return tRotMat;
 }
 
@@ -299,27 +244,14 @@ tmp<surfaceTensorField> rotationMatrix(const surfaceVectorField& rotationAngle)
         )
     );
 
-    if (false)
-    {
-        surfaceScalarField magAngle ( mag(rotationAngle));
-        surfaceVectorField rotAxis (rotationAngle/(magAngle + SMALL));
-        surfaceTensorField rotAxisHat ( spinTensor(rotAxis));
+    surfaceScalarField magAngle (mag(rotationAngle) + SMALL);
+    surfaceTensorField angleHat (spinTensor(rotationAngle));
 
-        tRotMat.ref() =
-            Foam::cos(magAngle)*I +
-            Foam::sin(magAngle)*rotAxisHat +
-            (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
-    }
-    else
-    {
-        surfaceScalarField magAngle (mag(rotationAngle) + SMALL);
-        surfaceTensorField angleHat (spinTensor(rotationAngle));
-
-        tRotMat.ref() =
-            I + (Foam::sin(magAngle)/magAngle)*angleHat
+    tRotMat.ref() =
+        I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
-    }
+
     return tRotMat;
 }
 
@@ -327,29 +259,14 @@ tensor rotationMatrix(const vector& rotationAngle)
 {
     tensor R = tensor::zero;
 
-    if (false)
-    {
-        scalar magAngle = mag(rotationAngle);
-        vector rotAxis = rotationAngle/(magAngle + SMALL);
-        tensor rotAxisHat = spinTensor(rotAxis);
+    scalar magAngle = mag(rotationAngle) + SMALL;
+    tensor angleHat = spinTensor(rotationAngle);
 
-        // Rodrigues formula
-        R =
-            Foam::cos(magAngle)*I +
-            Foam::sin(magAngle)*rotAxisHat +
-            (1.0 - Foam::cos(magAngle))*(rotAxis*rotAxis);
-    }
-    else
-    {
-        scalar magAngle = mag(rotationAngle) + SMALL;
-        tensor angleHat = spinTensor(rotationAngle);
-
-        // Rodrigues formula
-        R =
-            I + (Foam::sin(magAngle)/magAngle)*angleHat
+    // Rodrigues formula
+    R =
+        I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
            *(angleHat & angleHat);
-    }
 
     return R;
 }
@@ -476,7 +393,6 @@ tmp<surfaceVectorField> meanLineCurvature
     return tKf;
 }
 
-// This member function is not being used anymore to interpolate the rotation matrix
 void interpolateRotationMatrix
 (
     const volTensorField& R,
@@ -535,7 +451,7 @@ void interpolateRotationMatrix
     }
 }
 
-// This member function is not being used anymore to interpolate the rotation matrix
+
 void interpolateRotationMatrix
 (
     const beamModel& bm,
