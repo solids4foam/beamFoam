@@ -23,10 +23,15 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Description
-    Conversion between axial vector and spin tensor
+    This code is used for:
+    1. Construction of a 3 x 3 skew-symmetric matrix, i.e., A.T() = - A,
+       from a 3 x 1 vector (member function 'spinTensor').
+    2. Construction of a 3 x 1 vector (also called as axial vector) from
+       a skew-symmetric matrix (member function 'axialVector')
 
 Author
-    Zeljko Tukovic, FSB Zagreb
+    Zeljko Tukovic, FSB Zagreb,
+    Seevani Bali, UCD.
 
 \*---------------------------------------------------------------------------*/
 
