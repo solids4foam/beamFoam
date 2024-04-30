@@ -26,7 +26,6 @@ $(boundaryConditions)/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDispl
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C
 numerics/pseudoVector/pseudoVector.C
-numerics/permutationTensor/permutationTensor.C
 numerics/Tuples/timeVaryingVector/timeVaryingVector.C
 numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
 numerics/denseMatrixHelperFunctions/denseMatrixHelperFunctions.C

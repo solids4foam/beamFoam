@@ -32,7 +32,6 @@ License
 #include "HermiteSpline.H"
 #include "spinTensor.H"
 #include "pseudoVector.H"
-#include "permutationTensor.H"
 #include "momentBeamRotationFvPatchVectorField.H"
 #include "momentBeamRotationNRFvPatchVectorField.H"
 #include "forceBeamDisplacementFvPatchVectorField.H"
