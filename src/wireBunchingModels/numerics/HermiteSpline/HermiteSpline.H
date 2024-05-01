@@ -25,8 +25,24 @@ Class
     Foam::HermiteSpline
 
 Description
-    A series of straight line segments, which can also be interpreted as
-    a series of control points for splines, etc.
+    Hermite splines are cubic polynomials to interpolate between points 
+    using the positions of the points plus their tangents (derivatives).
+    The basic form involves defining each segment of the spline by the start 
+    and end points (positions) and the tangents at these points. Here, 
+    for a line segment, the local parameter zeta [-1, 1] is used. zeta = -1 for left
+    point and zeta = 1 for right end point. 
+
+    Advantages:
+    1. Control: over the slope of curve at control points, advantegeous
+        for ensuring smooth transitions (C-1 derivatives).
+    2. Flexibility: Useful in applications where the derivative of the curve is known or 
+        needs to be controlled, such as in motion control paths in animation and robotics.
+    3. Local Control: Adjusting the position or tangent at one point does not affect the entire
+        curve, just the segment connected to that point.
+
+Author 
+    Zeljko Tukovic, FSB Zagreb
+    Seevani Bali, UCD.
 
 SourceFiles
     HermiteSpline.C
@@ -49,10 +65,6 @@ namespace Foam
 /*---------------------------------------------------------------------------*\
                           Class HermiteSpline Declaration
 \*---------------------------------------------------------------------------*/
-
-// typedef Tuple2<label, scalar> labelScalar;
-// typedef List<labelScalar> labelScalarList;
-
 
 class HermiteSpline
 {
@@ -82,10 +94,10 @@ protected:
         //- The mid points of segments
         mutable vectorField* midPointsPtr_;
 
-        //- The segement mid point derivatives
+        //- The segment mid point derivatives
         mutable vectorField* midPointDerivativesPtr_;
 
-        //- The segement mid point curvatures
+        //- The segment mid point curvatures
         mutable scalarField* midPointCurvaturesPtr_;
 
         //- The derivative at end points
@@ -113,13 +125,17 @@ protected:
             const scalar arcLength
         ) const;
 
+        //- Calculate the length of a line segment between interval [-1, zeta] 
+        // by integrating the first order derivatives of position vector using 
+        // composite Simpson's 1/3 rule 
+        // (https://en.wikipedia.org/wiki/Simpson%27s_rule#Composite_Simpson's_1/3_rule)
         scalar arcLength
         (
             const label segment,
             const scalar zeta
         ) const;
 
-        //- Calculate segment mid points
+        //- Calculate segment mid points (zeta = 0)
         void calcMidPoints() const;
 
         //- Calculate segment mid point derivatives
@@ -166,8 +182,7 @@ public:
         //- Return the number of line segments
         label nSegments() const;
 
-        //- Return the point position corresponding to the curve parameter
-        //  (cord length)
+        //- Return the point position corresponding to the curve parameter 
         point position(const scalar) const;
 
         //- Return the point position corresponding to the local parameter
@@ -223,18 +238,18 @@ public:
 
         //- Nearest segment point for given point
         labelScalar nearestPoint
-	(
-	    const label segI,
-	    const vector& point
-	) const;
+	    (
+	        const label segI,
+	        const vector& point
+	    ) const;
 
         //- Nearest point for given point
         labelScalar findNearestPoint
-	(
-	    const label segI,
-	    const vector& point,
-	    const label nNeighbours = 0
-	) const;
+	    (
+	        const label segI,
+	        const vector& point,
+	        const label nNeighbours = 0
+	    ) const;
 
         //- Check for point contact between two splines
         Tuple2<scalar, scalar> checkPointContact

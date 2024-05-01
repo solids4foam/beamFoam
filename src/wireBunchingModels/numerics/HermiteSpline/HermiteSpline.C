@@ -350,30 +350,34 @@ Foam::scalar Foam::HermiteSpline::arcLength
         return 0;
     }
 
+    // Dividing the arc length integral into further 
+    // subsegments
     label n(12*(zeta+1)/2);
 
-    // Must be even number
+    // n must be even number for Simpson's 1/3 rule to apply 
     if ( (n % 2) > 0)
     {
         n += 1;
     }
 
-    if (n<2)
+    if (n < 2)
     {
         n = 2;
     }
 
-    scalar h = (zeta+1)/n;
+    // Setting the length of step size between left end point
+    // and zeta, i.e., [-1, zeta] 
+    const scalar h = (zeta + 1)/n;
 
-    // Composite Simpson's rule
+    // Composite Simpson's 1/3 rule
     scalar arcLen = 0;
-    for(label i=1; i<=(n/2); i++)
+    for(label i = 1; i <= (n/2); i++)
     {
         arcLen +=
           h
          *(
-              mag(paramFirstDerivative(segment, -1 + (2*i-2)*h))
-            + 4*mag(paramFirstDerivative(segment, -1 + (2*i-1)*h))
+              mag(paramFirstDerivative(segment, -1 + (2*i - 2)*h))
+            + 4*mag(paramFirstDerivative(segment, -1 + (2*i - 1)*h))
             + mag(paramFirstDerivative(segment, -1 + (2*i)*h))
           )/3;
     }
@@ -673,24 +677,6 @@ Foam::tmp<Foam::vectorField> Foam::HermiteSpline::secondDerivativeParam
 }
 
 
-        // if (extendedSearch)
-	// {
-	//     // Check neighborhood
-
-	//     // Left neighbour
-	//     label lSegI = segI - 1;
-	//     if (lSegI >= 0)
-	//     {
-	//     }
-
-	//     // Right neighbour
-	//     label rSegI = segI + 1;
-	//     if (rSegI < nSegments())
-	//     {
-	//     }
-	// }
-
-
 Foam::labelScalar Foam::HermiteSpline::nearestPoint
 (
     const label segI,
@@ -710,30 +696,30 @@ Foam::labelScalar Foam::HermiteSpline::nearestPoint
     if ((f0*f1) > SMALL)
     {
         FatalErrorIn
-	(
-	    "Foam::HermiteSpline::nearestPoint(...) const"
-	)
+	    (
+	        "Foam::HermiteSpline::nearestPoint(...) const"
+	    )
 	    << "Nearest point is out of segment"
 	    << abort(FatalError);
     }
     else if (mag(f0) < SMALL)
     {
         np = points_[segI];
-	mu = mu0;
+	    mu = mu0;
     }
     else if (mag(f1) < SMALL)
     {
-        np = points_[segI+1];
-	mu = mu1;
+        np = points_[segI + 1];
+	    mu = mu1;
     }
-    else // find root
+    else // find root using Newton-Raphson
     {
         scalar err = GREAT;
         label nIter = 0;
 
         do
         {
-            scalar df1 = (f1-f0)/(mu1-mu0);
+            scalar df1 = (f1 - f0)/(mu1 - mu0);
             mu = mu1 - (f1/df1);
             scalar f =
             (
@@ -741,39 +727,44 @@ Foam::labelScalar Foam::HermiteSpline::nearestPoint
               & (p - position(segI, mu))
             );
 
-            if (f0*f>0)
+            if (f0*f > 0)
             {
-                err = mag(mu-mu0);
+                err = mag(mu - mu0);
                 mu0 = mu;
                 f0 = f;
             }
             else
             {
-                err = mag(mu-mu1);
+                err = mag(mu - mu1);
                 mu1 = mu;
                 f1 = f;
             }
-
-	    // Info << "mu = " << mu << endl;
-	    // Info << "err = " << err << endl;
         }
-        while( (err>1e-3) && (++nIter < 100));
 
-        // if (nIter == 100)
-        // {
-        //     Info << "mu: " << mu << endl;
-        // }
+        while( (err > 1e-3) && (++nIter < 100) );
 
-	// Info << segI << ", " << mu << ", " << nIter << ", " << err << endl;
+        // When nIter = 100, the while loop is exhausted, but still err > 1e-3,
+        // should I need to add a Fatal Error here, or simply accept the last refined
+        // value of mu? nearestPoint is used for line contact search - need to revisit this.
 
-	if
-	(
-	    (mu < -1)
-	 && (mu > 1)
-	)
-	{
+	    // if
+	    // (
+	    //     (mu < -1)
+	    //     && (mu > 1)
+	    // )
+	    // {
+        //     Info << "Nearest point is not found" << endl;
+	    // }
+
+        // SB changed this - 01 May 2024 (mu can never be both < -1 and > 1 at the same time)
+        if
+	    (
+	        (mu < -1)
+	        || (mu > 1)
+	    )
+	    {
             Info << "Nearest point is not found" << endl;
-	}
+	    }
 
         np = position(segI, mu);
     }
@@ -791,11 +782,11 @@ Foam::labelScalar Foam::HermiteSpline::findNearestPoint
     if (nNeighbours < 0)
     {
         FatalErrorIn
-	(
-	    "Foam::HermiteSpline::findNearestPoint(...) const"
-	)
-	  << "Number of neighbour segments must be >= 0"
-	  << abort(FatalError);
+	    (
+	     "Foam::HermiteSpline::findNearestPoint(...) const"
+	    )
+	    << "Number of neighbour segments must be >= 0"
+	    << abort(FatalError);
     }
 
     labelScalar np(-1, -2);
@@ -803,50 +794,50 @@ Foam::labelScalar Foam::HermiteSpline::findNearestPoint
     {
         // First segment
         label fSegI = segI - nNeighbours;
-	if (fSegI < 0)
-	{
-	    fSegI = 0;
-	}
-
-	// Last segment
-	label lSegI = segI + nNeighbours;
-	if (lSegI > (nSegments() - 1))
-	{
-            lSegI = nSegments() - 1;
-	}
-
-	for (label sI=fSegI; sI<=lSegI; sI++)
-	{
-            scalar testValue =
-	    (
-	        dRdS()[sI]
-	      & (p - points()[sI])
-	    )
-	   *(
-	        dRdS()[sI+1]
-	      & (p - points()[sI+1])
-	    );
-
-	    if (testValue <= 0)
+	    if (fSegI < 0)
 	    {
-	        np = nearestPoint(sI, p);
-		break;
+	        fSegI = 0;
 	    }
-	}
 
-	if (np.first() != -1)
-	{
-	    return np;
-	}
-	else
-	{
-	    FatalErrorIn
-	    (
+        // Last segment
+        label lSegI = segI + nNeighbours;
+        if (lSegI > (nSegments() - 1))
+        {
+                lSegI = nSegments() - 1;
+        }
+
+        for (label sI = fSegI; sI <= lSegI; sI++)
+        {
+            scalar testValue =
+            (
+                dRdS()[sI]
+                & (p - points()[sI])
+            )
+            *(
+                dRdS()[sI + 1]
+                & (p - points()[sI + 1])
+            );
+
+            if (testValue <= 0)
+            {
+                np = nearestPoint(sI, p);
+                break;
+            }
+        }
+
+        if (np.first() != -1)
+        {
+            return np;
+        }
+        else
+        {
+            FatalErrorIn
+            (
                 "Foam::HermiteSpline::findNearestPoint(...) const"
-	    )
-                << "Problem with finding nearest point"
-		<< abort(FatalError);
-	}
+            )
+            << "Problem with finding nearest point"
+            << abort(FatalError);
+        }
     }
 
     return np;
@@ -875,8 +866,11 @@ Foam::HermiteSpline::checkPointContact
 
     if (contactAngle > lowerContactAngleLimit)
     {
-        // Find initial solution using assumption of linear segment
-        // Peter Wriggers and Zavarise paper - Meier point contact paper cited
+        // Find initial solution point contact pair [zetaC,neiZetaC] using the 
+        // assumption of linear interpolation between points p0 and p1.
+        // See Eq. 10 of the paper, Wriggers, P. and Zavarise, G., 1997. On contact between
+        // three‐dimensional beams undergoing large deflections. 
+        // Communications in numerical methods in engineering, 13(6), pp.429-438.
 
         const vector& p0 = points()[segI];
         const vector& p1 = points()[segI+1];
@@ -908,11 +902,10 @@ Foam::HermiteSpline::checkPointContact
                 )
             );
 
-	//   Info << "segI" << tab << segI << tab << "zetaC" << tab << zetaC
-	     //   << "\nneiSegI" << tab << neiSegI << tab << "neiZetaC"
-	     //   << tab << neiZetaC << endl;
-
-        // Refine for Hermite spline using Newton-Raphson
+        // Then refine zetaC and neiZetaC values for Hermite spline interpolation
+        // using Newton-Raphson technique.
+        // Note - Revisit the if loop - possible reason why numerical oscillations
+        // occur when point contact exactly occurs at a face
         if
         (
             (zetaC >= -1.05) && (zetaC <= 1.05)
@@ -935,6 +928,7 @@ Foam::HermiteSpline::checkPointContact
                 vector neiD2Rc =
                     neiSpline.paramSecondDerivative(neiSegI, neiZetaC);
 
+                // Check Eq. 6 of the reference paper
                 scalarSquareMatrix M(2, 0.0);
                 M[0][0] = -(dRc & dRc) + ((neiRc - Rc) & d2Rc);
                 M[0][1] =  (dRc & neiDRc);
@@ -946,14 +940,14 @@ Foam::HermiteSpline::checkPointContact
                 rhs[1] = -((neiRc - Rc) & neiDRc);
 
                 //scalarSquareMatrix invM = M.LUinvert();
-		LUscalarMatrix LUOfM(M);
+		        LUscalarMatrix LUOfM(M);
                 scalarSquareMatrix invM;
-		LUOfM.inv(invM);
+		        LUOfM.inv(invM);
 
                 scalarField DZeta(2, 0);
-                for (label i=0; i<2; i++)
+                for (label i = 0; i < 2; i++)
                 {
-                    for (label j=0; j<2; j++)
+                    for (label j = 0; j< 2; j++)
                     {
                         DZeta[i] += invM[i][j]*rhs[j];
                     }
@@ -963,23 +957,13 @@ Foam::HermiteSpline::checkPointContact
                 neiZetaC += DZeta[1];
 
                 residual = max(mag(DZeta[0]/2), mag(DZeta[1]/2));
-		//   Info << "residual: " << residual << endl;
+
             }
             while(residual > 1e-4 && nIter < 100);
         }
 
-        // if
-        // (
-        //     (zetaC > -1) && (zetaC <= 1)
-        //  && (neiZetaC > -1) && (neiZetaC <= 1)
-        // )
-        // {
-        //     Info << segI << ", " << zetaC << ", "
-        //          << neiSegI << ", " << neiZetaC << endl;
-        //     Info << DZeta << endl;
-        // }
     }
-    // Comment SB:
+    // Comment SB - need to revisit 01 May 2024:
     // Can an else loop be added here to make it more clear
     // that if contactangle < lowerContactAngle limit then
     // multiple point contact points might occur, and single
@@ -1046,30 +1030,30 @@ const
     vectorField Dt(result.size(), vector::zero);
     Dt[0] = midPhi[1] - midPhi[0];
     Dt[0] /= mag(Dt[0]) + SMALL;
-    Dt[result.size()-1] =
-        midPhi[result.size()-1] - midPhi[result.size()-2];
+    Dt[result.size() - 1] =
+        midPhi[result.size() - 1] - midPhi[result.size() - 2];
     Dt[result.size()-1] /= mag(Dt[result.size()-1]) + SMALL;
-    for (label i=1; i<(Dt.size()-1); i++)
+    for (label i=1; i<(Dt.size() - 1); i++)
     {
-        Dt[i] = midPhi[i] - midPhi[i-1];
+        Dt[i] = midPhi[i] - midPhi[i - 1];
         Dt[i] /= mag(Dt[i]) + SMALL;
     }
 
     // First and last points are fixed
     result[0] = midPhi[0];
-    result[result.size()-1] = midPhi[midPhi.size()-1];
-    for (label i=1; i<(midPhi.size()-1); i++)
+    result[result.size() - 1] = midPhi[midPhi.size() - 1];
+    for (label i = 1; i < (midPhi.size() - 1); i++)
     {
         scalar segLen = param_[i] - param_[i-1];
-        scalar zeta = localParameter(i-1, segLen/2);
+        scalar zeta = localParameter(i - 1, segLen/2);
 
         scalar H0 = (2.0 + zeta)*sqr(1.0 - zeta)/4;
         scalar H1 = (2.0 - zeta)*sqr(1.0 + zeta)/4;
         scalar Ht0 =  (1.0 + zeta)*sqr(1.0 - zeta)/4;
         scalar Ht1 = -(1.0 - zeta)*sqr(1.0 + zeta)/4;
 
-        result[i] = midPhi[i] - result[i-1]*H0
-          - c_[i-1]*(Dt[i-1]*Ht0 + Dt[i]*Ht1)/2;
+        result[i] = midPhi[i] - result[i - 1]*H0
+          - c_[i - 1]*(Dt[i-1]*Ht0 + Dt[i]*Ht1)/2;
         result[i] /= H1;
     }
 
@@ -1088,7 +1072,7 @@ void Foam::HermiteSpline::movePoints
         (
             "Foam::HermiteSpline::movePoints(...) const"
         )
-            << "Number of new points is not equal to number of ols pints "
+            << "Number of new points is not equal to number of old points "
             << newPoints.size() << " != " << points_.size()
             << abort(FatalError);
     }
