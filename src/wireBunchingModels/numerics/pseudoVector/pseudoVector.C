@@ -123,27 +123,27 @@ vector pseudoVector(const tensor& R)
         {
             case 0:
                 q.x() = sqrt(a/2 + (1 - tr(R))/4);
-                q0 = (R.zy() - R.yz())/(4 * q.x());
-                q.y() = (R.yx() + R.xy())/(4 * q.x());
-                q.z() = (R.zx() + R.xz())/(4 * q.x());
+                q0 = (R.zy() - R.yz())/(4*q.x());
+                q.y() = (R.yx() + R.xy())/(4*q.x());
+                q.z() = (R.zx() + R.xz())/(4*q.x());
                 break;
             case 1:
                 q.y() = sqrt(a/2 + (1 - tr(R))/4);
-                q0 = (R.xz() - R.zx())/(4 * q.y());
-                q.z() = (R.zy() + R.yz())/(4 * q.y());
-                q.x() = (R.xy() + R.yx())/(4 * q.y());
+                q0 = (R.xz() - R.zx())/(4*q.y());
+                q.z() = (R.zy() + R.yz())/(4*q.y());
+                q.x() = (R.xy() + R.yx())/(4*q.y());
                 break;
             case 2:
                 q.z() = sqrt(a/2 + (1 - tr(R))/4);
-                q0 = (R.yz() - R.zy())/(4 * q.z());
-                q.x() = (R.xz() + R.zx())/(4 * q.z());
-                q.y() = (R.yz() + R.zy())/(4 * q.z());
+                q0 = (R.yz() - R.zy())/(4*q.z());
+                q.x() = (R.xz() + R.zx())/(4*q.z());
+                q.y() = (R.yz() + R.zy())/(4*q.z());
                 break;
             case 3:
-                q0 = 0.5 * ::sqrt(1 + a);
-                q.x() = (R.zy() - R.yz())/(4 * q0);
-                q.y() = (R.xz() - R.zx())/(4 * q0);
-                q.z() = (R.yx() - R.xy())/(4 * q0);
+                q0 = 0.5*::sqrt(1 + a);
+                q.x() = (R.zy() - R.yz())/(4*q0);
+                q.y() = (R.xz() - R.zx())/(4*q0);
+                q.z() = (R.yx() - R.xy())/(4*q0);
                 break;
             default:
                 FatalErrorIn
@@ -156,11 +156,11 @@ vector pseudoVector(const tensor& R)
         }
     }
 
-    const scalar theta = atan(mag(q)/q0) * 2;
+    const scalar theta = atan(mag(q)/q0)*2;
 
     if (mag(theta) > SMALL)
     {
-        result = theta * (q/mag(q));
+        result = theta*(q/mag(q));
     }
 
     return result;
@@ -309,7 +309,7 @@ tmp<surfaceTensorField> interpolateRotationMatrix
         vector DRotAngle = pseudoVector(DR);
 
         // scalar s = 0.5/deltaCoeffsI[faceI];
-        RfI[faceI] = RI[own[faceI]] & rotationMatrix(0.5 * DRotAngle);
+        RfI[faceI] = RI[own[faceI]] & rotationMatrix(0.5*DRotAngle);
 
     }
 
@@ -373,12 +373,12 @@ tmp<surfaceVectorField> meanLineCurvature
             tensor DR = (RI[faceCells[faceI]].T() & pR[faceI]);
             vector DRotAngle = pseudoVector(DR);
 
-            tensor RN = (RI[faceCells[faceI]] & rotationMatrix(2 * DRotAngle));
+            tensor RN = (RI[faceCells[faceI]] & rotationMatrix(2*DRotAngle));
 
             DR = (RI[faceCells[faceI]].T() & RN);
             DRotAngle = pseudoVector(DR);
 
-            pKf[faceI] = DRotAngle * pDeltaCoeffs[faceI]/2;
+            pKf[faceI] = DRotAngle*pDeltaCoeffs[faceI]/2;
         }
     }
 
@@ -399,7 +399,7 @@ void interpolateRotationMatrix
 
     const tensorField& RI = R.internalField();
 
-    const tensorField& RfI = Rf.primitiveFieldRef();
+    tensorField& RfI = Rf.primitiveFieldRef();
     vectorField& snGradRotAngleI = snGradRotAngle;
 
     const fvMesh& mesh = R.mesh();
@@ -416,7 +416,7 @@ void interpolateRotationMatrix
         snGradRotAngleI[faceI] = DRotAngle*deltaCoeffsI[faceI];
 
         // scalar s = 0.5/deltaCoeffsI[faceI];
-        RfI[faceI] = RI[own[faceI]] & rotationMatrix(0.5 * DRotAngle);
+        RfI[faceI] = RI[own[faceI]] & rotationMatrix(0.5*DRotAngle);
     }
 
     forAll(snGradRotAngle.boundaryField(), patchI)
@@ -438,7 +438,7 @@ void interpolateRotationMatrix
 
             vector DRotAngle = pseudoVector(DR);
 
-            snGradRotAngleI[faceI] = DRotAngle * deltaCoeffsI[faceI];
+            snGradRotAngleI[faceI] = DRotAngle*deltaCoeffsI[faceI];
         }
     }
 }
@@ -544,7 +544,7 @@ void interpolateRotationMatrix
             RI[cellI] =
             (
                 RfI[lowerNeiFaces[cellI]]
-              & rotationMatrix(0.5 * DRotAngle)
+              & rotationMatrix(0.5*DRotAngle)
             );
         }
         else
@@ -560,7 +560,7 @@ void interpolateRotationMatrix
             RI[cellI] =
             (
                 RfI[lowerNeiFaces[cellI]]
-              & rotationMatrix(0.5 * DRotAngle)
+              & rotationMatrix(0.5*DRotAngle)
             );
         }
     }
