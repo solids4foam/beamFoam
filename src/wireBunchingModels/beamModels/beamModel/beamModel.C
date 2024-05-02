@@ -242,8 +242,8 @@ Foam::beamModel::beamModel
     nBeamCells_(),
     R_(),
     U_(),
-    E_(beamProperties().lookup("E")),
-    G_(beamProperties().lookup("G")),
+    E_("E",beamProperties()),
+    G_("G",beamProperties()),
     rho_("rho", dimDensity, 0),
     rhof_("rhoFluid", dimDensity, 0),
     gPtr_(),
@@ -316,7 +316,7 @@ Foam::beamModel::beamModel
 {
   if (beamProperties().found("rho"))
      {
-         rho_ = dimensionedScalar(beamProperties().lookup("rho"));
+        rho_ = dimensionedScalar("rho",beamProperties());
      }
 
      // Header for gravitational acceleration
@@ -337,12 +337,12 @@ Foam::beamModel::beamModel
  	        IOobject
  	        (
  		    "g",
- 	            runTime.caseConstant(),
- 	            this->mesh(),
-                     IOobject::MUST_READ,
-                     IOobject::NO_WRITE
+ 	        runTime.caseConstant(),
+ 	        this->mesh(),
+            IOobject::MUST_READ,
+            IOobject::NO_WRITE
  	        )
-             )
+        )
  	);
 
  	Info << "g is set for gravitational body force: "
@@ -356,7 +356,6 @@ Foam::beamModel::beamModel
  		<< "rho field not set in beamProperties for"
  		<< " calculating the gravity body force"
  		<< abort(FatalError);
-
  	}
  	else if (rho().value()==0.0)
  	{
@@ -369,7 +368,7 @@ Foam::beamModel::beamModel
  	// buoyant body force
  	if (beamProperties().found("rhoFluid"))
  	{
- 	    rhof_ = dimensionedScalar(beamProperties().lookup("rhoFluid"));
+        rhof_ = dimensionedScalar("rho",beamProperties());
  	}
  	else
  	{
