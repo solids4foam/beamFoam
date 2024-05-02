@@ -142,8 +142,7 @@ int main(int argc, char *argv[])
         face curFace(curPointLabels);
         curFace = curFace.reverseFace();
         //faces()[fI++] = curFace;
-	faces[fI++] = curFace;
-
+	    faces[fI++] = curFace;
         // faces()[fI++] = face(curPointLabels);
     }
 
@@ -251,8 +250,8 @@ int main(int argc, char *argv[])
             regionName,
             runTime.constant(),
             runTime,
-	    IOobject::NO_READ,
-	    IOobject::AUTO_WRITE
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
         ),
         std::move(points),
         std::move(faces),
@@ -325,7 +324,7 @@ int main(int argc, char *argv[])
 
     mesh.write();
 
-     #include "printMeshSummary.H"
+    #include "printMeshSummary.H"
 
     Pout<< "End\n" << endl;
 

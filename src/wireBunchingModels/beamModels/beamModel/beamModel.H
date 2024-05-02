@@ -140,9 +140,12 @@ class beamModel
         //- Shear modulus
         dimensionedScalar G_;
 
-        //- Density
+        //- Beam Density
         dimensionedScalar rho_;
+        //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
+
+        //- Gravitational Accl. ptr
         autoPtr<uniformDimensionedVectorField> gPtr_;
 
         // //- Beam cross-section area
@@ -396,10 +399,10 @@ public:
             label globalCellIndex(const label localCellIndex) const;
 
             //- Beam cross-section model
-          //  const PtrList<crossSectionModel>& crossSections() const
-          //  {
-          //      return crossSections_;
-          //  }
+            //  const PtrList<crossSectionModel>& crossSections() const
+            //  {
+            //      return crossSections_;
+            //  }
 
             //- Return beam cross-section radius
             const scalar& R(label bI = 0) const
@@ -473,19 +476,18 @@ public:
                 return rho_;
             }
             const dimensionedScalar& rhoFluid() const
-             {
-                 return rhof_;
-             }
+            {
+                return rhof_;
+            }
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {
-            if (gPtr_.empty())
-            {
-              FatalError
-                  << "g pointer for gravity not set" << abort(FatalError);
-            }
-
-          return gPtr_();
+                if (gPtr_.empty())
+                {
+                    FatalError
+                    << "g pointer for gravity not set" << abort(FatalError);
+                }
+                return gPtr_();
             }
 
             const dimensionedScalar& E() const
@@ -530,24 +532,24 @@ public:
             // Additional member functions added fo mass and rotation
  	          // inertia tensors for dynamics calculation
             inline dimensionedScalar ARho(label bI = 0) const
-              {
-                  return A(bI)*rho();
-              }
+            {
+                return A(bI)*rho();
+            }
 
             inline dimensionedScalar IyyRho(label bI = 0) const
-              {
-                  return rho()*Iyy(bI);
-              }
+            {
+                return rho()*Iyy(bI);
+            }
 
- 	          inline dimensionedScalar IzzRho(label bI = 0) const
-              {
-                  return rho()*Izz(bI);
-              }
+ 	        inline dimensionedScalar IzzRho(label bI = 0) const
+            {
+                return rho()*Izz(bI);
+            }
 
- 	          inline dimensionedScalar JRho(label bI = 0) const
-              {
-                  return rho()*J(bI);
-              }
+ 	        inline dimensionedScalar JRho(label bI = 0) const
+            {
+                return rho()*J(bI);
+            }
 
             //- Return segment length
             const volScalarField& L() const

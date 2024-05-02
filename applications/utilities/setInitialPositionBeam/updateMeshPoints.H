@@ -84,5 +84,5 @@
     }
 
     pointW.write();
-    Info << "done" << endl;
+    Info << "Done setting Initial Position for Beam" << endl;
 }

@@ -245,7 +245,6 @@ int main(int argc, char *argv[])
 	forAll(refWI, cellI)
 	{
 	    label I  = mesh.cellZones().whichZone(cellI);
-	    Info << "loop I=" << I << endl;
 
 	    if (I == zoneID)
 	    {
