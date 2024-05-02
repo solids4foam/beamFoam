@@ -336,11 +336,11 @@ Foam::beamModel::beamModel
             (
                 IOobject
                 (
-                "g",
-                runTime.caseConstant(),
-                this->mesh(),
-               IOobject::MUST_READ,
-               IOobject::NO_WRITE
+                    "g",
+                    runTime.caseConstant(),
+                    this->mesh(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE
                 )
            )
         );
