@@ -641,9 +641,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 
 
-    // ground contact fields
+    // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
-    segNo_(readInt(beamProperties().lookup("nSegments"))),
     gDamping_ (readDouble(beamProperties().lookup("gDamping"))),
     gStiffness_ (readDouble(beamProperties().lookup("gStiffness"))),
     groundZ_ (readDouble(beamProperties().lookup("groundZ"))),
