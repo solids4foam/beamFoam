@@ -753,8 +753,6 @@ Foam::beamModel::beamModel
     if (pointForcesStream.good())
     {
         pointForcesStream >> pointForces_;
-        Info << "Point forces: " << endl;
-        Info << pointForces_ << endl;
     }
     else
     {
@@ -1643,14 +1641,10 @@ Foam::scalar Foam::beamModel::deltaT() const
 {
     scalar newDeltaT = runTime().deltaT().value();
 
-    Info << "Current deltaT: " << newDeltaT << endl;
-
     if (deltaTseries_.size())
     {
         newDeltaT = deltaTseries_(runTime().value());
     }
-
-    Info << "Current deltaT: " << newDeltaT << endl;
 
     return newDeltaT;
 }

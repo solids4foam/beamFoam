@@ -30,9 +30,7 @@ Description
 
 \*---------------------------------------------------------------------------*/
 
-// #include "mpi.h"
 #include "parRun.H"
-
 #include "objectRegistry.H"
 #include "Time.H"
 #include "fvMesh.H"
@@ -46,43 +44,21 @@ Description
 #include "adjustPhi.H"
 #include "findRefCell.H"
 #include "mathematicalConstants.H"
-
 #include "OSspecific.H"
 #include "argList.H"
 #include "timeSelector.H"
-
-// #include <Eigen/Core>
-
-// #ifndef namespaceFoam
-// #define namespaceFoam
-//     using namespace Foam;
-// #endif
 
 
 #include "fvCFD.H"
 #include "beamModel.H"
 
-// #include "petsc.h"
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
-    // Eigen::initParallel();
-    // Eigen::setNbThreads(2);
-    // Foam::Info << "nThreads: " << Eigen::nbThreads() << Foam::endl;
 
-    // PetscErrorCode ierr =
-    //     PetscInitializeNoArguments();
-    // if (ierr)
-    // {
-    //     return ierr;
-    // }
-
-    // MPI_Init(&argc, &argv);
-
-#   include "setRootCase.H"
-#   include "createTime.H"
+#include "setRootCase.H"
+#include "createTime.H"
 
     // Create beam model
     Foam::autoPtr<Foam::beamModel> beam =
@@ -96,9 +72,6 @@ int main(int argc, char *argv[])
     // while (runTime.run())
     while (runTime.loop())
     {
-        // runTime.setDeltaT(beam().deltaT());
-
-        // runTime++;
 
         Foam::Info<< "\n\nTime = " << runTime.timeName() << Foam::nl
                   << Foam::endl;
@@ -108,7 +81,7 @@ int main(int argc, char *argv[])
         beam().updateTotalFields();
 
         beam().writeFields();
-        // runTime.write();
+        
 
         Foam::Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
                   << "  ClockTime = " << runTime.elapsedClockTime() << " s"

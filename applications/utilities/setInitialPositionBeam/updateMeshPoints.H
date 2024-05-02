@@ -1,9 +1,8 @@
 {
     const vectorField& refWfI = refWf.internalField();
-
     const tensorField& refLambdaI = refLambda.internalField();
     const faceList& faces = mesh.faces();
-    fileName meshDir = regionName/polyMesh::meshSubDir;
+    fileName meshDir = polyMesh::meshSubDir;
 
     pointIOField points
     (
@@ -11,8 +10,6 @@
         (
             "points",
             runTime.constant(),
-            // runTime.findInstance(polyMesh::meshSubDir, "points"),
-            //polyMesh::meshSubDir,
             meshDir,
             runTime,
             IOobject::MUST_READ,
@@ -38,7 +35,6 @@
     );
 
     vectorField& pointWI = pointW.primitiveFieldRef();
-    // vectorField pointWI(mesh.nPoints(), vector::zero);
 
     forAll(refWfI, faceI)
     {
@@ -87,17 +83,6 @@
         }
     }
 
-    // points = points + pointWI;
-
-    // Info << "Writing deformed mesh points ...";
-    // points.write();
-    // Info << "done" << endl;
-
-    //Info << "Writing reference point displacement field" << endl;
     pointW.write();
-    //Info << "pointW\n" << pointW << endl;
     Info << "done" << endl;
-
-    //   Info << mesh.C() + refW << endl;
-    //   Info << mesh.C() << endl;
 }

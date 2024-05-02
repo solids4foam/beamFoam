@@ -22,9 +22,6 @@ else
 fi
 
 # Extra cleaning
-rm~all
-rmdepall
-rmoall
 \find . -type f \( -name "*~" -o -name "*.bak" \) -exec rm {} \;
 \find . \( -name 'core' -o -name 'core.[1-9]*' \) -exec rm {} \;
 \find . \( -name '*.pvs' -o -name '*.foam' \) -exec rm {} \;
