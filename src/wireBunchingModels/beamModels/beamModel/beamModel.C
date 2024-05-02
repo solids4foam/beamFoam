@@ -244,8 +244,22 @@ Foam::beamModel::beamModel
     U_(),
     E_("E",beamProperties()),
     G_("G",beamProperties()),
-    rho_("rho", dimDensity, 0),
-    rhof_("rhoFluid", dimDensity, 0),
+    rho_
+    (
+        beamProperties().getOrDefault<dimensionedScalar>
+        (
+            "rho",
+            dimensionedScalar("rho", dimDensity, 0)
+        )
+    ),
+    rhof_
+    (
+        beamProperties().getOrDefault<dimensionedScalar>
+        (
+            "rhoFluid",
+            dimensionedScalar("rhoFluid", dimDensity, 0)
+        )
+    ),
     gPtr_(),
     L_
     (
@@ -288,16 +302,16 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
-    steadyState_(beamProperties_.lookupOrDefault<bool>("steadyState", true)),
+    steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
     objectiveInterpolation_
     (
-        beamProperties_.lookupOrDefault<bool>("objectiveInterpolation", false)
+        beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
     ),
-    kCI_(beamProperties_.lookupOrDefault<scalar>("scalingInertiaTensor", 1)),
+    kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     startToRelaxTime_
     (
-        lookupOrDefault<scalar>
+        getOrDefault<scalar>
         (
             "startRelaxingTime",
             GREAT
@@ -305,7 +319,7 @@ Foam::beamModel::beamModel
     ),
     relaxationPeriod_
     (
-        lookupOrDefault<scalar>
+        getOrDefault<scalar>
         (
             "relaxingPeriod",
             0
@@ -368,7 +382,7 @@ Foam::beamModel::beamModel
      // buoyant body force
         if (beamProperties().found("rhoFluid"))
         {
-            rhof_ = dimensionedScalar("rho",beamProperties());
+            rhof_ = dimensionedScalar("rhoFluid",beamProperties());
         }
         else
         {
