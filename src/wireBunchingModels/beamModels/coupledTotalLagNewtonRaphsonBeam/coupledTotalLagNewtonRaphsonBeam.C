@@ -712,7 +712,54 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Calculate tangents if it is not read
+    // Check whether the reference longitunidal axis of beams is 
+    // always set in global x-direction and throw error otherwise
+
+    // This is a mandatory step because the system of beam equations 
+    // and the strains are defined in the code assuming the reference
+    // beam centreline to be aligned in global x-direction
+    volVectorField R0
+    (
+        IOobject
+        (
+            "R0",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+            ),
+        mesh(),
+        dimensionedVector("R0", dimLength, vector::zero)
+    );
+
+    R0 = mesh().C();
+
+    const vectorField refTangentError =
+        (
+            fvc::snGrad(R0) 
+            - vector(1, 0, 0)
+        );
+
+    if 
+    (
+        sum(mag(refTangentError)) > SMALL
+    )
+    {
+        FatalErrorIn
+	    (
+	     "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam \n"
+	    )
+	    << "The longitudinal axis of beam in the reference configuration is "
+        << "\nnot aligned the global x-axis : This is a mandatory requirement "
+        << "\nbefore running the beam solver. Run the following command:"
+        << "\ntransformPoints -rotate-angle '((0 1 0) 90)' \n"
+        << "after creating the beam mesh to set the correct reference configuration."
+	    << abort(FatalError);
+    }
+
+    // Calculate tangents if it is not already set by the user
+    // This means the initial configuration is equivalent to the 
+    // reference configuration and the tangents are set to vector(1,0,0).
     IOobject refTangentHeader
     (
         "refTangent",
@@ -722,29 +769,12 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     );
     if (!refTangentHeader.typeHeaderOk<surfaceVectorField>(true))
     {
-        Info<< "Calculating mean line tangents for initial configuration"
-            << endl;
+        Info << "Calculating mean line tangents for initial configuration"
+             << endl;
 
-        volVectorField R0
-        (
-            IOobject
-            (
-                "R0",
-                runTime.timeName(),
-                mesh(),
-                IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
-             ),
-            mesh(),
-            dimensionedVector("R0", dimLength, vector::zero)
-        );
-        R0 = mesh().C();
         //R0.boundaryFieldRef().evaluateCoupled();
         dR0Ds_ = fvc::snGrad(R0);
         dR0Ds_ /= mag(dR0Ds_);
-
-        // Info << mesh().C() << endl;
-        // Info << mesh().magSf() << endl;
 
         refTangent_ = dR0Ds_;
 
@@ -823,6 +853,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
 
     }
+    // Here, the values of tangent fields set by the user for an initially curved
+    // or translated (and rotated) beam are assigned to dR0Ds_
     else
     {
         dR0Ds_ = refTangent_;
