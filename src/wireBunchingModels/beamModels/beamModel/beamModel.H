@@ -482,11 +482,12 @@ public:
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {
-                if (gPtr_.empty())
+                if (!gPtr_.valid())
                 {
                     FatalError
-                    << "g pointer for gravity not set" << abort(FatalError);
+                        << "g pointer for gravity not set" << abort(FatalError);
                 }
+
                 return gPtr_();
             }
 
