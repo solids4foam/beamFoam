@@ -114,22 +114,22 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::AUTO_WRITE
         ),
         mesh(),
-         //   fvc::ddt(W_)
- 	      dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
-      ),
-        Accl_
+        // fvc::ddt(W_)
+        dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
+    ),
+    Accl_
+    (
+        IOobject
         (
- 	      IOobject
- 	  (
- 	    "Accl",
- 	    runTime.timeName(),
- 	    mesh(),
- 	    IOobject::READ_IF_PRESENT,
-        IOobject::AUTO_WRITE
- 	  ),
- 	  mesh(),
- 	  dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
+            "Accl",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
         ),
+        mesh(),
+        dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
+    ),
     DW_
     (
         IOobject
@@ -166,21 +166,21 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::AUTO_WRITE
         ),
         mesh(),
-      //   fvc::ddt(Theta_)
- 	    dimensionedVector("0", Theta_.dimensions()/dimTime, vector::zero)
-      ),
-      dotOmega_
-      (
-         IOobject
-         (
-             "dotOmega",
-             runTime.timeName(),
-             mesh(),
+        //fvc::ddt(Theta_)
+        dimensionedVector("0", Theta_.dimensions()/dimTime, vector::zero)
+    ),
+    dotOmega_
+    (
+        IOobject
+        (
+            "dotOmega",
+            runTime.timeName(),
+            mesh(),
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
-         ),
- 	        mesh(),
-         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
+        ),
+        mesh(),
+        dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
     ),
     DTheta_
     (
@@ -616,9 +616,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     ),
     ARho_
     (
- 	    "ARho",
- 	    A().dimensions()*rho().dimensions(),
- 	    scalar(ARho().value())
+            "ARho",
+            A().dimensions()*rho().dimensions(),
+            scalar(ARho().value())
     ),
     CIRho_
     (
@@ -639,7 +639,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
-
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
@@ -712,13 +711,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Check whether the reference longitunidal axis of beams is 
+    // Check whether the reference longitunidal axis of beams is
     // always set in global x-direction and throw error otherwise
 
-    // This is a mandatory step because the system of beam equations 
+    // This is a mandatory step because the system of beam equations
     // and the strains are defined in the code assuming the reference
     // beam centreline to be aligned in global x-direction
-    volVectorField R0
+    const volVectorField R0
     (
         IOobject
         (
@@ -727,38 +726,28 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             mesh(),
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
-            ),
-        mesh(),
-        dimensionedVector("R0", dimLength, vector::zero)
+        ),
+        mesh().C()
     );
 
-    R0 = mesh().C();
+    const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
 
-    const vectorField refTangentError =
-        (
-            fvc::snGrad(R0) 
-            - vector(1, 0, 0)
-        );
-
-    if 
-    (
-        sum(mag(refTangentError)) > SMALL
-    )
+    if (sum(mag(refTangentError)) > SMALL)
     {
         FatalErrorIn
-	    (
-	     "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam \n"
-	    )
-	    << "The longitudinal axis of beam in the reference configuration is "
-        << "\nnot aligned the global x-axis : This is a mandatory requirement "
-        << "\nbefore running the beam solver. Run the following command:"
-        << "\ntransformPoints -rotate-angle '((0 1 0) 90)' \n"
-        << "after creating the beam mesh to set the correct reference configuration."
-	    << abort(FatalError);
+        (
+            "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
+        )   << "The longitudinal axis of beam in the reference configuration " << nl
+            << "is not aligned the global x-axis : This is a mandatory " << nl
+            << "requirement before running the beam solver. Run the " << nl
+            << "following command: " << nl
+            << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
+            << "after creating the beam mesh to set the correct reference "
+            << abort(FatalError);
     }
 
     // Calculate tangents if it is not already set by the user
-    // This means the initial configuration is equivalent to the 
+    // This means the initial configuration is equivalent to the
     // reference configuration and the tangents are set to vector(1,0,0).
     IOobject refTangentHeader
     (
@@ -769,8 +758,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     );
     if (!refTangentHeader.typeHeaderOk<surfaceVectorField>(true))
     {
-        Info << "Calculating mean line tangents for initial configuration"
-             << endl;
+        Info<< "Calculating mean line tangents for initial configuration"
+            << endl;
 
         //R0.boundaryFieldRef().evaluateCoupled();
         dR0Ds_ = fvc::snGrad(R0);
@@ -864,7 +853,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Info << refTangent_ << endl;
+    // Info<< refTangent_ << endl;
 
     // Calculate cell-centre reference rotation matrix
     // if it is not read
@@ -894,7 +883,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     {
         if (nBeams < 2)
         {
-	    surfaceVectorField curCf(mesh().Cf() + refWf_);
+            surfaceVectorField curCf(mesh().Cf() + refWf_);
             vectorField beamPoints(this->beamPointData(curCf));
             vectorField beamTangents(this->beamPointData(refTangent_));
 
@@ -909,7 +898,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
         else
         {
-	    surfaceVectorField curCf(mesh().Cf() + refWf_);
+            surfaceVectorField curCf(mesh().Cf() + refWf_);
             for (label i=0; i<nBeams; i++)
             {
                 vectorField beamPoints(this->beamPointData(curCf, i));
@@ -950,13 +939,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // {
     //     if (runTime.timeIndex()>1)
     //     {
-	//     // Info << "Inside if" << endl;
+        //     // Info<< "Inside if" << endl;
     //         contact().update();
     //         contact().finalUpdate();
     //     }
     //     else
     //     {
-	//     // Info << "else loop" << endl;
+        //     // Info<< "else loop" << endl;
     //         contact();
     //     }
     // }
@@ -1013,19 +1002,19 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     {
         if (debug)
         {
-            Info << "iOuterCorr: " << iOuterCorr() << endl;
+            Info<< "iOuterCorr: " << iOuterCorr() << endl;
         }
 
         // if (contactActive())
         // {
         //     if (debug)
         //     {
-        //         Info << "Updating contact: start" << endl;
+        //         Info<< "Updating contact: start" << endl;
         //     }
 
         //     scalar tStart = runTime().elapsedCpuTime();
 
-        //     // Info << "tstart in CTLNRB file: \n " << tStart << endl;
+        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
         //     curContactResidual = contact().update();
         //     scalar tEnd = runTime().elapsedCpuTime();
 
@@ -1039,10 +1028,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
         //     if (debug)
         //     {
-        //         Info << "curContactResidual: "
+        //         Info<< "curContactResidual: "
         //             << curContactResidual << endl;
 
-        //         Info << "Updating contact: end" << endl;
+        //         Info<< "Updating contact: end" << endl;
         //     }
         // }
 
