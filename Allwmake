@@ -1,65 +1,17 @@
 #!/bin/sh
 set -x
 
-
+# Install third-party dependencies
 (cd ThirdParty && ./Allwmake)
 
-# compile library
-wmake libso src/wireBunchingModels
-# wmake libso applications/functionObjects/writeBeamData
-# wmake libso applications/functionObjects/patchForceMomentHistory
-# wmake libso applications/functionObjects/beamPlasticStrainTransition
-# wmake libso applications/functionObjects/conicalPulleyFrictionControl
-# wmake libso applications/functionObjects/conicalPulleyContactHistory
+# Compile library
+wmake -j libso src/wireBunchingModels
 
-# compile solvers and utilities
-#wmake applications/solvers/coupledUpdatedLagrangianBeamFoam
+# Compile solvers and utilities
 wmake applications/solvers/beamFoam
-#wmake applications/solvers/beamsBunchingFoam
 
+# Compile utilities
+wmake -j all applications/utilities
 
-wmake applications/utilities/createCircularBeamMesh
-wmake applications/utilities/setInitialPositionBeam
-# wmake applications/utilities/createMultipleCircularBeamMesh
-# wmake applications/utilities/createMultipleBeamMesh
-# wmake applications/utilities/moveBeam
-
-
-# wmake applications/utilities/createConicalPulleys
-# wmake applications/utilities/createConicalPulleysPath
-# wmake applications/utilities/createRegimeConicalPulleysPath
-# wmake applications/utilities/createToroidalPulleys
-# wmake applications/utilities/createToroidalPulleysPath
-
-
-# compile external solver library
-# echo "Checking PETSC installation"
-# if [ -z $PETSCROOT ]
-# then
-#     echo "PETSC library is not installed and PETSCROOT environment variable is not set."
-# else
-#     echo "PETSC library is installed. Compiling PETSC block solver"
-#     wmake libso src/petsc4Foam
-#     wmake libso src/blockSolvers/BlockPetscSolver
-# fi
-
-
-# Intel MKL library
-# echo "Checking Intel MKL installation"
-# if [ -z $MKLROOT ]
-# then
-#     echo "Intel MKL library is not installed and MKLROOT environment variable is not set."
-#     echo "Please download MKL library from https://software.seek.intel.com/performance-libraries",
-#     echo "and set environment variables: \"source /home/ztukovic/intel/bin/compilervars.sh intel64\"."
-# else
-#     echo "Intel MKL library is installed. Compiling BlockMklPardisoSolver"
-#     wmake libso src/blockSolvers/BlockMklPardisoSolver
-#     wmake libso src/blockSolvers/BlockMklClusterPardisoSolver
-# fi
-
-#cd applications
-#wmake all solvers
-#wmake all utilities
-#cd ..
-
-
+# Install scripts
+(cd applications/scripts && ./Allwmake)

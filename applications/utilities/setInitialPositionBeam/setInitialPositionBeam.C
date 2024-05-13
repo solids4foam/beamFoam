@@ -26,11 +26,27 @@ Application
     setInitialPositionBeam
 
 Description
-    Sets the initial configuration of the beams
+    This utility sets the initial configuration of the beams:
+
+    There are two configurations of beam:
+    1. Reference Config:
+    - Beam mesh when created always lies such that the length direction of beam is aligned to x-axis.
+    - The tangents at the face centres of the beam cells are set to (1 0 0) direction.
+
+    2. Initial Configuration of beam: 
+    - To start with any other orientation of the beam, one needs to set the position vector of the beam curve.
+    - The tangents at the face centres of the beam need to be set from (1 0 0) to the cross-section orientation
+        of the beam spatial curve.
+    
     * valid arguments are:
-    * -cellZone
-    * -translate
-    * -rotateAlongVector
+    * -cellZone : this command grabs the specififed subset of mesh cells
+    * -translate vector
+        Translate the points by the given vector before rotations
+    * -rotateAngle (vector angle)
+        Rotate angle degrees about vector axis.
+    * -rotate : -rotate (vector vector)
+        Rotate the points from the first vector to the second
+
 
 \*---------------------------------------------------------------------------*/
 
@@ -44,6 +60,7 @@ Description
 #include "ReadFields.H"
 #include "IStringStream.H"
 #include "transform.H"
+#include "axisAngleRotation.H"
 
 
 using namespace Foam;
@@ -53,40 +70,22 @@ using namespace Foam::constant::mathematical;
 
 int main(int argc, char *argv[])
 {
-	#include "addRegionOption.H"
+    #include "addRegionOption.H"
     argList::validOptions.insert("cellZone", "name");
     argList::validOptions.insert("translate", "vector");
-    argList::validOptions.insert("rotateAlongVector", "(vector angleInDegree)");
-    argList::validOptions.insert("rotate", "(vector vector)"); //AT-Added- the type of vector needs to be fixed
+    argList::validOptions.insert("rotateAngle", "(vector angleInDegree)");
+    argList::validOptions.insert("rotate", "(vector vector)"); 
 
-#   include "setRootCase.H"
-#   include "createTime.H"
-//#   include "createMesh.H"
-
-	const word regionName = args.optionRead<word>("region");
-	Info<<regionName<<endl;
-	Foam::fvMesh mesh
-(
-    Foam::IOobject
-    (
-        //Foam::fvMesh::defaultRegion,
-        regionName,
-        runTime.timeName(),
-        runTime,
-        Foam::IOobject::MUST_READ
-    )
-);
-	//meshPtr=&(time_.lookupObject<fvMesh>(regionName));
-	//const fvMesh& mesh= *meshPtr;
-
-
+    #include "setRootCase.H"
+    #include "createTime.H"
+    #include "createMesh.H"
     if (args.options().empty())
     {
         FatalErrorIn(args.executable())
             << "No options supplied, please use "
             << "-cellZone and -translate options "
 			<< "to set the initial position of the beam\n"
-			<< "-rotateAlongVector option is optional to use"
+			<< "-rotateAngle and rotate option is optional to use"
             << exit(FatalError);
     }
 
@@ -167,9 +166,9 @@ int main(int argc, char *argv[])
     // Read cell zone
     word cellZoneName;
 
-    if (args.optionFound("cellZone"))
+    if (args.found("cellZone"))
     {
-        cellZoneName = args.optionRead<word>("cellZone");
+        cellZoneName = args.get<word>("cellZone");
 
         Info << "Beam cell zone: " << cellZoneName << endl;
     }
@@ -181,158 +180,133 @@ int main(int argc, char *argv[])
     }
 
     // Translation and rotation options
-    if (args.optionFound("translate"))
+    if (args.found("translate"))
     {
-        vector transVector(args.optionLookup("translate")());
+        vector transVector(args.lookup("translate")());
 
-	tensor T = tensor::I;
+	    tensor T = tensor::I;
 
-        // Info<< "Translating beam points by " << transVector << endl;
+        if (args.found("rotate"))
+        {
+            Pair<vector> n1n2(args.lookup("rotate")());
+            n1n2[0] /= mag(n1n2[0]);
+            n1n2[1] /= mag(n1n2[1]);
+            T = rotationTensor(n1n2[0], n1n2[1]);
 
-	if (args.optionFound("rotateAlongVector"))// AT: this needs a minor fix, sth not working here :|||||
-	{
-	    vector rotationAxis;
-	    scalar rotationAngle;
+            Info<< "Rotating points by " << T << endl;
+        }
+        if (args.found("rotateAngle"))
+        {
+            const Tuple2<vector, scalar> rotAxisAngle
+            (
+                args.lookup("rotateAngle")()
+            );
 
-	    args.optionLookup("rotateAlongVector")()
-		>> rotationAxis
-		>> rotationAngle;
-	    scalar rotationAngleRadians = rotationAngle * (3.14159265359/180);
-	    //Info << rotationAngleRadians << endl;
+            const vector& axis = rotAxisAngle.first();
+            const scalar angle = rotAxisAngle.second();
 
-	    T = Ra(rotationAxis, rotationAngleRadians);
-	    //Info << T << endl;
-	    Info << "Rotation tensor\n" << T << endl;
-	}
-	else
-	{
-	    T  = tensor::I;
-	}
-	if (args.optionFound("rotate"))
-    {
-        Pair<vector> n1n2(args.optionLookup("rotate")());
-        n1n2[0] /= mag(n1n2[0]);
-        n1n2[1] /= mag(n1n2[1]);
-        T = rotationTensor(n1n2[0], n1n2[1]);
+            Info<< "Rotating points " << nl
+                << "    about " << axis << nl
+                << "    angle " << angle << nl;
 
-        Info<< "Rotating points by " << T << endl;
-
-        //points = transform(T, points);
-
-        //if (args.optionFound("rotateFields"))
-        //{
-          //  rotateFields(args, runTime, T);
-        //}
-    }
+            T = Foam::coordinateRotations::axisAngle::rotation(axis, angle, true);
+            Info << "T=" << T << endl;
+        }
 
         const label zoneID = mesh.cellZones().findZoneID(cellZoneName);
 
-		//const label regionName = args.optionRead<word>("region");
+	    Info << "zoneID" << zoneID << endl;
 
+	    if (zoneID == -1)
+        {
+            FatalErrorIn
+            (
+                "setInitialPositionBeam application utility"
+            )
+            << "Problem in beam cellZone"
+            << "\nzoneID of beam: " << cellZoneName << " is " << zoneID
+            << "\nProvide the beam name without the hyphen in front "
+            << "e.g. beam_0"
+            << abort(FatalError);
+        }
 
-	  Info << "zoneID" << zoneID << endl;
+        vectorField& refWfI = refWf.primitiveFieldRef();
+        vectorField& refWI = refW.primitiveFieldRef();
+        vectorField& refTangentI = refTangent.primitiveFieldRef();
+        tensorField& refLambdaI = refLambda.primitiveFieldRef();
+        tensorField& refRMI = refRM.primitiveFieldRef();
+        const vectorField& CfI = mesh.Cf().primitiveField();
+        const vectorField& CI = mesh.C().primitiveField();
 
-	 if (zoneID == -1)
-	{
-	    FatalErrorIn
-	    (
-		"setInitialPositionBeam application utility"
-	    )
-		<< "Problem in beam cellZone"
-		<< "\nzoneID of beam: " << cellZoneName << " is " << zoneID
-		<< "\nProvide the beam name without the hyphen in front "
-		<< "e.g. beam_0"
-		<< abort(FatalError);
-	}
+        vectorField newCfI ((T & CfI));
+        const labelList& nei = mesh.neighbour();
 
-        //   const cellZone& cz = mesh.cellZones()[zoneID];
+        //- Set all the internal face fields
+        forAll(refWfI, faceI)
+        {
+            label I = mesh.cellZones().whichZone(nei[faceI]);
 
-        //   const labelListList& pc = mesh.pointCells();
+            if (I == zoneID)
+            {
+                refWfI[faceI] =  newCfI[faceI] + transVector - CfI[faceI];
+                refLambdaI[faceI] = T;
+                // PC: refTang shoudl be wrt to the reference frame, not
+                // incremental; otherwise, refTang would be inconsistent with
+                // refWf and refW
+                //refTangentI[faceI] = (refLambdaI[faceI] & refTangentI[faceI]);
+                refTangentI[faceI] = (refLambdaI[faceI] & vector(1, 0, 0));
+            }
+        }
 
-        //   forAll(pc, pI)
-        //   {
-            //   if (cz.whichCell(pc[pI][0]) > -1)
-            //   {
-                //   points[pI] += transVector;
-            //   }
-        //   }
+        vectorField newCI ((T & CI));
 
-        // points += transVector;
+        //- Set all the cell-centre reference fields
+        forAll(refWI, cellI)
+        {
+            label I  = mesh.cellZones().whichZone(cellI);
 
-	vectorField& refWfI = refWf.primitiveFieldRef();
-	vectorField& refWI = refW.primitiveFieldRef();
-	vectorField& refTangentI = refTangent.primitiveFieldRef();
-	tensorField& refLambdaI = refLambda.primitiveFieldRef();
-	tensorField& refRMI = refRM.primitiveFieldRef();
-	const vectorField& CfI = mesh.Cf().primitiveField();
-	const vectorField& CI = mesh.C().primitiveField();
+            if (I == zoneID)
+            {
+                refWI[cellI]  = newCI[cellI] + transVector - CI[cellI];
 
-	vectorField newCfI ((T & CfI));
-	const labelList& nei = mesh.neighbour();
+                refRMI[cellI] = T;
+            }
+        }
 
-	//- Set all the internal face fields
-	forAll(refWfI, faceI)
-	{
-	    label I = mesh.cellZones().whichZone(nei[faceI]);
+        //- Set the reference fields at the boundaries
+        forAll(refWf.boundaryField(), patchI)
+        {
+            vectorField& pRefWf = refWf.boundaryFieldRef()[patchI];
+            vectorField& pRefW = refW.boundaryFieldRef()[patchI];
+            vectorField& pRefTangent = refTangent.boundaryFieldRef()[patchI];
+            tensorField& pRefLambda = refLambda.boundaryFieldRef()[patchI];
+            tensorField& pRefRM = refRM.boundaryFieldRef()[patchI];
 
-	    if (I == zoneID)
-	    {
-		refWfI[faceI] =  newCfI[faceI] + transVector - CfI[faceI];
+            const vectorField& pCf = mesh.Cf().boundaryField()[patchI];
 
-		refLambdaI[faceI] = T;
+            const vectorField newpCf ((T & pCf));
 
-		refTangentI[faceI] = (refLambdaI[faceI] & refTangentI[faceI]);
-	    }
-	}
+            const labelList faceCells =
+            mesh.boundary()[patchI].faceCells();
 
-	vectorField newCI ((T & CI));
+            forAll(pRefWf, faceI)
+            {
+                label I = mesh.cellZones().whichZone(faceCells[faceI]);
 
-	//- Set all the cell-centre reference fields
-	forAll(refWI, cellI)
-	{
-	    label I  = mesh.cellZones().whichZone(cellI);
-	    Info << "loop I=" << I << endl;
+                if (I == zoneID)
+                {
+                    pRefWf[faceI] =  newpCf[faceI] + transVector - pCf[faceI];
+                    pRefW[faceI] = pRefWf[faceI];
 
-	    if (I == zoneID)
-	    {
-		refWI[cellI]  = newCI[cellI] + transVector - CI[cellI];
+                    pRefLambda[faceI] = T;
+                    pRefRM[faceI] = pRefLambda[faceI];
 
-		refRMI[cellI] = T;
-	    }
-	}
-
-	//- Set the reference fields at the boundaries
-	forAll(refWf.boundaryField(), patchI)
-	{
-	    vectorField& pRefWf = refWf.boundaryFieldRef()[patchI];
-	    vectorField& pRefW = refW.boundaryFieldRef()[patchI];
-	    vectorField& pRefTangent = refTangent.boundaryFieldRef()[patchI];
-	    tensorField& pRefLambda = refLambda.boundaryFieldRef()[patchI];
-	    tensorField& pRefRM = refRM.boundaryFieldRef()[patchI];
-
-	    const vectorField& pCf = mesh.Cf().boundaryField()[patchI];
-
-	    const vectorField newpCf ((T & pCf));
-
-	    const labelList faceCells =
-		mesh.boundary()[patchI].faceCells();
-
-	    forAll(pRefWf, faceI)
-	    {
-		label I = mesh.cellZones().whichZone(faceCells[faceI]);
-
-		if (I == zoneID)
-		{
-		    pRefWf[faceI] =  newpCf[faceI] + transVector - pCf[faceI];
-		    pRefW[faceI] = pRefWf[faceI];
-
-		    pRefLambda[faceI] = T;
-		    pRefRM[faceI] = pRefLambda[faceI];
-
-		    pRefTangent[faceI] = (pRefLambda[faceI] & pRefTangent[faceI]);
-		}
-	    }
-	}
+                            // PC: see comment above
+                    // pRefTangent[faceI] = (pRefLambda[faceI] & pRefTangent[faceI]);
+                    pRefTangent[faceI] = (pRefLambda[faceI] & vector(1, 0, 0));
+                }
+            }
+        }
     }
     else
     {
@@ -343,14 +317,11 @@ int main(int argc, char *argv[])
 
     refWf.write();
     refW.write();
-    //Info<< refW<<endl;
     refLambda.write();
-    //Info<<"some Space"<<endl;
-    //Info<< refLambda<<endl;
     refTangent.write();
     refRM.write();
 
-#include "updateMeshPoints.H"
+    #include "updateMeshPoints.H"
 
     Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
         << "  ClockTime = " << runTime.elapsedClockTime() << " s"

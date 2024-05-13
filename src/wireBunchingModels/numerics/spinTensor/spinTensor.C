@@ -22,11 +22,6 @@ License
     along with OpenFOAM; if not, write to the Free Software Foundation,
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
-Description
-
-Author
-    Zeljko Tukovic, FSB Zagreb
-
 \*---------------------------------------------------------------------------*/
 
 #include "spinTensor.H"
@@ -71,7 +66,7 @@ tmp<surfaceTensorField> spinTensor(const surfaceVectorField& axialVector)
         if
         (
             axialVector.boundaryField()[patchI].type()
-         != emptyFvPatchField<vector>::typeName
+            != emptyFvPatchField<vector>::typeName
         )
         {
             tensorField& pResult = result.boundaryFieldRef()[patchI];
@@ -84,8 +79,6 @@ tmp<surfaceTensorField> spinTensor(const surfaceVectorField& axialVector)
             }
         }
     }
-
-    // result.correctBoundaryConditions();
 
     return tresult;
 }
@@ -124,7 +117,7 @@ tmp<volTensorField> spinTensor(const volVectorField& axialVector)
         if
         (
             axialVector.boundaryField()[patchI].type()
-         != emptyFvPatchField<vector>::typeName
+            != emptyFvPatchField<vector>::typeName
         )
         {
             tensorField& pResult = result.boundaryFieldRef()[patchI];
@@ -137,8 +130,6 @@ tmp<volTensorField> spinTensor(const volVectorField& axialVector)
             }
         }
     }
-
-    // result.correctBoundaryConditions();
 
     return tresult;
 }
@@ -211,7 +202,7 @@ tmp<surfaceVectorField> axialVector(const surfaceTensorField& spinTensor)
         if
         (
             spinTensor.boundaryField()[patchI].type()
-         != emptyFvPatchField<tensor>::typeName
+            != emptyFvPatchField<tensor>::typeName
         )
         {
             vectorField& pResult = result.boundaryFieldRef()[patchI];
@@ -224,8 +215,6 @@ tmp<surfaceVectorField> axialVector(const surfaceTensorField& spinTensor)
             }
         }
     }
-
-    // result.correctBoundaryConditions();
 
     return tresult;
 }
@@ -264,7 +253,7 @@ tmp<volVectorField> axialVector(const volTensorField& spinTensor)
         if
         (
             spinTensor.boundaryField()[patchI].type()
-         != emptyFvPatchField<tensor>::typeName
+            != emptyFvPatchField<tensor>::typeName
         )
         {
             vectorField& pResult = result.boundaryFieldRef()[patchI];
@@ -277,8 +266,6 @@ tmp<volVectorField> axialVector(const volTensorField& spinTensor)
             }
         }
     }
-
-    // result.correctBoundaryConditions();
 
     return tresult;
 }
@@ -304,9 +291,9 @@ vector axialVector(const tensor& T)
 {
     vector result = vector::zero;
 
-    result.x()= T.zy();
-    result.y()= T.xz();
-    result.z()= T.yx();
+    result.x() = T.zy();
+    result.y() = T.xz();
+    result.z() = T.yx();
 
     return result;
 }

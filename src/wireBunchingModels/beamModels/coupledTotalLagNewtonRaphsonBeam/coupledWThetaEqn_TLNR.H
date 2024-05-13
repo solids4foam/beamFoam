@@ -1,26 +1,8 @@
 {
-    // Info << "Using coupled solver for DW and DTheta" << endl;
-
     scalar ThetaResidual = GREAT;
     scalar WResidual = GREAT;
 
-    // Theta_.storePrevIter();
-    // W_.storePrevIter();
-    // Lambda_.storePrevIter();
-    // Gamma_.storePrevIter();
-    // K_.storePrevIter();
-
     // Initialise the block system
-    // multibeamFvBlockMatrix WThetaEqn(WTheta_, *this);
-    // fvBlockMatrix<vector6> WThetaEqn(WTheta_);
-
-    // Pout << WTheta_.boundaryField() << endl;
-
-    // Grab block diagonal and set it to zero
-    //tensor6Field& d = WThetaEqn.diag().asSquare();
-    //d = tensor6::zero;
-    //scalarSquareMatrix myMatrix(6, 6, 0.0); // 6 x 6 matrix with 0.0 values
-
     Field<scalarSquareMatrix> d(mesh().nCells(), scalarSquareMatrix(6, 0.0));
 
     // Grab off-diagonal and set it to zero
@@ -44,18 +26,13 @@
     scalarField deltaf = 1.0/mesh().deltaCoeffs().internalField();
     const scalarField& wf = mesh().weights().internalField();
 
-    // const vectorField& dR0DsI = dR0Ds_.internalField();
-    // const vectorField& iI = i_.internalField();
-
     const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
     const labelList& nei = mesh().neighbour();
 
     W_.boundaryFieldRef().updateCoeffs();
     Theta_.boundaryFieldRef().updateCoeffs();
 
-        #include "updateCoefficients_TLNR.H"
-
-    // Info << "explicitQ_ \n " << explicitQ_ << endl;
+    #include "updateCoefficients_TLNR.H"
 
     const tensorField& CQWI = CQW_.internalField();
     const tensorField& CQDThetaI = CQDTheta_.internalField();
@@ -69,9 +46,6 @@
     const vectorField& explicitMI = explicitM_.internalField();
     const vectorField& explicitMQI = explicitMQ_.internalField();
 
-    // const vectorField& dRdSI = dRdS_.internalField();
-    // const tensorField& RMI = RM_.internalField();
-    // const tensorField& refRMI = refRM_.internalField();
     // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
     // Newmark-beta integration scheme
     if(!steadyState() && newmark_)
@@ -95,9 +69,7 @@
     // Internal faces
     forAll(u, faceI)
     {
-        ////// W equation
-
-        // W part (Laplacian)
+        //-W part (Laplacian)
         u[faceI](0,0) += CQWI[faceI].xx()/deltaf[faceI];
         u[faceI](0,1) += CQWI[faceI].xy()/deltaf[faceI];
         u[faceI](0,2) += CQWI[faceI].xz()/deltaf[faceI];
@@ -146,7 +118,7 @@
         d[nei[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
 
-        // Theta part: Laplacian
+        //- Theta part: Laplacian
 
         u[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
@@ -197,7 +169,7 @@
         d[nei[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
 
 
-        // Theta part
+        //- Theta part
         u[faceI](0,3) += (1-wf[faceI])*CQThetaI[faceI].xx();
         u[faceI](0,4) += (1-wf[faceI])*CQThetaI[faceI].xy();
         u[faceI](0,5) += (1-wf[faceI])*CQThetaI[faceI].xz();
@@ -257,7 +229,7 @@
 
         ////// Theta equation
 
-        // Laplacian part
+        //- Laplacian part
 
         u[faceI](3,3) += CMThetaI[faceI].xx()/deltaf[faceI];
         u[faceI](3,4) += CMThetaI[faceI].xy()/deltaf[faceI];
@@ -308,7 +280,7 @@
         d[nei[faceI]](5,5) += -CMThetaI[faceI].zz()/deltaf[faceI];
 
 
-        // Theta part
+        //- Theta part
 
         u[faceI](3,3) += (1-wf[faceI])*CMTheta2I[faceI].xx();
         u[faceI](3,4) += (1-wf[faceI])*CMTheta2I[faceI].xy();
@@ -475,37 +447,11 @@
         // Explicit part
         vector correctedOwnExplicitMQ = explicitMQI[faceI];
 
-        // if (false)
-        // {
-        //     correctedOwnExplicitMQ =
-        //         (
-        //             refRMI[own[faceI]].T()
-        //           & (RMI[own[faceI]].T() & correctedOwnExplicitMQ)
-        //         );
-
-        //     correctedOwnExplicitMQ.x() = 0;
-
-        //     correctedOwnExplicitMQ =
-        //         (
-        //             RMI[own[faceI]]
-        //           & (refRMI[own[faceI]] & correctedOwnExplicitMQ)
-        //         );
-        // }
-
         source[own[faceI]](3,0) -= correctedOwnExplicitMQ.x();
         source[own[faceI]](4,0) -= correctedOwnExplicitMQ.y();
         source[own[faceI]](5,0) -= correctedOwnExplicitMQ.z();
 
         vector correctedNeiExplicitMQ = explicitMQI[faceI];
-
-        // correctedNeiExplicitMQ =
-        //     (
-        //         refRMI[nei[faceI]].T()
-        //       & (RMI[nei[faceI]].T() & correctedNeiExplicitMQ)
-        //     );
-        // correctedNeiExplicitMQ.x() = 0;
-        // correctedNeiExplicitMQ =
-        //     (RMI[nei[faceI]] & (refRMI[nei[faceI]] & correctedNeiExplicitMQ));
 
         // Similarly here, the explicit term is not in the negative format? // understood this
         source[nei[faceI]](3,0) -= correctedNeiExplicitMQ.x();
@@ -623,10 +569,12 @@
             (
                 rho().value() - rhoFluid().value()
             )*L()[cellI]*A().value()*g().component(0).value();
+
         source[cellI](1,0) -=
             (
                 rho().value() - rhoFluid().value()
             )*L()[cellI]*A().value()*g().component(1).value();
+
         source[cellI](2,0) -=
             (
                 rho().value() - rhoFluid().value()
@@ -656,8 +604,6 @@
     if (!steadyState())
     {
         // First order Euler scheme
-		Info << " hello we entered the time loop " << endl;		
-		Info << "dt for Beam is :" << runTime().deltaT() << endl;
         // Add inertial force
         {
             // SB modified - (10/11/2023)
@@ -967,9 +913,7 @@
     W_.correctBoundaryConditions();
     W_.storePrevIter();
 
-    // Info << DW_.internalField() << endl;
-
-    // Update displacement increment (for contact calculation)
+    // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
 
     // Update mean line velocity field
@@ -986,8 +930,7 @@
     {
         U_ = fvc::ddt(W_);
     }
-    // Retrieve lagrange multipliers
-    //WThetaEqn.retriveLagrangeMultipliers();
+ 
 
     if (objectiveInterpolation())
     {
@@ -1028,30 +971,30 @@
 
         // Tangent operator
         surfaceTensorField DT
-            (
-                (Foam::sin(magDThetaf)/magDThetaf)*I
-                + ((1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf))
-                *(DThetaf*DThetaf)
-                + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
-            );
+        (
+            (Foam::sin(magDThetaf)/magDThetaf)*I
+            + ((1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf))
+            *(DThetaf*DThetaf)
+            + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
+        );
+        
         // Update bending strain vector
         K_ +=
-            (
-                (refLambda_.T() & Lambda_.T())
-                // & fvc::snGrad(DTheta_)
-                & (DT.T() & fvc::snGrad(DTheta_))
-            );
+        (
+            (refLambda_.T() & Lambda_.T())
+            // & fvc::snGrad(DTheta_)
+            & (DT.T() & fvc::snGrad(DTheta_))
+        );
 
         // Rodrigues formula
         surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
 
-
         // Update rotation matrix
         Lambda_ = (DLambdaf & Lambda_);
 
-
         // Update cell-centre rotation matrix
         volTensorField DLambda(rotationMatrix(DTheta_));
+
         RM_ = (DLambda & RM_);
         // interpolateRotationMatrix(*this, Lambda_, RM_);
 
@@ -1077,13 +1020,6 @@
 
         surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
-        // Gamma_ =
-        //     (
-        //         (kirchhoffTransTensor_ & (refLambda_.T() & Lambda_.T()))
-        //       & dRdS
-        //     )
-        //   - (refLambda_.T() & dR0Ds_);
-
         Gamma_ = (refLambda_.T() & ((Lambda_.T() & dRdS) - dR0Ds_));
     }
 
@@ -1093,12 +1029,6 @@
     // Q_ = ((Lambda_ & refLambda_) & (CQ_ & (Gamma_ - GammaP_)));
     // M_ = ((Lambda_ & refLambda_) & (CM_ & (K_ - KP_)));
 
-    // if (updatedLagrangian_)
-    // {
-    //    // Q_ += (Lambda_ & Q_.oldTime());
-    //    M_ += (Lambda_ & M_.oldTime());
-    // }
-
     // Calculate Q, where we ignore the orientation check
     {
         explicitQ_.setOriented(true);
@@ -1107,8 +1037,6 @@
         implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
         implicitQ.setOriented(true);
         Q_ = explicitQ_ + implicitQ;
-
-        //Info<< "Q: \n" << Q_ << endl;
     }
 
     // Calculate M, where we ignore the orientation check
@@ -1119,16 +1047,7 @@
         implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
         implicitM.setOriented(true);
         M_ = explicitM_ + implicitM;
-
-        //Info<< "M: \n" << M << endl;
     }
-
-    // surfaceVectorField rPrimeXf = //explicitMQ_;
-    //     explicitMQ_ +
-    //     (CMQW_ & fvc::snGrad(DW_)) +
-    //     (CMQTheta_ & fvc::interpolate(DTheta_));
-
-    //  Info << "rPrimeXf: \n" << rPrimeXf << endl;
 
     // Calculate axial force
     {
@@ -1197,12 +1116,6 @@
         Info<< "W residual: " << WResidual << endl;
     }
 
-
-    //     if(false)
-    //     {
-    //             //Info << "Iter: " << iOuterCorr() << endl;
-    //             Info<< "Displacement" << W_.boundaryField() << endl;
-    //     }
     // this currentResidual is not normalized, check with Seevani
     currentResidual = max(WResidual, ThetaResidual);
 
@@ -1210,123 +1123,4 @@
     {
         initialResidual = currentResidual;
     }
-
-    // if (plasticityStressResultantReturnPtr_.valid())
-    // {
-    //     GammaP_.storePrevIter();
-    //     KP_.storePrevIter();
-
-    //     if (!completedElasticPrediction)
-    //     {
-    //         currentMaterialResidual = 0;
-
-    //         if
-    //         (
-    //             iOuterCorr()
-    //           > plasticityStressResultantReturnPtr_().nElPredCorr()
-    //          ||
-    //             currentResidual
-    //           < plasticityStressResultantReturnPtr_().elPredTol()
-    //         )
-    //         {
-    //             Info << "nElPredictors: " << iOuterCorr() << endl;
-    //             Info << "currResidual: " << currentResidual << endl;
-    //             completedElasticPrediction = true;
-    //         }
-    //     }
-
-    //     if (completedElasticPrediction)
-    //     {
-    //         if (debug)
-    //         {
-    //             Info << "Update plasticity" << endl;
-    //         }
-    //         plasticityStressResultantReturnPtr_().correct();
-
-    //         GammaP_ = GammaP_ + plasticityStressResultantReturnPtr_().DGammaP();
-    //         KP_ = KP_ + plasticityStressResultantReturnPtr_().DKP();
-
-    //         // Calculate material residual
-    //         {
-    //             // scalar GammaPResidual =
-    //             //     max
-    //             //     (
-    //             //         mag
-    //             //         (
-    //             //             GammaP_
-    //             //           - GammaP_.prevIter()
-    //             //         )()
-    //             //     ).value()
-    //             //    /max
-    //             //     (
-    //             //         (
-    //             //             dimensionedScalar
-    //             //             (
-    //             //                 "SMALL",
-    //             //                 GammaP_.dimensions(),
-    //             //                 SMALL
-    //             //             )
-    //             //           + mag(GammaP_.prevIter())
-    //             //         )()
-    //             //      ).value();
-
-    //             scalar denom =
-    //                 gMax
-    //                 (
-    //                     mag
-    //                     (
-    //                         KP_
-    //                       - KP_.oldTime()
-    //                     )()
-    //                 ); //.value();
-
-    //             if (denom < 10*SMALL)
-    //             {
-    //                 // denom = max(gMax(mag(W_.internalField())), SMALL);
-    //                 denom = 1.0;
-    //             }
-
-    //             scalar KPResidual =
-    //                 gMax
-    //                 (
-    //                     mag
-    //                     (
-    //                         KP_
-    //                       - KP_.prevIter()
-    //                     )()
-    //                 );//.value();
-    //                 // max
-    //                 // (
-    //                 //     (
-    //                 //         dimensionedScalar
-    //                 //         (
-    //                 //             "SMALL",
-    //                 //             KP_.dimensions(),
-    //                 //             SMALL
-    //                 //         )
-    //                 //       + mag(KP_.prevIter())
-    //                 //     )()
-    //                 // ).value();
-
-    //             currentMaterialResidual = KPResidual;
-    //             // currentMaterialResidual =
-    //             //     max(GammaPResidual, KPResidual);
-
-    //             if (debug)
-    //             {
-    //                 Info << "Material residual: "
-    //                      << currentMaterialResidual << endl;
-    //             }
-    //         }
-
-    //         CDQ_ = plasticityStressResultantReturnPtr_().DQDGamma();
-    //         CDM_ = plasticityStressResultantReturnPtr_().DMDK();
-
-    //         CDMDGamma_ = plasticityStressResultantReturnPtr_().DMDGamma();
-    //         CDQDK_ = plasticityStressResultantReturnPtr_().DQDK();
-
-    //         GammaP_.relax();
-    //         KP_.relax();
-    //     }
-    // }
 }

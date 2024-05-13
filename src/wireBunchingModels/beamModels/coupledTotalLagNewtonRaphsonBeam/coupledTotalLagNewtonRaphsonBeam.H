@@ -29,6 +29,7 @@ Description
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
+    Seevani Bali, UCD.
 
 SourceFiles
     coupledTotalLagNewtonRaphsonBeam.C
@@ -75,7 +76,7 @@ class coupledTotalLagNewtonRaphsonBeam
         mutable volVectorField U_;
 
         //- Mean line acceleration field
- 	      mutable volVectorField Accl_;
+ 	    mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -83,22 +84,14 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Cross-section rotation field
         mutable volVectorField Theta_;
 
-        //- Cross-section rotation field
-        mutable volVectorField ThetaIncrement_;
-
         //- Cross-section angular velocity field
         mutable volVectorField Omega_;
+
         //- Cross-section angular acceleration field
         mutable volVectorField dotOmega_;
 
         //- Cross-section rotation field increment
         volVectorField DTheta_;
-
-        //- Switch to updated Lagrangian formulation
-        bool updatedLagrangian_;
-
-        //- Switch to Kirchhoff beam
-        bool kirchhoffBeam_;
 
         //- Mean line displacement field
         mutable volVectorField totW_;
@@ -130,9 +123,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Cell-centre rotation matrix
         volTensorField RM_;
 
-        // //- Cell-centre torsion error
-        // volScalarField torsionError_;
-
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
 
@@ -156,9 +146,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Mid-line tangent vector
         surfaceVectorField refTangent_;
-
-        //- Axial stretch ration
-        surfaceScalarField stretchRatio_;
 
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQW_;
@@ -187,9 +174,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Strain vector (translational)
         surfaceVectorField Gamma_;
 
-        //- Kirchoff transformation tensor
-        surfaceTensorField kirchhoffTransTensor_;
-
         //- Strain vector (rotational)
         surfaceVectorField K_;
 
@@ -206,76 +190,25 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Total Iterations count for all load steps
         scalar totalIter_;
 
-        //- Number of CVs
-       // scalar nCV_;
-
-        // //- Young modulus
-        // dimensionedScalar E_;
-
-        // //- Shear modulus
-        // dimensionedScalar G_;
-
-        // //- Density
-        // dimensionedScalar rho_;
-
-        // //- Beam cross-section area
-        // dimensionedScalar A_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar I_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar J_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar EI_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar GJ_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar EA_;
-
-        // //- Beam cross-section constant
-        // dimensionedScalar GA_;
-
         //- Beam cross-section constant
         mutable surfaceTensorField CQ_;
-        // dimensionedDiagTensor CQ_;
-
-        //- Beam cross-section constant
-        mutable surfaceTensorField CDQ_;
 
         //- Beam cross-section constant
         surfaceTensorField CM_;
-        // dimensionedDiagTensor CM_;
-
-        //- Beam cross-section constant
-        surfaceTensorField CDM_;
-
-        //- Beam cross-section constant
-        surfaceTensorField CDMDGamma_;
 
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
-        //   //- Beam cross-section constant
-         //   dimensionedTensor CI_;
 
- 	      //- Beam momentum inertial term constant
- 	      dimensionedScalar ARho_;
+ 	    //- Beam momentum inertial term constant
+ 	    dimensionedScalar ARho_;
 
-         //- Beam cross-section constant
-         //   dimensionedTensor CI_;
- 	      dimensionedTensor CIRho_;
+        //- Beam cross-section constant
+ 	    dimensionedTensor CIRho_;
 
         // Fields related to Newmark-beta time integration scheme
 
  	      //- Boolean to activate Newmark-beta time-integration scheme
  	      bool newmark_;
-
- 	      //   //- Boolean to activate the tangent space version
- 	      //   //- in time integration Newmark scheme
- 	      //   bool tangentSpace_;
 
  	      //- Newmark beta coefficient
  	      scalar betaN_;
@@ -289,7 +222,7 @@ class coupledTotalLagNewtonRaphsonBeam
           //- Normal drag coefficient
           scalar Cdn_;
 
-          //- Normal drag coefficient
+          //- tangential drag coefficient
           scalar Cdt_;
 
           // Ground contact related parameters.
@@ -297,21 +230,14 @@ class coupledTotalLagNewtonRaphsonBeam
           //- Boolean to check wether ground contact is active or not
           bool groundContactActive_;
 
-          //- number of beam segments, this also could be read from the top of the dict.
-          label segNo_;
-
           //-  damping coefficient for spring/damper ground model.
           scalar gDamping_;
 
-          //- damping coefficient for spring/damper ground model.
+          //- stiffness coefficient for spring/damper ground model.
           scalar gStiffness_;
 
-          //- ground coordinate.
+          //- ground coordinate for ground contact Model.
           scalar groundZ_;
-
-
-        //- Beam cell-centre curvatures
-        volScalarField curvature_;
 
     // Parallel performance data
 

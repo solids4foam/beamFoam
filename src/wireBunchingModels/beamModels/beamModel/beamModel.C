@@ -242,10 +242,24 @@ Foam::beamModel::beamModel
     nBeamCells_(),
     R_(),
     U_(),
-    E_(beamProperties().lookup("E")),
-    G_(beamProperties().lookup("G")),
-    rho_("rho", dimDensity, 0),
-    rhof_("rhoFluid", dimDensity, 0),
+    E_("E",beamProperties()),
+    G_("G",beamProperties()),
+    rho_
+    (
+        beamProperties().getOrDefault<dimensionedScalar>
+        (
+            "rho",
+            dimensionedScalar("rho", dimDensity, 0)
+        )
+    ),
+    rhof_
+    (
+        beamProperties().getOrDefault<dimensionedScalar>
+        (
+            "rhoFluid",
+            dimensionedScalar("rhoFluid", dimDensity, 0)
+        )
+    ),
     gPtr_(),
     L_
     (
@@ -288,16 +302,16 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
-    steadyState_(beamProperties_.lookupOrDefault<bool>("steadyState", true)),
+    steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
     objectiveInterpolation_
     (
-        beamProperties_.lookupOrDefault<bool>("objectiveInterpolation", false)
+        beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
     ),
-    kCI_(beamProperties_.lookupOrDefault<scalar>("scalingInertiaTensor", 1)),
+    kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     startToRelaxTime_
     (
-        lookupOrDefault<scalar>
+        getOrDefault<scalar>
         (
             "startRelaxingTime",
             GREAT
@@ -305,7 +319,7 @@ Foam::beamModel::beamModel
     ),
     relaxationPeriod_
     (
-        lookupOrDefault<scalar>
+        getOrDefault<scalar>
         (
             "relaxingPeriod",
             0
@@ -314,89 +328,88 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
-  if (beamProperties().found("rho"))
-     {
-         rho_ = dimensionedScalar(beamProperties().lookup("rho"));
-     }
+    if (beamProperties().found("rho"))
+    {
+        rho_ = dimensionedScalar("rho",beamProperties());
+    }
 
      // Header for gravitational acceleration
-     IOobject gHeader
-     (
-         "g",
-         runTime.constant(),
-         mesh(),
-         IOobject::MUST_READ
-     );
+    IOobject gHeader
+    (
+        "g",
+        runTime.constant(),
+        mesh(),
+        IOobject::MUST_READ
+    );
 
-     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
-     {
- 	gPtr_.set
- 	(
- 	    new uniformDimensionedVectorField
- 	    (
- 	        IOobject
- 	        (
- 		    "g",
- 	            runTime.caseConstant(),
- 	            this->mesh(),
-                     IOobject::MUST_READ,
-                     IOobject::NO_WRITE
- 	        )
-             )
- 	);
+    if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
+    {
+        gPtr_.set
+        (
+            new uniformDimensionedVectorField
+            (
+                IOobject
+                (
+                    "g",
+                    runTime.caseConstant(),
+                    this->mesh(),
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE
+                )
+           )
+        );
 
- 	Info << "g is set for gravitational body force: "
-              << g()
- 	     << endl;
+        Info << "g is set for gravitational body force: "
+                << g()
+            << endl;
 
 
- 	if (!beamProperties().found("rho"))
- 	{
- 	    FatalError
- 		<< "rho field not set in beamProperties for"
- 		<< " calculating the gravity body force"
- 		<< abort(FatalError);
-
- 	}
- 	else if (rho().value()==0.0)
- 	{
- 	    WarningIn("Constructor of beamModel.C")
- 		<< "rho field in constant/beamProperties = "
- 		<< "zero --> gravitational body force = 0"
- 		<< nl << endl;
-         }
-  // To check whether density of fluid is specified to calculate
- 	// buoyant body force
- 	if (beamProperties().found("rhoFluid"))
- 	{
- 	    rhof_ = dimensionedScalar(beamProperties().lookup("rhoFluid"));
- 	}
- 	else
- 	{
- 	    WarningIn("Constructor of beamModel.C")
- 		<< "density of fluid rhoFluid is not set in constant/beamProperties "
- 		<< "--> buoyant body force = 0"
- 		<< nl << endl;
-         }
-     }
-     else
-     {
- 	gPtr_.set
- 	(
- 	    new uniformDimensionedVectorField
- 	    (
- 	        IOobject
- 	        (
- 		    "g",
- 	            runTime.caseConstant(),
- 	            this->mesh(),
-                     IOobject::NO_READ,
-                     IOobject::NO_WRITE
- 	        ),
- 		dimensionedVector("g", dimVelocity/dimTime, vector::zero)
-             )
- 	);
-     }
+        if (!beamProperties().found("rho"))
+        {
+            FatalError
+            << "rho field not set in beamProperties for"
+            << " calculating the gravity body force"
+            << abort(FatalError);
+        }
+        else if (rho().value()==0.0)
+        {
+            WarningIn("Constructor of beamModel.C")
+            << "rho field in constant/beamProperties = "
+            << "zero --> gravitational body force = 0"
+            << nl << endl;
+        }
+    // To check whether density of fluid is specified to calculate
+     // buoyant body force
+        if (beamProperties().found("rhoFluid"))
+        {
+            rhof_ = dimensionedScalar("rhoFluid",beamProperties());
+        }
+        else
+        {
+            WarningIn("Constructor of beamModel.C")
+            << "density of fluid rhoFluid is not set in constant/beamProperties "
+            << "--> buoyant body force = 0"
+            << nl << endl;
+        }
+    }
+    else
+    {
+        gPtr_.set
+        (
+            new uniformDimensionedVectorField
+            (
+                IOobject
+                (
+                    "g",
+                    runTime.caseConstant(),
+                    this->mesh(),
+                    IOobject::NO_READ,
+                    IOobject::NO_WRITE
+                ),
+            dimensionedVector("g", dimVelocity/dimTime, vector::zero)
+            )
+        );
+    }
 
     // Read cross-sections of beams
     if (found("beams"))
@@ -753,8 +766,6 @@ Foam::beamModel::beamModel
     if (pointForcesStream.good())
     {
         pointForcesStream >> pointForces_;
-        Info << "Point forces: " << endl;
-        Info << pointForces_ << endl;
     }
     else
     {
@@ -1076,11 +1087,11 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         forceFile << ' ' <<
-	// 		        mag
-	// 		        (
+    // 		        mag
+    // 		        (
     //                                 contact().lineContacts()[bI][segI][i]
-	// 		           .normalContactForce()
-	// 			);
+    // 		           .normalContactForce()
+    // 			);
     //                     }
     //                     else
     //                     {
@@ -1110,8 +1121,8 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         gapFile << ' ' <<
-	// 		        contact().lineContacts()[bI][segI][i]
-	// 		       .normalGap();
+    // 		        contact().lineContacts()[bI][segI][i]
+    // 		       .normalGap();
 
     //                         // gapFile << ' '
     //                         //     << contact().contactGaps()[bI][i][segI];
@@ -1643,14 +1654,10 @@ Foam::scalar Foam::beamModel::deltaT() const
 {
     scalar newDeltaT = runTime().deltaT().value();
 
-    Info << "Current deltaT: " << newDeltaT << endl;
-
     if (deltaTseries_.size())
     {
         newDeltaT = deltaTseries_(runTime().value());
     }
-
-    Info << "Current deltaT: " << newDeltaT << endl;
 
     return newDeltaT;
 }
