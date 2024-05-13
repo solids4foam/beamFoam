@@ -1,25 +1,14 @@
 #!/bin/sh
 set -x
 
-# clean library
-wclean src/wireBunchingModels
+# Clean library
+wclean lib src/wireBunchingModels
 
-# clean solvers
+# Clean solvers
 (cd applications/solvers && wclean all)
 
-# clean utilities
+# Clean utilities
 (cd applications/utilities && wclean all)
-
-# Intel MKL library
-echo "Checking Intel MKL installation"
-if [ -z $MKLROOT ]
-then
-    echo "Intel MKL library is not installed"
-else
-    echo "Intel MKL library is instlled."
-    wclean src/blockSolvers/BlockMklPardisoSolver
-    wclean src/blockSolvers/BlockMklClusterPardisoSolver
-fi
 
 # Extra cleaning
 \find . -type f \( -name "*~" -o -name "*.bak" \) -exec rm {} \;
@@ -27,6 +16,3 @@ fi
 \find . \( -name '*.pvs' -o -name '*.foam' \) -exec rm {} \;
 \find . -name '*.ps' -exec rm {} \;
 \rm logs > /dev/null 2>&1
-
-# clean all tutorials
-#(cd run && ./Allclean)
