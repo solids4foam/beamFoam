@@ -32,7 +32,7 @@ Further details can be found in the article [A cell-centered finite volume formu
 
 # Contact
 
-- seevani.bali@ucdconnect.ie
+- seevani.bali@ucd.ie
 - zeljko.tukovic@fsb.hr
 - philip.cardiff@ucd.ie
 - amirhossein.taran@ucdconnect.ie
