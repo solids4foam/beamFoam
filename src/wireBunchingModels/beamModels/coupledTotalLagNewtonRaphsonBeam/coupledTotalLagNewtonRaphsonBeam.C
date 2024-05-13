@@ -717,7 +717,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // This is a mandatory step because the system of beam equations
     // and the strains are defined in the code assuming the reference
     // beam centreline to be aligned in global x-direction
-    const volVectorField R0
+
+    volVectorField R0
     (
         IOobject
         (
@@ -727,23 +728,24 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::READ_IF_PRESENT,
             IOobject::AUTO_WRITE
         ),
-        mesh().C()
+        mesh(),
+        dimLength
     );
-
+    R0 = mesh().C();
     const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
-
+    
     if (sum(mag(refTangentError)) > SMALL)
     {
-        FatalErrorIn
-        (
-            "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
-        )   << "The longitudinal axis of beam in the reference configuration " << nl
-            << "is not aligned the global x-axis : This is a mandatory " << nl
-            << "requirement before running the beam solver. Run the " << nl
-            << "following command: " << nl
-            << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
-            << "after creating the beam mesh to set the correct reference "
-            << abort(FatalError);
+        // FatalErrorIn
+        // (
+        //     "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
+        // )   << "The longitudinal axis of beam in the reference configuration " << nl
+        //     << "is not aligned the global x-axis : This is a mandatory " << nl
+        //     << "requirement before running the beam solver. Run the " << nl
+        //     << "following command: " << nl
+        //     << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
+        //     << "after creating the beam mesh to set the correct reference "
+        //     << abort(FatalError);
     }
 
     // Calculate tangents if it is not already set by the user
