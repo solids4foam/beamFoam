@@ -12,3 +12,6 @@ wmake applications/solvers/beamFoam
 
 # Compile utilities
 wmake -j all applications/utilities
+
+# Install scripts
+(cd applications/scripts && ./Allwmake)
