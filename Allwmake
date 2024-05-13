@@ -23,7 +23,7 @@ wmake applications/utilities/setInitialPositionBeam
 # wmake applications/utilities/createMultipleCircularBeamMesh
 # wmake applications/utilities/createMultipleBeamMesh
 # wmake applications/utilities/moveBeam
-
+(cd applications/scripts && ./Allwmake)
 
 # wmake applications/utilities/createConicalPulleys
 # wmake applications/utilities/createConicalPulleysPath
