@@ -734,18 +734,18 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     R0 = mesh().C();
     const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
     
-    if (sum(mag(refTangentError)) > SMALL)
+    if (sum(mag(refTangentError)) > 1e-06)
     {
-        // FatalErrorIn
-        // (
-        //     "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
-        // )   << "The longitudinal axis of beam in the reference configuration " << nl
-        //     << "is not aligned the global x-axis : This is a mandatory " << nl
-        //     << "requirement before running the beam solver. Run the " << nl
-        //     << "following command: " << nl
-        //     << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
-        //     << "after creating the beam mesh to set the correct reference "
-        //     << abort(FatalError);
+        FatalErrorIn
+        (
+            "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
+        )   << "The longitudinal axis of beam in the reference configuration " << nl
+            << "is not aligned the global x-axis : This is a mandatory " << nl
+            << "requirement before running the beam solver. Run the " << nl
+            << "following command: " << nl
+            << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
+            << "after creating the beam mesh to set the correct reference "
+            << abort(FatalError);
     }
 
     // Calculate tangents if it is not already set by the user
