@@ -734,7 +734,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     R0 = mesh().C();
     const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
     
-    if (sum(mag(refTangentError)) > 1e-06)
+    if (sum(mag(refTangentError)) > (1E-08*average(mag(R0)).value()) )
     {
         FatalErrorIn
         (
