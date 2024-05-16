@@ -118,7 +118,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceVectorField explicitMQ_;
 
         //- Cross-section rotation tensor
-        mutable surfaceTensorField Lambda_;
+        mutable surfaceTensorField Lambdaf_;
 
         //- Cell-centre rotation matrix
         volTensorField RM_;
@@ -327,8 +327,8 @@ public:
             //  is operating rotation matrix
             virtual surfaceTensorField& solutionLambda() const
             {
-                // This model works with Lambda
-                return Lambda_;
+                // This model works with Lambdaf
+                return Lambdaf_;
             }
 
             //- Each beamModel must indicate whether Lambda or DLambda

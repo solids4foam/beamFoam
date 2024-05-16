@@ -299,11 +299,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
     ),
-    Lambda_
+    Lambdaf_
     (
         IOobject
         (
-            "Lambda",
+            "Lambdaf",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -669,7 +669,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     Gamma_.oldTime();
     K_.oldTime();
-    Lambda_.oldTime();
+    Lambdaf_.oldTime();
 
     Q_.oldTime();
     M_.oldTime();
@@ -1075,7 +1075,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     const vectorField& WfI = Wf.internalField();
 
-    const tensorField& LambdaI = Lambda_.internalField();
+    const tensorField& LambdafI = Lambdaf_.internalField();
     const tensorField& refLambdafI = refLambdaf_.internalField();
     const faceList& faces = mesh().faces();
 
@@ -1095,8 +1095,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
             vector oldR = points[curPoint] - C0;
 
-            vector newR = C0 + WfI[faceI] + //(LambdaI[faceI] & oldR);
-                (LambdaI[faceI] & (refLambdafI[faceI] & oldR));
+            vector newR = C0 + WfI[faceI] + //(LambdafI[faceI] & oldR);
+                (LambdafI[faceI] & (refLambdafI[faceI] & oldR));
 
             pointWI[curPoint] = newR - points[curPoint];
         }
@@ -1107,8 +1107,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
         const vectorField& pWf =
             Wf.boundaryField()[patchI];
 
-        const tensorField& pLambda =
-            Lambda_.boundaryField()[patchI];
+        const tensorField& pLambdaf =
+            Lambdaf_.boundaryField()[patchI];
 
        const tensorField& pRefLambdaf =
             refLambdaf_.boundaryField()[patchI];
@@ -1128,7 +1128,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
                 vector oldR = points[curPoint] - C0;
 
                 vector newR = C0 + pWf[faceI] +
-                 (pLambda[faceI] & (pRefLambdaf[faceI] & oldR));
+                 (pLambdaf[faceI] & (pRefLambdaf[faceI] & oldR));
 
                 pointWI[curPoint] = newR - points[curPoint];
             }
@@ -2058,7 +2058,7 @@ currentRotationIncrement() const
     );
     tensorField& DLambda(tDLambda.ref());
 
-    const surfaceTensorField DLambdaf((Lambda_ & inv(Lambda_.oldTime())));
+    const surfaceTensorField DLambdaf((Lambdaf_ & inv(Lambdaf_.oldTime())));
 
     const tensorField& DLambdafI(DLambdaf.internalField());
 
