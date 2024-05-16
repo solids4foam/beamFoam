@@ -351,11 +351,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
     ),
-    refLambda_
+    refLambdaf_
     (
         IOobject
         (
-            "refLambda",
+            "refLambdaf",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -870,7 +870,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         Info<< "Calculating cell-centre reference rotation matrix" << endl;
 
         // Calc cell-centre reference rotation matrix
-        interpolateRotationMatrix(*this, refLambda_, refRM_);
+        interpolateRotationMatrix(*this, refLambdaf_, refRM_);
 
         if (debug)
         {
@@ -1076,7 +1076,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     const vectorField& WfI = Wf.internalField();
 
     const tensorField& LambdaI = Lambda_.internalField();
-    const tensorField& refLambdaI = refLambda_.internalField();
+    const tensorField& refLambdafI = refLambdaf_.internalField();
     const faceList& faces = mesh().faces();
 
     const vectorField& points = mesh().points();
@@ -1096,7 +1096,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
             vector oldR = points[curPoint] - C0;
 
             vector newR = C0 + WfI[faceI] + //(LambdaI[faceI] & oldR);
-                (LambdaI[faceI] & (refLambdaI[faceI] & oldR));
+                (LambdaI[faceI] & (refLambdafI[faceI] & oldR));
 
             pointWI[curPoint] = newR - points[curPoint];
         }
@@ -1110,8 +1110,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
         const tensorField& pLambda =
             Lambda_.boundaryField()[patchI];
 
-       const tensorField& pRefLambda =
-            refLambda_.boundaryField()[patchI];
+       const tensorField& pRefLambdaf =
+            refLambdaf_.boundaryField()[patchI];
 
         const label start =
             mesh().boundaryMesh()[patchI].start();
@@ -1128,7 +1128,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
                 vector oldR = points[curPoint] - C0;
 
                 vector newR = C0 + pWf[faceI] +
-                 (pLambda[faceI] & (pRefLambda[faceI] & oldR));
+                 (pLambda[faceI] & (pRefLambdaf[faceI] & oldR));
 
                 pointWI[curPoint] = newR - points[curPoint];
             }

@@ -139,7 +139,7 @@ class coupledTotalLagNewtonRaphsonBeam
         volVectorField refW_;
 
         //- Cross-section rotation tensor
-        surfaceTensorField refLambda_;
+        surfaceTensorField refLambdaf_;
 
         //- Cell-centre rotation matrix
         volTensorField refRM_;
