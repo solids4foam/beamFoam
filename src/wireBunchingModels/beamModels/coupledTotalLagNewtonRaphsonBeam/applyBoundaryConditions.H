@@ -11,7 +11,7 @@
         const vectorField& pExplicitM = explicitM_.boundaryField()[patchI];
         const vectorField& pExplicitMQ = explicitMQ_.boundaryField()[patchI];
 
-        const tensorField& pLambda = Lambda_.boundaryField()[patchI];
+        const tensorField& pLambdaf = Lambdaf_.boundaryField()[patchI];
 
         ////// W equation
 
@@ -92,7 +92,7 @@
             vectorField tang
             (
             (
-                Lambda_.boundaryField()[patchI]
+                Lambdaf_.boundaryField()[patchI]
               & dR0Ds_.boundaryField()[patchI]
             )
             );
@@ -216,10 +216,10 @@
                 (
                     DTheta_.boundaryFieldRef()[patchI]
                 );
-                // pThetaCorrSta = (pLambda & pThetaCorrStar);
+                // pThetaCorrSta = (pLambdaf & pThetaCorrStar);
                 // pThetaCorrStar = (pTheta - pThetaPrev);
 
-                pThetaCorr = (pLambda & (pTheta - pThetaPrev));
+                pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
                 // Info << "(ax) pThetaCorr = " << pThetaCorr << endl;
 
@@ -398,7 +398,7 @@
                     DTheta_.boundaryFieldRef()[patchI];
 
                 // pThetaCorrStar = (pTheta - pThetaPrev);
-                pThetaCorr = (pLambda & (pTheta - pThetaPrev));
+                pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
                 // Info << "pThetaCorr = " << pThetaCorr << endl;
 
@@ -523,7 +523,7 @@
                 DTheta_.boundaryFieldRef()[patchI]
             );
             // pThetaCorrStar = (pTheta - pThetaPrev);
-            pThetaCorr = (pLambda & (pTheta - pThetaPrev));
+            pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
             // Info << patchI << ", " << pThetaCorr << endl;
 
@@ -835,7 +835,7 @@
                     DTheta_.boundaryFieldRef()[patchI]
                 );
                 // pThetaCorrStar = (pTheta - pThetaPrev);
-                pThetaCorr = (pLambda & (pTheta - pThetaPrev));
+                pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
                 vectorField dwds1(-((invCQW & pCQTheta) & pThetaCorr));
 
@@ -873,7 +873,7 @@
             vectorField tang
             (
             (
-                Lambda_.boundaryField()[patchI]
+                Lambdaf_.boundaryField()[patchI]
               & dR0Ds_.boundaryField()[patchI]
             )
             );
@@ -984,7 +984,7 @@
                     DTheta_.boundaryFieldRef()[patchI]
                 );
                 pThetaCorrStar = (pTheta - pThetaPrev);
-                vectorField pThetaCorr((pLambda & pThetaCorrStar));
+                vectorField pThetaCorr((pLambdaf & pThetaCorrStar));
 
                 vectorField dwds1(-((invCQW & pCQThetat) & pThetaCorr));
 
@@ -1127,7 +1127,7 @@
                     DTheta_.boundaryFieldRef()[patchI];
 
                 // pThetaCorrStar = (pTheta - pThetaPrev);
-                pThetaCorr = (pLambda & (pTheta - pThetaPrev));
+                pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
                 // Info << patchI << ", " << pThetaCorr << endl;
 
@@ -1153,14 +1153,14 @@
 
                 // correctedOwnExplicitMQ =
                 // (
-                //     refLambdaI[fc[faceI]].T()
+                //     refLambdafI[fc[faceI]].T()
                 //   & (RMI[fc[faceI]].T() & correctedOwnExplicitMQ)
                 // );
                 // correctedOwnExplicitMQ.x() = 0;
                 // correctedOwnExplicitMQ =
                 // (
                 //     RMI[fc[faceI]]
-                //  & (refLambdaI[fc[faceI]] & correctedOwnExplicitMQ)
+                //  & (refLambdafI[fc[faceI]] & correctedOwnExplicitMQ)
                 // );
 
                 source[fc[faceI]](3,0) -= correctedOwnExplicitMQ.x();

@@ -947,7 +947,7 @@
         K_ = refLambdaf_.T() & meanLineCurvature(RM_); // this does not work
         //K_ +=
         //    (
-        //          (refLambdaf_.T() & Lambda_.T()) &
+        //          (refLambdaf_.T() & Lambdaf_.T()) &
         //        meanLineCurvature(DLambda)
         //    );
 
@@ -956,8 +956,8 @@
         //   interpolateRotationMatrix(DLambda);
 
         // Update cell-face rotation matrix
-        //Lambda_ = (DLambdaf & Lambda_);
-        Lambda_ = interpolateRotationMatrix(RM_); // this does not work
+        //Lambdaf_ = (DLambdaf & Lambdaf_);
+        Lambdaf_ = interpolateRotationMatrix(RM_); // this does not work
     }
     else
     {
@@ -981,7 +981,7 @@
         // Update bending strain vector
         K_ +=
         (
-            (refLambdaf_.T() & Lambda_.T())
+            (refLambdaf_.T() & Lambdaf_.T())
             // & fvc::snGrad(DTheta_)
             & (DT.T() & fvc::snGrad(DTheta_))
         );
@@ -990,13 +990,13 @@
         surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
 
         // Update rotation matrix
-        Lambda_ = (DLambdaf & Lambda_);
+        Lambdaf_ = (DLambdaf & Lambdaf_);
 
         // Update cell-centre rotation matrix
         volTensorField DLambda(rotationMatrix(DTheta_));
 
         RM_ = (DLambda & RM_);
-        // interpolateRotationMatrix(*this, Lambda_, RM_);
+        // interpolateRotationMatrix(*this, Lambdaf_, RM_);
 
         if (newmark_)
         {
@@ -1020,14 +1020,14 @@
 
         surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
-        Gamma_ = (refLambdaf_.T() & ((Lambda_.T() & dRdS) - dR0Ds_));
+        Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
     }
 
     // Q_ = (CQ_ & (Gamma_ - GammaP_));
     // M_ = (CM_ & (K_ - KP_));
 
-    // Q_ = ((Lambda_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
-    // M_ = ((Lambda_ & refLambdaf_) & (CM_ & (K_ - KP_)));
+    // Q_ = ((Lambdaf_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
+    // M_ = ((Lambdaf_ & refLambdaf_) & (CM_ & (K_ - KP_)));
 
     // Calculate Q, where we ignore the orientation check
     {
@@ -1051,12 +1051,12 @@
 
     // Calculate axial force
     {
-        // surfaceVectorField t = (Lambda_ & dR0Ds_);
+        // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
 
         // dRdS /= mag(dRdS);
         // Qa_ = (dRdS & Q_);
 
-        Qa_ = (Lambda_.T() & Q_)().component(0);
+        Qa_ = (Lambdaf_.T() & Q_)().component(0);
     }
 
     // Calculate DTheta residual
