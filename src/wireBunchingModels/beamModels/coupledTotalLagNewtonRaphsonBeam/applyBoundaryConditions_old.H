@@ -1067,14 +1067,14 @@
             
                 // correctedOwnExplicitMQ =
                 // (
-                //     refRMI[fc[faceI]].T()
+                //     refLambdaI[fc[faceI]].T()
                 //   & (RMI[fc[faceI]].T() & correctedOwnExplicitMQ)
                 // );
                 // correctedOwnExplicitMQ.x() = 0;
                 // correctedOwnExplicitMQ =
                 // (
                 //     RMI[fc[faceI]]
-                //  & (refRMI[fc[faceI]] & correctedOwnExplicitMQ)
+                //  & (refLambdaI[fc[faceI]] & correctedOwnExplicitMQ)
                 // );
 
                 source[fc[faceI]](3) -= correctedOwnExplicitMQ.x();

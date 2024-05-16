@@ -22,7 +22,7 @@
     const vectorField& explicitMQI = explicitMQ_.boundaryField()[patchI];
 
     const tensorField& RMI = RM_.internalField();
-    const tensorField& refRMI = refRM_.internalField();
+    const tensorField& refLambdaI = refLambda_.internalField();
     const unallocLabelList& fc = mesh().boundary()[patchI].faceCells();
     
     forAll(cu, faceI)
@@ -298,12 +298,12 @@
 
         correctedOwnExplicitMQ =
         (
-            refRMI[fc[faceI]].T()
+            refLambdaI[fc[faceI]].T()
           & (RMI[fc[faceI]].T() & correctedOwnExplicitMQ)
         );
         correctedOwnExplicitMQ.x() = 0;
         correctedOwnExplicitMQ =
-            (RMI[fc[faceI]] & (refRMI[fc[faceI]] & correctedOwnExplicitMQ));
+            (RMI[fc[faceI]] & (refLambdaI[fc[faceI]] & correctedOwnExplicitMQ));
 
         source[fc[faceI]](3) -= correctedOwnExplicitMQ.x();
         source[fc[faceI]](4) -= correctedOwnExplicitMQ.y();
