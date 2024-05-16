@@ -312,11 +312,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
     ),
-    RM_
+    Lambda_
     (
         IOobject
         (
-            "RM",
+            "Lambda",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -665,7 +665,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     W_.oldTime();
     U_.oldTime();
     Omega_.oldTime();
-    RM_.oldTime();
+    Lambda_.oldTime();
 
     Gamma_.oldTime();
     K_.oldTime();

@@ -120,8 +120,8 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Face-centre rotation tensor field
         mutable surfaceTensorField Lambdaf_;
 
-        //- Cell-centre rotation matrix
-        volTensorField RM_;
+        //- Cell-centre rotation tensor field
+        volTensorField Lambda_;
 
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
@@ -336,7 +336,7 @@ public:
             virtual const volTensorField& solutionRMC() const
             {
                 // This model works with Lambda
-                return RM_;
+                return Lambda_;
             }
 
             // //- Cell centre beam mean line tangent
