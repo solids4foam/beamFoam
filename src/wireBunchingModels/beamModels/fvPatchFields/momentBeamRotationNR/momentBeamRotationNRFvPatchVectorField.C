@@ -191,116 +191,31 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
     const fvPatchField<tensor>& pRM =
         patch().lookupPatchField<volTensorField, tensor>("RM");
 
-    const fvPatchField<tensor>& pRefRM =
-        patch().lookupPatchField<volTensorField, tensor>("refRM");
+    const tensorField& CMTheta =
+        patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta");
 
-    // Lookup the solidModel object
-    const beamModel& bm =
-        lookupBeamModel(patch().boundaryMesh().mesh());
+    const tensorField& CMTheta2 =
+        patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta2");
 
-    // if (bm.objectiveInterpolation())
-    if (false)
-    {
-        // Info << "Objective interpolation in fixed moment bC" << endl;
+    const vectorField& explicitM =
+        patch().lookupPatchField<surfaceVectorField, vector>("explicitM");
 
-        const scalarField Lb (2/patch().deltaCoeffs());
+    const scalarField delta (1.0/patch().deltaCoeffs());
 
-        tensorField dRMP (rotationMatrix(DTheta.patchInternalField()));
-        tensorField prevRMP (pRM.patchInternalField());
-        tensorField RMP ((dRMP & prevRMP));
+    tensorField invA (inv(CMTheta/delta + CMTheta2));
 
-        // Constitutive matrix (check for multi-beam cases)
-        diagTensor CM
-        (
-            bm.GJ().value(),
-            bm.EI().value(),
-            bm.EI().value()
-        );
-
-        // Initialize new (corrected) patch rotation matrix
-        tensorField pRMnew = pRM;
-
-        scalar res = GREAT;
-        label iCorr = 0;
-
-        do
-        {
-            // Required curvature
-            // vectorField pK = (inv(pRMnew & CM) & moment_);
-            vectorField pK ((inv((pRMnew & pRefRM) & CM) & moment_));
-
-            // Rotation angle objective increment
-            vectorField psiPN(pK*Lb);
-
-            // Corrected patch neighbour cell rotation matrix
-            tensorField RMN
-		(
-                (RMP & rotationMatrix(psiPN))
-		);
-            tensorField pRMprev = pRMnew;
-            pRMnew =
-            (
-                RMP
-              & rotationMatrix(0.5*psiPN)
-            );
-
-            res = max(mag(pRMnew - pRMprev));
-            iCorr++;
-        }
-        while
-        (
-            res > 1e-9
-         && iCorr < 100
-        );
-
-        // Info << "iCorr: " << iCorr << endl;
-        // Info << "res: " << res << endl;
-
-        tensorField DRM ((pRMnew & pRM.T()));
-        vectorField newDTheta (pseudoVector(DRM));
-
-        fixedValueFvPatchField<vector>::operator==
-        (
-            (*this)
-          + (pRM.T() & newDTheta)
-        );
-
-        DTheta = newDTheta;
-    }
-    else
-    {
-        const tensorField& CMTheta =
-            patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta");
-
-        const tensorField& CMTheta2 =
-            patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta2");
-
-        const vectorField& explicitM =
-            patch().lookupPatchField<surfaceVectorField, vector>("explicitM");
-
-        const scalarField delta (1.0/patch().deltaCoeffs());
-
-        tensorField invA (inv(CMTheta/delta + CMTheta2));
-
-        vectorField newDTheta
+    vectorField newDTheta
 	(
             (invA & (moment_ - explicitM)) +
             ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
 	);
-        fixedValueFvPatchField<vector>::operator==
-        (
-            (*this)
-          + (pRM.T() & newDTheta)
-        );
+    fixedValueFvPatchField<vector>::operator==
+    (
+        (*this)
+        + (pRM.T() & newDTheta)
+    );
 
-        // fixedValueFvPatchField<vector>::operator==
-        // (
-        //     (*this)
-        //   + newDTheta
-        // );
-
-        DTheta = newDTheta;
-    }
+    DTheta = newDTheta;
 
     fixedValueFvPatchVectorField::evaluate();
 }
