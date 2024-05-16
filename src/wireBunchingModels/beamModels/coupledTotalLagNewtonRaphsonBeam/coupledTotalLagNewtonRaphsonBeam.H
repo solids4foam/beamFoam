@@ -117,7 +117,7 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Explicit contribution to cross-section moment
         surfaceVectorField explicitMQ_;
 
-        //- Cross-section rotation tensor
+        //- Face-centre rotation tensor field
         mutable surfaceTensorField Lambdaf_;
 
         //- Cell-centre rotation matrix
