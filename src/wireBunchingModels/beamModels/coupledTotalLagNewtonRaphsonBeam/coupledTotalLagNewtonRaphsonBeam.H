@@ -142,7 +142,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceTensorField refLambdaf_;
 
         //- Cell-centre rotation matrix
-        volTensorField refRM_;
+        volTensorField refLambda_;
 
         //- Mid-line tangent vector
         surfaceVectorField refTangent_;

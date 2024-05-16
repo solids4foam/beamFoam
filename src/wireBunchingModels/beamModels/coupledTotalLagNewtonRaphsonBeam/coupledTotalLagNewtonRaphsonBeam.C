@@ -364,11 +364,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
     ),
-    refRM_
+    refLambda_
     (
         IOobject
         (
-            "refRM",
+            "refLambda",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -858,23 +858,23 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // Calculate cell-centre reference rotation matrix
     // if it is not read
-    IOobject refRMheader
+    IOobject refLambdaHeader
     (
-        "refRM",
+        "refLambda",
         runTime.timeName(),
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refRMheader.typeHeaderOk<volTensorField>(true))
+    if (!refLambdaHeader.typeHeaderOk<volTensorField>(true))
     {
         Info<< "Calculating cell-centre reference rotation matrix" << endl;
 
         // Calc cell-centre reference rotation matrix
-        interpolateRotationMatrix(*this, refLambdaf_, refRM_);
+        interpolateRotationMatrix(*this, refLambdaf_, refLambda_);
 
         if (debug)
         {
-            Info<< refRM_ << endl;
+            Info<< refLambda_ << endl;
         }
     }
 
