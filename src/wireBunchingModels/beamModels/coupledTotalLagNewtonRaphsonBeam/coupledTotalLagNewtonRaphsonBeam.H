@@ -26,6 +26,12 @@ Class
     coupledTotalLagNewtonRaphsonBeam
 
 Description
+    This code is the total Lagrangian formulation to solve displacements (W)
+    and rotations (Theta) implemented in a coupled Newton-Raphson approach for
+    geometrically exact Simo-Reissner beams
+
+    More details on the implementation can be found in the paper:
+    https://doi.org/10.1002/nme.6994
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
@@ -44,7 +50,6 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 //#include "multibeamFvBlockMatrix.H"
-//#include "plasticityStressResultantReturn.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -126,25 +131,19 @@ class coupledTotalLagNewtonRaphsonBeam
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
 
-        // //- Cross-section rotation tensor
-        // surfaceTensorField T_;
-
-        //- Cross-section reference point displacement field
-        // surfaceVectorField refWf_;
-
 		//- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
 
         //- Mean line reference displacement at cell-centres
         volVectorField refW_;
 
-        //- Cross-section rotation tensor
+        //- Face-centre reference rotation tensor field
         surfaceTensorField refLambdaf_;
 
-        //- Cell-centre rotation matrix
+        //- Cell-centre reference rotation tensor field
         volTensorField refLambda_;
 
-        //- Mid-line tangent vector
+        //- Mid-line tangent vector field at face centres
         surfaceVectorField refTangent_;
 
         //- Coefficient in the force equilibrium equation

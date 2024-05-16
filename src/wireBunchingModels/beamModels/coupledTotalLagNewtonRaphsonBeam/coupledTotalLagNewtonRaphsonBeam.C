@@ -711,7 +711,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Check whether the reference longitunidal axis of beams is
+    // Check whether the reference longitudinal axis of beams is
     // always set in global x-direction and throw error otherwise
     // This is a mandatory step because the system of beam equations
     // and the strains are defined in the code assuming the reference
@@ -854,7 +854,42 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Info<< refTangent_ << endl;
+    //- The variables for cell-centre rotation fields are refLambda and Lambda in OpenFOAM-v2306 
+    //  in foam-extend version they are named as refRM and RM. In case these files are found
+    //  while running a case, abort the simulation with following error message  
+    IOobject refRMheader
+    (
+        "refRM",
+        runTime.timeName(),
+        mesh(),
+        IOobject::MUST_READ
+    );
+    IOobject RMheader
+    (
+        "RM",
+        runTime.timeName(),
+        mesh(),
+        IOobject::MUST_READ
+    );
+    // The check for refRM and RM files, also warn user about refLambda and Lambda datatypes
+    if
+    (
+        RMheader.typeHeaderOk<volTensorField>(true) ||
+        refRMheader.typeHeaderOk<volTensorField>(true)
+
+    )
+    {
+         FatalErrorIn
+        (
+            "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
+        )   << "The variables 'refRM' or 'RM' are found in the case files " << nl
+            << "which are deprecated for OpenFOAM-v23xx version. " << nl
+            << "Please rename volTensorField refRM--> volTensorField refLambda " << nl
+            << "and volTensorField RM--> volTensorField Lambda.  " << nl
+            << "A better solution is to clean all the files, and re-run the simulation."
+            << abort(FatalError);
+    }
+
 
     // Calculate cell-centre reference rotation matrix
     // if it is not read

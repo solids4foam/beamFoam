@@ -244,7 +244,7 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
 
     const tensorField invA (inv(CQW/delta));
 
-    vectorField newDW
+    const vectorField newDW
     (
         (invA & (force() - explicitQ)) -
         (invA & (CQTheta & DTheta)) -

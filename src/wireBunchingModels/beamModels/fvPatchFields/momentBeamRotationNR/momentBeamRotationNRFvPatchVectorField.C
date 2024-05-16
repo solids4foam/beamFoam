@@ -204,7 +204,7 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
 
     const tensorField invA (inv(CMTheta/delta + CMTheta2));
 
-    vectorField newDTheta
+    const vectorField newDTheta
 	(
         (invA & (moment_ - explicitM)) +
         ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
