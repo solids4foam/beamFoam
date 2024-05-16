@@ -188,8 +188,8 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
             patch().lookupPatchField<volVectorField, vector>("DTheta")
         );
 
-    const fvPatchField<tensor>& pRM =
-        patch().lookupPatchField<volTensorField, tensor>("RM");
+    const fvPatchField<tensor>& pLambda =
+        patch().lookupPatchField<volTensorField, tensor>("Lambda");
 
     const tensorField& CMTheta =
         patch().lookupPatchField<surfaceTensorField, tensor>("CMTheta");
@@ -202,17 +202,18 @@ void momentBeamRotationNRFvPatchVectorField::evaluate(const Pstream::commsTypes)
 
     const scalarField delta (1.0/patch().deltaCoeffs());
 
-    tensorField invA (inv(CMTheta/delta + CMTheta2));
+    const tensorField invA (inv(CMTheta/delta + CMTheta2));
 
     vectorField newDTheta
 	(
-            (invA & (moment_ - explicitM)) +
-            ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
+        (invA & (moment_ - explicitM)) +
+        ((invA & (CMTheta/delta)) & DTheta.patchInternalField())
 	);
+
     fixedValueFvPatchField<vector>::operator==
     (
         (*this)
-        + (pRM.T() & newDTheta)
+      + (pLambda.T() & newDTheta)
     );
 
     DTheta = newDTheta;

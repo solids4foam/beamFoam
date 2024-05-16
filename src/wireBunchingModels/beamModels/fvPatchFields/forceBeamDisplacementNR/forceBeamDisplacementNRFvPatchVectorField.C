@@ -242,14 +242,14 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
 
     const scalarField delta  (1.0/patch().deltaCoeffs());
 
-    tensorField invA (inv(CQW/delta));
+    const tensorField invA (inv(CQW/delta));
 
     vectorField newDW
     (
         (invA & (force() - explicitQ)) -
         (invA & (CQTheta & DTheta)) -
         (invA & (CQDTheta & (DTheta - DTheta.patchInternalField())))/delta // usuly zero
-        + DW.patchInternalField()
+      + DW.patchInternalField()
     );
 
     DW = newDW;
