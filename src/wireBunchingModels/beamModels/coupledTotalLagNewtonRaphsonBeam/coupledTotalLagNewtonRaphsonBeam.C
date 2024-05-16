@@ -713,7 +713,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // Check whether the reference longitunidal axis of beams is
     // always set in global x-direction and throw error otherwise
-
     // This is a mandatory step because the system of beam equations
     // and the strains are defined in the code assuming the reference
     // beam centreline to be aligned in global x-direction
