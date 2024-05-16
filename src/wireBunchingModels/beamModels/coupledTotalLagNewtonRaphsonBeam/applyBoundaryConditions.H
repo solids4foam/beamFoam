@@ -1154,12 +1154,12 @@
                 // correctedOwnExplicitMQ =
                 // (
                 //     refLambdafI[fc[faceI]].T()
-                //   & (RMI[fc[faceI]].T() & correctedOwnExplicitMQ)
+                //   & (LambdaI[fc[faceI]].T() & correctedOwnExplicitMQ)
                 // );
                 // correctedOwnExplicitMQ.x() = 0;
                 // correctedOwnExplicitMQ =
                 // (
-                //     RMI[fc[faceI]]
+                //     LambdaI[fc[faceI]]
                 //  & (refLambdafI[fc[faceI]] & correctedOwnExplicitMQ)
                 // );
 

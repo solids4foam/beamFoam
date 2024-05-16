@@ -670,8 +670,8 @@
 
                         L()
                         *(
-                            (RM_ & (CIRho_ & dotOmega))
-                            + (RM_ & (Omega_ ^ (CIRho_ & Omega_)))
+                            (Lambda_ & (CIRho_ & dotOmega))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
                         )
                     );
                 forAll(source, cellI)
@@ -687,17 +687,17 @@
                     (
                         L()
                         *(
-                            spinTensor((RM_ & (Omega_ ^ (CIRho_ & Omega_))) + (RM_ & (CIRho_ & dotOmega)))
+                            spinTensor((Lambda_ & (Omega_ ^ (CIRho_ & Omega_))) + (Lambda_ & (CIRho_ & dotOmega)))
 
                             + (gammaN_/(betaN_*runTime().deltaT()))
                             *(
-                                (spinTensor(RM_ & (CIRho_ & Omega_)))
-                                - (RM_ & (spinTensor(Omega_) & (CIRho_ &  RM_.T())))
+                                (spinTensor(Lambda_ & (CIRho_ & Omega_)))
+                                - (Lambda_ & (spinTensor(Omega_) & (CIRho_ &  Lambda_.T())))
                             )
 
                             - (1/(betaN_*sqr(runTime().deltaT())))
                             *(
-                                RM_ & (CIRho_ & RM_.T())
+                                Lambda_ & (CIRho_ & Lambda_.T())
                             )
                         )
                     );
@@ -725,8 +725,8 @@
                     (
                         L()
                         *(
-                            (RM_ & (CIRho_ & dotOmega))
-                            + (RM_ & (Omega_ ^ (CIRho_ & Omega_)))
+                            (Lambda_ & (CIRho_ & dotOmega))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
                         )
                     );
 
@@ -807,17 +807,17 @@
                     (
                         L()
                         *(
-                            spinTensor(RM_ & (CIRho_ & Omega_))/runTime().deltaT()
+                            spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT()
 
-                            - (RM_ & (CIRho_ & RM_.T()))/sqr(runTime().deltaT())
+                            - (Lambda_ & (CIRho_ & Lambda_.T()))/sqr(runTime().deltaT())
 
-                            - spinTensor(RM_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
 
-                            - spinTensor(RM_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
+                            - spinTensor(Lambda_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
 
-                            - spinTensor(RM_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
 
-                            + (RM_ & (spinTensor(Omega_) & (CIRho_ & RM_.T())))/runTime().deltaT()
+                            + (Lambda_ & (spinTensor(Omega_) & (CIRho_ & Lambda_.T())))/runTime().deltaT()
                         )
                     );
                 forAll(d, cellI)
@@ -899,7 +899,7 @@
     // DTheta_.internalField().replace(0, 0);
 
     Theta_.primitiveFieldRef() +=
-        (RM_.internalField().T() & DTheta_.internalField()); // Get back to this
+        (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
 
     // Theta_.internalField().replace(0, 0);
 
@@ -941,10 +941,10 @@
         volTensorField DLambda(rotationMatrix(DTheta_));
 
         // Update cell-centre rotation matrix
-        RM_ = (DLambda & RM_);
+        Lambda_ = (DLambda & Lambda_);
 
         // Calculate mean line curvature at cell-faces
-        K_ = refLambdaf_.T() & meanLineCurvature(RM_); // this does not work
+        K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
         //K_ +=
         //    (
         //          (refLambdaf_.T() & Lambdaf_.T()) &
@@ -957,7 +957,7 @@
 
         // Update cell-face rotation matrix
         //Lambdaf_ = (DLambdaf & Lambdaf_);
-        Lambdaf_ = interpolateRotationMatrix(RM_); // this does not work
+        Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
     }
     else
     {
@@ -995,21 +995,21 @@
         // Update cell-centre rotation matrix
         volTensorField DLambda(rotationMatrix(DTheta_));
 
-        RM_ = (DLambda & RM_);
-        // interpolateRotationMatrix(*this, Lambdaf_, RM_);
+        Lambda_ = (DLambda & Lambda_);
+        // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
 
         if (newmark_)
         {
             // Update angular velocity
             // without tangent space
-            Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(RM_.T() &  DTheta_);
+            Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(Lambda_.T() &  DTheta_);
 
             // Update angular acceleration
-            dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(RM_.T() &  DTheta_);
+            dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(Lambda_.T() &  DTheta_);
         }
         else // First order Euler scheme
         {
-            Omega_ = axialVector(RM_.T() & fvc::ddt(RM_));
+            Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
 
         }
     }
