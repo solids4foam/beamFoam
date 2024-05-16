@@ -944,10 +944,10 @@
         RM_ = (DLambda & RM_);
 
         // Calculate mean line curvature at cell-faces
-        K_ = refLambda_.T() & meanLineCurvature(RM_); // this does not work
+        K_ = refLambdaf_.T() & meanLineCurvature(RM_); // this does not work
         //K_ +=
         //    (
-        //          (refLambda_.T() & Lambda_.T()) &
+        //          (refLambdaf_.T() & Lambda_.T()) &
         //        meanLineCurvature(DLambda)
         //    );
 
@@ -981,7 +981,7 @@
         // Update bending strain vector
         K_ +=
         (
-            (refLambda_.T() & Lambda_.T())
+            (refLambdaf_.T() & Lambda_.T())
             // & fvc::snGrad(DTheta_)
             & (DT.T() & fvc::snGrad(DTheta_))
         );
@@ -1020,14 +1020,14 @@
 
         surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
-        Gamma_ = (refLambda_.T() & ((Lambda_.T() & dRdS) - dR0Ds_));
+        Gamma_ = (refLambdaf_.T() & ((Lambda_.T() & dRdS) - dR0Ds_));
     }
 
     // Q_ = (CQ_ & (Gamma_ - GammaP_));
     // M_ = (CM_ & (K_ - KP_));
 
-    // Q_ = ((Lambda_ & refLambda_) & (CQ_ & (Gamma_ - GammaP_)));
-    // M_ = ((Lambda_ & refLambda_) & (CM_ & (K_ - KP_)));
+    // Q_ = ((Lambda_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
+    // M_ = ((Lambda_ & refLambdaf_) & (CM_ & (K_ - KP_)));
 
     // Calculate Q, where we ignore the orientation check
     {

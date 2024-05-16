@@ -5,7 +5,7 @@ if (true)
   // Info << "Updating coefficients" << endl;
 
   // Total rotation matrix
-  surfaceTensorField Lambda((Lambda_ & refLambda_));
+  surfaceTensorField Lambda((Lambda_ & refLambdaf_));
 
   CQW_ = (Lambda & (CQ_ & Lambda.T()));
 
