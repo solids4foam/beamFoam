@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
         dimensionedTensor("I", dimless, tensor::I)
     );
 
-    volTensorField refRM
+    volTensorField refLambda
     (
         IOobject
         (
-            "refRM",
+            "refLambda",
             runTime.timeName(),
             mesh,
             IOobject::READ_IF_PRESENT,
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
         vectorField& refWI = refW.primitiveFieldRef();
         vectorField& refTangentI = refTangent.primitiveFieldRef();
         tensorField& refLambdafI = refLambdaf.primitiveFieldRef();
-        tensorField& refRMI = refRM.primitiveFieldRef();
+        tensorField& refLambdaI = refLambda.primitiveFieldRef();
         const vectorField& CfI = mesh.Cf().primitiveField();
         const vectorField& CI = mesh.C().primitiveField();
 
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
             {
                 refWI[cellI]  = newCI[cellI] + transVector - CI[cellI];
 
-                refRMI[cellI] = T;
+                refLambdaI[cellI] = T;
             }
         }
 
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
             vectorField& pRefW = refW.boundaryFieldRef()[patchI];
             vectorField& pRefTangent = refTangent.boundaryFieldRef()[patchI];
             tensorField& pRefLambdaf = refLambdaf.boundaryFieldRef()[patchI];
-            tensorField& pRefRM = refRM.boundaryFieldRef()[patchI];
+            tensorField& pRefLambda = refLambda.boundaryFieldRef()[patchI];
 
             const vectorField& pCf = mesh.Cf().boundaryField()[patchI];
 
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
                     pRefW[faceI] = pRefWf[faceI];
 
                     pRefLambdaf[faceI] = T;
-                    pRefRM[faceI] = pRefLambdaf[faceI];
+                    pRefLambda[faceI] = pRefLambdaf[faceI];
 
                             // PC: see comment above
                     // pRefTangent[faceI] = (pRefLambdaf[faceI] & pRefTangent[faceI]);
@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
     refW.write();
     refLambdaf.write();
     refTangent.write();
-    refRM.write();
+    refLambda.write();
 
     #include "updateMeshPoints.H"
 
