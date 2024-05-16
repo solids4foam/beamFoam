@@ -219,10 +219,6 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     const Pstream::commsTypes
 )
 {
-    // Lookup the beamModel object
-    const beamModel& bm =
-        lookupBeamModel(patch().boundaryMesh().mesh());
-
     fvPatchField<vector>& DW =
         const_cast<fvPatchField<vector>& >
         (
