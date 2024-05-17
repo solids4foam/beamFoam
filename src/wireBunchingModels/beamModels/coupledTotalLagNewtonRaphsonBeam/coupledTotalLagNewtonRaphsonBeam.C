@@ -854,9 +854,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    //- The variables for cell-centre rotation fields are refLambda and Lambda in OpenFOAM-v2306 
-    //  in foam-extend version they are named as refRM and RM. In case these files are found
-    //  while running a case, abort the simulation with following error message  
+    // In the original foam-extend version, the cell-centre rotation fields
+    // were called refRM and RM. For consistency they are now renamed as
+    // refLambda and Lambda in OpenFOAM-v2306.
+    // For backwards compatibility, we will check for refRM and RM and report
+    // an error if found
     IOobject refRMheader
     (
         "refRM",
@@ -871,22 +873,23 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    // The check for refRM and RM files, also warn user about refLambda and Lambda datatypes
+    // The check for refRM and RM files, also warn user about refLambda and
+    // Lambda datatypes
     if
     (
-        RMheader.typeHeaderOk<volTensorField>(true) ||
-        refRMheader.typeHeaderOk<volTensorField>(true)
-
+        RMheader.typeHeaderOk<volTensorField>(true)
+     || refRMheader.typeHeaderOk<volTensorField>(true)
     )
     {
          FatalErrorIn
         (
             "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
-        )   << "The variables 'refRM' or 'RM' are found in the case files " << nl
+        )   << "The variables 'refRM' or 'RM' are found in the case files "
             << "which are deprecated for OpenFOAM-v23xx version. " << nl
-            << "Please rename volTensorField refRM--> volTensorField refLambda " << nl
+            << "Please rename volTensorField refRM--> volTensorField refLambda "
             << "and volTensorField RM--> volTensorField Lambda.  " << nl
-            << "A better solution is to clean all the files, and re-run the simulation."
+            << "A better solution is to clean all the files, and re-run the "
+            << "simulation."
             << abort(FatalError);
     }
 
