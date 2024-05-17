@@ -134,11 +134,11 @@ int main(int argc, char *argv[])
     );
 
     // Beam cross-section rotation
-    surfaceTensorField refLambda
+    surfaceTensorField refLambdaf
     (
         IOobject
         (
-            "refLambda",
+            "refLambdaf",
             runTime.timeName(),
             mesh,
             IOobject::READ_IF_PRESENT,
@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
         dimensionedTensor("I", dimless, tensor::I)
     );
 
-    volTensorField refRM
+    volTensorField refLambda
     (
         IOobject
         (
-            "refRM",
+            "refLambda",
             runTime.timeName(),
             mesh,
             IOobject::READ_IF_PRESENT,
@@ -233,8 +233,8 @@ int main(int argc, char *argv[])
         vectorField& refWfI = refWf.primitiveFieldRef();
         vectorField& refWI = refW.primitiveFieldRef();
         vectorField& refTangentI = refTangent.primitiveFieldRef();
+        tensorField& refLambdafI = refLambdaf.primitiveFieldRef();
         tensorField& refLambdaI = refLambda.primitiveFieldRef();
-        tensorField& refRMI = refRM.primitiveFieldRef();
         const vectorField& CfI = mesh.Cf().primitiveField();
         const vectorField& CI = mesh.C().primitiveField();
 
@@ -249,12 +249,12 @@ int main(int argc, char *argv[])
             if (I == zoneID)
             {
                 refWfI[faceI] =  newCfI[faceI] + transVector - CfI[faceI];
-                refLambdaI[faceI] = T;
+                refLambdafI[faceI] = T;
                 // PC: refTang shoudl be wrt to the reference frame, not
                 // incremental; otherwise, refTang would be inconsistent with
                 // refWf and refW
-                //refTangentI[faceI] = (refLambdaI[faceI] & refTangentI[faceI]);
-                refTangentI[faceI] = (refLambdaI[faceI] & vector(1, 0, 0));
+                //refTangentI[faceI] = (refLambdafI[faceI] & refTangentI[faceI]);
+                refTangentI[faceI] = (refLambdafI[faceI] & vector(1, 0, 0));
             }
         }
 
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
             {
                 refWI[cellI]  = newCI[cellI] + transVector - CI[cellI];
 
-                refRMI[cellI] = T;
+                refLambdaI[cellI] = T;
             }
         }
 
@@ -279,8 +279,8 @@ int main(int argc, char *argv[])
             vectorField& pRefWf = refWf.boundaryFieldRef()[patchI];
             vectorField& pRefW = refW.boundaryFieldRef()[patchI];
             vectorField& pRefTangent = refTangent.boundaryFieldRef()[patchI];
+            tensorField& pRefLambdaf = refLambdaf.boundaryFieldRef()[patchI];
             tensorField& pRefLambda = refLambda.boundaryFieldRef()[patchI];
-            tensorField& pRefRM = refRM.boundaryFieldRef()[patchI];
 
             const vectorField& pCf = mesh.Cf().boundaryField()[patchI];
 
@@ -298,12 +298,12 @@ int main(int argc, char *argv[])
                     pRefWf[faceI] =  newpCf[faceI] + transVector - pCf[faceI];
                     pRefW[faceI] = pRefWf[faceI];
 
-                    pRefLambda[faceI] = T;
-                    pRefRM[faceI] = pRefLambda[faceI];
+                    pRefLambdaf[faceI] = T;
+                    pRefLambda[faceI] = pRefLambdaf[faceI];
 
                             // PC: see comment above
-                    // pRefTangent[faceI] = (pRefLambda[faceI] & pRefTangent[faceI]);
-                    pRefTangent[faceI] = (pRefLambda[faceI] & vector(1, 0, 0));
+                    // pRefTangent[faceI] = (pRefLambdaf[faceI] & pRefTangent[faceI]);
+                    pRefTangent[faceI] = (pRefLambdaf[faceI] & vector(1, 0, 0));
                 }
             }
         }
@@ -317,9 +317,9 @@ int main(int argc, char *argv[])
 
     refWf.write();
     refW.write();
-    refLambda.write();
+    refLambdaf.write();
     refTangent.write();
-    refRM.write();
+    refLambda.write();
 
     #include "updateMeshPoints.H"
 

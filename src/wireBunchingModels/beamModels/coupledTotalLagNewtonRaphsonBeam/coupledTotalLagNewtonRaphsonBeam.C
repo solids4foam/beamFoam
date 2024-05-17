@@ -299,11 +299,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
     ),
-    Lambda_
+    Lambdaf_
     (
         IOobject
         (
-            "Lambda",
+            "Lambdaf",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -312,11 +312,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
     ),
-    RM_
+    Lambda_
     (
         IOobject
         (
-            "RM",
+            "Lambda",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -351,11 +351,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
     ),
-    refLambda_
+    refLambdaf_
     (
         IOobject
         (
-            "refLambda",
+            "refLambdaf",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -364,11 +364,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
     ),
-    refRM_
+    refLambda_
     (
         IOobject
         (
-            "refRM",
+            "refLambda",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
@@ -665,11 +665,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     W_.oldTime();
     U_.oldTime();
     Omega_.oldTime();
-    RM_.oldTime();
+    Lambda_.oldTime();
 
     Gamma_.oldTime();
     K_.oldTime();
-    Lambda_.oldTime();
+    Lambdaf_.oldTime();
 
     Q_.oldTime();
     M_.oldTime();
@@ -711,7 +711,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Check whether the reference longitunidal axis of beams is
+    // Check whether the reference longitudinal axis of beams is
     // always set in global x-direction and throw error otherwise
     // This is a mandatory step because the system of beam equations
     // and the strains are defined in the code assuming the reference
@@ -854,10 +854,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
     }
 
-    // Info<< refTangent_ << endl;
-
-    // Calculate cell-centre reference rotation matrix
-    // if it is not read
+    // In the original foam-extend version, the cell-centre rotation fields
+    // were called refRM and RM. For consistency they are now renamed as
+    // refLambda and Lambda in OpenFOAM-v2306.
+    // For backwards compatibility, we will check for refRM and RM and report
+    // an error if found
     IOobject refRMheader
     (
         "refRM",
@@ -865,16 +866,53 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         IOobject::MUST_READ
     );
-    if (!refRMheader.typeHeaderOk<volTensorField>(true))
+    IOobject RMheader
+    (
+        "RM",
+        runTime.timeName(),
+        mesh(),
+        IOobject::MUST_READ
+    );
+    // The check for refRM and RM files, also warn user about refLambda and
+    // Lambda datatypes
+    if
+    (
+        RMheader.typeHeaderOk<volTensorField>(true)
+     || refRMheader.typeHeaderOk<volTensorField>(true)
+    )
+    {
+         FatalErrorIn
+        (
+            "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
+        )   << "The variables 'refRM' or 'RM' are found in the case files "
+            << "which are deprecated for OpenFOAM-v23xx version. " << nl
+            << "Please rename volTensorField refRM--> volTensorField refLambda "
+            << "and volTensorField RM--> volTensorField Lambda.  " << nl
+            << "A better solution is to clean all the files, and re-run the "
+            << "simulation."
+            << abort(FatalError);
+    }
+
+
+    // Calculate cell-centre reference rotation matrix
+    // if it is not read
+    IOobject refLambdaHeader
+    (
+        "refLambda",
+        runTime.timeName(),
+        mesh(),
+        IOobject::MUST_READ
+    );
+    if (!refLambdaHeader.typeHeaderOk<volTensorField>(true))
     {
         Info<< "Calculating cell-centre reference rotation matrix" << endl;
 
         // Calc cell-centre reference rotation matrix
-        interpolateRotationMatrix(*this, refLambda_, refRM_);
+        interpolateRotationMatrix(*this, refLambdaf_, refLambda_);
 
         if (debug)
         {
-            Info<< refRM_ << endl;
+            Info<< refLambda_ << endl;
         }
     }
 
@@ -1075,8 +1113,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
     const vectorField& WfI = Wf.internalField();
 
-    const tensorField& LambdaI = Lambda_.internalField();
-    const tensorField& refLambdaI = refLambda_.internalField();
+    const tensorField& LambdafI = Lambdaf_.internalField();
+    const tensorField& refLambdafI = refLambdaf_.internalField();
     const faceList& faces = mesh().faces();
 
     const vectorField& points = mesh().points();
@@ -1095,8 +1133,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 
             vector oldR = points[curPoint] - C0;
 
-            vector newR = C0 + WfI[faceI] + //(LambdaI[faceI] & oldR);
-                (LambdaI[faceI] & (refLambdaI[faceI] & oldR));
+            vector newR = C0 + WfI[faceI] + //(LambdafI[faceI] & oldR);
+                (LambdafI[faceI] & (refLambdafI[faceI] & oldR));
 
             pointWI[curPoint] = newR - points[curPoint];
         }
@@ -1107,11 +1145,11 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
         const vectorField& pWf =
             Wf.boundaryField()[patchI];
 
-        const tensorField& pLambda =
-            Lambda_.boundaryField()[patchI];
+        const tensorField& pLambdaf =
+            Lambdaf_.boundaryField()[patchI];
 
-       const tensorField& pRefLambda =
-            refLambda_.boundaryField()[patchI];
+       const tensorField& pRefLambdaf =
+            refLambdaf_.boundaryField()[patchI];
 
         const label start =
             mesh().boundaryMesh()[patchI].start();
@@ -1128,7 +1166,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
                 vector oldR = points[curPoint] - C0;
 
                 vector newR = C0 + pWf[faceI] +
-                 (pLambda[faceI] & (pRefLambda[faceI] & oldR));
+                 (pLambdaf[faceI] & (pRefLambdaf[faceI] & oldR));
 
                 pointWI[curPoint] = newR - points[curPoint];
             }
@@ -2058,7 +2096,7 @@ currentRotationIncrement() const
     );
     tensorField& DLambda(tDLambda.ref());
 
-    const surfaceTensorField DLambdaf((Lambda_ & inv(Lambda_.oldTime())));
+    const surfaceTensorField DLambdaf((Lambdaf_ & inv(Lambdaf_.oldTime())));
 
     const tensorField& DLambdafI(DLambdaf.internalField());
 

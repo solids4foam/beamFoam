@@ -1,6 +1,6 @@
 {
     const vectorField& refWfI = refWf.internalField();
-    const tensorField& refLambdaI = refLambda.internalField();
+    const tensorField& refLambdafI = refLambdaf.internalField();
     const faceList& faces = mesh.faces();
     fileName meshDir = polyMesh::meshSubDir;
 
@@ -48,7 +48,7 @@
 
             vector oldR = points[curPoint] - C0;
 
-            vector newR = C0 + refWfI[faceI] + (refLambdaI[faceI] & oldR);
+            vector newR = C0 + refWfI[faceI] + (refLambdafI[faceI] & oldR);
 
             pointWI[curPoint] = newR - points[curPoint];
         }
@@ -59,8 +59,8 @@
         const vectorField& pRefWf =
             refWf.boundaryField()[patchI];
 
-        const tensorField& pRefLambda =
-            refLambda.boundaryField()[patchI];
+        const tensorField& pRefLambdaf =
+            refLambdaf.boundaryField()[patchI];
 
         const label start =
             mesh.boundaryMesh()[patchI].start();
@@ -76,7 +76,7 @@
 
                 vector oldR = points[curPoint] - C0;
 
-                vector newR = C0 + pRefWf[faceI] + (pRefLambda[faceI] & oldR);
+                vector newR = C0 + pRefWf[faceI] + (pRefLambdaf[faceI] & oldR);
 
                 pointWI[curPoint] = newR - points[curPoint];
             }

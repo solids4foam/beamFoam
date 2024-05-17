@@ -5,29 +5,29 @@ if (true)
   // Info << "Updating coefficients" << endl;
 
   // Total rotation matrix
-  surfaceTensorField Lambda((Lambda_ & refLambda_));
+  surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
 
-  CQW_ = (Lambda & (CQ_ & Lambda.T()));
+  CQW_ = (Lambdaf & (CQ_ & Lambdaf.T()));
 
-  explicitQ_ =  (Lambda & (CQ_ & (Gamma_)));
+  explicitQ_ =  (Lambdaf & (CQ_ & (Gamma_)));
 
-  explicitM_ =  (Lambda & (CM_ & (K_)));
+  explicitM_ =  (Lambdaf & (CM_ & (K_)));
 
   CQTheta_ =
   (
       (
-          Lambda & (CQ_ & Lambda.T() )
+          Lambdaf & (CQ_ & Lambdaf.T() )
       )
       & spinTensor(dRdS)
   )
   - spinTensor(Q_);
   // - spinTensor(explicitQ_);
 
-  CQDTheta_ = (Lambda & (CDQDK_ & Lambda.T())); // Check for Kirchhoff beam
+  CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
-  CMTheta_ = ( Lambda & (CM_ & Lambda.T()) );
+  CMTheta_ = ( Lambdaf & (CM_ & Lambdaf.T()) );
 
-    // CMTheta2_ = -spinTensor(Lambda & (CM_ & (K_ - KP_)))
+    // CMTheta2_ = -spinTensor(Lambdaf & (CM_ & (K_ - KP_)))
 
    CMTheta2_ = -spinTensor(M_);
    //CMTheta2_ = -spinTensor(explicitM_);
@@ -37,12 +37,12 @@ if (true)
        *(
             (
                 spinTensor(dRdS)
-              & ( Lambda & (CQ_ & Lambda.T()) )
+              & ( Lambdaf & (CQ_ & Lambdaf.T()) )
             )
           - spinTensor(Q_)
           // - spinTensor(explicitQ_)
         )/mesh().deltaCoeffs();
-      // + (Lambda & (CDMDGamma_ & Lambda.T())); // Check for Kirchhoff beam
+      // + (Lambdaf & (CDMDGamma_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMQTheta_ =
         0.5
@@ -50,7 +50,7 @@ if (true)
             (
                 (
                     spinTensor(dRdS)
-                  & ( Lambda & (CQ_ & Lambda.T()) )
+                  & ( Lambdaf & (CQ_ & Lambdaf.T()) )
                 )
               & spinTensor(dRdS)
             )
