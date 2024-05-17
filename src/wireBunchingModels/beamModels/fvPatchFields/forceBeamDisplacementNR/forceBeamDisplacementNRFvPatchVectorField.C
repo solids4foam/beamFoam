@@ -29,6 +29,7 @@ License
 #include "lookupBeamModel.H"
 #include "pseudoVector.H"
 #include "surfaceFields.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -240,9 +241,9 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     const vectorField explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
-    const scalarField delta  (1.0/patch().deltaCoeffs());
+    const scalarField delta(1.0/patch().deltaCoeffs());
 
-    const tensorField invA (inv(CQW/delta));
+    const tensorField invA(inv(CQW/delta));
 
     const vectorField newDW
     (
@@ -254,8 +255,8 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
 
     DW = newDW;
 
-    fixedValueFvPatchField<vector>::operator==((*this) + newDW); // Setting W_ field
-
+    // Setting W_ field
+    fixedValueFvPatchField<vector>::operator==((*this) + newDW);
 
     fixedValueFvPatchVectorField::evaluate();
 }
