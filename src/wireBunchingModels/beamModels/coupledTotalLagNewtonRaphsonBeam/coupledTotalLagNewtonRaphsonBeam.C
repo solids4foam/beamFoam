@@ -45,7 +45,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
-
+#include "couplingHelperFunctions.H"
 // #include "beamHelperFunctions.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -637,6 +637,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    couplingActive_(beamProperties().lookupOrDefault<bool>("couplingActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 

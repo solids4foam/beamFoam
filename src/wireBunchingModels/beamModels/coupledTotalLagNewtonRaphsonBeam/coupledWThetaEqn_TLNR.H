@@ -736,7 +736,12 @@
                     source[cellI](4,0) += MRho[cellI].y();
                     source[cellI](5,0) += MRho[cellI].z();
                 }
+		        //- An acess to fluid Mesh through the parent time
+                const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
 
+                const vectorField& beamTotalDisp = refW_ + W_ ;
+
+                
                 //- Drag forces due to Morison's Equation
                 if (dragActive_ && !steadyState())
                 {
@@ -776,9 +781,16 @@
                     vectorField UnHat (Un/(mag(Un) + SMALL));
 
                     // Scalar values of drag force (normal and tangential)
+                    if (couplingActive_)
+                    {
+                        amazingFunc(fluidMesh,mesh(),beamTotalDisp);
+                        // TODO : Update the formulation
+                        // const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
+                        // const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
+                    }
+
                     const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
                     const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
-
                     // Explicit drag forces included in the source vector
                     forAll(source, cellI)
                     {

@@ -207,37 +207,40 @@ class coupledTotalLagNewtonRaphsonBeam
 
         // Fields related to Newmark-beta time integration scheme
 
- 	      //- Boolean to activate Newmark-beta time-integration scheme
- 	      bool newmark_;
+        //- Boolean to activate Newmark-beta time-integration scheme
+        bool newmark_;
 
- 	      //- Newmark beta coefficient
- 	      scalar betaN_;
+        //- Newmark beta coefficient
+        scalar betaN_;
 
- 	      //- Newmark gamma coefficient
- 	      scalar gammaN_;
-          //- Fields related to drag forces due to Morrison's equation
-          //- Boolean to activate drag forces
-          bool dragActive_;
+        //- Newmark gamma coefficient
+        scalar gammaN_;
+        //- Fields related to drag forces due to Morrison's equation
+        //- Boolean to activate drag forces
+        bool dragActive_;
 
-          //- Normal drag coefficient
-          scalar Cdn_;
+        //- Boolean to enable two-way coupled drag calculations
+        bool couplingActive_;
 
-          //- tangential drag coefficient
-          scalar Cdt_;
+        //- Normal drag coefficient
+        scalar Cdn_;
 
-          // Ground contact related parameters.
+        //- tangential drag coefficient
+        scalar Cdt_;
 
-          //- Boolean to check wether ground contact is active or not
-          bool groundContactActive_;
+        // Ground contact related parameters.
 
-          //-  damping coefficient for spring/damper ground model.
-          scalar gDamping_;
+        //- Boolean to check wether ground contact is active or not
+        bool groundContactActive_;
 
-          //- stiffness coefficient for spring/damper ground model.
-          scalar gStiffness_;
+        //-  damping coefficient for spring/damper ground model.
+        scalar gDamping_;
 
-          //- ground coordinate for ground contact Model.
-          scalar groundZ_;
+        //- stiffness coefficient for spring/damper ground model.
+        scalar gStiffness_;
+
+        //- ground coordinate for ground contact Model.
+        scalar groundZ_;
 
     // Parallel performance data
 
