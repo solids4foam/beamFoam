@@ -33,18 +33,19 @@ namespace Foam
 {
 
     // TODO : change the type with respect to output (velocities)
-    void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField& beamTotalDisp)
+    void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField beamTotalDisp)
     {
-        // Info << "number of points in fluid mesh = " << fluidMesh.nPoints() << endl;
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
-        // Info << "number of points in beam mesh = " << mesh.nCells() << endl;
+        meshSearch searchEngine(fluidMesh);
+        DynamicList<label> closestFluidCellID(0);
         forAll(mesh.C(),beamCellI)
         {
-            const labelList closestFluidCellID = fluidMesh.findCell(mesh.C()[beamCellI]);
+            Info << "the location is  =" << beamTotalDisp[beamCellI] << endl;
+
+            closestFluidCellID.append(searchEngine.findCell(beamTotalDisp[beamCellI],0,false));  
+            // closestFluidCellID.append(fluidMesh.findCell(beamTotalDisp[beamCellI]));  
         }
-
     }
-
 
 } // End namespace Foam
 

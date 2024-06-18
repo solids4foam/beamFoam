@@ -35,12 +35,13 @@ Author
 
 #include "fvMesh.H"
 #include "volFields.H"
+#include "meshSearch.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
     {
 
-        void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField& beamTotalDisp);
+        void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField beamTotalDisp);
 
     } // End namespace Foam
 

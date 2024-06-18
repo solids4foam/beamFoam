@@ -739,7 +739,7 @@
 		        //- An acess to fluid Mesh through the parent time
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
 
-                const vectorField& beamTotalDisp = refW_ + W_ ;
+                const vectorField beamTotalDisp = mesh().C() + refW_ + W_ ;
 
                 
                 //- Drag forces due to Morison's Equation
