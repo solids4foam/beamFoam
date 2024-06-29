@@ -33,18 +33,79 @@ namespace Foam
 {
 
     // TODO : change the type with respect to output (velocities)
-    void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField beamTotalDisp)
+    tmp<vectorField> getFluidVelocity(
+        const fvMesh& fluidMesh, 
+        const fvMesh& mesh, 
+        const vectorField& beamCellCenterCoord,
+        labelList& seedCellIDs,
+        const scalar groundZ,
+        const meshSearch& searchEngine // flag for using octree or not
+        )
     {
+        tmp<vectorField> tresult(new vectorField(mesh.nCells(),vector::zero));
+        vectorField& result = tresult.ref();
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
-        meshSearch searchEngine(fluidMesh);
-        DynamicList<label> closestFluidCellID(0);
+
+
+        //Todo which proc, 
+        // labelList procID(mesh.nCells(), -1);
+
+        // todo flag for octree option
+         
+
+
         forAll(mesh.C(),beamCellI)
         {
-            Info << "the location is  =" << beamTotalDisp[beamCellI] << endl;
-
-            closestFluidCellID.append(searchEngine.findCell(beamTotalDisp[beamCellI],0,false));  
-            // closestFluidCellID.append(fluidMesh.findCell(beamTotalDisp[beamCellI]));  
+            // Info << "the beam.z() is  =" << beamCellCenterCoord[beamCellI].z() << endl;
+            // Info << " gz =  " << groundZ << endl;
+            if (beamCellCenterCoord[beamCellI].z() <= groundZ)
+            {
+                // Info << " contact on gz " << endl;
+                seedCellIDs[beamCellI] = -1;
+                result[beamCellI] = vector::zero; 
+                continue;
+            }
+            if (seedCellIDs[beamCellI] == -1) 
+            {
+                if (beamCellI == 0)
+                {
+                    seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for seed in the next cells
+                    // Info << "seed for cell 0  "  << seedCellIDs[beamCellI] << endl;
+                }
+                else
+                {
+                    seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ;
+                    // Info << "seed for cell " << beamCellI << "= "  << seedCellIDs[beamCellI] << endl;
+                }
+            }
+            label fluidCellID = -1;
+            if (seedCellIDs[beamCellI] != -1) // && procID[beamCellI] == Pstream::myProcID())
+            {
+                // Info << "using walk " << endl;
+                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],seedCellIDs[beamCellI]);      
+            }
+            if (fluidCellID == -1) // We should perform global search if no other procs found it.
+            {
+                // Info << "global " << endl;
+                // perform a tree search
+                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],-1,true);  
+            }
+            if (fluidCellID == -1)
+            {
+                result[beamCellI] = vector::zero; 
+                //procID[beamCellID] = -1;
+            }
+            else
+            {
+                result[beamCellI] = fluidVelocity[fluidCellID];
+                // Todo procID[beamCellID] = Pstream::myProcID();
+            }
+            seedCellIDs[beamCellI] = fluidCellID;
         }
+        // reduce(sumOp<vectorField>(), result);
+        // reduce(maxOp<labelList>(), procID);
+        return tresult;
+        
     }
 
 } // End namespace Foam

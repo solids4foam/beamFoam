@@ -43,6 +43,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
+#include "meshSearch.H"
 //#include "multibeamFvBlockMatrix.H"
 //#include "plasticityStressResultantReturn.H"
 
@@ -241,6 +242,9 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- ground coordinate for ground contact Model.
         scalar groundZ_;
+
+        //- meshSearch engine for finding adjacent fluid Cells
+        meshSearch searchEngine_;
 
     // Parallel performance data
 

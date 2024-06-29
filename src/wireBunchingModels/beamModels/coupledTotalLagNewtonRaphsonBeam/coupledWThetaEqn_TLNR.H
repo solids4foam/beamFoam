@@ -738,8 +738,8 @@
                 }
 		        //- An acess to fluid Mesh through the parent time
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
-
-                const vectorField beamTotalDisp = mesh().C() + refW_ + W_ ;
+                 
+                const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
 
                 
                 //- Drag forces due to Morison's Equation
@@ -779,18 +779,44 @@
                         );
 
                     vectorField UnHat (Un/(mag(Un) + SMALL));
-
+                    
+                    const scalarField Fdn(mesh().nCells(),0.0);
+                    const scalarField Fdt(mesh().nCells(),0.0);
                     // Scalar values of drag force (normal and tangential)
                     if (couplingActive_)
                     {
-                        amazingFunc(fluidMesh,mesh(),beamTotalDisp);
-                        // TODO : Update the formulation
-                        // const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
-                        // const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
-                    }
+                        labelList seedCellIDs(mesh().nCells(), -1);
+                        const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
+                        vectorField fluidUt
+                        (
+                            (
+                                (fluidU & dRdScell)
+                                *dRdScell
+                            )
+                        );
+                        vectorField fluidUtHat (fluidUt/(mag(fluidUt) + SMALL));
+                        // Normal component of velocity vector
+                        vectorField fluidUn
+                            (
+                                (
+                                    fluidU
+                                    - (
+                                        (fluidU & dRdScell)
+                                        *dRdScell
+                                    )
+                                )
+                            );
+                        vectorField fluidUnHat (fluidUn/(mag(fluidUn) + SMALL));
 
-                    const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
-                    const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
+                         const scalarField Fdn (rho().value()*Cdn_*R()*L()*((Un-fluidUn) & (Un-fluidUn)));
+                         const scalarField Fdt (rho().value()*Cdt_*R()*L()*((Ut-fluidUt) & (Ut-fluidUt)));
+                        //todo check the force from beam to fluid => through fvOptions
+                    }
+                    else
+                    {
+                        const scalarField Fdn (rho().value()*Cdn_*R()*L()*(Un & Un));
+                        const scalarField Fdt (rho().value()*Cdt_*R()*L()*(Ut & Ut));
+                    }
                     // Explicit drag forces included in the source vector
                     forAll(source, cellI)
                     {

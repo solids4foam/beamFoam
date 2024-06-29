@@ -647,6 +647,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     gStiffness_ (readDouble(beamProperties().lookup("gStiffness"))),
     groundZ_ (readDouble(beamProperties().lookup("groundZ"))),
 
+    searchEngine_(runTime.db().parent().lookupObject<fvMesh>("region0")),
+
     totalContactTime_(0),
     totalSolutionTime_(),
     proc_

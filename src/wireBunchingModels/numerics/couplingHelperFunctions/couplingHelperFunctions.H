@@ -40,9 +40,14 @@ Author
 
 namespace Foam
     {
-
-        void amazingFunc(const fvMesh& fluidMesh, const fvMesh& mesh, const vectorField beamTotalDisp);
-
+        tmp<vectorField> getFluidVelocity(
+        const fvMesh& fluidMesh, 
+        const fvMesh& mesh, 
+        const vectorField& beamCellCenterCoord,
+        labelList& seedCellIDs,
+        const scalar groundZ,
+        const meshSearch& searchEngine
+        );
     } // End namespace Foam
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
