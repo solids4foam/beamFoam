@@ -780,8 +780,6 @@
 
                     vectorField UnHat (Un/(mag(Un) + SMALL));
                     
-                    const scalarField Fdn(mesh().nCells(),0.0);
-                    const scalarField Fdt(mesh().nCells(),0.0);
                     // Scalar values of drag force (normal and tangential)
                     if (couplingActive_)
                     {
@@ -808,27 +806,40 @@
                             );
                         vectorField fluidUnHat (fluidUn/(mag(fluidUn) + SMALL));
 
-                         const scalarField Fdn (rho().value()*Cdn_*R()*L()*((Un-fluidUn) & (Un-fluidUn)));
-                         const scalarField Fdt (rho().value()*Cdt_*R()*L()*((Ut-fluidUt) & (Ut-fluidUt)));
+                        const scalarField Fdn (rho().value()*Cdn_*R()*L()*((Un-fluidUn) & (Un-fluidUn)));
+                        const scalarField Fdt (rho().value()*Cdt_*R()*L()*((Ut-fluidUt) & (Ut-fluidUt)));
+                        forAll(source, cellI)
+                        {
+                            source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
+                            source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
+                            source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
+
+                            source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
+                            source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
+                            source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
+                        }
+
                         //todo check the force from beam to fluid => through fvOptions
                     }
                     else
                     {
-                        const scalarField Fdn (rho().value()*Cdn_*R()*L()*(Un & Un));
-                        const scalarField Fdt (rho().value()*Cdt_*R()*L()*(Ut & Ut));
+                        const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
+                        const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
+
+                        forAll(source, cellI)
+                        {
+                            source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
+                            source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
+                            source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
+
+                            source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
+                            source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
+                            source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
+                        }
+
                     }
                     // Explicit drag forces included in the source vector
-                    forAll(source, cellI)
-                    {
-                        source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-                        source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-                        source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
-
-                        source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-                        source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-                        source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
-                    }
-
+                    
                 }
                 else
                 {
