@@ -808,6 +808,8 @@
 
                         const scalarField Fdn (rho().value()*Cdn_*R()*L()*((Un-fluidUn) & (Un-fluidUn)));
                         const scalarField Fdt (rho().value()*Cdt_*R()*L()*((Ut-fluidUt) & (Ut-fluidUt)));
+                        
+                        // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
                             source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
@@ -826,6 +828,7 @@
                         const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
                         const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
 
+                        // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
                             source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
@@ -838,8 +841,6 @@
                         }
 
                     }
-                    // Explicit drag forces included in the source vector
-                    
                 }
                 else
                 {
