@@ -26,6 +26,12 @@ Class
     coupledTotalLagNewtonRaphsonBeam
 
 Description
+    This code is the total Lagrangian formulation to solve displacements (W)
+    and rotations (Theta) implemented in a coupled Newton-Raphson approach for
+    geometrically exact Simo-Reissner beams
+
+    More details on the implementation can be found in the paper:
+    https://doi.org/10.1002/nme.6994
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
@@ -45,7 +51,6 @@ SourceFiles
 #include "fvCFD.H"
 #include "meshSearch.H"
 //#include "multibeamFvBlockMatrix.H"
-//#include "plasticityStressResultantReturn.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -118,20 +123,14 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Explicit contribution to cross-section moment
         surfaceVectorField explicitMQ_;
 
-        //- Cross-section rotation tensor
-        mutable surfaceTensorField Lambda_;
+        //- Face-centre rotation tensor field
+        mutable surfaceTensorField Lambdaf_;
 
-        //- Cell-centre rotation matrix
-        volTensorField RM_;
+        //- Cell-centre rotation tensor field
+        volTensorField Lambda_;
 
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
-
-        // //- Cross-section rotation tensor
-        // surfaceTensorField T_;
-
-        //- Cross-section reference point displacement field
-        // surfaceVectorField refWf_;
 
 		//- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
@@ -139,13 +138,13 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line reference displacement at cell-centres
         volVectorField refW_;
 
-        //- Cross-section rotation tensor
-        surfaceTensorField refLambda_;
+        //- Face-centre reference rotation tensor field
+        surfaceTensorField refLambdaf_;
 
-        //- Cell-centre rotation matrix
-        volTensorField refRM_;
+        //- Cell-centre reference rotation tensor field
+        volTensorField refLambda_;
 
-        //- Mid-line tangent vector
+        //- Mid-line tangent vector field at face centres
         surfaceVectorField refTangent_;
 
         //- Coefficient in the force equilibrium equation
@@ -334,8 +333,8 @@ public:
             //  is operating rotation matrix
             virtual surfaceTensorField& solutionLambda() const
             {
-                // This model works with Lambda
-                return Lambda_;
+                // This model works with Lambdaf
+                return Lambdaf_;
             }
 
             //- Each beamModel must indicate whether Lambda or DLambda
@@ -343,7 +342,7 @@ public:
             virtual const volTensorField& solutionRMC() const
             {
                 // This model works with Lambda
-                return RM_;
+                return Lambda_;
             }
 
             // //- Cell centre beam mean line tangent

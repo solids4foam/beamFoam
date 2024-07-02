@@ -29,6 +29,7 @@ License
 #include "lookupBeamModel.H"
 #include "pseudoVector.H"
 #include "surfaceFields.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -225,104 +226,37 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
             patch().lookupPatchField<volVectorField, vector>("DW")
         );
 
-    // Lookup the solidModel object
-    const beamModel& bm =
-        lookupBeamModel(patch().boundaryMesh().mesh());
+    const fvPatchField<vector>& DTheta =
+        patch().lookupPatchField<volVectorField, vector>("DTheta");
 
-    // if (bm.objectiveInterpolation())
-    if (false)
-    {
-        const fvPatchField<vector>& pDTheta =
-            patch().lookupPatchField<volVectorField, vector>("DTheta");
+    const tensorField& CQW =
+        patch().lookupPatchField<surfaceTensorField, tensor>("CQW");
 
-        const fvsPatchField<tensor>& pPrevLambda =
-            patch().lookupPatchField<surfaceTensorField, tensor>("Lambda");
+    const tensorField& CQTheta =
+        patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
 
-        const fvsPatchField<tensor>& pRefLambda =
-            patch().lookupPatchField<surfaceTensorField, tensor>("refLambda");
+    const tensorField& CQDTheta =
+        patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
 
-        const fvsPatchField<vector>& pDR0Ds =
-            patch().lookupPatchField<surfaceVectorField, vector>("dR0Ds");
+    const vectorField explicitQ =
+        patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
-        // Info << pRefLambda << endl;
-        // Info << pDR0Ds << endl;
+    const scalarField delta(1.0/patch().deltaCoeffs());
 
-        tensorField pDLambda (rotationMatrix(pDTheta));
+    const tensorField invA(inv(CQW/delta));
 
-        tensorField pNewLambda ((pDLambda & pPrevLambda));
+    const vectorField newDW
+    (
+        (invA & (force() - explicitQ)) -
+        (invA & (CQTheta & DTheta)) -
+        (invA & (CQDTheta & (DTheta - DTheta.patchInternalField())))/delta // usuly zero
+      + DW.patchInternalField()
+    );
 
-        tensor CF
-        (
-            bm.EA().value(), 0, 0,
-            0, bm.GA().value(), 0,
-            0, 0, bm.GA().value()
-        );
+    DW = newDW;
 
-        tensorField cf ((pNewLambda & (pRefLambda & (CF & pRefLambda.T()))));
-
-        vectorField dRdS
-	(
-        (
-            inv(cf & pNewLambda.T()) &
-            (force() + (cf & pDR0Ds))
-        )
-	);
-        // vectorField dR0dS(dRdS.size(), i);
-
-        vectorField dWdS (dRdS - pDR0Ds);
-
-        vectorField newW
-	(
-            this->patchInternalField() +
-            dWdS/patch().deltaCoeffs()
-	);
-        DW = newW - (*this);
-
-        fixedValueFvPatchField<vector>::operator==(newW);
-
-        // Info << CF << endl;
-        // Info << this->patchInternalField() << ", " << newW << endl;
-    }
-    else
-    {
-        fvPatchField<vector>& DW =
-            const_cast<fvPatchField<vector>& >
-            (
-                patch().lookupPatchField<volVectorField, vector>("DW")
-            );
-
-        const fvPatchField<vector>& DTheta =
-            patch().lookupPatchField<volVectorField, vector>("DTheta");
-
-        const tensorField& CQW =
-            patch().lookupPatchField<surfaceTensorField, tensor>("CQW");
-
-        const tensorField& CQTheta =
-            patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
-
-        const tensorField& CQDTheta =
-            patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
-
-        const vectorField explicitQ =
-            patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
-
-        const scalarField delta  (1.0/patch().deltaCoeffs());
-
-        tensorField invA (inv(CQW/delta));
-
-        vectorField newDW
-	(
-            (invA & (force() - explicitQ)) -
-            (invA & (CQTheta & DTheta)) -
-            (invA & (CQDTheta & (DTheta - DTheta.patchInternalField())))/delta // usuly zero
-          + DW.patchInternalField()
-	);
-
-        DW = newDW;
-
-        fixedValueFvPatchField<vector>::operator==((*this) + newDW); // Setting W_ field
-    }
-
+    // Setting W_ field
+    fixedValueFvPatchField<vector>::operator==((*this) + newDW);
 
     fixedValueFvPatchVectorField::evaluate();
 }
