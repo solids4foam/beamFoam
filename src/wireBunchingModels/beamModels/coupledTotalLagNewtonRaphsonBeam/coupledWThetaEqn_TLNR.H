@@ -738,7 +738,7 @@
                 }
 		        //- An acess to fluid Mesh through the parent time
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
-                 
+                // Info << " objects = " <<  mesh().time().db().parent().lookupObject<fvMesh>("region0").names() << endl;
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
 
                 
@@ -754,89 +754,86 @@
 
                     // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                     const vectorField& dRdScell = spline.midPointDerivatives();
-
-                    // Tangential component of velocity vector
-                    vectorField Ut
-                        (
-                            (
-                                (U_.internalField() & dRdScell)
-                                *dRdScell
-                            )
-                        );
-
-                    vectorField UtHat (Ut/(mag(Ut) + SMALL));
-
-                    // Normal component of velocity vector
-                    vectorField Un
-                        (
-                            (
-                                U_.internalField()
-                                - (
-                                    (U_.internalField() & dRdScell)
-                                    *dRdScell
-                                )
-                            )
-                        );
-
-                    vectorField UnHat (Un/(mag(Un) + SMALL));
+                    vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
                     
                     // Scalar values of drag force (normal and tangential)
                     if (couplingActive_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
                         const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
-                        vectorField fluidUt
+                        // Tangential component of  relative velocity vector
+                        vectorField Ut
                         (
                             (
-                                (fluidU & dRdScell)
-                                *dRdScell
+                                ((U_.internalField() - fluidU) & dRdScellHat)
+                                *dRdScellHat
                             )
                         );
-                        vectorField fluidUtHat (fluidUt/(mag(fluidUt) + SMALL));
-                        // Normal component of velocity vector
-                        vectorField fluidUn
-                            (
-                                (
-                                    fluidU
-                                    - (
-                                        (fluidU & dRdScell)
-                                        *dRdScell
-                                    )
-                                )
-                            );
-                        vectorField fluidUnHat (fluidUn/(mag(fluidUn) + SMALL));
 
-                        const scalarField Fdn (0.5*rho().value()*R()*Cdn_*L()*mag((Un-fluidUn)));
-                        const scalarField Fdt (0.5*rho().value()*R()*Cdt_*L()*mag((Ut-fluidUt)));
+                        // Normal component of relative velocity vector
+                        // todo this should be reverse when subtracting
+                        vectorField Un
+                        (
+                            (
+
+                                (U_.internalField() - fluidU) -
+                                (
+                                    ((U_.internalField() - fluidU) & dRdScellHat)
+                                    *dRdScellHat
+                                ) 
+                            )
+                        );
+                        const scalarField Fdn (0.5*rho().value()*R()*Cdn_*L()*mag((Un)));
+                        const scalarField Fdt (0.5*rho().value()*R()*Cdt_*L()*mag((Ut)));
                         
                         // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
-                            source[cellI](0,0) += Fdn[cellI]*(UnHat[cellI].component(0)-fluidUnHat[cellI].component(0));
-                            source[cellI](1,0) += Fdn[cellI]*(UnHat[cellI].component(1)-fluidUnHat[cellI].component(1));
-                            source[cellI](2,0) += Fdn[cellI]*(UnHat[cellI].component(2)-fluidUnHat[cellI].component(2));
-                            source[cellI](0,0) += Fdt[cellI]*(UtHat[cellI].component(0)-fluidUtHat[cellI].component(0));
-                            source[cellI](1,0) += Fdt[cellI]*(UtHat[cellI].component(1)-fluidUtHat[cellI].component(1));
-                            source[cellI](2,0) += Fdt[cellI]*(UtHat[cellI].component(2)-fluidUtHat[cellI].component(2));
+                            source[cellI](0,0) += Fdn[cellI]*(Un[cellI].component(0));
+                            source[cellI](1,0) += Fdn[cellI]*(Un[cellI].component(1));
+                            source[cellI](2,0) += Fdn[cellI]*(Un[cellI].component(2));
+
+                            source[cellI](0,0) += Fdt[cellI]*(Ut[cellI].component(0));
+                            source[cellI](1,0) += Fdt[cellI]*(Ut[cellI].component(1));
+                            source[cellI](2,0) += Fdt[cellI]*(Ut[cellI].component(2));
                         }
 
                         //todo check the force from beam to fluid => through fvOptions
                     }
-                    else
+                    else // coupling off
                     {
+                        vectorField Ut
+                        (
+                            (
+                                (U_.internalField() & dRdScell)
+                                *dRdScell
+                            )
+                        );
+                        // Normal component of velocity vector
+                        vectorField Un
+                        (
+                            (
+                                U_.internalField() - 
+                                (
+                                    (U_.internalField() & dRdScell)
+                                    *dRdScell
+                                )
+                            )
+                        );
                         const scalarField Fdn(0.5*rho().value()*Cdn_*R()*L()*mag(Un));
                         const scalarField Fdt(0.5*rho().value()*Cdt_*R()*L()*mag(Ut));
+
 
                         // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
-                            source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-                            source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-                            source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
+                            source[cellI](0,0) += Fdn[cellI]*Un[cellI].component(0);
+                            source[cellI](1,0) += Fdn[cellI]*Un[cellI].component(1);
+                            source[cellI](2,0) += Fdn[cellI]*Un[cellI].component(2);
 
-                            source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-                            source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-                            source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
+                            source[cellI](0,0) += Fdt[cellI]*Ut[cellI].component(0);
+                            source[cellI](1,0) += Fdt[cellI]*Ut[cellI].component(1);
+                            source[cellI](2,0) += Fdt[cellI]*Ut[cellI].component(2);
                         }
 
                     }
