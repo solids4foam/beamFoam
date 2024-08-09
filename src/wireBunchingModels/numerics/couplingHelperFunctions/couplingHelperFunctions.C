@@ -60,7 +60,6 @@ namespace Foam
             // Info << " gz =  " << groundZ << endl;
             if (beamCellCenterCoord[beamCellI].z() <= groundZ)
             {
-                // Info << " contact on gz " << endl;
                 seedCellIDs[beamCellI] = -1;
                 result[beamCellI] = vector::zero; 
                 continue;

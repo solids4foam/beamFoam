@@ -741,7 +741,6 @@
                 // Info << " objects = " <<  mesh().time().db().parent().lookupObject<fvMesh>("region0").names() << endl;
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
 
-                
                 //- Drag forces due to Morison's Equation
                 if (dragActive_ && !steadyState())
                 {
@@ -783,8 +782,8 @@
                                 ) 
                             )
                         );
-                        const scalarField Fdn (0.5*rho().value()*R()*Cdn_*L()*mag((Un)));
-                        const scalarField Fdt (0.5*rho().value()*R()*Cdt_*L()*mag((Ut)));
+                        const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*mag(dRdScell)*mag(Un));
+                        const scalarField Fdt(0.5*rhoFluid().value()*Cdt_*R()*L()*mag(dRdScell)*mag(Ut));
                         
                         // Explicit drag forces included in the source vector
                         forAll(source, cellI)
@@ -820,8 +819,8 @@
                                 )
                             )
                         );
-                        const scalarField Fdn(0.5*rho().value()*Cdn_*R()*L()*mag(Un));
-                        const scalarField Fdt(0.5*rho().value()*Cdt_*R()*L()*mag(Ut));
+                        const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*mag(dRdScell)*mag(Un));
+                        const scalarField Fdt(0.5*rhoFluid().value()*Cdt_*R()*L()*mag(dRdScell)*mag(Ut));
 
 
                         // Explicit drag forces included in the source vector
