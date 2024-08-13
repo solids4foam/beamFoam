@@ -117,6 +117,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         // fvc::ddt(W_)
         dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
     ),
+    fluidU_
+    (
+        IOobject
+        (
+            "fluidU",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh(),
+        dimensionedVector("0", dimVelocity, vector::zero)
+    ),
     Accl_
     (
         IOobject
@@ -640,6 +653,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     couplingActive_(beamProperties().lookupOrDefault<bool>("couplingActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+    CMn_(beamProperties().lookupOrDefault<scalar>("CMn", 1.0)),
+    CMt_(beamProperties().lookupOrDefault<scalar>("CMt", 0.0)),
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),

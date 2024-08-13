@@ -754,50 +754,93 @@
                     // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                     const vectorField& dRdScell = spline.midPointDerivatives();
                     vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
-                    
-                    // Scalar values of drag force (normal and tangential)
+                    // beam Acceleration vector
+                    vectorField acclb (fvc::ddt(U_));
                     if (couplingActive_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
-                        const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
+                        // const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
+                        fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
+                        
+                        // relative velocity vector
+                        vectorField Ur (U_.internalField() - fluidU_.internalField());
+                        // fluid and relative acceleration
+                        vectorField acclf (fvc::ddt(fluidU_));
+                        
                         // Tangential component of  relative velocity vector
-                        vectorField Ut
+                        vectorField Urt
                         (
                             (
-                                ((U_.internalField() - fluidU) & dRdScellHat)
+                                (Ur) & dRdScellHat
                                 *dRdScellHat
                             )
                         );
 
                         // Normal component of relative velocity vector
-                        // todo this should be reverse when subtracting
-                        vectorField Un
+                        vectorField Urn
                         (
                             (
-
-                                (U_.internalField() - fluidU) -
+                                (Ur) -
                                 (
-                                    ((U_.internalField() - fluidU) & dRdScellHat)
+                                    ((Ur) & dRdScellHat)
                                     *dRdScellHat
                                 ) 
                             )
                         );
-                        const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*mag(dRdScell)*mag(Un));
-                        const scalarField Fdt(0.5*rhoFluid().value()*Cdt_*R()*L()*mag(dRdScell)*mag(Ut));
-                        
-                        // Explicit drag forces included in the source vector
+                        // Tangent component of relative acceleration
+                        vectorField acclrt
+                        (
+                            (
+                                (acclb - acclf) & dRdScellHat
+                                *dRdScellHat
+                            )
+                        );
+
+                        // Normal component of relative acceleration
+                        vectorField acclrn
+                        (
+                            (
+                                (acclb - acclf) -
+                                (
+                                    ((acclb - acclf) & dRdScellHat)
+                                    *dRdScellHat
+                                ) 
+                            )
+                        );
+
+                        // drag normal and tangent coefficients
+                        const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*sqrt(mag(dRdScell))*mag(Urn));
+                        const scalarField Fdt(0.5*rhoFluid().value()*Cdt_*R()*L()*sqrt(mag(dRdScell))*mag(Urt));
+
+                        // Added Mass normal and tangent coefficients
+                        const scalarField Fan(rhoFluid().value()*CMn_*L()*M_PI*R()*R());
+                        const scalarField Fat(rhoFluid().value()*CMt_*L()*M_PI*R()*R());
+                         
+
+                         // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
-                            source[cellI](0,0) += Fdn[cellI]*(Un[cellI].component(0));
-                            source[cellI](1,0) += Fdn[cellI]*(Un[cellI].component(1));
-                            source[cellI](2,0) += Fdn[cellI]*(Un[cellI].component(2));
-
-                            source[cellI](0,0) += Fdt[cellI]*(Ut[cellI].component(0));
-                            source[cellI](1,0) += Fdt[cellI]*(Ut[cellI].component(1));
-                            source[cellI](2,0) += Fdt[cellI]*(Ut[cellI].component(2));
+                            // Normal drag contribution
+                            source[cellI](0,0) += Fdn[cellI]*Urn[cellI].component(0);
+                            source[cellI](1,0) += Fdn[cellI]*Urn[cellI].component(1);
+                            source[cellI](2,0) += Fdn[cellI]*Urn[cellI].component(2);
+                            // Tangent drag contribution
+                            source[cellI](0,0) += Fdt[cellI]*Urt[cellI].component(0);
+                            source[cellI](1,0) += Fdt[cellI]*Urt[cellI].component(1);
+                            source[cellI](2,0) += Fdt[cellI]*Urt[cellI].component(2);
+                            
+                            // Normal added Mass contribution
+                            source[cellI](0,0) += Fan[cellI]*(acclrn[cellI].component(0));
+                            source[cellI](1,0) += Fan[cellI]*(acclrn[cellI].component(1));
+                            source[cellI](2,0) += Fan[cellI]*(acclrn[cellI].component(2));
+                            // Tangent added Mass contribution
+                            source[cellI](0,0) += Fat[cellI]*(acclrt[cellI].component(0));
+                            source[cellI](1,0) += Fat[cellI]*(acclrt[cellI].component(1));
+                            source[cellI](2,0) += Fat[cellI]*(acclrt[cellI].component(2));
+                            
+                            
                         }
 
-                        //todo check the force from beam to fluid => through fvOptions
                     }
                     else // coupling off
                     {
@@ -819,10 +862,32 @@
                                 )
                             )
                         );
+                        // Tangent component of beam acceleration
+                        vectorField acclbt
+                        (
+                            (
+                                (acclb) & dRdScellHat
+                                *dRdScellHat
+                            )
+                        );
+
+                        // Normal component of beam acceleration
+                        vectorField acclbn
+                        (
+                            (
+                                (acclb) -
+                                (
+                                    ((acclb) & dRdScellHat)
+                                    *dRdScellHat
+                                ) 
+                            )
+                        );
                         const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*mag(dRdScell)*mag(Un));
                         const scalarField Fdt(0.5*rhoFluid().value()*Cdt_*R()*L()*mag(dRdScell)*mag(Ut));
 
-
+                        // Added Mass normal and tangent coefficients
+                        const scalarField Fan(rhoFluid().value()*CMn_*L()*M_PI*R()*R());
+                        const scalarField Fat(rhoFluid().value()*CMt_*L()*M_PI*R()*R());
                         // Explicit drag forces included in the source vector
                         forAll(source, cellI)
                         {
@@ -833,6 +898,15 @@
                             source[cellI](0,0) += Fdt[cellI]*Ut[cellI].component(0);
                             source[cellI](1,0) += Fdt[cellI]*Ut[cellI].component(1);
                             source[cellI](2,0) += Fdt[cellI]*Ut[cellI].component(2);
+
+                            // Normal added Mass contribution
+                            source[cellI](0,0) += Fan[cellI]*(acclbn[cellI].component(0));
+                            source[cellI](1,0) += Fan[cellI]*(acclbn[cellI].component(1));
+                            source[cellI](2,0) += Fan[cellI]*(acclbn[cellI].component(2));
+                            // Tangent added Mass contribution
+                            source[cellI](0,0) += Fat[cellI]*(acclbt[cellI].component(0));
+                            source[cellI](1,0) += Fat[cellI]*(acclbt[cellI].component(1));
+                            source[cellI](2,0) += Fat[cellI]*(acclbt[cellI].component(2));
                         }
 
                     }

@@ -81,6 +81,9 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line velocity field
         mutable volVectorField U_;
 
+        //- Fluid Velocity around the beam
+        mutable volVectorField fluidU_;
+
         //- Mean line acceleration field
  	    mutable volVectorField Accl_;
 
@@ -227,6 +230,12 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- tangential drag coefficient
         scalar Cdt_;
+
+        //- Normal added mass coefficient
+        scalar CMn_;
+
+        //- Tangential added mass coefficient
+        scalar CMt_;
 
         // Ground contact related parameters.
 

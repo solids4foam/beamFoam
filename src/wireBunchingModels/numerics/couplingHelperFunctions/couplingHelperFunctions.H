@@ -40,7 +40,7 @@ Author
 
 namespace Foam
     {
-        tmp<vectorField> getFluidVelocity(
+        tmp<volVectorField> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
         const vectorField& beamCellCenterCoord,

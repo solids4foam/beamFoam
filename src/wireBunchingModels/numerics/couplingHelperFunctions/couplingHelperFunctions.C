@@ -33,7 +33,7 @@ namespace Foam
 {
 
     // TODO : change the type with respect to output (velocities)
-    tmp<vectorField> getFluidVelocity(
+    tmp<volVectorField> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
         const vectorField& beamCellCenterCoord,
@@ -42,8 +42,26 @@ namespace Foam
         const meshSearch& searchEngine // flag for using octree or not
         )
     {
-        tmp<vectorField> tresult(new vectorField(mesh.nCells(),vector::zero));
-        vectorField& result = tresult.ref();
+        tmp<volVectorField> tresult
+    (
+        new volVectorField
+        (
+            IOobject
+            (
+                "fluidVelocity",
+                mesh.time().timeName(),
+                mesh,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh,
+            dimensionedVector
+            (
+                "zero", dimVelocity, vector::zero
+            )
+        )
+    );
+        volVectorField& result = tresult.ref();
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
 
