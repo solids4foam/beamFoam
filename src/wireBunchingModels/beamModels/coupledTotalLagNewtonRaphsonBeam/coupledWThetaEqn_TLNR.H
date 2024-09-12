@@ -756,6 +756,10 @@
                     vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
                     // beam Acceleration vector
                     vectorField acclb (fvc::ddt(U_));
+
+                    //todo backward time schemes
+                    //todo changing coupling name
+
                     if (couplingActive_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);

@@ -61,14 +61,31 @@ namespace Foam
             )
         )
     );
+    tmp<volScalarField> tmarkerResults
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "fluidCellMarker",
+                mesh.time().timeName(),
+                fluidMesh,
+                IOobject::NO_READ,
+                IOobject::AUTO_WRITE
+            ),
+            fluidMesh,
+            dimensionedScalar(dimless, 0)
+        )
+    );
         volVectorField& result = tresult.ref();
+        volScalarField& markerResults = tmarkerResults.ref();
+        
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
+        // Info << "marker result dimension = " << markerResults << endl;
 
 
         //Todo which proc, 
         // labelList procID(mesh.nCells(), -1);
-
-        // todo flag for octree option
          
 
 
@@ -79,7 +96,7 @@ namespace Foam
             if (beamCellCenterCoord[beamCellI].z() <= groundZ)
             {
                 seedCellIDs[beamCellI] = -1;
-                result[beamCellI] = vector::zero; 
+                result[beamCellI] = vector::zero;
                 continue;
             }
             if (seedCellIDs[beamCellI] == -1) 
@@ -109,16 +126,23 @@ namespace Foam
             }
             if (fluidCellID == -1)
             {
-                result[beamCellI] = vector::zero; 
+                result[beamCellI] = vector::zero;
+
                 //procID[beamCellID] = -1;
             }
             else
             {
                 result[beamCellI] = fluidVelocity[fluidCellID];
+                markerResults[fluidCellID] = 1.0; 
+                
                 // Todo procID[beamCellID] = Pstream::myProcID();
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
+        if (mesh.time().writeTime())
+        {
+            markerResults.write();
+        }        // markerResults.write();
         // reduce(sumOp<vectorField>(), result);
         // reduce(maxOp<labelList>(), procID);
         return tresult;
