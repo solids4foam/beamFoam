@@ -41,6 +41,7 @@ Author
 namespace Foam
     {
         tmp<volVectorField> getFluidVelocity(
+        //std::tuple<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
         const vectorField& beamCellCenterCoord,

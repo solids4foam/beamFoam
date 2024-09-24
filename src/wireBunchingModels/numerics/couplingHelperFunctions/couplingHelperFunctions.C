@@ -25,6 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "couplingHelperFunctions.H"
+#include <tuple>
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -34,6 +35,7 @@ namespace Foam
 
     // TODO : change the type with respect to output (velocities)
     tmp<volVectorField> getFluidVelocity(
+    //std::tuple<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
         const vectorField& beamCellCenterCoord,
@@ -64,13 +66,14 @@ namespace Foam
     tmp<volScalarField> tmarkerResults
     (
         new volScalarField
+        // volScalarField fluidCellMarker
         (
             IOobject
             (
                 "fluidCellMarker",
-                mesh.time().timeName(),
+                fluidMesh.time().timeName(),
                 fluidMesh,
-                IOobject::NO_READ,
+                IOobject::READ_IF_PRESENT,
                 IOobject::AUTO_WRITE
             ),
             fluidMesh,
@@ -145,7 +148,9 @@ namespace Foam
         }        // markerResults.write();
         // reduce(sumOp<vectorField>(), result);
         // reduce(maxOp<labelList>(), procID);
+        // Info << "available =" << fluidMesh.names() << endl;
         return tresult;
+        //return std::make_tuple(tresult, tmarkerResults);
         
     }
 
