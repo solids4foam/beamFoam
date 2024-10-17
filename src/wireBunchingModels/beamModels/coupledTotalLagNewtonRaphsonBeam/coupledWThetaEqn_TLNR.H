@@ -765,9 +765,18 @@
                         labelList seedCellIDs(mesh().nCells(), -1);
                         // const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
                         // fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
+                        // fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
                         // std::tuple<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        // tmp<volVectorField> fluidU_ = std::get<0>(fluidInfo); 
+                        std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
+                        volVectorField& fluidU_ = fluidInfo.first.ref();
+                        // Info << "fluidU is =" << fluidU_ << endl;
+                        cellMarker_ = fluidInfo.second.ref();
+                        if (mesh().time().writeTime())
+                        {
+                            cellMarker_.write();
+                        }        // markerResults.write();
+                        // Info << "--------------------------------------" << endl;
+                        // Info << "MarkerField is =" << markerField.size() << endl;
                         // relative velocity vector
                         vectorField Ur (U_.internalField() - fluidU_.internalField());
                         // fluid and relative acceleration

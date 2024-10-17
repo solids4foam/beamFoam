@@ -83,6 +83,9 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Fluid Velocity around the beam
         mutable volVectorField fluidU_;
+        
+        //- Cell marker function for drag calculation
+        mutable volScalarField cellMarker_;
 
         //- Mean line acceleration field
  	    mutable volVectorField Accl_;

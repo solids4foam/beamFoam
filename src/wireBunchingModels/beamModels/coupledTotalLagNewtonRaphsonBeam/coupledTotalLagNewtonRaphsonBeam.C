@@ -130,6 +130,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimVelocity, vector::zero)
     ),
+    cellMarker_
+    (
+        IOobject
+        (
+            "cellMarker",
+            mesh().time().db().parent().lookupObject<fvMesh>("region0").time().timeName(),
+            mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+        dimensionedScalar(dimless, 0)
+    ),
     Accl_
     (
         IOobject

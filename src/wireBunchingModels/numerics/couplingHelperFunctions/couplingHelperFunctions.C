@@ -34,8 +34,8 @@ namespace Foam
 {
 
     // TODO : change the type with respect to output (velocities)
-    tmp<volVectorField> getFluidVelocity(
-    //std::tuple<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
+    // tmp<volVectorField> getFluidVelocity(
+    std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
         const vectorField& beamCellCenterCoord,
@@ -142,15 +142,16 @@ namespace Foam
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
-        if (mesh.time().writeTime())
-        {
-            markerResults.write();
-        }        // markerResults.write();
+        // if (mesh.time().writeTime())
+        // {
+        //     markerResults.write();
+        // }        // markerResults.write();
         // reduce(sumOp<vectorField>(), result);
         // reduce(maxOp<labelList>(), procID);
         // Info << "available =" << fluidMesh.names() << endl;
-        return tresult;
-        //return std::make_tuple(tresult, tmarkerResults);
+        // return tresult;
+        // return std::make_tuple(tresult, tmarkerResults);
+        return std::make_pair(tresult, tmarkerResults);
         
     }
 
