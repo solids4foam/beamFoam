@@ -40,7 +40,6 @@ Author
 
 namespace Foam
     {
-        //tmp<volVectorField> getFluidVelocity(
         std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 

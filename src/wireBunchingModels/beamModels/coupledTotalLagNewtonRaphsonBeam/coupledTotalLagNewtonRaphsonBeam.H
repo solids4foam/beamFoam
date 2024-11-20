@@ -225,8 +225,8 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Boolean to activate drag forces
         bool dragActive_;
 
-        //- Boolean to enable two-way coupled drag calculations
-        bool couplingActive_;
+        //- Boolean to enable beam-fluid coupling and its effect on drag calculations
+        bool beamFluidInteraction_;
 
         //- Normal drag coefficient
         scalar Cdn_;

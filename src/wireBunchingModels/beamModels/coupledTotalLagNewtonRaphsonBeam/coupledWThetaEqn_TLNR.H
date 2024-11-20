@@ -738,7 +738,8 @@
                 }
 		        //- An acess to fluid Mesh through the parent time
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
-                // Info << " objects = " <<  mesh().time().db().parent().lookupObject<fvMesh>("region0").names() << endl;
+                
+                //- Coordinate for each beam's cell
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
 
                 //- Drag forces due to Morison's Equation
@@ -760,26 +761,24 @@
                     //todo backward time schemes
                     //todo changing coupling name
 
-                    if (couplingActive_)
+                    if (beamFluidInteraction_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
-                        // const vectorField fluidU (getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_));
-                        // fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        // fluidU_ = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        // std::tuple<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
+                        
                         std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        volVectorField& fluidU_ = fluidInfo.first.ref();
-                        // Info << "fluidU is =" << fluidU_ << endl;
+                        
+                        fluidU_ = fluidInfo.first.ref();
+                        
                         cellMarker_ = fluidInfo.second.ref();
+
                         if (mesh().time().writeTime())
                         {
                             cellMarker_.write();
-                        }        // markerResults.write();
-                        // Info << "--------------------------------------" << endl;
-                        // Info << "MarkerField is =" << markerField.size() << endl;
+                        }
+                        
                         // relative velocity vector
                         vectorField Ur (U_.internalField() - fluidU_.internalField());
-                        // fluid and relative acceleration
+                        // fluid acceleration
                         vectorField acclf (fvc::ddt(fluidU_));
                         
                         // Tangential component of  relative velocity vector
@@ -857,7 +856,8 @@
                         }
 
                     }
-                    else // coupling off
+                    //- beamFluidInteraction off
+                    else
                     {
                         vectorField Ut
                         (

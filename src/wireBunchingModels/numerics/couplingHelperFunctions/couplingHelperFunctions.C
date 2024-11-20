@@ -32,9 +32,6 @@ License
 
 namespace Foam
 {
-
-    // TODO : change the type with respect to output (velocities)
-    // tmp<volVectorField> getFluidVelocity(
     std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
         const fvMesh& fluidMesh, 
         const fvMesh& mesh, 
@@ -66,7 +63,6 @@ namespace Foam
     tmp<volScalarField> tmarkerResults
     (
         new volScalarField
-        // volScalarField fluidCellMarker
         (
             IOobject
             (
@@ -84,8 +80,6 @@ namespace Foam
         volScalarField& markerResults = tmarkerResults.ref();
         
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
-        // Info << "marker result dimension = " << markerResults << endl;
-
 
         //Todo which proc, 
         // labelList procID(mesh.nCells(), -1);
@@ -94,8 +88,6 @@ namespace Foam
 
         forAll(mesh.C(),beamCellI)
         {
-            // Info << "the beam.z() is  =" << beamCellCenterCoord[beamCellI].z() << endl;
-            // Info << " gz =  " << groundZ << endl;
             if (beamCellCenterCoord[beamCellI].z() <= groundZ)
             {
                 seedCellIDs[beamCellI] = -1;
@@ -107,12 +99,10 @@ namespace Foam
                 if (beamCellI == 0)
                 {
                     seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for seed in the next cells
-                    // Info << "seed for cell 0  "  << seedCellIDs[beamCellI] << endl;
                 }
                 else
                 {
                     seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ;
-                    // Info << "seed for cell " << beamCellI << "= "  << seedCellIDs[beamCellI] << endl;
                 }
             }
             label fluidCellID = -1;
@@ -142,15 +132,6 @@ namespace Foam
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
-        // if (mesh.time().writeTime())
-        // {
-        //     markerResults.write();
-        // }        // markerResults.write();
-        // reduce(sumOp<vectorField>(), result);
-        // reduce(maxOp<labelList>(), procID);
-        // Info << "available =" << fluidMesh.names() << endl;
-        // return tresult;
-        // return std::make_tuple(tresult, tmarkerResults);
         return std::make_pair(tresult, tmarkerResults);
         
     }

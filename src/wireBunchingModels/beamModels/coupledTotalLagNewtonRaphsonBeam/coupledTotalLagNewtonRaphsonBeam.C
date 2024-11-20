@@ -663,9 +663,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
-    couplingActive_(beamProperties().lookupOrDefault<bool>("couplingActive", false)),
+    beamFluidInteraction_(beamProperties().lookupOrDefault<bool>("beamFluidInteraction", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+
+    // Added mass related fields
     CMn_(beamProperties().lookupOrDefault<scalar>("CMn", 1.0)),
     CMt_(beamProperties().lookupOrDefault<scalar>("CMt", 0.0)),
 
