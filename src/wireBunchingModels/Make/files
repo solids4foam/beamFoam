@@ -30,6 +30,7 @@ numerics/Tuples/timeVaryingVector/timeVaryingVector.C
 numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
 numerics/denseMatrixHelperFunctions/denseMatrixHelperFunctions.C
 numerics/beamHelperFunctions/beamHelperFunctions.C
-numerics/couplingHelperFunctions/couplingHelperFunctions.C
+numerics/samplingFluid/samplingFluid.C
+numerics/samplingFluid/cylinderCellMarker.C
 
 LIB = $(FOAM_USER_LIBBIN)/libwireBunchingModels

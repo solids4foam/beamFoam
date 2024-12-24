@@ -24,9 +24,10 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "couplingHelperFunctions.H"
+#include "samplingFluid.H"
 #include <tuple>
-
+#include "surfaceMesh.H"
+#include "cylinderCellMarker.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -132,6 +133,47 @@ namespace Foam
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
+        //- creating a link to beamProperties dictionary
+        const dictionary& linkToBeamProperties = mesh.time().db().parent().lookupObject<dictionary>("beamProperties");
+        
+        List<point> points(mesh.nCells() + 1);
+        label startPatchID = mesh.boundaryMesh().findPatchID
+            (
+                "left"
+            );
+        label endPatchID = mesh.boundaryMesh().findPatchID
+            (
+                "right"
+            );
+
+        forAll(points, i)
+        {
+            if (i == 0)
+            {
+                points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0] +
+                    mesh.lookupObject<volVectorField>("refW")[0] +
+                    mesh.lookupObject<volVectorField>("W")[0];
+            }
+            else if (i == mesh.nCells())
+            {
+                points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0] +
+                    mesh.lookupObject<volVectorField>("refW")[i-1] +
+                    mesh.lookupObject<volVectorField>("W")[i-1];
+            }
+            else
+            {
+                points[i] = mesh.Cf()[i-1] +
+                    mesh.lookupObject<volVectorField>("refW")[i-1] +
+                    mesh.lookupObject<volVectorField>("W")[i-1];
+            }
+        }
+        //- access to beam radius
+        dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R"); 
+
+        //- Calling the function to mark the cells in fluidMesh
+        markCellsInCylinders(fluidMesh, points, radius.value(), markerResults);
+        
+        
         return std::make_pair(tresult, tmarkerResults);
         
     }

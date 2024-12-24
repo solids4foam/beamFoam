@@ -45,8 +45,8 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
-#include "couplingHelperFunctions.H"
-// #include "beamHelperFunctions.H"
+#include "samplingFluid.H"
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

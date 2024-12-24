@@ -30,12 +30,13 @@ Author
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef couplingHelperFunctions_H
-#define couplingHelperFunctions_H
+#ifndef samplingFluid_H
+#define samplingFluid_H
 
 #include "fvMesh.H"
 #include "volFields.H"
 #include "meshSearch.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
