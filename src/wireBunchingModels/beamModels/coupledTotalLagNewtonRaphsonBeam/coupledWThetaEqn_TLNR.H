@@ -738,7 +738,6 @@
                 }
 		        //- An acess to fluid Mesh through the parent time
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
-                
                 //- Coordinate for each beam's cell
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
 
@@ -752,10 +751,10 @@
                         currentBeamTangents()
                     );
 
-                    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
+                    //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                     const vectorField& dRdScell = spline.midPointDerivatives();
                     vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
-                    // beam Acceleration vector
+                    //- beam Acceleration vector
                     vectorField acclb (fvc::ddt(U_));
 
                     //todo backward time schemes
@@ -764,23 +763,23 @@
                     if (beamFluidInteraction_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
-                        
+
                         std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
-                        
+
                         fluidU_ = fluidInfo.first.ref();
-                        
+
                         cellMarker_ = fluidInfo.second.ref();
 
                         if (mesh().time().writeTime())
                         {
                             cellMarker_.write();
                         }
-                        
+
                         // relative velocity vector
                         vectorField Ur (U_.internalField() - fluidU_.internalField());
                         // fluid acceleration
                         vectorField acclf (fvc::ddt(fluidU_));
-                        
+
                         // Tangential component of  relative velocity vector
                         vectorField Urt
                         (
@@ -829,7 +828,7 @@
                         // Added Mass normal and tangent coefficients
                         const scalarField Fan(rhoFluid().value()*CMn_*L()*M_PI*R()*R());
                         const scalarField Fat(rhoFluid().value()*CMt_*L()*M_PI*R()*R());
-                         
+
 
                          // Explicit drag forces included in the source vector
                         forAll(source, cellI)
@@ -842,7 +841,7 @@
                             source[cellI](0,0) += Fdt[cellI]*Urt[cellI].component(0);
                             source[cellI](1,0) += Fdt[cellI]*Urt[cellI].component(1);
                             source[cellI](2,0) += Fdt[cellI]*Urt[cellI].component(2);
-                            
+
                             // Normal added Mass contribution
                             source[cellI](0,0) += Fan[cellI]*(acclrn[cellI].component(0));
                             source[cellI](1,0) += Fan[cellI]*(acclrn[cellI].component(1));
@@ -851,8 +850,6 @@
                             source[cellI](0,0) += Fat[cellI]*(acclrt[cellI].component(0));
                             source[cellI](1,0) += Fat[cellI]*(acclrt[cellI].component(1));
                             source[cellI](2,0) += Fat[cellI]*(acclrt[cellI].component(2));
-                            
-                            
                         }
 
                     }
@@ -870,7 +867,7 @@
                         vectorField Un
                         (
                             (
-                                U_.internalField() - 
+                                U_.internalField() -
                                 (
                                     (U_.internalField() & dRdScell)
                                     *dRdScell
@@ -1064,7 +1061,7 @@
     {
         U_ = fvc::ddt(W_);
     }
- 
+
 
     if (objectiveInterpolation())
     {
@@ -1111,7 +1108,7 @@
             *(DThetaf*DThetaf)
             + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
         );
-        
+
         // Update bending strain vector
         K_ +=
         (

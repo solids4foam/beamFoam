@@ -44,7 +44,7 @@ bool isPointInCylinder(const point& p, const point& p1, const point& p2, double 
     double proj = (ap & dUnit);
 
     // Check if the projection is greater or smaller than the height of the cylinder
-    if (proj < 0.0 || proj > dLength) 
+    if (proj < 0.0 || proj > dLength)
     {
         return false;
     }
@@ -61,7 +61,7 @@ void markCellsInCylinders(
     const List<point>& points,
     const scalar radius,
     volScalarField& cellMarker
-) 
+)
 {
     for (label i = 0; i < points.size()-1; i++)
     {

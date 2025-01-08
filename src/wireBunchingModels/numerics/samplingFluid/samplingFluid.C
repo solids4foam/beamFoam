@@ -34,8 +34,8 @@ License
 namespace Foam
 {
     std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
-        const fvMesh& fluidMesh, 
-        const fvMesh& mesh, 
+        const fvMesh& fluidMesh,
+        const fvMesh& mesh,
         const vectorField& beamCellCenterCoord,
         labelList& seedCellIDs,
         const scalar groundZ,
@@ -79,12 +79,12 @@ namespace Foam
     );
         volVectorField& result = tresult.ref();
         volScalarField& markerResults = tmarkerResults.ref();
-        
+
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
-        //Todo which proc, 
+        //Todo which proc,
         // labelList procID(mesh.nCells(), -1);
-         
+
 
 
         forAll(mesh.C(),beamCellI)
@@ -95,7 +95,7 @@ namespace Foam
                 result[beamCellI] = vector::zero;
                 continue;
             }
-            if (seedCellIDs[beamCellI] == -1) 
+            if (seedCellIDs[beamCellI] == -1)
             {
                 if (beamCellI == 0)
                 {
@@ -110,13 +110,13 @@ namespace Foam
             if (seedCellIDs[beamCellI] != -1) // && procID[beamCellI] == Pstream::myProcID())
             {
                 // Info << "using walk " << endl;
-                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],seedCellIDs[beamCellI]);      
+                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],seedCellIDs[beamCellI]);
             }
             if (fluidCellID == -1) // We should perform global search if no other procs found it.
             {
                 // Info << "global " << endl;
                 // perform a tree search
-                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],-1,true);  
+                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],-1,true);
             }
             if (fluidCellID == -1)
             {
@@ -127,15 +127,15 @@ namespace Foam
             else
             {
                 result[beamCellI] = fluidVelocity[fluidCellID];
-                markerResults[fluidCellID] = 1.0; 
-                
+                markerResults[fluidCellID] = 1.0;
+
                 // Todo procID[beamCellID] = Pstream::myProcID();
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
         //- creating a link to beamProperties dictionary
         const dictionary& linkToBeamProperties = mesh.time().db().parent().lookupObject<dictionary>("beamProperties");
-        
+
         List<point> points(mesh.nCells() + 1);
         label startPatchID = mesh.boundaryMesh().findPatchID
             (
@@ -168,14 +168,13 @@ namespace Foam
             }
         }
         //- access to beam radius
-        dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R"); 
+        dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
 
         //- Calling the function to mark the cells in fluidMesh
         markCellsInCylinders(fluidMesh, points, radius.value(), markerResults);
-        
-        
+
         return std::make_pair(tresult, tmarkerResults);
-        
+
     }
 
 } // End namespace Foam
