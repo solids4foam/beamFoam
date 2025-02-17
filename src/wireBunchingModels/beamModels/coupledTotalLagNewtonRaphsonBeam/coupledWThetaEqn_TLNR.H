@@ -644,14 +644,14 @@
                     ? Fka : (muSa_*ua[cellI]) : vector::zero
                 );
 
-                source[cellI](0,0) -= Fft.x() + Ffa.x();
+                source[cellI](0,0) += (Fft.x() + Ffa.x());
 
-                source[cellI](1,0) -= Fft.y() + Ffa.y();
+                source[cellI](1,0) += (Fft.y() + Ffa.y());
 
                 source[cellI](2,0) +=
                     (2.0*gStiffness_*R()*(coord.z() - groundZ_))
                   - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0))
-                  - Fft.z() - Ffa.z();
+                  + (Fft.z() + Ffa.z());
             }
         }
         Info<< "Number of cells in contact : " << cellsInContact << endl;

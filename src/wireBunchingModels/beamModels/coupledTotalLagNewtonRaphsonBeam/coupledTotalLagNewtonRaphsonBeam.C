@@ -677,10 +677,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     (
         beamProperties().lookupOrDefault<bool>("seadbedFrictionActive", false)
     ),
-    muKt_(beamProperties().lookupOrDefault<scalar>("muKt", 1.0)),
-    muKa_(beamProperties().lookupOrDefault<scalar>("muKa", 0.69)),
-    muSt_(beamProperties().lookupOrDefault<scalar>("muSt", 1.33)),
-    muSa_(beamProperties().lookupOrDefault<scalar>("muSa", 0.92)),
+    muKt_(beamProperties().lookupOrDefault<scalar>("muKt", 0.1)),
+    muKa_(beamProperties().lookupOrDefault<scalar>("muKa", 0.01)),
+    muSt_(beamProperties().lookupOrDefault<scalar>("muSt", 0.1)),
+    muSa_(beamProperties().lookupOrDefault<scalar>("muSa", 0.01)),
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
