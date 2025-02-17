@@ -585,6 +585,35 @@
     if (groundContactActive_)
     {
         label cellsInContact = 0 ;
+        HermiteSpline spline
+        (
+            currentBeamPoints(),
+            currentBeamTangents()
+        );
+
+        //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
+        const vectorField& dRdScell = spline.midPointDerivatives();
+        vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
+        //- Axial velocity component
+        vectorField ua
+        (
+            (
+                (U_.internalField() & dRdScell)
+                *dRdScell
+            )
+        );
+        // Transverse velocity component
+        vectorField ut
+        (
+            (
+                U_.internalField() -
+                (
+                    (U_.internalField() & dRdScell)
+                    *dRdScell
+                )
+            )
+        );
+
         forAll(source, cellI)
         {
             const vector coord = refW_[cellI] + W_[cellI];
@@ -592,9 +621,37 @@
             if (coord.z() < groundZ_)
             {
                 cellsInContact += 1;
+
+                vector Fkt(muKt_*mag(source[cellI](2,0))*ut[cellI]/mag(ut[cellI]));
+                vector Fst(muSt_*mag(source[cellI](2,0))*ut[cellI]/mag(ut[cellI]));
+                vector Fka(muKa_*mag(source[cellI](2,0))*ua[cellI]/mag(ua[cellI]));
+                vector Fsa(muSa_*mag(source[cellI](2,0))*ua[cellI]/mag(ua[cellI]));
+
+                vector Fft
+                (
+                    seadbedFrictionActive_ ?
+                    (
+                        muSt_*mag(ut[cellI]) > mag(Fst)
+                    )
+                    ? Fkt : (muSt_*ut[cellI]) : vector::zero
+                );
+                vector Ffa
+                (
+                    seadbedFrictionActive_ ?
+                    (
+                        muSa_*mag(ua[cellI]) > mag(Fsa)
+                    )
+                    ? Fka : (muSa_*ua[cellI]) : vector::zero
+                );
+
+                source[cellI](0,0) -= Fft.x() + Ffa.x();
+
+                source[cellI](1,0) -= Fft.y() + Ffa.y();
+
                 source[cellI](2,0) +=
                     (2.0*gStiffness_*R()*(coord.z() - groundZ_))
-                    - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0));
+                  - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0))
+                  - Fft.z() - Ffa.z();
             }
         }
         Info<< "Number of cells in contact : " << cellsInContact << endl;

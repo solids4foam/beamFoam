@@ -240,6 +240,24 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Tangential added mass coefficient
         scalar CMt_;
 
+        //- Seabed friction parameters
+
+        //- Boolean to check wether seabed friction is active or not
+        bool seadbedFrictionActive_;
+
+        //- transverse friction coefficient(kinetic)
+        scalar muKt_;
+
+        //- axial friction coefficient(kinetic)
+        scalar muKa_;
+
+        //- transverse friction coefficient(static)
+        scalar muSt_;
+
+        //- axial friction coefficient(static)
+        scalar muSa_;
+
+
         // Ground contact related parameters.
 
         //- Boolean to check wether ground contact is active or not

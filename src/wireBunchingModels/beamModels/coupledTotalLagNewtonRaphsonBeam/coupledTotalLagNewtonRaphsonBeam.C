@@ -671,6 +671,17 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     CMn_(beamProperties().lookupOrDefault<scalar>("CMn", 1.0)),
     CMt_(beamProperties().lookupOrDefault<scalar>("CMt", 0.0)),
 
+
+    // Seabed friction related parameters
+    seadbedFrictionActive_
+    (
+        beamProperties().lookupOrDefault<bool>("seadbedFrictionActive", false)
+    ),
+    muKt_(beamProperties().lookupOrDefault<scalar>("muKt", 1.0)),
+    muKa_(beamProperties().lookupOrDefault<scalar>("muKa", 0.69)),
+    muSt_(beamProperties().lookupOrDefault<scalar>("muSt", 1.33)),
+    muSa_(beamProperties().lookupOrDefault<scalar>("muSa", 0.92)),
+
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
     gDamping_ (readDouble(beamProperties().lookup("gDamping"))),
