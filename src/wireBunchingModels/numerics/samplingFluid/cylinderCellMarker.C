@@ -63,11 +63,11 @@ void markCellsInCylinders(
     volScalarField& cellMarker
 )
 {
-    for (label i = 0; i < points.size()-1; i++)
+    for (label i = 0; i < points.size() - 1; i++)
     {
         const point& p1 = points[i];
         const point& p2 = points[i + 1];
-
+        
         forAll(mesh.C(),cellI)
         {
             if (isPointInCylinder(mesh.C()[cellI], p1, p2, radius))

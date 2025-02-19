@@ -28,6 +28,7 @@ License
 #include <tuple>
 #include "surfaceMesh.H"
 #include "cylinderCellMarker.H"
+#include "surfaceFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -150,21 +151,21 @@ namespace Foam
         {
             if (i == 0)
             {
-                points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0] +
-                    mesh.lookupObject<volVectorField>("refW")[0] +
-                    mesh.lookupObject<volVectorField>("W")[0];
+                points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0]
+                  + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[startPatchID][0]
+                  + mesh.lookupObject<volVectorField>("W").boundaryField()[startPatchID][0];
             }
             else if (i == mesh.nCells())
             {
-                points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0] +
-                    mesh.lookupObject<volVectorField>("refW")[i-1] +
-                    mesh.lookupObject<volVectorField>("W")[i-1];
+                points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0]
+                  + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[endPatchID][0]
+                  + mesh.lookupObject<volVectorField>("W").boundaryField()[endPatchID][0];
             }
             else
             {
-                points[i] = mesh.Cf()[i-1] +
-                    mesh.lookupObject<volVectorField>("refW")[i-1] +
-                    mesh.lookupObject<volVectorField>("W")[i-1];
+                points[i] = mesh.Cf()[i-1]
+                  + mesh.lookupObject<surfaceVectorField>("refWf")[i-1]
+                  + mesh.lookupObject<volVectorField>("W")[i-1];
             }
         }
         //- access to beam radius
