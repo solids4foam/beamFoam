@@ -29,7 +29,7 @@ License
 #include "surfaceMesh.H"
 #include "cylinderCellMarker.H"
 #include "surfaceFields.H"
-
+#include "Pstream.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -83,13 +83,21 @@ namespace Foam
 
         const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
-        //Todo which proc,
-        // labelList procID(mesh.nCells(), -1);
+        // Pstream::scatter(beamCellCenterCoord);
 
+        // search for this walk and tree :
+        // List<label> foundCellIDs(beamCoords.size(), -1);
 
-
+        // below needs to be done on proc0 only (replace the search part)
         forAll(mesh.C(),beamCellI)
         {
+            // if (!fluidMesh.bounds().contains(mesh.C()[beamCellI]))
+            // {
+            //     result[beamCellI] = vector::zero;
+            //     seedCellIDs[beamCellI] = -1;
+            //     continue;
+            // }
+
             if (beamCellCenterCoord[beamCellI].z() <= groundZ)
             {
                 seedCellIDs[beamCellI] = -1;
@@ -113,6 +121,7 @@ namespace Foam
                 // Info << "using walk " << endl;
                 fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],seedCellIDs[beamCellI]);
             }
+
             if (fluidCellID == -1) // We should perform global search if no other procs found it.
             {
                 // Info << "global " << endl;
@@ -122,15 +131,11 @@ namespace Foam
             if (fluidCellID == -1)
             {
                 result[beamCellI] = vector::zero;
-
-                //procID[beamCellID] = -1;
             }
             else
             {
                 result[beamCellI] = fluidVelocity[fluidCellID];
                 markerResults[fluidCellID] = 1.0;
-
-                // Todo procID[beamCellID] = Pstream::myProcID();
             }
             seedCellIDs[beamCellI] = fluidCellID;
         }
@@ -171,8 +176,19 @@ namespace Foam
         //- access to beam radius
         dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
 
-        //- Calling the function to mark the cells in fluidMesh
-        markCellsInCylinders(fluidMesh, points, radius.value(), markerResults);
+        //- Calling the function to mark the cells in fluidMesh, based on the marking method
+        const bool fractionalMarking =
+            linkToBeamProperties
+                .subDict("coupledTotalLagNewtonRaphsonBeamCoeffs")
+                .lookupOrDefault<bool>("fractionalMarking", true);
+        if (fractionalMarking)
+        {
+            markCellsByPointFractionInCylinders(fluidMesh, points, radius.value(), markerResults);
+        }
+        else
+        {
+            markCellsByCellCentersInCylinders(fluidMesh, points, radius.value(), markerResults);
+        }
 
         return std::make_pair(tresult, tmarkerResults);
 

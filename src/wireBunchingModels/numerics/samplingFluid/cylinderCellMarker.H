@@ -43,14 +43,26 @@ namespace Foam
 {
     
 // Helper function to check if a point lies within a cylinder
-bool isPointInCylinder(const point& p, const point& p1, const point& p2, double radius);
+bool isPointInCylinder(
+    const point& p,
+    const point& p1,
+    const point& p2,
+    double radius,
+    label fluidMeshDim
+);
 
     
-void markCellsInCylinders(
+void markCellsByCellCentersInCylinders(
     const fvMesh& mesh,
     const List<point>& points,
     const scalar radius,
-    //const List<point>& centers,
+    volScalarField& cellMarker
+);
+void markCellsByPointFractionInCylinders(
+    const fvMesh& mesh,
+    const List<point>& points,
+    const scalar radius,
+    //const List<point>& center
     volScalarField& cellMarker
 );
 
