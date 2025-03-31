@@ -1,0 +1,101 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Number of beams
+nBeams 1;
+
+// Definition of the radius used by createCircularBeamMesh
+R    R [0 1 0 0 0 0 0] 0.0030;
+
+// Definition of beam cross-sections used by the solver
+beams
+(
+    beamOne
+    {
+        crossSectionModel circle;
+        circleCrossSectionModelDict
+        {
+            // Beam radius
+            radius 0.0030;
+        }
+    }
+);
+
+// Length and number of segments
+#include "$FOAM_CASE/constant/length.dat";
+
+// Circumferential resolution (for visualisation only)
+//nTheta 32;
+
+
+// Beam model
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+coupledTotalLagNewtonRaphsonBeamCoeffs
+{
+    E E [1 -1 -2 0 0 0 0] 2.20e9;
+    G G [1 -1 -2 0 0 0 0] 1.1e9;
+    rho rho [1 -3 0 0 0 0 0] 1090;
+
+    // Morison force
+    morisonForce yes;
+    
+    //rhoFluid rhoFluid [1 -3 0 0 0 0 0] 1.2;
+    // Ground contact
+    // groundContactActive false;
+    groundZ -0.5;
+    gStiffness 1E03;
+    gDamping 1.0;
+    nSegments 60;
+
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 10;
+    convergenceTol 1e-8;
+
+    // Print Newton-Raphson iteration residuals
+    debug yes;
+
+    // updatedLagrangian no;
+
+    objectiveInterpolation false;
+
+    steadyState false;
+
+    // Newmark-beta integration scheme
+    newmark false;
+
+    // Flag to activate drag contribution                                                                                                                                                                                            
+    // steadyState flag should also be false along with this flag                                                                                                                                                                    
+    // else drag forces will be zero                                                                                                                                                                                                 
+    // dragActive true;
+    // beamFluidInteraction true;
+    // this changes how to determine cell marker for each cell                                                                                                                                                                       
+    // true : uses fractional Marking i.e: numberOfPointsInside/totalNumberOfPoints                                                                                                                                                  
+    // false : determines the values based on the location of cell centres (0 or 1)                                                                                                                                                  
+    // fractionalMarking false;
+    
+    // Coefficient of drag in normal and tangential directions
+    // Default value if not specified is 1.0 for both
+    // Cdn 1.6;
+    // Cdt 0.05;
+    // CMn 1.0;
+    // CMt 0.0;
+}
+
+// ************************************************************************* //

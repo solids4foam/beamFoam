@@ -1,0 +1,11 @@
+    period     1.0;
+    waveNumber    3.9157;
+    direction (1 0 0);
+    N 5;
+    U0       0.0014;
+    dU0dz    -0.0102;
+    uSin nonuniform List<scalar> 5 (-0.08496 0.00111 -0.00092 -0.00069 -0.00920 );
+    uCos nonuniform List<scalar> 5 (-0.06314 -0.00141 -0.00044 -0.00003 -0.00152 );
+    wSin nonuniform List<scalar> 5 (0.04526 -0.00027 -0.00056 0.00142 0.00267 );
+    wCos nonuniform List<scalar> 5 (-0.06967 0.00104 -0.00040 -0.00070 -0.00066 );
+    depth 0.450;
