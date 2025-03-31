@@ -81,18 +81,18 @@ int main(int argc, char *argv[])
         )
     );
 
-    scalar R = dimensionedScalar(beamProperties.lookup("R")).value();
-    scalar L = dimensionedScalar(beamProperties.lookup("L")).value();
+    const scalar R = dimensionedScalar("R", beamProperties).value();
+    const scalar L = dimensionedScalar("L", beamProperties).value();
     // scalar R = 0.1;
     // scalar L = 20;
 
-    label nZ(readInt(beamProperties.lookup("nSegments")));
+    const label nZ(readInt(beamProperties.lookup("nSegments")));
     // label nZ = 50;
-    label nTheta = 32; //32;
+    const label nTheta = 32;
 
-    label nPoints = nTheta*(nZ + 1);
-    label nFaces = (nZ+1) + nZ*nTheta;
-    label nInternalFaces = nZ-1;
+    const label nPoints = nTheta*(nZ + 1);
+    const label nFaces = (nZ + 1) + nZ*nTheta;
+    const label nInternalFaces = nZ - 1;
 
 
     // Points
@@ -113,9 +113,9 @@ int main(int argc, char *argv[])
 
     label pI = 0;
     scalar dZ = L/nZ;
-    for (label i=0; i<=nZ; i++)
+    for (label i = 0; i <= nZ; i++)
     {
-        for (label j=0; j<nTheta; j++)
+        for (label j = 0; j < nTheta; j++)
         {
             vector curPoint = circumferencePoints[j];
             curPoint.z() = i*dZ;
@@ -131,10 +131,10 @@ int main(int argc, char *argv[])
     //-Internal faces
 
     label fI = 0;
-    for (label i=1; i<=nInternalFaces; i++)
+    for (label i = 1; i <= nInternalFaces; i++)
     {
         labelList curPointLabels(nTheta, -1);
-        for (label j=0; j<nTheta; j++)
+        for (label j = 0; j < nTheta; j++)
         {
             curPointLabels[j] = j + i*nTheta;
         }
@@ -142,14 +142,14 @@ int main(int argc, char *argv[])
         face curFace(curPointLabels);
         curFace = curFace.reverseFace();
         //faces()[fI++] = curFace;
-	    faces[fI++] = curFace;
+	faces[fI++] = curFace;
         // faces()[fI++] = face(curPointLabels);
     }
 
     //- Inlet face
 
     labelList curPointLabels(nTheta, -1);
-    for (label j=0; j<nTheta; j++)
+    for (label j = 0; j < nTheta; j++)
     {
         curPointLabels[j] = j;
     }
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     //- Outlet face
 
     curPointLabels = labelList(nTheta, -1);
-    for (label j=0; j<nTheta; j++)
+    for (label j = 0; j < nTheta; j++)
     {
         curPointLabels[j] = j + nZ*nTheta;
     }
@@ -175,16 +175,16 @@ int main(int argc, char *argv[])
 
     //- Pipe faces
 
-    for (label i=0; i<nZ; i++)
+    for (label i = 0; i < nZ; i++)
     {
-        for (label j=1; j<nTheta; j++)
+        for (label j = 1; j < nTheta; j++)
         {
             labelList curPointLabels(4, -1);
 
-            curPointLabels[0] = (j-1) + i*nTheta;
+            curPointLabels[0] = (j - 1) + i*nTheta;
             curPointLabels[1] = j + i*nTheta;
-            curPointLabels[2] = j + (i+1)*nTheta;
-            curPointLabels[3] = (j-1) + (i+1)*nTheta;
+            curPointLabels[2] = j + (i + 1)*nTheta;
+            curPointLabels[3] = (j - 1) + (i + 1)*nTheta;
 
             face curFace(curPointLabels);
             curFace = curFace.reverseFace();
@@ -195,10 +195,10 @@ int main(int argc, char *argv[])
 
         labelList curPointLabels(4, -1);
 
-        curPointLabels[0] = (nTheta-1) + i*nTheta;
+        curPointLabels[0] = (nTheta - 1) + i*nTheta;
         curPointLabels[1] = 0 + i*nTheta;
-        curPointLabels[2] = 0 + (i+1)*nTheta;
-        curPointLabels[3] = (nTheta-1) + (i+1)*nTheta;
+        curPointLabels[2] = 0 + (i + 1)*nTheta;
+        curPointLabels[3] = (nTheta - 1) + (i + 1)*nTheta;
 
         face curFace(curPointLabels);
         curFace = curFace.reverseFace();
@@ -220,11 +220,11 @@ int main(int argc, char *argv[])
 
     owners[fI++] = 0;
 
-    owners[fI++] = nZ-1;
+    owners[fI++] = nZ - 1;
 
-    for (label i=0; i<nZ; i++)
+    for (label i = 0; i < nZ; i++)
     {
-        for (label j=1; j<nTheta; j++)
+        for (label j = 1; j < nTheta; j++)
         {
             owners[fI++] = i;
         }
@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
     labelList neighbours(nInternalFaces, -1);
 
     fI = 0;
-    for (label i=1; i<=nInternalFaces; i++)
+    for (label i = 1; i <= nInternalFaces; i++)
     {
         neighbours[fI++] = i;
     }

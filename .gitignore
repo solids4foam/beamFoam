@@ -17,6 +17,8 @@ dist/
 
 # Log files
 *.log
+*.Allwmake
+*.wmake
 
 # Package files
 *.jar
