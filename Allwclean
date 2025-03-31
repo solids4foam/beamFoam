@@ -1,5 +1,4 @@
 #!/bin/sh
-set -x
 
 # Clean library
 wclean lib src/wireBunchingModels

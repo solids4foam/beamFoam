@@ -81,18 +81,18 @@ int main(int argc, char *argv[])
         )
     );
 
-    scalar R = dimensionedScalar(beamProperties.lookup("R")).value();
-    scalar L = dimensionedScalar(beamProperties.lookup("L")).value();
+    const scalar R = dimensionedScalar("R", beamProperties).value();
+    const scalar L = dimensionedScalar("L", beamProperties).value();
     // scalar R = 0.1;
     // scalar L = 20;
 
-    label nZ(readInt(beamProperties.lookup("nSegments")));
+    const label nZ(readInt(beamProperties.lookup("nSegments")));
     // label nZ = 50;
-    label nTheta = 32; //32;
+    const label nTheta = 32;
 
-    label nPoints = nTheta*(nZ + 1);
-    label nFaces = (nZ+1) + nZ*nTheta;
-    label nInternalFaces = nZ-1;
+    const label nPoints = nTheta*(nZ + 1);
+    const label nFaces = (nZ+1) + nZ*nTheta;
+    const label nInternalFaces = nZ - 1;
 
 
     // Points
