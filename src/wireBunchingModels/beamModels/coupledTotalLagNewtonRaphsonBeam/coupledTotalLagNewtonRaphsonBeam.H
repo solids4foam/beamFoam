@@ -49,7 +49,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-#include "morisonForce.H"
+//#include "multibeamFvBlockMatrix.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -81,7 +81,7 @@ class coupledTotalLagNewtonRaphsonBeam
         mutable volVectorField U_;
 
         //- Mean line acceleration field
-        mutable volVectorField Accl_;
+ 	    mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -131,7 +131,7 @@ class coupledTotalLagNewtonRaphsonBeam
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
 
-                //- Mean line reference displacement at face-centres
+		//- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
 
         //- Mean line reference displacement at cell-centres
@@ -182,6 +182,10 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line point displacement field
         pointVectorField pointW_;
 
+        //- Block vector field for displacement (first entry) and
+        // rotation (second entry)
+        // volVector6Field WTheta_;
+
         //- Total Iterations count for all load steps
         scalar totalIter_;
 
@@ -194,53 +198,73 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
 
-        //- Beam momentum inertial term constant
-        dimensionedScalar ARho_;
+ 	    //- Beam momentum inertial term constant
+ 	    dimensionedScalar ARho_;
 
         //- Beam cross-section constant
-        dimensionedTensor CIRho_;
-
-        // Run-time selectable Morison force
-        //  Added by Niels Gjoel Jacobsen
-        autoPtr<Foam::morisonForce> morisonForce_;
+ 	    dimensionedTensor CIRho_;
 
         // Fields related to Newmark-beta time integration scheme
 
-              //- Boolean to activate Newmark-beta time-integration scheme
-              bool newmark_;
+ 	      //- Boolean to activate Newmark-beta time-integration scheme
+ 	      bool newmark_;
 
-              //- Newmark beta coefficient
-              scalar betaN_;
+ 	      //- Newmark beta coefficient
+ 	      scalar betaN_;
 
-              //- Newmark gamma coefficient
-              scalar gammaN_;
+ 	      //- Newmark gamma coefficient
+ 	      scalar gammaN_;
+          //- Fields related to drag forces due to Morrison's equation
+          //- Boolean to activate drag forces
+          bool dragActive_;
 
-        //- Fields related to drag forces due to Morrison's equation
+          //- Normal drag coefficient
+          scalar Cdn_;
 
-            //- Boolean to activate drag forces
-            bool dragActive_;
+          //- tangential drag coefficient
+          scalar Cdt_;
 
-            //- Normal drag coefficient
-            scalar Cdn_;
+          // Ground contact related parameters.
 
-            //- tangential drag coefficient
-            scalar Cdt_;
+          //- Boolean to check wether ground contact is active or not
+          bool groundContactActive_;
 
-            // Ground contact related parameters.
+          //-  damping coefficient for spring/damper ground model.
+          scalar gDamping_;
 
-            //- Boolean to check wether ground contact is active or not
-            bool groundContactActive_;
+          //- stiffness coefficient for spring/damper ground model.
+          scalar gStiffness_;
 
-            //-  damping coefficient for spring/damper ground model.
-            scalar gDamping_;
+          //- ground coordinate for ground contact Model.
+          scalar groundZ_;
 
-            //- stiffness coefficient for spring/damper ground model.
-            scalar gStiffness_;
+    // Parallel performance data
 
-            //- ground coordinate for ground contact Model.
-            scalar groundZ_;
+        //- Total time spend on contact update
+        scalar totalContactTime_;
+
+        //- Total time spend on solution of equilibrium equation
+        scalar totalSolutionTime_;
+
+        //- Processor index
+        volScalarField proc_;
 
     // Private Member Functions
+
+        //- Apply line contact force
+        // void applyLineContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply point contact force
+        // void applyPointContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
+
+        // //- Apply conical pulleys contact force
+        // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
 
         //- Disallow default bitwise copy construct
         coupledTotalLagNewtonRaphsonBeam

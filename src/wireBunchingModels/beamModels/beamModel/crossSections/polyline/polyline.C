@@ -180,7 +180,7 @@ tmp<vectorField> polyline::greenLagrangianStrain
         {
             for (label j=0; j<6; j++)
             {
-                tE.ref()[pI].component(i) += A[i][j]*avgE[j];
+                tE()[pI].component(i) += A[i][j]*avgE[j];
             }
         }
     }
@@ -331,12 +331,12 @@ vector polyline::resultantMoment(const vectorField& S) const
 {
     vector rM = vector::zero;
 
-    scalarField Sx(S.component(0));
-    scalarField Sy(S.component(1));
-    scalarField Sz(S.component(2));
+    scalarField Sx = S.component(0);
+    scalarField Sy = S.component(1);
+    scalarField Sz = S.component(2);
 
-    scalarField Px(points_.component(0));
-    scalarField Py(points_.component(1));
+    scalarField Px = points_.component(0);
+    scalarField Py = points_.component(1);
     
     forAll(quadFaces_, faceI)
     {

@@ -99,14 +99,7 @@ void crossSectionModel::calcA
     const vector& p
 ) const
 {
-    //A = 0*A;
-    for (int i = 0; i < A.nRows(); ++i)
-    {
-        for (int j = 0; j < A.nCols(); ++j)
-        {
-            A(i, j) = 0.0;
-        }
-    }
+    A = 0*A;
 
     A[0][0] = 1;
     A[1][1] = 1;

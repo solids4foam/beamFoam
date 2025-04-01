@@ -1,13 +1,6 @@
 beamModels/beamModel/beamModel.C
 beamModels/beamModel/newBeamModel.C
-beamModels/beamModel/crossSections/crossSection/crossSectionModel.C
-beamModels/beamModel/crossSections/crossSection/newCrossSectionModel.C
-beamModels/beamModel/crossSections/circle/circle.C
-beamModels/beamModel/crossSections/rectangle/rectangle.C
-beamModels/beamModel/crossSections/crossSection/quad/quadrilateral.C
-beamModels/beamModel/crossSections/polygon/polygon.C
-beamModels/beamModel/crossSections/annularSector/annularSector.C
-beamModels/beamModel/crossSections/polyline/polyline.C
+
 
 
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
@@ -37,15 +30,5 @@ numerics/Tuples/timeVaryingVector/timeVaryingVector.C
 numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
 numerics/denseMatrixHelperFunctions/denseMatrixHelperFunctions.C
 numerics/beamHelperFunctions/beamHelperFunctions.C
-
-morisonForce/streamFunctionUserCoeffs/streamFunctionUserCoeffs.C
-morisonForce/morisonForce.C
-/*morisonForce/constant/constant.C*/
-morisonForce/doubleHarmonic/doubleHarmonic.C
-morisonForce/interpolateWave/interpolateWave.C
-morisonForce/singleHarmonic/singleHarmonic.C
-morisonForce/streamFunction/streamFunction.C
-morisonForce/userDefinedWave/userDefinedWave.C
-
 
 LIB = $(FOAM_USER_LIBBIN)/libwireBunchingModels

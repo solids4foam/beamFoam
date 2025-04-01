@@ -127,12 +127,6 @@ public:
             return h_/2;
         }
     
-        //- Return the width b
-        virtual scalar b() const
-        {
-            return b_;
-        }
-
         //- Return cross-section area
         virtual scalar A() const
         {
@@ -175,10 +169,10 @@ public:
             );
 
             // Counter-clock-wise orientation
-            tCircumPoints.ref()[0] = vector(b_/2, -h_/2, 0);
-            tCircumPoints.ref()[1] = vector(-b_/2, -h_/2, 0);
-            tCircumPoints.ref()[2] = vector(-b_/2, h_/2, 0);
-            tCircumPoints.ref()[3] = vector(b_/2, h_/2, 0);
+            tCircumPoints()[0] = vector(b_/2, -h_/2, 0);
+            tCircumPoints()[1] = vector(-b_/2, -h_/2, 0);
+            tCircumPoints()[2] = vector(-b_/2, h_/2, 0);
+            tCircumPoints()[3] = vector(b_/2, h_/2, 0);
 
             return tCircumPoints;
         }

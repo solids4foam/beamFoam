@@ -164,9 +164,9 @@ public:
 
             forAll(tCircumPoints(), pointI)
             {
-                tCircumPoints.ref()[pointI].x() = radius_*::cos(pointI*dTheta);
-                tCircumPoints.ref()[pointI].y() = radius_*::sin(pointI*dTheta);
-                tCircumPoints.ref()[pointI].z() = 0;
+                tCircumPoints()[pointI].x() = radius_*::cos(pointI*dTheta);
+                tCircumPoints()[pointI].y() = radius_*::sin(pointI*dTheta);
+                tCircumPoints()[pointI].z() = 0;
             }
 
             return tCircumPoints;

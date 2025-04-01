@@ -422,7 +422,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
             scalar x = r*::cos(theta);
             scalar y = r*::sin(theta);
 
-            tCircumPoints.ref()[i] = vector(x, y, 0);
+            tCircumPoints()[i] = vector(x, y, 0);
         }
     }
     else
@@ -436,7 +436,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar r = radius(theta);
                 scalar x = r*::cos(theta);
                 scalar y = r*::sin(theta);
-                tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
+                tCircumPoints()[gPointI++] = vector(x, y, 0);
             }
 
             // 2nd point
@@ -445,7 +445,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar r = radius(theta);
                 scalar x = r*::cos(theta);
                 scalar y = r*::sin(theta);
-                tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
+                tCircumPoints()[gPointI++] = vector(x, y, 0);
             }
             
             // 3rd point
@@ -454,7 +454,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar r = radius(theta);
                 scalar x = r*::cos(theta);
                 scalar y = r*::sin(theta);
-                tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
+                tCircumPoints()[gPointI++] = vector(x, y, 0);
             }
             
             // 4th point
@@ -463,7 +463,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar r = radius(theta);
                 scalar x = r*::cos(theta);
                 scalar y = r*::sin(theta);
-                tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
+                tCircumPoints()[gPointI++] = vector(x, y, 0);
             }
             
             // 5th point
@@ -472,7 +472,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar r = radius(theta);
                 scalar x = r*::cos(theta);
                 scalar y = r*::sin(theta);
-                tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
+                tCircumPoints()[gPointI++] = vector(x, y, 0);
             }
         }        
     }
@@ -513,7 +513,7 @@ tmp<vectorField> polygon::greenLagrangianStrain
         {
             for (label j=0; j<6; j++)
             {
-                tE.ref()[pI].component(i) += A[i][j]*avgE[j];
+                tE()[pI].component(i) += A[i][j]*avgE[j];
             }
         }
     }
@@ -664,12 +664,12 @@ vector polygon::resultantMoment(const vectorField& S) const
 {
     vector rM = vector::zero;
 
-    scalarField Sx(S.component(0));
-    scalarField Sy(S.component(1));
-    scalarField Sz(S.component(2));
+    scalarField Sx = S.component(0);
+    scalarField Sy = S.component(1);
+    scalarField Sz = S.component(2);
 
-    scalarField Px(points_.component(0));
-    scalarField Py(points_.component(1));
+    scalarField Px = points_.component(0);
+    scalarField Py = points_.component(1);
     
     forAll(quadFaces_, faceI)
     {
