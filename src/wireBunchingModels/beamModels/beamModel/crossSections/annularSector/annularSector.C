@@ -51,13 +51,13 @@ namespace Foam
 scalar annularSector::area() const
 {
     scalar A = 0;
-    
+
     scalar halfSectorAngle = sectorAngle_/2;
-    
+
     A = halfSectorAngle*(sqr(outerRadius_) - sqr(innerRadius_));
 
     Info << "A = " << A << endl;
-    
+
     return A;
 }
 
@@ -65,14 +65,14 @@ void annularSector::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
 {
     Ixx = 0;
     Iyy = 0;
-    
+
     scalar halfSectorAngle = sectorAngle_/2;
-    
+
 //    scalar A = halfSectorAngle*(sqr(outerRadius_) - sqr(innerRadius_));
-    
+
     // Second moment of area for the sector about the geometric centroid
-	
-	// Centroid location (yC0 = 0; symmetry about the local x-axis)
+
+        // Centroid location (yC0 = 0; symmetry about the local x-axis)
 //	scalar xC0 = (2.0/3.0)*(::sin(halfSectorAngle)/halfSectorAngle)
 //				*
 //				(
@@ -80,18 +80,18 @@ void annularSector::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
 //				/
 //				(sqr(outerRadius_) - sqr(innerRadius_))
 //				);
-//    
+//
     Ixx = 0.25*(pow(outerRadius_,4) - pow(innerRadius_,4))
-    	  *(halfSectorAngle - 0.5*::sin(2*halfSectorAngle));        
-	
-  	Iyy = 0.25*(pow(outerRadius_,4) - pow(innerRadius_,4))
-    	  *
-    	  (
-    	  halfSectorAngle + 0.5*::sin(2*halfSectorAngle)
-    	  ); 
-    	  
-    	  //- A*sqr(xC0);
-    	  
+          *(halfSectorAngle - 0.5*::sin(2*halfSectorAngle));
+
+        Iyy = 0.25*(pow(outerRadius_,4) - pow(innerRadius_,4))
+          *
+          (
+          halfSectorAngle + 0.5*::sin(2*halfSectorAngle)
+          );
+
+          //- A*sqr(xC0);
+
     Info << "Local Ixx: " << Ixx << endl;
     Info << "Local Iyy: " << Iyy << endl;
 }
@@ -139,7 +139,7 @@ annularSector::annularSector
     Iyy_(),
     nCircumferentialPoints_((nRadialSegmentsSector_+1)*2),
     points_((nRadialSegmentsSector_+1)*2, vector::zero),
-    quadFaces_(nRadialSegmentsSector_, quadrilateral()) 
+    quadFaces_(nRadialSegmentsSector_, quadrilateral())
     // faces_(nx_*ny_, face(4))
 {
 
@@ -148,38 +148,38 @@ annularSector::annularSector
 
     // Calculate second moment of area
     calcSecondMomentOfArea(Ixx_, Iyy_);
-    
-    
+
+
     //Set local mesh points
-    
+
     label nr = nRadialSegmentsSector_;
-    scalar dPhi = sectorAngle_/nr; 
+    scalar dPhi = sectorAngle_/nr;
     scalar halfSectorAngle = sectorAngle_/2;
-    
+
     label npr = nr + 1;
-    
+
     label pI = 0;
     for(label i = 0; i < npr ; i++)
     {
-    	scalar x_inner = innerRadius_*::cos(-halfSectorAngle + i*dPhi);
-    	scalar y_inner = innerRadius_*::sin(-halfSectorAngle + i*dPhi);
-    	
-    	points_[pI++] = vector(x_inner, y_inner, 0);
+        scalar x_inner = innerRadius_*::cos(-halfSectorAngle + i*dPhi);
+        scalar y_inner = innerRadius_*::sin(-halfSectorAngle + i*dPhi);
+
+        points_[pI++] = vector(x_inner, y_inner, 0);
     }
-    
+
     pI = 0;
-    for(label i = 0; i < npr; i++)	
+    for(label i = 0; i < npr; i++)
     {
-    	scalar x_outer = outerRadius_*::cos(-halfSectorAngle + i*dPhi);
-    	scalar y_outer = outerRadius_*::sin(-halfSectorAngle + i*dPhi);
-    	
-    	points_[(pI++ + npr)] = vector(x_outer, y_outer, 0);
-    }	
-    
+        scalar x_outer = outerRadius_*::cos(-halfSectorAngle + i*dPhi);
+        scalar y_outer = outerRadius_*::sin(-halfSectorAngle + i*dPhi);
+
+        points_[(pI++ + npr)] = vector(x_outer, y_outer, 0);
+    }
+
     Info << "Points: " << points_ << endl;
-    
-    // Set local mesh faces	
-    
+
+    // Set local mesh faces
+
     label fI = 0;
     for (label j = 0; j < nr; j++)
     {
@@ -189,11 +189,11 @@ annularSector::annularSector
             fpts[0] = j;
             fpts[1] = j + npr;
             fpts[2] = fpts[1] + 1;
-            fpts[3] = fpts[0] + 1; 
-            
+            fpts[3] = fpts[0] + 1;
+
             Info << "Faces : " << fpts << endl;
     }
-    
+
     // primitiveFacePatch patch(quadFaces_, points_);
 }
 
@@ -209,31 +209,31 @@ tmp<vectorField> annularSector::circumferentialPoints() const
             vector::zero
         )
     );
-    
-    label nr = nRadialSegmentsSector_;
-    scalar dPhi = sectorAngle_/nr; 
-    scalar halfSectorAngle = sectorAngle_/2;
-    
-    label npr = nr + 1;
-    
-    label gPointI = 0;
-    for(label i = 0; i < npr; i++)	
-    {
-    	scalar x_outer = outerRadius_*::cos(halfSectorAngle - i*dPhi);
-    	scalar y_outer = outerRadius_*::sin(halfSectorAngle - i*dPhi);
 
-    	tCircumPoints()[gPointI++]=
+    label nr = nRadialSegmentsSector_;
+    scalar dPhi = sectorAngle_/nr;
+    scalar halfSectorAngle = sectorAngle_/2;
+
+    label npr = nr + 1;
+
+    label gPointI = 0;
+    for(label i = 0; i < npr; i++)
+    {
+        scalar x_outer = outerRadius_*::cos(halfSectorAngle - i*dPhi);
+        scalar y_outer = outerRadius_*::sin(halfSectorAngle - i*dPhi);
+
+        tCircumPoints.ref()[gPointI++]=
             vector(x_outer, y_outer, 0);
-    	// tCircumPoints()[(gPointI++ + npr)]= vector(x_outer, y_outer, 0);
+        // tCircumPoints()[(gPointI++ + npr)]= vector(x_outer, y_outer, 0);
     }
-    
+
     // label gPointI = 0;
     for(label i = 0; i < npr; i++)
     {
-    	scalar x_inner = innerRadius_*::cos(-halfSectorAngle + i*dPhi);
-    	scalar y_inner = innerRadius_*::sin(-halfSectorAngle + i*dPhi);
-    	
-    	tCircumPoints()[gPointI++] =
+        scalar x_inner = innerRadius_*::cos(-halfSectorAngle + i*dPhi);
+        scalar y_inner = innerRadius_*::sin(-halfSectorAngle + i*dPhi);
+
+        tCircumPoints.ref()[gPointI++] =
             vector(x_inner, y_inner, 0);
     }
 
@@ -246,15 +246,15 @@ tmp<vectorField> annularSector::circumferentialPoints() const
 
 
     // Info << "xc: " << xc << endl;
-    
-    tCircumPoints() -= vector(xc, 0, 0);
-    
+
+    tCircumPoints.ref() -= vector(xc, 0, 0);
+
     // Info << "tCircumPoints: " << tCircumPoints() << endl;
-    
+
     return tCircumPoints;
 
-} 
-   
+}
+
 tmp<vectorField> annularSector::greenLagrangianStrain
 (
     const vector& Gamma,
@@ -284,7 +284,7 @@ tmp<vectorField> annularSector::greenLagrangianStrain
         {
             for (label j=0; j<6; j++)
             {
-                tE()[pI].component(i) += A[i][j]*avgE[j];
+                tE.ref()[pI].component(i) += A[i][j]*avgE[j];
             }
         }
     }
@@ -301,7 +301,7 @@ vector annularSector::resultantForce(const vectorField& S) const
     {
         rF += quadFaces_[faceI].integral(points_, S);
     }
-    
+
     return rF;
 }
 
@@ -330,7 +330,7 @@ void annularSector::resultantTangentMatrices
     // label npphi = nphi+1;
 
     // scalar dphi = 2*M_PI/nphi;
-    
+
     scalarRectangularMatrix A(3, 6, 0);
     scalarRectangularMatrix CT(3, 3, 0);
     scalarRectangularMatrix ACA(6, 6, 0);
@@ -351,7 +351,7 @@ void annularSector::resultantTangentMatrices
             label i3 = fpts[3];
 
             scalar dA = fpts.area(points_);
-            
+
             // label i0 = j*npr + i;
             // label i1 = i0 + 1;
             // label i3 = (j+1)*npr + i;
@@ -365,22 +365,22 @@ void annularSector::resultantTangentMatrices
             scalarRectangularMatrix ACAm(6, 6, 0);
 
             calcA(A, points_[i0]);
-            tensorToMatrix(CT, dSdE[i0]);    
+            tensorToMatrix(CT, dSdE[i0]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i1]);
-            tensorToMatrix(CT, dSdE[i1]);    
+            tensorToMatrix(CT, dSdE[i1]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i2]);
-            tensorToMatrix(CT, dSdE[i2]);    
+            tensorToMatrix(CT, dSdE[i2]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i3]);
-            tensorToMatrix(CT, dSdE[i3]);    
+            tensorToMatrix(CT, dSdE[i3]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
@@ -419,7 +419,7 @@ void annularSector::resultantTangentMatrices
     DMDGamma.zx() = DSDE[5][0];
     DMDGamma.zy() = DSDE[5][1];
     DMDGamma.zz() = DSDE[5][2];
-    
+
     DMDK.xx() = DSDE[3][3];
     // DMDK.xy() = DSDE[3][4];
     // DMDK.xz() = DSDE[3][5];
@@ -436,13 +436,13 @@ vector annularSector::resultantMoment(const vectorField& S) const
 {
     vector rM = vector::zero;
 
-    scalarField Sx = S.component(0);
-    scalarField Sy = S.component(1);
-    scalarField Sz = S.component(2);
+    scalarField Sx(S.component(0));
+    scalarField Sy(S.component(1));
+    scalarField Sz(S.component(2));
 
-    scalarField Px = points_.component(0);
-    scalarField Py = points_.component(1);
-    
+    scalarField Px(points_.component(0));
+    scalarField Py(points_.component(1));
+
     forAll(quadFaces_, faceI)
     {
         rM.x() += quadFaces_[faceI].integral(points_, Sz, Py);
@@ -450,9 +450,9 @@ vector annularSector::resultantMoment(const vectorField& S) const
 
         rM.y() += quadFaces_[faceI].integral(points_, Sx, Px);
 
-        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);            
+        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);
     }
-    
+
     return rM;
 }
 
@@ -483,7 +483,7 @@ void annularSector::writeVTK
                 << points_[i].z() << endl;
     }
 
-    
+
     // Write cells
     label nCells = quadFaces_.size();
     vtkFile << "\nPOLYGONS " << nCells << " " << 5*nCells << endl;
@@ -492,8 +492,8 @@ void annularSector::writeVTK
     {
         vtkFile << quadFaces_[i].size() << " "
                 << quadFaces_[i][0] << " "
-                << quadFaces_[i][1] << " " 
-                << quadFaces_[i][2] << " " 
+                << quadFaces_[i][1] << " "
+                << quadFaces_[i][2] << " "
                 << quadFaces_[i][3] << endl;
     }
 
@@ -505,7 +505,7 @@ void annularSector::writeVTK
     //     vtkFile << 9 << endl;
     // }
 
-    
+
     //Write data
     vtkFile << "\nPOINT_DATA " << points_.size() << endl;
     vtkFile << "SCALARS eqEP float 1" << endl;
@@ -538,7 +538,7 @@ void annularSector::writeVTK
 }
 
 
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

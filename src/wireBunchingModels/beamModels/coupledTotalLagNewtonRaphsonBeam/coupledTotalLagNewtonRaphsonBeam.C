@@ -40,13 +40,12 @@ License
 #include "axialForceTransverseDisplacementFvPatchVectorField.H"
 #include "axialForceTransverseDisplacementNRFvPatchVectorField.H"
 #include "extrapolatedBeamRotationFvPatchVectorField.H"
-
 #include "mergePoints.H"
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "rectangle.H"
 
-// #include "beamHelperFunctions.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -631,36 +630,29 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             0,            0,           kCI()*IzzRho().value()
         )
     ),
-    newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
+    morisonForce_
+    (
+        beamProperties().lookupOrDefault<Switch>("morisonForce", false)
+      ? Foam::morisonForce::New(runTime, mesh(), beamProperties())
+      : nullptr
+    ),
+    newmark_(beamProperties().lookupOrDefault<Switch>("newmark", false)),
     betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
     gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
 
     // Drag Force related fields
-    dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    dragActive_(beamProperties().lookupOrDefault<Switch>("dragActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 
     // ground contact related parameters and switches
-    groundContactActive_(beamProperties().getOrDefault<bool>("groundContactActive", false)),
+    groundContactActive_
+    (
+        beamProperties().lookupOrDefault<Switch>("groundContactActive", false)
+    ),
     gDamping_(beamProperties().getOrDefault<scalar>("gDamping", 0.0)),
     gStiffness_(beamProperties().getOrDefault<scalar>("gStiffness", 0.0)),
-    groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0)),
-
-    totalContactTime_(0),
-    totalSolutionTime_(),
-    proc_
-    (
-        IOobject
-        (
-            "proc",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("zero", dimless, 0)
-    )
+    groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0))
 {
     W_.oldTime();
     U_.oldTime();
@@ -674,12 +666,21 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     Q_.oldTime();
     M_.oldTime();
 
+    if (morisonForce_)
+    {
+        Info<< "morisonForce is active" << endl;
+    }
+    else
+    {
+        Info<< "morisonForce is not active" << endl;
+    }
+
     // Correct properties for multibeam case
     label nBeams = mesh().cellZones().size();
     if (nBeams > 1)
     {
         // First beam is already initialized
-        for (label i=1; i<nBeams; i++)
+        for (label i = 1; i < nBeams; i++)
         {
             CQ_ +=
                 indicator(i)
@@ -1044,47 +1045,42 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             Info<< "iOuterCorr: " << iOuterCorr() << endl;
         }
 
-        // if (contactActive())
-        // {
-        //     if (debug)
-        //     {
-        //         Info<< "Updating contact: start" << endl;
-        //     }
-
-        //     scalar tStart = runTime().elapsedCpuTime();
-
-        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
-        //     curContactResidual = contact().update();
-        //     scalar tEnd = runTime().elapsedCpuTime();
-
-        //     totalContactTime_ += tEnd - tStart;
-
-        //     if (debug)
-        //     {
-        //         Pout << "Current total contact update time: "
-        //              << totalContactTime_ << endl;
-        //     }
-
-        //     if (debug)
-        //     {
-        //         Info<< "curContactResidual: "
-        //             << curContactResidual << endl;
-
-        //         Info<< "Updating contact: end" << endl;
-        //     }
-        // }
-
-        scalar tStart = runTime().elapsedCpuTime();
-        #include "coupledWThetaEqn_TLNR.H"
-        scalar tEnd = runTime().elapsedCpuTime();
-
-        totalSolutionTime_ += tEnd-tStart;
-
-        if (debug)
+	// Calculate the force
+        const symmTensorField* addedMassPtr = nullptr;
+	const symmTensorField* dragPtr = nullptr;
+        if (morisonForce_)
         {
-            Pout<< "Current total solution update time: "
-                << totalSolutionTime_ << endl;
+            // Update the Morison force
+
+            // Get the tangents to make a projection of the force
+            const tmp<vectorField> tangent(currentBeamTangents(0));
+
+            // For now, only one beam is allowed
+            if (crossSections().size() != 1)
+            {
+                FatalErrorInFunction
+                    << "Exactly one cross section model must be defined to use "
+                    << "the Morison force procedure" << exit(FatalError);
+            }
+
+            //  The width (in flow direction) and the beam. Hard-coded with
+            // y-dir
+            // const scalar width = crossSections()[0].widthY();
+            // Check if the radius at 0 degrees is consistent with widthY
+            const scalar width = crossSections()[0].radius(0);
+            const scalar A = crossSections()[0].A();
+
+            // Update the force
+            morisonForce_->updateForce
+            (
+                q(), solutionW(), U_, tangent, width, A, L()
+            );
+
+            addedMassPtr = &(morisonForce_->addedMassCoeff());
+	    dragPtr = &(morisonForce_->dragCoeff());
         }
+
+        #include "coupledWThetaEqn_TLNR.H"
     }
     while
     (
@@ -1097,12 +1093,18 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
     totalIter_ += iOuterCorr();
 
-    Info<< "\nInitial residual: " << initialResidual
-        << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
-        << ",\n iCorr = " << iOuterCorr() << nl
-        << "total Iterations " << totalIter_ << endl;
+    if (!debug)
+    {
+        // Summary
+        Info<< nl
+            << "Residuals" << nl
+            << "    Initial: " << initialResidual << nl
+            << "    Current: " << currentResidual << nl
+            << "    Material: " << currentMaterialResidual << nl
+            << "    Contact: " << curContactResidual << nl
+            << "    Correctors = " << iOuterCorr() << nl
+            << "    Total Iterations " << totalIter_ << nl << endl;
+    }
 
     return initialResidual;
 }

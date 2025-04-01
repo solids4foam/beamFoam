@@ -48,7 +48,7 @@
 
     // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
     // Newmark-beta integration scheme
-    if(!steadyState() && newmark_)
+    if (!steadyState() && newmark_)
     {
         if(iOuterCorr() == 0)
         {
@@ -560,6 +560,7 @@
         source[cellI](4,0) -= m()[cellI].y()*L()[cellI];
         source[cellI](5,0) -= m()[cellI].z()*L()[cellI];
     }
+
     // Add body force due to gravity and buoyancy if fluid is present
     // Note that for buoyant force calculation it is assumed
     // that the entire beam is submerged in the fluid
@@ -581,7 +582,7 @@
             )*L()[cellI]*A().value()*g().component(2).value();
     }
 
-    // ground contact contribution
+    // Ground contact contribution
     if (groundContactActive_)
     {
         label cellsInContact = 0 ;
@@ -607,11 +608,10 @@
         // Add inertial force
         {
             // SB modified - (10/11/2023)
-            if(newmark_)
+            if (newmark_)
             {
-                volVectorField a = Accl_;
-                vectorField QRho = ARho_*L()*a;
-
+                const volVectorField& a = Accl_;
+                const vectorField QRho(ARho_*L()*a);
 
                 forAll(source, cellI)
                 {
@@ -630,7 +630,6 @@
                     d[cellI](1,1) += QRhoCoeff[cellI];
                     d[cellI](2,2) += QRhoCoeff[cellI];
                 }
-
             }
             else
             {
@@ -655,12 +654,58 @@
                     d[cellI](2,2) += QRhoCoeff[cellI];
                 }
             }
+
+            // Treat both Newmark and Euler as Euler
+            if (morisonForce_)
+            {
+                const volVectorField& a = Accl_;
+                const symmTensorField& addedMass = *addedMassPtr;
+                const symmTensorField& drag = *dragPtr;
+
+                forAll(source, cellI)
+                {
+                    const symmTensor& am(addedMass[cellI]);
+                    const symmTensor& dc(drag[cellI]);
+
+                    source[cellI](0,0) +=
+                          (am.xx() + am.xy() + am.xz())*a[cellI].x()
+                        + (dc.xx() + dc.xy() + dc.xz())*U_[cellI].x();
+                    source[cellI](1,0) +=
+                          (am.xy() + am.yy() + am.yz())*a[cellI].y()
+                        + (dc.xy() + dc.yy() + dc.yz())*U_[cellI].y();
+                    source[cellI](2,0) +=
+                          (am.xz() + am.yz() + am.zz())*a[cellI].z()
+                        + (dc.xz() + dc.yz() + dc.zz())*U_[cellI].z();
+                }
+
+                forAll(d, cellI)
+                {
+                    const symmTensor& am(addedMass[cellI]);
+                    const symmTensor& dc(drag[cellI]);
+
+                    d[cellI](0,0) +=
+                        (
+                          - (am.xx() + am.xy() + am.xz())/Foam::sqr(runTime().deltaT().value())
+                          - (dc.xx() + dc.xy() + dc.xz())/runTime().deltaT().value()
+                        );
+                    d[cellI](1,1) +=
+                        (
+                          - (am.xy() + am.yy() + am.yz())/Foam::sqr(runTime().deltaT().value())
+                          - (dc.xy() + dc.yy() + dc.yz())/runTime().deltaT().value()
+                        );
+                    d[cellI](2,2) +=
+                        (
+                          - (am.xz() + am.yz() + am.zz())/Foam::sqr(runTime().deltaT().value())
+                          - (dc.xz() + dc.yz() + dc.zz())/runTime().deltaT().value()
+                        );
+                }
+            }
         }
 
 
         // Add inertial torque
         {
-            if(newmark_)
+            if (newmark_)
             {
                 // Angular acceleration
                 volVectorField dotOmega = dotOmega_;
@@ -792,15 +837,15 @@
                     }
 
                 }
-                else
-                {
-                    WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
-                        << "Drag forces are zero for steady state calculation"
-                        << nl
-                        << "Set both 'steadyState' flag to false and "
-                        << "'dragActive' flag to  true to include drag force"
-                        << " contributions" << nl << endl;
-                }
+                // else
+                // {
+                //     WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
+                //         << "Drag forces are zero for steady state calculation"
+                //         << nl
+                //         << "Set both 'steadyState' flag to false and "
+                //         << "'dragActive' flag to  true to include drag force"
+                //         << " contributions" << nl << endl;
+                // }
 
                 // Add diagonal contribution (N-R method)-ZT code
                 volTensorField MRhoCoeff
@@ -845,7 +890,7 @@
         // Note: we do not user a gSum here as the beam is assumed to be on one
         // core
         const scalar eqResidual = sqrt(sum(magSqr(source)));
-        Info<< "L2 norm of the equlibrium equations residual: "
+        Info<< "    L2 norm of the equlibrium equations residual: "
             << eqResidual << endl;
     }
 
@@ -865,7 +910,10 @@
     // Solve the linear system
     // Currently this residual is not used, Check with Seevani.
     currentResidual = eigenSolver.solve(solVec, source); // peak RAM
-    Info<< "Equation Residual: " << currentResidual << endl;
+    if (debug)
+    {
+        Info<< "    Equation Residual: " << currentResidual << endl;
+    }
 
     //vector6 eqnRes = WThetaEqn.solve().initialResidual();
     // vector eqnRes = vector::zero;
@@ -1112,8 +1160,8 @@
 
     if (debug)
     {
-        Info<< "Theta residual: " << ThetaResidual << endl;
-        Info<< "W residual: " << WResidual << endl;
+        Info<< "    Theta residual: " << ThetaResidual << endl;
+        Info<< "    W residual: " << WResidual << endl;
     }
 
     // this currentResidual is not normalized, check with Seevani

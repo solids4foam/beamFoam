@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
+    \\  /    A nd           | Copyright held by original author
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
@@ -20,60 +20,74 @@ License
 
     You should have received a copy of the GNU General Public License
     along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-
-InClass
-    crossSectionModel
+    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 \*---------------------------------------------------------------------------*/
 
-#include "crossSectionModel.H"
-#include "volFields.H"
-#include "surfaceFields.H"
+#include "constant.H"
+#include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-autoPtr<crossSectionModel> crossSectionModel::New
+defineTypeNameAndDebug(constant, 0);
+addToRunTimeSelectionTable(morisonForce, constant, dictionary);
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+
+constant::constant
 (
-    const word& name,
-    const dictionary& dict
+    const Time& runTime,
+    const fvMesh& mesh,
+    const dictionary& sd
 )
-{
-    Info<< "    Cross-section model: " << name << endl;
+:
+    morisonForce(runTime, mesh, sd),
 
-    auto* cstrIter = dictionaryConstructorTable(name);
-
-    if (!cstrIter)
-    {
-        FatalIOErrorIn
-        (
-            "crossSectionModel::New(\n"
-            "    const word& name,\n"
-            "    const dictionary& dict\n"
-            ")",
-            dict
-        )   << "Unknown crossSectionModel type "
-            << name << endl << endl
-            << "Valid  crossSectionModels are : " << endl
-            << dictionaryConstructorTablePtr_->toc()
-            << exit(FatalIOError);
-    }
-
-    return autoPtr<crossSectionModel>
+    Um_
     (
-        cstrIter
-        (
-            name,
-            dict
-        )
-    );
+        this->subDict(typeName + "Coeffs").lookup("Um")
+    ),
+
+    Tsoft_
+    (
+        readScalar(this->subDict(typeName + "Coeffs").lookup("Tsoft"))
+    )
+{
 }
 
+
+void constant::printCoeffs()
+{
+    Info << "Loading Morison force: " << typeName << endl;
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+dimensionedVector constant::U
+(
+    const point& x,
+    const scalar& t
+) const
+{
+    return dimensionedVector("null", dimVelocity, rampfactor(Tsoft_)*Um_);
+}
+
+
+dimensionedVector constant::acc
+(
+    const point& x,
+    const scalar& t
+) const
+{
+    return dimensionedVector("null", dimVelocity/dimTime, vector::zero);
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
