@@ -45,8 +45,8 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "samplingFluid.H"
 
-// #include "beamHelperFunctions.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -116,6 +116,32 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         // fvc::ddt(W_)
         dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
+    ),
+    fluidU_
+    (
+        IOobject
+        (
+            "fluidU",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh(),
+        dimensionedVector("0", dimVelocity, vector::zero)
+    ),
+    cellMarker_
+    (
+        IOobject
+        (
+            "cellMarker",
+            mesh().time().db().parent().lookupObject<fvMesh>("region0").time().timeName(),
+            mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+        dimensionedScalar(dimless, 0)
     ),
     Accl_
     (
@@ -637,14 +663,32 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    beamFluidInteraction_(beamProperties().lookupOrDefault<bool>("beamFluidInteraction", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+
+    // Added mass related fields
+    CMn_(beamProperties().lookupOrDefault<scalar>("CMn", 1.0)),
+    CMt_(beamProperties().lookupOrDefault<scalar>("CMt", 0.0)),
+
+
+    // Seabed friction related parameters
+    seadbedFrictionActive_
+    (
+        beamProperties().lookupOrDefault<bool>("seadbedFrictionActive", false)
+    ),
+    muKt_(beamProperties().lookupOrDefault<scalar>("muKt", 0.1)),
+    muKa_(beamProperties().lookupOrDefault<scalar>("muKa", 0.01)),
+    muSt_(beamProperties().lookupOrDefault<scalar>("muSt", 0.1)),
+    muSa_(beamProperties().lookupOrDefault<scalar>("muSa", 0.01)),
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().getOrDefault<bool>("groundContactActive", false)),
     gDamping_(beamProperties().getOrDefault<scalar>("gDamping", 0.0)),
     gStiffness_(beamProperties().getOrDefault<scalar>("gStiffness", 0.0)),
     groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0)),
+
+    searchEngine_(runTime.db().parent().lookupObject<fvMesh>("region0")),
 
     totalContactTime_(0),
     totalSolutionTime_(),

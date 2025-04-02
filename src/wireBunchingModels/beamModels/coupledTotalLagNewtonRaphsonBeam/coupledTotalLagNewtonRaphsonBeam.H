@@ -49,6 +49,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
+#include "meshSearch.H"
 //#include "multibeamFvBlockMatrix.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -79,6 +80,12 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Mean line velocity field
         mutable volVectorField U_;
+
+        //- Fluid Velocity around the beam
+        mutable volVectorField fluidU_;
+        
+        //- Cell marker function for drag calculation
+        mutable volScalarField cellMarker_;
 
         //- Mean line acceleration field
  	    mutable volVectorField Accl_;
@@ -206,37 +213,67 @@ class coupledTotalLagNewtonRaphsonBeam
 
         // Fields related to Newmark-beta time integration scheme
 
- 	      //- Boolean to activate Newmark-beta time-integration scheme
- 	      bool newmark_;
+        //- Boolean to activate Newmark-beta time-integration scheme
+        bool newmark_;
 
- 	      //- Newmark beta coefficient
- 	      scalar betaN_;
+        //- Newmark beta coefficient
+        scalar betaN_;
 
- 	      //- Newmark gamma coefficient
- 	      scalar gammaN_;
-          //- Fields related to drag forces due to Morrison's equation
-          //- Boolean to activate drag forces
-          bool dragActive_;
+        //- Newmark gamma coefficient
+        scalar gammaN_;
+        //- Fields related to drag forces due to Morrison's equation
+        //- Boolean to activate drag forces
+        bool dragActive_;
 
-          //- Normal drag coefficient
-          scalar Cdn_;
+        //- Boolean to enable beam-fluid coupling and its effect on drag calculations
+        bool beamFluidInteraction_;
 
-          //- tangential drag coefficient
-          scalar Cdt_;
+        //- Normal drag coefficient
+        scalar Cdn_;
 
-          // Ground contact related parameters.
+        //- tangential drag coefficient
+        scalar Cdt_;
 
-          //- Boolean to check wether ground contact is active or not
-          bool groundContactActive_;
+        //- Normal added mass coefficient
+        scalar CMn_;
 
-          //-  damping coefficient for spring/damper ground model.
-          scalar gDamping_;
+        //- Tangential added mass coefficient
+        scalar CMt_;
 
-          //- stiffness coefficient for spring/damper ground model.
-          scalar gStiffness_;
+        //- Seabed friction parameters
 
-          //- ground coordinate for ground contact Model.
-          scalar groundZ_;
+        //- Boolean to check wether seabed friction is active or not
+        bool seadbedFrictionActive_;
+
+        //- transverse friction coefficient(kinetic)
+        scalar muKt_;
+
+        //- axial friction coefficient(kinetic)
+        scalar muKa_;
+
+        //- transverse friction coefficient(static)
+        scalar muSt_;
+
+        //- axial friction coefficient(static)
+        scalar muSa_;
+
+
+        // Ground contact related parameters.
+
+        //- Boolean to check wether ground contact is active or not
+        bool groundContactActive_;
+
+        //-  damping coefficient for spring/damper ground model.
+        scalar gDamping_;
+
+        //- stiffness coefficient for spring/damper ground model.
+        scalar gStiffness_;
+
+        //- ground coordinate for ground contact Model.
+        scalar groundZ_;
+
+        //- meshSearch engine for finding adjacent fluid Cells
+        meshSearch searchEngine_;
 
     // Parallel performance data
 
