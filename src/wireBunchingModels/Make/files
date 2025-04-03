@@ -4,6 +4,7 @@ beamModels/beamModel/newBeamModel.C
 
 
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
+beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
 
 beamModels/beamModel/lookupBeamModel.C
 
