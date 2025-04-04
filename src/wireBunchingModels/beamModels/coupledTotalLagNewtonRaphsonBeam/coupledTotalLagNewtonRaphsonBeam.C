@@ -650,9 +650,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     (
         beamProperties().lookupOrDefault<Switch>("groundContactActive", false)
     ),
-    gDamping_ (readDouble(beamProperties().lookup("gDamping"))),
-    gStiffness_ (readDouble(beamProperties().lookup("gStiffness"))),
-    groundZ_ (readDouble(beamProperties().lookup("groundZ")))
+    gDamping_(beamProperties().getOrDefault<scalar>("gDamping", 0.0)),
+    gStiffness_(beamProperties().getOrDefault<scalar>("gStiffness", 0.0)),
+    groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0))
 {
     W_.oldTime();
     U_.oldTime();
