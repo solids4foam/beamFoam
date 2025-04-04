@@ -1,5 +1,5 @@
 #!/bin/bash
 cd ${0%/*} || exit 1    # run from this directory
 
-echo; echo "Copying beamFoamCleanScripts.sh to ${FOAM_USER_APPBIN}"; echo
+echo "Copying beamFoamCleanScripts.sh to ${FOAM_USER_APPBIN}"
 \cp beamFoamCleanScripts.sh ${FOAM_USER_APPBIN}/
