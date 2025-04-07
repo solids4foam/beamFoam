@@ -594,26 +594,14 @@
         //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
         const vectorField& dRdScell = spline.midPointDerivatives();
         vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
-        //- Axial velocity component
-        vectorField ua
+        //- Tangential velocity component
+        vectorField ut
         (
             (
                 (U_.internalField() & dRdScell)
                 *dRdScell
             )
         );
-        // Transverse velocity component
-        vectorField ut
-        (
-            (
-                U_.internalField() -
-                (
-                    (U_.internalField() & dRdScell)
-                    *dRdScell
-                )
-            )
-        );
-
         forAll(source, cellI)
         {
             const vector coord = refW_[cellI] + W_[cellI];
@@ -622,36 +610,29 @@
             {
                 cellsInContact += 1;
 
-                vector Fkt(muKt_*mag(source[cellI](2,0))*ut[cellI]/mag(ut[cellI]));
-                vector Fst(muSt_*mag(source[cellI](2,0))*ut[cellI]/mag(ut[cellI]));
-                vector Fka(muKa_*mag(source[cellI](2,0))*ua[cellI]/mag(ua[cellI]));
-                vector Fsa(muSa_*mag(source[cellI](2,0))*ua[cellI]/mag(ua[cellI]));
-
-                vector Fft
+                scalar f_gc_n
                 (
-                    seadbedFrictionActive_ ?
-                    (
-                        muSt_*mag(ut[cellI]) > mag(Fst)
-                    )
-                    ? Fkt : (muSt_*ut[cellI]) : vector::zero
+                    2.0*kNormal_*R()*(coord.z() - groundZ_)
+                  - (2.0*cNormal_*R()*max(U_[cellI].component(2), 0))
                 );
-                vector Ffa
-                (
-                    seadbedFrictionActive_ ?
-                    (
-                        muSa_*mag(ua[cellI]) > mag(Fsa)
-                    )
-                    ? Fka : (muSa_*ua[cellI]) : vector::zero
-                );
+                vector f_gc_t (vector::zero);
+                if (seadbedFrictionActive_)
+                {
+                    if (kTangential_ * mag(ut[cellI]) >= muFriction_*mag(f_gc_n))
+                    {
+                        f_gc_t = -muFriction_*mag(f_gc_n)*(ut[cellI]/(mag(ut[cellI]) + SMALL));
+                    }
+                    else
+                    {
+                        f_gc_t = -kTangential_*ut[cellI];
+                    }
+                }
+                source[cellI](0,0) += f_gc_t.x();
 
-                source[cellI](0,0) += (Fft.x() + Ffa.x());
+                source[cellI](1,0) += f_gc_t.y();
 
-                source[cellI](1,0) += (Fft.y() + Ffa.y());
+                source[cellI](2,0) += (f_gc_t.z() + f_gc_n);
 
-                source[cellI](2,0) +=
-                    (2.0*gStiffness_*R()*(coord.z() - groundZ_))
-                  - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0))
-                  + (Fft.z() + Ffa.z());
             }
         }
         Info<< "Number of cells in contact : " << cellsInContact << endl;

@@ -245,17 +245,8 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Boolean to check wether seabed friction is active or not
         bool seadbedFrictionActive_;
 
-        //- transverse friction coefficient(kinetic)
-        scalar muKt_;
-
-        //- axial friction coefficient(kinetic)
-        scalar muKa_;
-
-        //- transverse friction coefficient(static)
-        scalar muSt_;
-
-        //- axial friction coefficient(static)
-        scalar muSa_;
+        //- seabed friction coefficient
+        scalar muFriction_;
 
 
         // Ground contact related parameters.
@@ -263,11 +254,14 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Boolean to check wether ground contact is active or not
         bool groundContactActive_;
 
-        //-  damping coefficient for spring/damper ground model.
-        scalar gDamping_;
+        //-  damping coefficient for spring/damper ground model
+        scalar cNormal_;
 
-        //- stiffness coefficient for spring/damper ground model.
-        scalar gStiffness_;
+        //- stiffness coefficient for spring/damper ground model, in normal direction
+        scalar kNormal_;
+
+        //- stiffness coefficient for seabed friction model, in tangential direction
+        scalar kTangential_;
 
         //- ground coordinate for ground contact Model.
         scalar groundZ_;
