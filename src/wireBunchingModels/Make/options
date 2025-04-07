@@ -1,20 +1,12 @@
-ifeq (Gcc,$(findstring Gcc,$(WM_COMPILER)))
-    DISABLE_WARNING_FLAGS = \
-        -Wno-old-style-cast -Wno-return-type \
-        -Wno-Wunused-but-set-variable
-else
-    DISABLE_WARNING_FLAGS = -Wno-old-style-cast
-endif
-
 EXE_INC = \
-    $(DISABLE_WARNING_FLAGS) \
+    -Wno-old-style-cast -Wno-return-type \
+    -Wno-Wunused-but-set-variable \
     -I./numerics/BlockEigenSolvers/BlockEigenSolverOF \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
     -I$(FOAM_SRC)/finiteVolume/lnInclude  \
     -I$(FOAM_SRC)/meshTools/lnInclude \
     -I$(FOAM_SRC)/dynamicFvMesh/lnInclude \
-
 
 LIB_LIBS = \
     -lfiniteVolume \

@@ -658,25 +658,27 @@
             // Treat both Newmark and Euler as Euler
             if (morisonForce_)
             {
-                const volVectorField& a = Accl_;
+                // const volVectorField& a = Accl_;
                 const symmTensorField& addedMass = *addedMassPtr;
                 const symmTensorField& drag = *dragPtr;
 
-                forAll(source, cellI)
-                {
-                    const symmTensor& am(addedMass[cellI]);
-                    const symmTensor& dc(drag[cellI]);
+                // The morison force was already added to the source via the "q"
+                // distributed force field above, so don't add it here
+                // forAll(source, cellI)
+                // {
+                //     const symmTensor& am(addedMass[cellI]);
+                //     const symmTensor& dc(drag[cellI]);
 
-                    source[cellI](0,0) +=
-                          (am.xx() + am.xy() + am.xz())*a[cellI].x()
-                        + (dc.xx() + dc.xy() + dc.xz())*U_[cellI].x();
-                    source[cellI](1,0) +=
-                          (am.xy() + am.yy() + am.yz())*a[cellI].y()
-                        + (dc.xy() + dc.yy() + dc.yz())*U_[cellI].y();
-                    source[cellI](2,0) +=
-                          (am.xz() + am.yz() + am.zz())*a[cellI].z()
-                        + (dc.xz() + dc.yz() + dc.zz())*U_[cellI].z();
-                }
+                //     source[cellI](0,0) +=
+                //           (am.xx() + am.xy() + am.xz())*a[cellI].x()
+                //         + (dc.xx() + dc.xy() + dc.xz())*U_[cellI].x();
+                //     source[cellI](1,0) +=
+                //           (am.xy() + am.yy() + am.yz())*a[cellI].y()
+                //         + (dc.xy() + dc.yy() + dc.yz())*U_[cellI].y();
+                //     source[cellI](2,0) +=
+                //           (am.xz() + am.yz() + am.zz())*a[cellI].z()
+                //         + (dc.xz() + dc.yz() + dc.zz())*U_[cellI].z();
+                // }
 
                 forAll(d, cellI)
                 {
