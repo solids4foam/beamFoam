@@ -250,6 +250,14 @@ class coupledTotalLagNewtonRaphsonBeam
         volScalarField proc_;
 
     // Private Member Functions
+        // Added by Seevani Bali
+        /**********/
+
+        //- Update the coefficients associated with the primary
+        //- variables W_ and Theta_ 
+        void updateEqnCoefficients();
+
+        /**********/
 
         //- Apply line contact force
         // void applyLineContact(multibeamFvBlockMatrix& eqn);
@@ -297,7 +305,6 @@ public:
     // Member Functions
 
         // Access
-
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
             virtual volVectorField& solutionW() const
