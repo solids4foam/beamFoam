@@ -39,6 +39,9 @@ Author
 
 SourceFiles
     coupledTotalLagNewtonRaphsonBeam.C
+    coupledTotalLagNewtonRaphsonBeamEvolve.C
+    coupledTotalLagNewtonRaphsonBeamMatrix.C
+    coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -255,7 +258,32 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Update the coefficients associated with the primary
         //- variables W_ and Theta_ 
+        //- Function call implemented in 
+        //- 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
         void updateEqnCoefficients();
+
+        //- Assemble the l,d,u coefficients to solve for
+        //- variables W_ and Theta_ in block coupled manner
+        //- Function call implemented in 'coupledTotalLagNewtonRaphsonBeamMatrix.C'
+        void assembleMatrixCoefficients
+        (
+            Field<scalarSquareMatrix>& d,
+            Field<scalarSquareMatrix>& l,
+            Field<scalarSquareMatrix>& u,
+            Field<scalarRectangularMatrix>& source
+        );
+
+        //- Add the boundary contributions to l,d,u fields
+        //- Member function found in coupledTotalLagNewtonRaphsonBeamMatrix.C
+        //- This function for BC implementation can be found in
+        //- 'coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C'
+        void assembleBoundaryConditions
+        (
+            Field<scalarSquareMatrix>& d,
+            Field<scalarSquareMatrix>& l,
+            Field<scalarSquareMatrix>& u,
+            Field<scalarRectangularMatrix>& source
+        );
 
         /**********/
 
@@ -407,7 +435,8 @@ public:
 
         // Edit
 
-            //- Evolve the solid solver and solve the mathematical model
+            //- Evolve the beam solver and solve the mathematical model
+            // - Function implemented in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
             virtual scalar evolve();
 
             //- Update total fields
