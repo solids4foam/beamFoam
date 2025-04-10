@@ -69,9 +69,9 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
     Field<scalarRectangularMatrix>& source
 )
 {
-    surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+    const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
-    forAll (W_.boundaryField(), patchI)
+    forAll(W_.boundaryField(), patchI)
     {
         const fvPatch& patch = mesh().boundary()[patchI];
         const labelList& fc = patch.faceCells();
@@ -113,7 +113,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         W_.boundaryFieldRef()[patchI]
                     );
                 // Source contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
                     source[fc[faceI]](0,0) -= pW.force()[faceI].x();
                     source[fc[faceI]](1,0) -= pW.force()[faceI].y();
@@ -133,11 +133,11 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     )
                 )
                 {
-                    vectorField followerForce = pW.force();
+                    const vectorField followerForce = pW.force();
 
-                    tensorField ffDiag(-spinTensor(followerForce));
+                    const tensorField ffDiag(-spinTensor(followerForce));
 
-                    forAll (pW, faceI)
+                    forAll(pW, faceI)
                     {
                         d[fc[faceI]](0,3) += ffDiag[faceI].xx();
                         d[fc[faceI]](0,4) += ffDiag[faceI].xy();
@@ -150,7 +150,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         d[fc[faceI]](2,3) += ffDiag[faceI].zx();
                         d[fc[faceI]](2,4) += ffDiag[faceI].zy();
                         d[fc[faceI]](2,5) += ffDiag[faceI].zz();
-
                     }
                 }
             }
@@ -163,20 +162,20 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
             )
             {
                 const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
-                refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
-                (
-                    W_.boundaryFieldRef()[patchI]
-                );
+                    refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
+                    (
+                        W_.boundaryFieldRef()[patchI]
+                    );
 
-                scalarField pDelta
+                const scalarField pDelta
                 (
                     1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                 );
-                vectorField tang
+                const vectorField tang
                 (
                     (
                         Lambdaf_.boundaryField()[patchI]
-                        & dR0Ds_.boundaryField()[patchI]
+                      & dR0Ds_.boundaryField()[patchI]
                     )
                 );
 
@@ -184,10 +183,10 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 (
                     W_.prevIter().boundaryField()[patchI]
                 );
-                vectorField pWCorr(pW.refDisp() - pWPrev);
+                const vectorField pWCorr(pW.refDisp() - pWPrev);
 
-                tensorField pCQWt(pCQW - ((tang*tang) & pCQW));
-                tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
+                const tensorField pCQWt(pCQW - ((tang*tang) & pCQW));
+                const tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
 
                 // Diag contribution
                 forAll (pW, faceI)
@@ -231,15 +230,15 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         )
                     );
-                    tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
                     // Diag contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        tensor CqCt =
+                        const tensor CqCt =
                         (
                             pCQThetat[faceI]
-                            & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
+                          & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
                         );
 
                         d[fc[faceI]](0,3) += CqCt.xx();
@@ -256,17 +255,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
 
                     // Source contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        tensor CqCt = pCQThetat[faceI];
-                        vector thetaContrib =
+                        const tensor CqCt = pCQThetat[faceI];
+                        const vector thetaContrib =
                             (
                                 CqCt
-                            & (
+                              & (
                                     invCM[faceI]
-                                & (
+                                  & (
                                         pTheta.moment()[faceI]
-                                    - pExplicitM[faceI]
+                                      - pExplicitM[faceI]
                                     )
                                 )
                             );
@@ -320,8 +319,8 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 }
 
                 // Add axial component of force
-                vectorField pQa(tang*pW.axialForce());
-                forAll (pQa, faceI)
+                const vectorField pQa(tang*pW.axialForce());
+                forAll(pQa, faceI)
                 {
                     source[fc[faceI]](0,0) -= pQa[faceI].x();
                     source[fc[faceI]](1,0) -= pQa[faceI].y();
@@ -329,8 +328,8 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 }
 
                 // Subtract explicit force contribution
-                vectorField pExplicitQt(((tang*tang) & pExplicitQ));
-                forAll (pExplicitQ, faceI)
+                const vectorField pExplicitQt(((tang*tang) & pExplicitQ));
+                forAll(pExplicitQ, faceI)
                 {
                     source[fc[faceI]](0,0) += pExplicitQt[faceI].x();
                     source[fc[faceI]](1,0) += pExplicitQt[faceI].y();
@@ -361,7 +360,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
 
                 pWCorr = pW - pWPrev;
 
-                scalarField pDelta
+                const scalarField pDelta
                 (
                     1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                 );
@@ -382,17 +381,16 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 }
 
                 // Source contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
-                    vector WContrib =
+                    const vector WContrib =
                     (
                         pCQW[faceI]
-                    & (
+                      & (
                             pWCorr[faceI]
-                        + vector(SMALL, SMALL, SMALL) // Not sure why
+                          + vector(SMALL, SMALL, SMALL) // Not sure why
                         )
-                    )
-                /pDelta[faceI];
+                    )/pDelta[faceI];
 
                     source[fc[faceI]](0,0) -= WContrib.x();
                     source[fc[faceI]](1,0) -= WContrib.y();
@@ -413,15 +411,15 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         );
 
-                    tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
                     // Diag contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        tensor CqCt =
+                        const tensor CqCt =
                         (
                             pCQTheta[faceI]
-                        & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
+                          & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
                         );
 
                         d[fc[faceI]](0,3) += CqCt.xx();
@@ -438,17 +436,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
 
                     // Source contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        tensor CqCt = pCQTheta[faceI];
-                        vector thetaContrib =
+                        const tensor CqCt = pCQTheta[faceI];
+                        const vector thetaContrib =
                             (
                                 CqCt
-                            & (
+                              & (
                                     invCM[faceI]
-                                & (
+                                  & (
                                         pTheta.moment()[faceI]
-                                    - pExplicitM[faceI]
+                                      - pExplicitM[faceI]
                                     )
                                 )
                             );
@@ -486,18 +484,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     // Info << "pThetaCorr = " << pThetaCorr << endl;
 
                     // Source contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        vector thetaContrib =
-                        (
-                            pCQTheta[faceI]
-                        & pThetaCorr[faceI]
-                        )
-                    + (
-                            pCQDTheta[faceI]
-                        & pThetaCorr[faceI]
-                        )
-                    /pDelta[faceI];
+                        const vector thetaContrib =
+                            (
+                                pCQTheta[faceI]
+                              & pThetaCorr[faceI]
+                            )
+                          + (
+                                pCQDTheta[faceI]
+                              & pThetaCorr[faceI]
+                            )/pDelta[faceI];
                         // (pCQTheta[faceI] & pTheta[faceI]);
 
                         source[fc[faceI]](0,0) -= thetaContrib.x();
@@ -506,7 +503,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
 
                     // Diag contribution
-                    forAll (pW, faceI)
+                    forAll(pW, faceI)
                     {
                         d[fc[faceI]](0,0) += -pCQDTheta[faceI].xx()/pDelta[faceI];
                         d[fc[faceI]](0,1) += -pCQDTheta[faceI].xy()/pDelta[faceI];
@@ -524,7 +521,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
             }
 
             // Add explicit force conribution
-            forAll (pExplicitQ, faceI)
+            forAll(pExplicitQ, faceI)
             {
                 source[fc[faceI]](0,0) -= pExplicitQ[faceI].x();
                 source[fc[faceI]](1,0) -= pExplicitQ[faceI].y();
@@ -576,7 +573,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 // }
 
                 // Source contribution
-                vectorField dM((pTheta.moment() - pExplicitM));
+                const vectorField dM((pTheta.moment() - pExplicitM));
                 forAll (pTheta, faceI)
                 {
                     source[fc[faceI]](3,0) -= dM[faceI].x();
@@ -610,12 +607,12 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
 
                 // Info << patchI << ", " << pThetaCorr << endl;
 
-                scalarField pDelta
+                const scalarField pDelta
                 (
                     1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                 );
                 // Diag contribution from laplacian term
-                forAll (pTheta, faceI)
+                forAll(pTheta, faceI)
                 {
                     d[fc[faceI]](3,3) += -pCMTheta[faceI].xx()/pDelta[faceI];
                     d[fc[faceI]](3,4) += -pCMTheta[faceI].xy()/pDelta[faceI];
@@ -631,59 +628,56 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 }
 
                 // Source contribution
-                forAll (pTheta, faceI)
+                forAll(pTheta, faceI)
                 {
                     // Source contribution from laplacian term
                     source[fc[faceI]](3,0) -=
                         (
                             pCMTheta[faceI].xx()*pThetaCorr[faceI].x()
-                        + pCMTheta[faceI].xy()*pThetaCorr[faceI].y()
-                        + pCMTheta[faceI].xz()*pThetaCorr[faceI].z()
-                        )
-                    /pDelta[faceI];
+                          + pCMTheta[faceI].xy()*pThetaCorr[faceI].y()
+                          + pCMTheta[faceI].xz()*pThetaCorr[faceI].z()
+                        )/pDelta[faceI];
 
                     source[fc[faceI]](4,0) -=
                         (
                             pCMTheta[faceI].yx()*pThetaCorr[faceI].x()
-                        + pCMTheta[faceI].yy()*pThetaCorr[faceI].y()
-                        + pCMTheta[faceI].yz()*pThetaCorr[faceI].z()
-                        )
-                    /pDelta[faceI];
+                          + pCMTheta[faceI].yy()*pThetaCorr[faceI].y()
+                          + pCMTheta[faceI].yz()*pThetaCorr[faceI].z()
+                        )/pDelta[faceI];
 
                     source[fc[faceI]](5,0) -=
                         (
                             pCMTheta[faceI].zx()*pThetaCorr[faceI].x()
-                        + pCMTheta[faceI].zy()*pThetaCorr[faceI].y()
-                        + pCMTheta[faceI].zz()*pThetaCorr[faceI].z()
-                        )
-                    /pDelta[faceI];
+                          + pCMTheta[faceI].zy()*pThetaCorr[faceI].y()
+                          + pCMTheta[faceI].zz()*pThetaCorr[faceI].z()
+                        )/pDelta[faceI];
 
                     // Theta part
                     source[fc[faceI]](3,0) -=
                         (
                             pCMTheta2[faceI].xx()*pThetaCorr[faceI].x()
-                        + pCMTheta2[faceI].xy()*pThetaCorr[faceI].y()
-                        + pCMTheta2[faceI].xz()*pThetaCorr[faceI].z()
+                          + pCMTheta2[faceI].xy()*pThetaCorr[faceI].y()
+                          + pCMTheta2[faceI].xz()*pThetaCorr[faceI].z()
                         );
 
                     source[fc[faceI]](4,0) -=
                         (
                             pCMTheta2[faceI].yx()*pThetaCorr[faceI].x()
-                        + pCMTheta2[faceI].yy()*pThetaCorr[faceI].y()
-                        + pCMTheta2[faceI].yz()*pThetaCorr[faceI].z()
+                          + pCMTheta2[faceI].yy()*pThetaCorr[faceI].y()
+                          + pCMTheta2[faceI].yz()*pThetaCorr[faceI].z()
                         );
 
                     source[fc[faceI]](5,0) -=
                         (
                             pCMTheta2[faceI].zx()*pThetaCorr[faceI].x()
-                        + pCMTheta2[faceI].zy()*pThetaCorr[faceI].y()
-                        + pCMTheta2[faceI].zz()*pThetaCorr[faceI].z()
+                          + pCMTheta2[faceI].zy()*pThetaCorr[faceI].y()
+                          + pCMTheta2[faceI].zz()*pThetaCorr[faceI].z()
                         );
                 }
             }
 
             // Explicit moment
-            forAll (pExplicitM, faceI)
+            forAll(pExplicitM, faceI)
             {
                 source[fc[faceI]](3,0) -= pExplicitM[faceI].x();
                 source[fc[faceI]](4,0) -= pExplicitM[faceI].y();
@@ -693,7 +687,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
 
             // dr x Q term
 
-            scalarField pDelta
+            const scalarField pDelta
             (
                 1.0/mesh().deltaCoeffs().boundaryField()[patchI]
             );
@@ -711,24 +705,23 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         W_.boundaryFieldRef()[patchI]
                     );
 
-                tensorField invCQW(inv(pCQW));
+                const tensorField invCQW(inv(pCQW));
                 // vectorField dwds0 = (invCQW & (pW.force() - pExplicitQ));
 
-                vectorField pDRdS = dRdS.boundaryField()[patchI];
+                const vectorField pDRdS = dRdS.boundaryField()[patchI];
 
                 // Source contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
                     // vector curSource = (pCMQW[faceI] & dwds0[faceI]);
 
                     if (true) // This term is zero
                     {
-                        vector curSource =
-                        (
-                            spinTensor(pDRdS[faceI])
-                        & (pW.force()[faceI] - pExplicitQ[faceI])
-                        )
-                    *pDelta[faceI];
+                        const vector curSource =
+                            (
+                                spinTensor(pDRdS[faceI])
+                              & (pW.force()[faceI] - pExplicitQ[faceI])
+                            )*pDelta[faceI];
 
                         source[fc[faceI]](3,0) -= curSource.x();
                         source[fc[faceI]](4,0) -= curSource.y();
@@ -750,81 +743,87 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         );
 
-                    if (false)
-                    {
-                        tensorField A(pCQW);
+                    // if (false)
+                    // {
+                    //     tensorField A(pCQW);
 
-                        tensorField B(pCMTheta);
+                    //     tensorField B(pCMTheta);
 
-                        tensorField C
-                        (
-                            B/pDelta
-                        - spinTensor(pExplicitM)
-                        );
+                    //     tensorField C
+                    //     (
+                    //         B/pDelta
+                    //     - spinTensor(pExplicitM)
+                    //     );
 
-                        tensorField D
-                        (
-                            (inv(A) & spinTensor(pExplicitQ))
-                        - spinTensor(pDRdS)
-                        );
+                    //     tensorField D
+                    //     (
+                    //         (inv(A) & spinTensor(pExplicitQ))
+                    //     - spinTensor(pDRdS)
+                    //     );
 
-                        vectorField src
-                        (
-                            (D & (inv(C) & (pTheta.moment() - pExplicitM)))
-                        - (inv(A) & (pW.force() - pExplicitQ))
-                        );
-                        src = -(spinTensor(pW.force()) & src)*pDelta;
+                    //     vectorField src
+                    //     (
+                    //         (D & (inv(C) & (pTheta.moment() - pExplicitM)))
+                    //     - (inv(A) & (pW.force() - pExplicitQ))
+                    //     );
+                    //     src = -(spinTensor(pW.force()) & src)*pDelta;
 
-                        // src = -(spinTensor(pExplicitQ) & src)*pDelta;
+                    //     // src = -(spinTensor(pExplicitQ) & src)*pDelta;
 
-                        tensorField diag((D & (inv(C) & B))/pDelta);
-                        diag = -(spinTensor(pW.force()) & diag)*pDelta;
-                        // diag = -(spinTensor(pExplicitQ) & diag)*pDelta;
+                    //     tensorField diag((D & (inv(C) & B))/pDelta);
+                    //     diag = -(spinTensor(pW.force()) & diag)*pDelta;
+                    //     // diag = -(spinTensor(pExplicitQ) & diag)*pDelta;
 
-                        // Source contribution
-                        forAll (pTheta, faceI)
-                        {
-                            source[fc[faceI]](3,0) -= src[faceI].x();
-                            source[fc[faceI]](4,0) -= src[faceI].y();
-                            source[fc[faceI]](5,0) -= src[faceI].z();
-                        }
+                    //     // Source contribution
+                    //     forAll (pTheta, faceI)
+                    //     {
+                    //         source[fc[faceI]](3,0) -= src[faceI].x();
+                    //         source[fc[faceI]](4,0) -= src[faceI].y();
+                    //         source[fc[faceI]](5,0) -= src[faceI].z();
+                    //     }
 
-                        // Diag contribution
-                        forAll (diag, faceI)
-                        {
-                            d[fc[faceI]](3,3) += diag[faceI].xx();
-                            d[fc[faceI]](3,4) += diag[faceI].xy();
-                            d[fc[faceI]](3,5) += diag[faceI].xz();
+                    //     // Diag contribution
+                    //     forAll (diag, faceI)
+                    //     {
+                    //         d[fc[faceI]](3,3) += diag[faceI].xx();
+                    //         d[fc[faceI]](3,4) += diag[faceI].xy();
+                    //         d[fc[faceI]](3,5) += diag[faceI].xz();
 
-                            d[fc[faceI]](4,3) += diag[faceI].yx();
-                            d[fc[faceI]](4,4) += diag[faceI].yy();
-                            d[fc[faceI]](4,5) += diag[faceI].yz();
+                    //         d[fc[faceI]](4,3) += diag[faceI].yx();
+                    //         d[fc[faceI]](4,4) += diag[faceI].yy();
+                    //         d[fc[faceI]](4,5) += diag[faceI].yz();
 
-                            d[fc[faceI]](5,3) += diag[faceI].zx();
-                            d[fc[faceI]](5,4) += diag[faceI].zy();
-                            d[fc[faceI]](5,5) += diag[faceI].zz();
-                        }
-                    }
+                    //         d[fc[faceI]](5,3) += diag[faceI].zx();
+                    //         d[fc[faceI]](5,4) += diag[faceI].zy();
+                    //         d[fc[faceI]](5,5) += diag[faceI].zz();
+                    //     }
+                    // }
 
                     if (true)
                     {
-                        scalarField pDelta
+                        const scalarField pDelta
                         (
                             1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                         );
-                        tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                        const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                        vectorField A((invCM & (pTheta.moment() - pExplicitM)));
-                        tensorField B((invCM & (pCMTheta/pDelta)));
+                        const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                        const tensorField B((invCM & (pCMTheta/pDelta)));
 
-                        vectorField src((pCMQTheta & A)
-                            - (pCMQW & ((invCQW & pCQTheta) & A)));
+                        const vectorField src
+                        (
+                            (pCMQTheta & A)
+                          - (pCMQW & ((invCQW & pCQTheta) & A))
+                        );
 
-                        tensorField diag((pCMQTheta & B)
-                            - (pCMQW & ((invCQW & pCQTheta) & B)));
+                        const tensorField diag
+                        (
+                            (pCMQTheta & B)
+                          - (pCMQW & ((invCQW & pCQTheta) & B))
+                        );
 
                         // Diag contribution
-                        forAll (pTheta, faceI)
+                        forAll(pTheta, faceI)
                         {
                             d[fc[faceI]](3,3) += diag[faceI].xx();
                             d[fc[faceI]](3,4) += diag[faceI].xy();
@@ -840,7 +839,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         }
 
                         // Source contribution
-                        forAll (pTheta, faceI)
+                        forAll(pTheta, faceI)
                         {
                             source[fc[faceI]](3,0) -= src[faceI].x();
                             source[fc[faceI]](4,0) -= src[faceI].y();
@@ -857,28 +856,27 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     )
                 )
                 {
-                    scalarField pDelta
+                    const scalarField pDelta
                     (
-                            1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+                        1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                     );
-                    vectorField pDRdS = dRdS.boundaryField()[patchI];
+                    const vectorField pDRdS = dRdS.boundaryField()[patchI];
 
-                    vectorField followerForce = pW.force();
+                    const vectorField followerForce = pW.force();
 
                     //tensorField ffdRcrossQDiag(pW.size(),tensor::zero);
 
-
-                    tensorField ffdRcrossQDiag
+                    const tensorField ffdRcrossQDiag
                     (
-                            -pDelta*
-                            (
-                                spinTensor(pDRdS)
-                                & spinTensor(followerForce)
-                            )
+                        -pDelta
+                        *(
+                            spinTensor(pDRdS)
+                          & spinTensor(followerForce)
+                        )
                     );
 
                     // Diag contribution
-                    forAll (pW, faceI)
+                    forAll(pW, faceI)
                     {
                         d[fc[faceI]](3,3) += ffdRcrossQDiag[faceI].xx();
                         d[fc[faceI]](3,4) += ffdRcrossQDiag[faceI].xy();
@@ -891,7 +889,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         d[fc[faceI]](5,3) += ffdRcrossQDiag[faceI].zx();
                         d[fc[faceI]](5,4) += ffdRcrossQDiag[faceI].zy();
                         d[fc[faceI]](5,5) += ffdRcrossQDiag[faceI].zz();
-
                     }
                 }
                 else if
@@ -902,37 +899,40 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     )
                 )
                 {
-                const fixedValueFvPatchVectorField& pTheta =
-                    refCast<fixedValueFvPatchVectorField>
+                    const fixedValueFvPatchVectorField& pTheta =
+                        refCast<fixedValueFvPatchVectorField>
+                        (
+                            Theta_.boundaryFieldRef()[patchI]
+                        );
+
+                    const vectorField& pThetaPrev
                     (
-                        Theta_.boundaryFieldRef()[patchI]
+                        Theta_.prevIter().boundaryField()[patchI]
+                    );
+                    vectorField& pThetaCorr
+                    (
+                        DTheta_.boundaryFieldRef()[patchI]
+                    );
+                    // pThetaCorrStar = (pTheta - pThetaPrev);
+                    pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
+
+                    const vectorField dwds1
+                    (
+                        -((invCQW & pCQTheta) & pThetaCorr)
                     );
 
-                const vectorField& pThetaPrev
-                (
-                    Theta_.prevIter().boundaryField()[patchI]
-                );
-                vectorField& pThetaCorr
-                (
-                    DTheta_.boundaryFieldRef()[patchI]
-                );
-                // pThetaCorrStar = (pTheta - pThetaPrev);
-                pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
+                    // Source contribution
+                    forAll(pTheta, faceI)
+                    {
+                        const vector curSource =
+                            (pCMQW[faceI] & dwds1[faceI])
+                          + (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
-                vectorField dwds1(-((invCQW & pCQTheta) & pThetaCorr));
-
-                // Source contribution
-                forAll (pTheta, faceI)
-                {
-                    vector curSource =
-                        (pCMQW[faceI] & dwds1[faceI])
-                      + (pCMQTheta[faceI] & pThetaCorr[faceI]);
-
-                    source[fc[faceI]](3,0) -= curSource.x();
-                    source[fc[faceI]](4,0) -= curSource.y();
-                    source[fc[faceI]](5,0) -= curSource.z();
+                        source[fc[faceI]](3,0) -= curSource.x();
+                        source[fc[faceI]](4,0) -= curSource.y();
+                        source[fc[faceI]](5,0) -= curSource.z();
+                    }
                 }
-            }
             }
             else if
             (
@@ -948,38 +948,41 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         W_.boundaryFieldRef()[patchI]
                     );
 
-                scalarField pDelta
+                const scalarField pDelta
                 (
                     1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                 );
-                vectorField tang
+                const vectorField tang
                 (
                     (
                         Lambdaf_.boundaryField()[patchI]
-                        & dR0Ds_.boundaryField()[patchI]
+                      & dR0Ds_.boundaryField()[patchI]
                     )
                 );
 
                 // tensorField pCQWt = pCQW - ((tang*tang) & pCQW);
-                tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
+                const tensorField pCQThetat
+                (
+                    pCQTheta - ((tang*tang) & pCQTheta)
+                );
 
-                tensorField invCQW(inv(pCQW));
+                const tensorField invCQW(inv(pCQW));
 
-                vectorField dwds0
+                const vectorField dwds0
                 (
                     (
                         invCQW
-                     & (
+                      & (
                             pW.axialForce()*tang
-                         - ((tang*tang) & pExplicitQ)
+                          - ((tang*tang) & pExplicitQ)
                         )
                     )
                 );
 
                 // Source contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
-                    vector curSource = (pCMQW[faceI] & dwds0[faceI]);
+                    const vector curSource = (pCMQW[faceI] & dwds0[faceI]);
 
                     source[fc[faceI]](3,0) -= curSource.x();
                     source[fc[faceI]](4,0) -= curSource.y();
@@ -1000,24 +1003,24 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         );
 
-                    scalarField pDelta
+                    const scalarField pDelta
                     (
                         1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                     );
-                    tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    vectorField A((invCM & (pTheta.moment() - pExplicitM)));
-                    tensorField B((invCM & (pCMTheta/pDelta)));
+                    const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                    const tensorField B((invCM & (pCMTheta/pDelta)));
 
-                    vectorField src
+                    const vectorField src
                     (
-                    (pCMQTheta & A)
-                    - (pCMQW & ((invCQW & pCQThetat) & A))
+                        (pCMQTheta & A)
+                      - (pCMQW & ((invCQW & pCQThetat) & A))
                     );
-                    tensorField diag
+                    const tensorField diag
                     (
                         (pCMQTheta & B)
-                    - (pCMQW & ((invCQW & pCQThetat) & B))
+                      - (pCMQW & ((invCQW & pCQThetat) & B))
                     );
 
                     // Diag contribution
@@ -1066,16 +1069,19 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                         DTheta_.boundaryFieldRef()[patchI]
                     );
                     pThetaCorrStar = (pTheta - pThetaPrev);
-                    vectorField pThetaCorr((pLambdaf & pThetaCorrStar));
+                    const vectorField pThetaCorr((pLambdaf & pThetaCorrStar));
 
-                    vectorField dwds1(-((invCQW & pCQThetat) & pThetaCorr));
+                    const vectorField dwds1
+                    (
+                        -((invCQW & pCQThetat) & pThetaCorr)
+                    );
 
                     // Source contribution
                     forAll (pTheta, faceI)
                     {
-                        vector curSource =
+                        const vector curSource =
                             (pCMQW[faceI] & dwds1[faceI])
-                        + (pCMQTheta[faceI] & pThetaCorr[faceI]);
+                          + (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
                         source[fc[faceI]](3,0) -= curSource.x();
                         source[fc[faceI]](4,0) -= curSource.y();
@@ -1106,7 +1112,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 pWCorr = pW - pWPrev;
 
                 // Diag contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
                     d[fc[faceI]](3,0) -= pCMQW[faceI].xx()/pDelta[faceI];
                     d[fc[faceI]](3,1) -= pCMQW[faceI].xy()/pDelta[faceI];
@@ -1122,14 +1128,14 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 }
 
                 // Source contribution
-                forAll (pW, faceI)
+                forAll(pW, faceI)
                 {
-                    vector curSource =
+                    const vector curSource =
                     (
                         pCMQW[faceI]
-                    & (
+                      & (
                             pWCorr[faceI]
-                        + vector(SMALL, SMALL, SMALL)
+                          + vector(SMALL, SMALL, SMALL)
                         )
                     )/pDelta[faceI];
 
@@ -1152,20 +1158,20 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         );
 
-                    scalarField pDelta
+                    const scalarField pDelta
                     (
                         1.0/mesh().deltaCoeffs().boundaryField()[patchI]
                     );
-                    tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    vectorField A((invCM & (pTheta.moment() - pExplicitM)));
-                    tensorField B((invCM & (pCMTheta/pDelta)));
+                    const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                    const tensorField B((invCM & (pCMTheta/pDelta)));
 
-                    vectorField src((pCMQTheta & A));
-                    tensorField diag((pCMQTheta & B));
+                    const vectorField src((pCMQTheta & A));
+                    const tensorField diag((pCMQTheta & B));
 
                     // Diag contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
                         d[fc[faceI]](3,3) += diag[faceI].xx();
                         d[fc[faceI]](3,4) += diag[faceI].xy();
@@ -1181,7 +1187,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
 
                     // Source contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
                         source[fc[faceI]](3,0) -= src[faceI].x();
                         source[fc[faceI]](4,0) -= src[faceI].y();
@@ -1214,9 +1220,9 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     // Info << patchI << ", " << pThetaCorr << endl;
 
                     // Source contribution
-                    forAll (pTheta, faceI)
+                    forAll(pTheta, faceI)
                     {
-                        vector curSource =
+                        const vector curSource =
                             (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
                         source[fc[faceI]](3,0) -= curSource.x();
@@ -1227,11 +1233,11 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
             }
 
             // Add explicit force moment
-            forAll (pExplicitMQ, faceI)
+            forAll(pExplicitMQ, faceI)
             {
                 if (true)
                 {
-                    vector correctedOwnExplicitMQ = pExplicitMQ[faceI];
+                    const vector correctedOwnExplicitMQ = pExplicitMQ[faceI];
 
                     // correctedOwnExplicitMQ =
                     // (

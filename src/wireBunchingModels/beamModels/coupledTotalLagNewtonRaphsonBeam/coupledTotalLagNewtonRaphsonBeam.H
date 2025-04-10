@@ -1,4 +1,4 @@
- /*---------------------------------------------------------------------------* \
+/*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
@@ -201,45 +201,45 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
 
- 	    //- Beam momentum inertial term constant
+        //- Beam momentum inertial term constant
  	    dimensionedScalar ARho_;
 
         //- Beam cross-section constant
  	    dimensionedTensor CIRho_;
 
-        // Fields related to Newmark-beta time integration scheme
+    // Fields related to Newmark-beta time integration scheme
 
- 	      //- Boolean to activate Newmark-beta time-integration scheme
- 	      bool newmark_;
+        //- Boolean to activate Newmark-beta time-integration scheme
+        bool newmark_;
 
- 	      //- Newmark beta coefficient
- 	      scalar betaN_;
+        //- Newmark beta coefficient
+        scalar betaN_;
 
- 	      //- Newmark gamma coefficient
- 	      scalar gammaN_;
-          //- Fields related to drag forces due to Morrison's equation
-          //- Boolean to activate drag forces
-          bool dragActive_;
+        //- Newmark gamma coefficient
+        scalar gammaN_;
+        //- Fields related to drag forces due to Morrison's equation
+        //- Boolean to activate drag forces
+        bool dragActive_;
 
-          //- Normal drag coefficient
-          scalar Cdn_;
+        //- Normal drag coefficient
+        scalar Cdn_;
 
-          //- tangential drag coefficient
-          scalar Cdt_;
+        //- tangential drag coefficient
+        scalar Cdt_;
 
-          // Ground contact related parameters.
+        // Ground contact related parameters.
 
-          //- Boolean to check wether ground contact is active or not
-          bool groundContactActive_;
+        //- Boolean to check wether ground contact is active or not
+        bool groundContactActive_;
 
-          //-  damping coefficient for spring/damper ground model.
-          scalar gDamping_;
+        //-  damping coefficient for spring/damper ground model.
+        scalar gDamping_;
 
-          //- stiffness coefficient for spring/damper ground model.
-          scalar gStiffness_;
+        //- stiffness coefficient for spring/damper ground model.
+        scalar gStiffness_;
 
-          //- ground coordinate for ground contact Model.
-          scalar groundZ_;
+        //- ground coordinate for ground contact Model.
+        scalar groundZ_;
 
     // Parallel performance data
 
@@ -254,7 +254,7 @@ class coupledTotalLagNewtonRaphsonBeam
 
     // Private Member Functions
         // Added by Seevani Bali
-        /**********/
+        /*-----------------------------------------------*/
 
         //- Update the coefficients associated with the primary
         //- variables W_ and Theta_ 
@@ -264,7 +264,7 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Assemble the l,d,u coefficients to solve for
         //- variables W_ and Theta_ in block coupled manner
-        //- Function call implemented in 'coupledTotalLagNewtonRaphsonBeamMatrix.C'
+        //- Function call found in 'coupledTotalLagNewtonRaphsonBeamMatrix.C'
         void assembleMatrixCoefficients
         (
             Field<scalarSquareMatrix>& d,
@@ -285,7 +285,7 @@ class coupledTotalLagNewtonRaphsonBeam
             Field<scalarRectangularMatrix>& source
         );
 
-        /**********/
+        /*-----------------------------------------------*/
 
         //- Apply line contact force
         // void applyLineContact(multibeamFvBlockMatrix& eqn);
@@ -436,7 +436,7 @@ public:
         // Edit
 
             //- Evolve the beam solver and solve the mathematical model
-            // - Function implemented in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
+            // - Function call in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
             virtual scalar evolve();
 
             //- Update total fields

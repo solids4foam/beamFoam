@@ -72,7 +72,7 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
     const vectorField& explicitMQI = explicitMQ_.internalField();
 
 
-    scalarField deltaf = 1.0/mesh().deltaCoeffs().internalField();
+    const scalarField deltaf = 1.0/mesh().deltaCoeffs().internalField();
     const scalarField& wf = mesh().weights().internalField();
     const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
     const labelList& nei = mesh().neighbour();
@@ -181,17 +181,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
 
 
         //- Theta part
-        u[faceI](0,3) += (1-wf[faceI])*CQThetaI[faceI].xx();
-        u[faceI](0,4) += (1-wf[faceI])*CQThetaI[faceI].xy();
-        u[faceI](0,5) += (1-wf[faceI])*CQThetaI[faceI].xz();
+        u[faceI](0,3) += (1 - wf[faceI])*CQThetaI[faceI].xx();
+        u[faceI](0,4) += (1 - wf[faceI])*CQThetaI[faceI].xy();
+        u[faceI](0,5) += (1 - wf[faceI])*CQThetaI[faceI].xz();
 
-        u[faceI](1,3) += (1-wf[faceI])*CQThetaI[faceI].yx();
-        u[faceI](1,4) += (1-wf[faceI])*CQThetaI[faceI].yy();
-        u[faceI](1,5) += (1-wf[faceI])*CQThetaI[faceI].yz();
+        u[faceI](1,3) += (1 - wf[faceI])*CQThetaI[faceI].yx();
+        u[faceI](1,4) += (1 - wf[faceI])*CQThetaI[faceI].yy();
+        u[faceI](1,5) += (1 - wf[faceI])*CQThetaI[faceI].yz();
 
-        u[faceI](2,3) += (1-wf[faceI])*CQThetaI[faceI].zx();
-        u[faceI](2,4) += (1-wf[faceI])*CQThetaI[faceI].zy();
-        u[faceI](2,5) += (1-wf[faceI])*CQThetaI[faceI].zz();
+        u[faceI](2,3) += (1 - wf[faceI])*CQThetaI[faceI].zx();
+        u[faceI](2,4) += (1 - wf[faceI])*CQThetaI[faceI].zy();
+        u[faceI](2,5) += (1 - wf[faceI])*CQThetaI[faceI].zz();
 
         d[own[faceI]](0,3) += wf[faceI]*CQThetaI[faceI].xx();
         d[own[faceI]](0,4) += wf[faceI]*CQThetaI[faceI].xy();
@@ -221,17 +221,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
         l[faceI](2,4) += -wf[faceI]*CQThetaI[faceI].zy();
         l[faceI](2,5) += -wf[faceI]*CQThetaI[faceI].zz();
 
-        d[nei[faceI]](0,3) += -(1-wf[faceI])*CQThetaI[faceI].xx();
-        d[nei[faceI]](0,4) += -(1-wf[faceI])*CQThetaI[faceI].xy();
-        d[nei[faceI]](0,5) += -(1-wf[faceI])*CQThetaI[faceI].xz();
+        d[nei[faceI]](0,3) += -(1 - wf[faceI])*CQThetaI[faceI].xx();
+        d[nei[faceI]](0,4) += -(1 - wf[faceI])*CQThetaI[faceI].xy();
+        d[nei[faceI]](0,5) += -(1 - wf[faceI])*CQThetaI[faceI].xz();
 
-        d[nei[faceI]](1,3) += -(1-wf[faceI])*CQThetaI[faceI].yx();
-        d[nei[faceI]](1,4) += -(1-wf[faceI])*CQThetaI[faceI].yy();
-        d[nei[faceI]](1,5) += -(1-wf[faceI])*CQThetaI[faceI].yz();
+        d[nei[faceI]](1,3) += -(1 - wf[faceI])*CQThetaI[faceI].yx();
+        d[nei[faceI]](1,4) += -(1 - wf[faceI])*CQThetaI[faceI].yy();
+        d[nei[faceI]](1,5) += -(1 - wf[faceI])*CQThetaI[faceI].yz();
 
-        d[nei[faceI]](2,3) += -(1-wf[faceI])*CQThetaI[faceI].zx();
-        d[nei[faceI]](2,4) += -(1-wf[faceI])*CQThetaI[faceI].zy();
-        d[nei[faceI]](2,5) += -(1-wf[faceI])*CQThetaI[faceI].zz();
+        d[nei[faceI]](2,3) += -(1 - wf[faceI])*CQThetaI[faceI].zx();
+        d[nei[faceI]](2,4) += -(1 - wf[faceI])*CQThetaI[faceI].zy();
+        d[nei[faceI]](2,5) += -(1 - wf[faceI])*CQThetaI[faceI].zz();
 
         source[nei[faceI]](0,0) -= -explicitQI[faceI].x();
         source[nei[faceI]](1,0) -= -explicitQI[faceI].y();
@@ -293,17 +293,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
 
         //- Theta part
 
-        u[faceI](3,3) += (1-wf[faceI])*CMTheta2I[faceI].xx();
-        u[faceI](3,4) += (1-wf[faceI])*CMTheta2I[faceI].xy();
-        u[faceI](3,5) += (1-wf[faceI])*CMTheta2I[faceI].xz();
+        u[faceI](3,3) += (1 - wf[faceI])*CMTheta2I[faceI].xx();
+        u[faceI](3,4) += (1 - wf[faceI])*CMTheta2I[faceI].xy();
+        u[faceI](3,5) += (1 - wf[faceI])*CMTheta2I[faceI].xz();
 
-        u[faceI](4,3) += (1-wf[faceI])*CMTheta2I[faceI].yx();
-        u[faceI](4,4) += (1-wf[faceI])*CMTheta2I[faceI].yy();
-        u[faceI](4,5) += (1-wf[faceI])*CMTheta2I[faceI].yz();
+        u[faceI](4,3) += (1 - wf[faceI])*CMTheta2I[faceI].yx();
+        u[faceI](4,4) += (1 - wf[faceI])*CMTheta2I[faceI].yy();
+        u[faceI](4,5) += (1 - wf[faceI])*CMTheta2I[faceI].yz();
 
-        u[faceI](5,3) += (1-wf[faceI])*CMTheta2I[faceI].zx();
-        u[faceI](5,4) += (1-wf[faceI])*CMTheta2I[faceI].zy();
-        u[faceI](5,5) += (1-wf[faceI])*CMTheta2I[faceI].zz();
+        u[faceI](5,3) += (1 - wf[faceI])*CMTheta2I[faceI].zx();
+        u[faceI](5,4) += (1 - wf[faceI])*CMTheta2I[faceI].zy();
+        u[faceI](5,5) += (1 - wf[faceI])*CMTheta2I[faceI].zz();
 
         d[own[faceI]](3,3) += wf[faceI]*CMTheta2I[faceI].xx();
         d[own[faceI]](3,4) += wf[faceI]*CMTheta2I[faceI].xy();
@@ -330,17 +330,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
         l[faceI](5,4) += -wf[faceI]*CMTheta2I[faceI].zy();
         l[faceI](5,5) += -wf[faceI]*CMTheta2I[faceI].zz();
 
-        d[nei[faceI]](3,3) += -(1-wf[faceI])*CMTheta2I[faceI].xx();
-        d[nei[faceI]](3,4) += -(1-wf[faceI])*CMTheta2I[faceI].xy();
-        d[nei[faceI]](3,5) += -(1-wf[faceI])*CMTheta2I[faceI].xz();
+        d[nei[faceI]](3,3) += -(1 - wf[faceI])*CMTheta2I[faceI].xx();
+        d[nei[faceI]](3,4) += -(1 - wf[faceI])*CMTheta2I[faceI].xy();
+        d[nei[faceI]](3,5) += -(1 - wf[faceI])*CMTheta2I[faceI].xz();
 
-        d[nei[faceI]](4,3) += -(1-wf[faceI])*CMTheta2I[faceI].yx();
-        d[nei[faceI]](4,4) += -(1-wf[faceI])*CMTheta2I[faceI].yy();
-        d[nei[faceI]](4,5) += -(1-wf[faceI])*CMTheta2I[faceI].yz();
+        d[nei[faceI]](4,3) += -(1 - wf[faceI])*CMTheta2I[faceI].yx();
+        d[nei[faceI]](4,4) += -(1 - wf[faceI])*CMTheta2I[faceI].yy();
+        d[nei[faceI]](4,5) += -(1 - wf[faceI])*CMTheta2I[faceI].yz();
 
-        d[nei[faceI]](5,3) += -(1-wf[faceI])*CMTheta2I[faceI].zx();
-        d[nei[faceI]](5,4) += -(1-wf[faceI])*CMTheta2I[faceI].zy();
-        d[nei[faceI]](5,5) += -(1-wf[faceI])*CMTheta2I[faceI].zz();
+        d[nei[faceI]](5,3) += -(1 - wf[faceI])*CMTheta2I[faceI].zx();
+        d[nei[faceI]](5,4) += -(1 - wf[faceI])*CMTheta2I[faceI].zy();
+        d[nei[faceI]](5,5) += -(1 - wf[faceI])*CMTheta2I[faceI].zz();
 
         // Explicit part
         source[own[faceI]](3,0) -= explicitMI[faceI].x();
@@ -405,17 +405,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
         d[nei[faceI]](5,2) += CMQWI[faceI].zz()/deltaf[faceI];
 
         // Theta part
-        u[faceI](3,3) += (1-wf[faceI])*CMQThetaI[faceI].xx();
-        u[faceI](3,4) += (1-wf[faceI])*CMQThetaI[faceI].xy();
-        u[faceI](3,5) += (1-wf[faceI])*CMQThetaI[faceI].xz();
+        u[faceI](3,3) += (1 - wf[faceI])*CMQThetaI[faceI].xx();
+        u[faceI](3,4) += (1 - wf[faceI])*CMQThetaI[faceI].xy();
+        u[faceI](3,5) += (1 - wf[faceI])*CMQThetaI[faceI].xz();
 
-        u[faceI](4,3) += (1-wf[faceI])*CMQThetaI[faceI].yx();
-        u[faceI](4,4) += (1-wf[faceI])*CMQThetaI[faceI].yy();
-        u[faceI](4,5) += (1-wf[faceI])*CMQThetaI[faceI].yz();
+        u[faceI](4,3) += (1 - wf[faceI])*CMQThetaI[faceI].yx();
+        u[faceI](4,4) += (1 - wf[faceI])*CMQThetaI[faceI].yy();
+        u[faceI](4,5) += (1 - wf[faceI])*CMQThetaI[faceI].yz();
 
-        u[faceI](5,3) += (1-wf[faceI])*CMQThetaI[faceI].zx();
-        u[faceI](5,4) += (1-wf[faceI])*CMQThetaI[faceI].zy();
-        u[faceI](5,5) += (1-wf[faceI])*CMQThetaI[faceI].zz();
+        u[faceI](5,3) += (1 - wf[faceI])*CMQThetaI[faceI].zx();
+        u[faceI](5,4) += (1 - wf[faceI])*CMQThetaI[faceI].zy();
+        u[faceI](5,5) += (1 - wf[faceI])*CMQThetaI[faceI].zz();
 
         d[own[faceI]](3,3) += wf[faceI]*CMQThetaI[faceI].xx();
         d[own[faceI]](3,4) += wf[faceI]*CMQThetaI[faceI].xy();
@@ -443,17 +443,17 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
         l[faceI](5,4) += wf[faceI]*CMQThetaI[faceI].zy();
         l[faceI](5,5) += wf[faceI]*CMQThetaI[faceI].zz();
 
-        d[nei[faceI]](3,3) += (1-wf[faceI])*CMQThetaI[faceI].xx();
-        d[nei[faceI]](3,4) += (1-wf[faceI])*CMQThetaI[faceI].xy();
-        d[nei[faceI]](3,5) += (1-wf[faceI])*CMQThetaI[faceI].xz();
+        d[nei[faceI]](3,3) += (1 - wf[faceI])*CMQThetaI[faceI].xx();
+        d[nei[faceI]](3,4) += (1 - wf[faceI])*CMQThetaI[faceI].xy();
+        d[nei[faceI]](3,5) += (1 - wf[faceI])*CMQThetaI[faceI].xz();
 
-        d[nei[faceI]](4,3) += (1-wf[faceI])*CMQThetaI[faceI].yx();
-        d[nei[faceI]](4,4) += (1-wf[faceI])*CMQThetaI[faceI].yy();
-        d[nei[faceI]](4,5) += (1-wf[faceI])*CMQThetaI[faceI].yz();
+        d[nei[faceI]](4,3) += (1 - wf[faceI])*CMQThetaI[faceI].yx();
+        d[nei[faceI]](4,4) += (1 - wf[faceI])*CMQThetaI[faceI].yy();
+        d[nei[faceI]](4,5) += (1 - wf[faceI])*CMQThetaI[faceI].yz();
 
-        d[nei[faceI]](5,3) += (1-wf[faceI])*CMQThetaI[faceI].zx();
-        d[nei[faceI]](5,4) += (1-wf[faceI])*CMQThetaI[faceI].zy();
-        d[nei[faceI]](5,5) += (1-wf[faceI])*CMQThetaI[faceI].zz();
+        d[nei[faceI]](5,3) += (1 - wf[faceI])*CMQThetaI[faceI].zx();
+        d[nei[faceI]](5,4) += (1 - wf[faceI])*CMQThetaI[faceI].zy();
+        d[nei[faceI]](5,5) += (1 - wf[faceI])*CMQThetaI[faceI].zz();
 
         // Explicit part
         vector correctedOwnExplicitMQ = explicitMQI[faceI];
