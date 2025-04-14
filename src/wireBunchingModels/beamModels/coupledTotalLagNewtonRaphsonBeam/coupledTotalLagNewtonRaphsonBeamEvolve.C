@@ -134,23 +134,32 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             scalar WResidual = GREAT;
 
             // Initialise the block system
-            Field<scalarSquareMatrix> d(mesh().nCells(), scalarSquareMatrix(6, 0.0));
+            Field<scalarSquareMatrix> d
+            (
+                mesh().nCells(), scalarSquareMatrix(6, 0.0)
+            );
 
             // Grab off-diagonal and set it to zero
-            Field<scalarSquareMatrix> u(mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0));
+            Field<scalarSquareMatrix> u
+            (
+                mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+            );
             // tensor6Field& u = WThetaEqn.upper().asSquare();
             // u = tensor6::zero;
 
             // Grab off-diagonal and set it to zero
-            Field<scalarSquareMatrix> l(mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0));
+            Field<scalarSquareMatrix> l
+            (
+                mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+            );
             // tensor6Field& l = WThetaEqn.lower().asSquare();
             // l = tensor6::zero;
 
-            // Grap source and set it to zero
+            // Grab source and set it to zero
             Field<scalarRectangularMatrix> source
-                (
-                    mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
-                );
+            (
+                mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+            );
             // vector6Field& source = WThetaEqn.source();
             // source = vector6::zero;
 
@@ -163,28 +172,31 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             W_.boundaryFieldRef().updateCoeffs();
             Theta_.boundaryFieldRef().updateCoeffs();
             
-            surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+            const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
             // Update the coefficients of W_ and Theta_ equations
             updateEqnCoefficients();
 
             // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
             // Newmark-beta integration scheme
-            if(!steadyState() && newmark_)
+            if (!steadyState() && newmark_)
             {
-                if(iOuterCorr() == 0)
+                if (iOuterCorr() == 0)
                 {
-                    Accl_ = - (1/(runTime().deltaT()*betaN_))*U_.oldTime()
-                        - (0.5/betaN_ - 1)*Accl_.oldTime();
+                    Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
+                      - (0.5/betaN_ - 1)*Accl_.oldTime();
 
                     U_ = U_.oldTime()
-                        + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
+                      + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
 
-                    dotOmega_ = - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
-                        - (0.5/betaN_ - 1)*dotOmega_.oldTime();
+                    dotOmega_ =
+                      - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
+                      - (0.5/betaN_ - 1)*dotOmega_.oldTime();
 
-                    Omega_ = Omega_.oldTime()
-                        + runTime().deltaT()*((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
+                    Omega_ =
+                        Omega_.oldTime()
+                      + runTime().deltaT()
+                      *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
                 }
             }
 
@@ -210,16 +222,16 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             forAll(pointForces(), pfI)
             {
                 // Get beam relative coordinates
-                label cellI = pointForces()[pfI].first().first();
-                scalar zeta = pointForces()[pfI].first().second();
+                const label cellI = pointForces()[pfI].first().first();
+                const scalar zeta = pointForces()[pfI].first().second();
 
-                vector F0 = pointForces()[pfI].second()(runTime().value());
+                const vector F0 = pointForces()[pfI].second()(runTime().value());
 
                 source[cellI](0,0) -= F0.x();
                 source[cellI](1,0) -= F0.y();
                 source[cellI](2,0) -= F0.z();
 
-                surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+                const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
                 const surfaceScalarField& dc = mesh().deltaCoeffs();
 
@@ -227,13 +239,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 if (zeta > SMALL)
                 {
-                    label faceID = own.find(cellI);
+                    const label faceID = own.find(cellI);
                     if (faceID == -1) // last cell
                     {
                         const labelList& faceCells =
                             mesh().boundary()[endPatchIndex()].faceCells();
 
-                        label bFaceID = faceCells.find(cellI);
+                        const label bFaceID = faceCells.find(cellI);
 
                         DR = zeta*dRdS.boundaryField()[endPatchIndex()][bFaceID]
                             /dc.boundaryField()[endPatchIndex()][bFaceID];
@@ -245,13 +257,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
                 else if (zeta < -SMALL)
                 {
-                    label faceID = nei.find(cellI);
+                    const label faceID = nei.find(cellI);
                     if (faceID == -1) // first cell
                     {
                         const labelList& faceCells =
                             mesh().boundary()[startPatchIndex()].faceCells();
 
-                        label bFaceID = faceCells.find(cellI);
+                        const label bFaceID = faceCells.find(cellI);
 
                         DR = zeta*dRdS.boundaryField()[startPatchIndex()][bFaceID]
                             /dc.boundaryField()[startPatchIndex()][bFaceID];
@@ -262,7 +274,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     }
                 }
 
-                vector M0 = (spinTensor(DR) & F0);
+                const vector M0 = (spinTensor(DR) & F0);
 
                 source[cellI](3,0) -= M0.x();
                 source[cellI](4,0) -= M0.y();
@@ -323,11 +335,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 // Add inertial force
                 {
                     // SB modified - (10/11/2023)
-                    if(newmark_)
+                    if (newmark_)
                     {
-                        volVectorField a = Accl_;
-                        vectorField QRho = ARho_*L()*a;
-
+                        const vectorField QRho = ARho_*L()*Accl_;
 
                         forAll(source, cellI)
                         {
@@ -337,7 +347,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         }
 
                         // Add diagonal contribution (N-R method)
-                        scalarField QRhoCoeff =
+                        const scalarField QRhoCoeff =
                             -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
 
                         forAll(d, cellI)
@@ -350,8 +360,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     }
                     else
                     {
-                        volVectorField a(fvc::ddt(U_));
-                        vectorField QRho = rho().value()*A().value()*L()*a;
+                        const volVectorField a(fvc::ddt(U_));
+                        const vectorField QRho = rho().value()*A().value()*L()*a;
 
                         forAll(source, cellI)
                         {
@@ -361,8 +371,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         }
 
                         // Add diagonal contribution (N-R method)
-                        scalarField QRhoCoeff =
-                            -L()*rho().value()*A().value()/sqr(runTime().deltaT().value());
+                        const scalarField QRhoCoeff =
+                            -L()*rho().value()*A().value()
+                            /sqr(runTime().deltaT().value());
 
                         forAll(d, cellI)
                         {
@@ -376,7 +387,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 // Add inertial torque
                 {
-                    if(newmark_)
+                    if (newmark_)
                     {
                         // Angular acceleration
                         volVectorField dotOmega = dotOmega_;
@@ -385,9 +396,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                             (
 
                                 L()
-                                *(
+                               *(
                                     (Lambda_ & (CIRho_ & dotOmega))
-                                    + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                                  + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
                                 )
                             );
                         forAll(source, cellI)
@@ -402,19 +413,25 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         volTensorField MRhoCoeff
                             (
                                 L()
-                                *(
-                                    spinTensor((Lambda_ & (Omega_ ^ (CIRho_ & Omega_))) + (Lambda_ & (CIRho_ & dotOmega)))
-
-                                    + (gammaN_/(betaN_*runTime().deltaT()))
-                                    *(
+                               *(
+                                    spinTensor
+                                    (
+                                        (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                                      + (Lambda_ & (CIRho_ & dotOmega))
+                                    )
+                                  + (
                                         (spinTensor(Lambda_ & (CIRho_ & Omega_)))
-                                        - (Lambda_ & (spinTensor(Omega_) & (CIRho_ &  Lambda_.T())))
-                                    )
-
-                                    - (1/(betaN_*sqr(runTime().deltaT())))
-                                    *(
+                                      - (
+                                            Lambda_ 
+                                          & (
+                                                spinTensor(Omega_)
+                                              & (CIRho_ &  Lambda_.T())
+                                            )
+                                        )
+                                    )*(gammaN_/(betaN_*runTime().deltaT()))
+                                  - (
                                         Lambda_ & (CIRho_ & Lambda_.T())
-                                    )
+                                    )*(1/(betaN_*sqr(runTime().deltaT())))
                                 )
                             );
                         forAll(d, cellI)
@@ -565,12 +582,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     << eqResidual << endl;
             }
 
-
             // Block coupled solver call
 
             // Create Eigen linear solver
             BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
-
 
             // Create solution vector
             Field<scalarRectangularMatrix> solVec
@@ -586,7 +601,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //vector6 eqnRes = WThetaEqn.solve().initialResidual();
             // vector eqnRes = vector::zero;
             // currentResidual = mag(eqnRes);
-
 
             if (iOuterCorr() == 0)
             {
@@ -678,38 +692,42 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             else
             {
                 //Info<< "Rotations are not interpolated objectively \n" << endl;
-                surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
+                const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
-                surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-                surfaceTensorField DThetaHat(spinTensor(DThetaf));
+                const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
+                const surfaceTensorField DThetaHat(spinTensor(DThetaf));
 
-                dimensionedTensor I("I", dimless, tensor::I);
+                const dimensionedTensor I("I", dimless, tensor::I);
 
                 // Tangent operator
-                surfaceTensorField DT
+                const surfaceTensorField DT
                 (
                     (Foam::sin(magDThetaf)/magDThetaf)*I
-                    + ((1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf))
-                    *(DThetaf*DThetaf)
-                    + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
+                  + (
+                        (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
+                    )
+                   *(DThetaf*DThetaf)
+                  + (
+                        (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
+                    )*DThetaHat
                 );
 
                 // Update bending strain vector
                 K_ +=
                 (
                     (refLambdaf_.T() & Lambdaf_.T())
-                    // & fvc::snGrad(DTheta_)
-                    & (DT.T() & fvc::snGrad(DTheta_))
+                  // & fvc::snGrad(DTheta_)
+                  & (DT.T() & fvc::snGrad(DTheta_))
                 );
 
                 // Rodrigues formula
-                surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
+                const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
 
                 // Update rotation matrix
                 Lambdaf_ = (DLambdaf & Lambdaf_);
 
                 // Update cell-centre rotation matrix
-                volTensorField DLambda(rotationMatrix(DTheta_));
+                const volTensorField DLambda(rotationMatrix(DTheta_));
 
                 Lambda_ = (DLambda & Lambda_);
                 // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
@@ -718,15 +736,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 {
                     // Update angular velocity
                     // without tangent space
-                    Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(Lambda_.T() &  DTheta_);
+                    Omega_ +=
+                        (
+                            gammaN_/(betaN_*runTime().deltaT())
+                        )*(Lambda_.T() & DTheta_);
 
                     // Update angular acceleration
-                    dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(Lambda_.T() &  DTheta_);
+                    dotOmega_ +=
+                        (
+                            1/(betaN_*sqr(runTime().deltaT()))
+                        )*(Lambda_.T() & DTheta_);
                 }
                 else // First order Euler scheme
                 {
                     Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
-
                 }
             }
 
@@ -768,7 +791,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Calculate axial force
             {
                 // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
-
                 // dRdS /= mag(dRdS);
                 // Qa_ = (dRdS & Q_);
 
@@ -798,7 +820,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     // gMax(mag(DTheta_.internalField())());
                     max(mag(DTheta_.primitiveFieldRef())());
                 // ThetaResidual =
-                //     gMax(mag(DTheta_.internalField()))/denom;
+                    // gMax(mag(DTheta_.internalField()))/denom;
             }
 
             // Calculate DW residual
@@ -875,73 +897,74 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 //- Update the coefficients of the governing equations
 void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
 {
-    surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+    const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
     // Info << "Updating coefficients" << endl;
 
     // Total rotation matrix
-    surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
+    const surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
 
     CQW_ = (Lambdaf & (CQ_ & Lambdaf.T()));
 
-    explicitQ_ =  (Lambdaf & (CQ_ & (Gamma_)));
+    explicitQ_ = (Lambdaf & (CQ_ & (Gamma_)));
 
-    explicitM_ =  (Lambdaf & (CM_ & (K_)));
+    explicitM_ = (Lambdaf & (CM_ & (K_)));
 
     CQTheta_ =
     (
         (
-            Lambdaf & (CQ_ & Lambdaf.T() )
+            Lambdaf & (CQ_ & Lambdaf.T())
         )
-        & spinTensor(dRdS)
+      & spinTensor(dRdS)
     )
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
     CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
-    CMTheta_ = ( Lambdaf & (CM_ & Lambdaf.T()) );
+    CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
 
     // CMTheta2_ = -spinTensor(Lambdaf & (CM_ & (K_ - KP_)))
 
     CMTheta2_ = -spinTensor(M_);
-    //CMTheta2_ = -spinTensor(explicitM_);
+    // CMTheta2_ = -spinTensor(explicitM_);
 
     CMQW_ =
         0.5
-        *(
+       *(
             (
                 spinTensor(dRdS)
-                & ( Lambdaf & (CQ_ & Lambdaf.T()) )
+              & (Lambdaf & (CQ_ & Lambdaf.T()) )
             )
-            - spinTensor(Q_)
-            // - spinTensor(explicitQ_)
+          - spinTensor(Q_)
+        //   - spinTensor(explicitQ_)
         )/mesh().deltaCoeffs();
         // + (Lambdaf & (CDMDGamma_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMQTheta_ =
         0.5
-        *(
+       *(
             (
                 (
                     spinTensor(dRdS)
-                    & ( Lambdaf & (CQ_ & Lambdaf.T()) )
+                  & (Lambdaf & (CQ_ & Lambdaf.T()))
                 )
-                & spinTensor(dRdS)
+              & spinTensor(dRdS)
             )
             - (
                 spinTensor(dRdS)
-                & (
+              & (
                     spinTensor(Q_)
-                    //  spinTensor(explicitQ_)
+                    // spinTensor(explicitQ_)
                 )
             )
-        )
-        /mesh().deltaCoeffs();
+        )/mesh().deltaCoeffs();
 
     explicitMQ_ =
-        0.5*(spinTensor(dRdS) & explicitQ_)
-        /mesh().deltaCoeffs();
+        0.5
+       *(
+            spinTensor(dRdS) & explicitQ_
+        )/mesh().deltaCoeffs();
 
     // Correct at boundary
     forAll(CMQW_.boundaryFieldRef(), patchI)

@@ -679,7 +679,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     if (nBeams > 1)
     {
         // First beam is already initialized
-        for (label i=1; i<nBeams; i++)
+        for (label i = 1; i < nBeams; i++)
         {
             CQ_ +=
                 indicator(i)
@@ -794,7 +794,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
         else
         {
-            for (label bI=0; bI<nBeams; bI++)
+            for (label bI = 0; bI < nBeams; bI++)
             {
                 const cellZone& cz = mesh().cellZones()[bI];
                 label firstCell = min(cz);
@@ -841,14 +841,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 }
             }
         }
-
     }
     // Here, the values of tangent fields set by the user for an initially curved
     // or translated (and rotated) beam are assigned to dR0Ds_
     else
     {
         dR0Ds_ = refTangent_;
-        for (label pI=0; pI<nBeams; pI++)
+        for (label pI = 0; pI < nBeams; pI++)
         {
             dR0Ds_.boundaryFieldRef()[startPatchIndex(pI)] *= -1;
         }
@@ -938,14 +937,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         else
         {
             surfaceVectorField curCf(mesh().Cf() + refWf_);
-            for (label i=0; i<nBeams; i++)
+            for (label i = 0; i < nBeams; i++)
             {
                 vectorField beamPoints(this->beamPointData(curCf, i));
                 vectorField beamTangents(this->beamPointData(refTangent_, i));
 
                 if (beamPoints.size())
                 {
-
                     HermiteSpline spline
                     (
                         beamPoints,
@@ -1018,7 +1016,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     {
         const face& curFace = faces[faceI];
 
-        vector C0 = curFace.centre(points);
+        const vector C0 = curFace.centre(points);
 
         forAll(curFace, pointI)
         {
@@ -1073,7 +1071,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 void coupledTotalLagNewtonRaphsonBeam::writeFields()
 {
     beamModel::writeFields();
-
 }
 
 
