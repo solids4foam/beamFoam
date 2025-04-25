@@ -33,11 +33,11 @@ Description
     - Beam mesh when created always lies such that the length direction of beam is aligned to x-axis.
     - The tangents at the face centres of the beam cells are set to (1 0 0) direction.
 
-    2. Initial Configuration of beam: 
+    2. Initial Configuration of beam:
     - To start with any other orientation of the beam, one needs to set the position vector of the beam curve.
     - The tangents at the face centres of the beam need to be set from (1 0 0) to the cross-section orientation
         of the beam spatial curve.
-    
+
     * valid arguments are:
     * -cellZone : this command grabs the specififed subset of mesh cells
     * -translate vector
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     argList::validOptions.insert("cellZone", "name");
     argList::validOptions.insert("translate", "vector");
     argList::validOptions.insert("rotateAngle", "(vector angleInDegree)");
-    argList::validOptions.insert("rotate", "(vector vector)"); 
+    argList::validOptions.insert("rotate", "(vector vector)");
 
     #include "setRootCase.H"
     #include "createTime.H"
@@ -84,8 +84,8 @@ int main(int argc, char *argv[])
         FatalErrorIn(args.executable())
             << "No options supplied, please use "
             << "-cellZone and -translate options "
-			<< "to set the initial position of the beam\n"
-			<< "-rotateAngle and rotate option is optional to use"
+                        << "to set the initial position of the beam\n"
+                        << "-rotateAngle and rotate option is optional to use"
             << exit(FatalError);
     }
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     {
         cellZoneName = args.get<word>("cellZone");
 
-        Info << "Beam cell zone: " << cellZoneName << endl;
+        Info<< "Beam cell zone: " << cellZoneName << endl;
     }
     else
     {
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
     {
         vector transVector(args.lookup("translate")());
 
-	    tensor T = tensor::I;
+            tensor T = tensor::I;
 
         if (args.found("rotate"))
         {
@@ -210,24 +210,23 @@ int main(int argc, char *argv[])
                 << "    angle " << angle << nl;
 
             T = Foam::coordinateRotations::axisAngle::rotation(axis, angle, true);
-            Info << "T=" << T << endl;
+            Info<< "T=" << T << endl;
         }
 
         const label zoneID = mesh.cellZones().findZoneID(cellZoneName);
 
-	    Info << "zoneID" << zoneID << endl;
+        Info<< "zoneID" << zoneID << endl;
 
-	    if (zoneID == -1)
+        if (zoneID == -1)
         {
-            FatalErrorIn
-            (
-                "setInitialPositionBeam application utility"
-            )
-            << "Problem in beam cellZone"
-            << "\nzoneID of beam: " << cellZoneName << " is " << zoneID
-            << "\nProvide the beam name without the hyphen in front "
-            << "e.g. beam_0"
-            << abort(FatalError);
+            FatalError
+                << "Problem in beam cellZone"
+                << "\nzoneID of beam: " << cellZoneName << " is " << zoneID
+                << "\nCannot find cellZone called " << cellZoneName
+                << "\nPlease check the cellZones in the mesh, "
+                << "e.g. constant/polyMesh/cellZones. For example, it could be "
+                << "called beam_0"
+                << abort(FatalError);
         }
 
         vectorField& refWfI = refWf.primitiveFieldRef();
