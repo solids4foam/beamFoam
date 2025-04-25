@@ -4,7 +4,8 @@
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Create beam mesh
-runApplication createCircularBeamMesh
+#runApplication createCircularBeamMesh
+runApplication createMultipleBeamMesh
 
 # Rotate beam to the x direction
 runApplication transformPoints -rotate-angle  '((0 1 0) 90)'

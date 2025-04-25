@@ -18,22 +18,42 @@ FoamFile
 // Number of beams
 nBeams 1;
 
+// Note: some beam geometry/mesh settings are only used by
+// createCircularBeamMesh and some are only used by
+// createMultipleBeamMesh. And some are used by the solver
+// To avoid issues, you may like to comment out anything that should not be used
+
 // Definition of the radius used by createCircularBeamMesh
-// Ideally, we should use createMultipleCircularBeamMesh but this hack is fine
+// Ideally, we should use createMultipleBeamMesh but this hack is fine
 // for one beam
 R    R [0 1 0 0 0 0 0] 0.0030;
 
-// Definition of beam cross-sections used by the solver
+// Definition of beam cross-sections used by the solver and createMultipleBeamMesh
 beams
 (
     beamOne
     {
-        crossSectionModel circle;
+        // crossSectionModel circle;
         circleCrossSectionModelDict
         {
             // Beam radius
             radius 0.0030;
         }
+
+        crossSectionModel rectangle;
+        rectangleCrossSectionModelDict
+        {
+            b     0.0030;
+            h     0.0015;
+            nx    10;
+            ny    10;
+        }
+
+        // Length
+        length 0.15;
+
+        // Number of segments
+        nSegments 100;
     }
 );
 
