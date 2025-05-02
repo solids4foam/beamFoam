@@ -30,6 +30,7 @@ License
 #include "cylinderCellMarker.H"
 #include "surfaceFields.H"
 #include "Pstream.H"
+#include "FieldSumOp.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -43,7 +44,7 @@ namespace Foam
         const meshSearch& searchEngine // flag for using octree or not
         )
     {
-        tmp<volVectorField> tresult
+    tmp<volVectorField> tresult
     (
         new volVectorField
         (
@@ -78,109 +79,114 @@ namespace Foam
             dimensionedScalar(dimless, 0)
         )
     );
-        volVectorField& result = tresult.ref();
-        volScalarField& markerResults = tmarkerResults.ref();
+    volVectorField& result = tresult.ref();
+    volScalarField& markerResults = tmarkerResults.ref();
+    vectorField beamCoords = beamCellCenterCoord;
+    const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
-        const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
-        // Pstream::scatter(beamCellCenterCoord);
+    // commenting only for serial check
+    Pstream::broadcast(beamCoords);
 
-        // search for this walk and tree :
-        // List<label> foundCellIDs(beamCoords.size(), -1);
 
-        // below needs to be done on proc0 only (replace the search part)
-        forAll(mesh.C(),beamCellI)
+    seedCellIDs.setSize(beamCoords.size(), -1);
+    vectorField resultVect(beamCoords.size(), vector::zero);
+
+    forAll(beamCoords,beamCellI)
+    {
+        if (!fluidMesh.bounds().contains(beamCoords[beamCellI]))
         {
-            // if (!fluidMesh.bounds().contains(mesh.C()[beamCellI]))
-            // {
-            //     result[beamCellI] = vector::zero;
-            //     seedCellIDs[beamCellI] = -1;
-            //     continue;
-            // }
-
-            if (beamCellCenterCoord[beamCellI].z() <= groundZ)
+            resultVect[beamCellI] = vector::zero;
+            seedCellIDs[beamCellI] = -1;
+            continue;
+        }
+        if (beamCoords[beamCellI].z() <= groundZ)
+        {
+            seedCellIDs[beamCellI] = -1;
+            resultVect[beamCellI] = vector::zero;
+            continue;
+        }
+        if (seedCellIDs[beamCellI] == -1)
+        {
+            if (beamCellI == 0)
             {
-                seedCellIDs[beamCellI] = -1;
-                result[beamCellI] = vector::zero;
-                continue;
-            }
-            if (seedCellIDs[beamCellI] == -1)
-            {
-                if (beamCellI == 0)
-                {
-                    seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for seed in the next cells
-                }
-                else
-                {
-                    seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ;
-                }
-            }
-            label fluidCellID = -1;
-            if (seedCellIDs[beamCellI] != -1) // && procID[beamCellI] == Pstream::myProcID())
-            {
-                // Info << "using walk " << endl;
-                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],seedCellIDs[beamCellI]);
-            }
-
-            if (fluidCellID == -1) // We should perform global search if no other procs found it.
-            {
-                // Info << "global " << endl;
-                // perform a tree search
-                fluidCellID = searchEngine.findCell(beamCellCenterCoord[beamCellI],-1,true);
-            }
-            if (fluidCellID == -1)
-            {
-                result[beamCellI] = vector::zero;
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for seed in the next cells
             }
             else
             {
-                result[beamCellI] = fluidVelocity[fluidCellID];
-                markerResults[fluidCellID] = 1.0;
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ;
             }
-            seedCellIDs[beamCellI] = fluidCellID;
         }
-        //- creating a link to beamProperties dictionary
-        const dictionary& linkToBeamProperties = mesh.time().db().parent().lookupObject<dictionary>("beamProperties");
+        label fluidCellID = -1;
+        if (seedCellIDs[beamCellI] != -1)
+        {
+            fluidCellID = searchEngine.findCell(beamCoords[beamCellI],seedCellIDs[beamCellI]);
+        }
 
-        List<point> points(mesh.nCells() + 1);
-        label startPatchID = mesh.boundaryMesh().findPatchID
+        if (fluidCellID == -1)
+        {
+            fluidCellID = searchEngine.findCell(beamCoords[beamCellI],-1,true);
+        }
+        if (fluidCellID == -1)
+        {
+            resultVect[beamCellI] = vector::zero;
+        }
+        else
+        {
+            resultVect[beamCellI] = fluidVelocity[fluidCellID];
+            markerResults[fluidCellID] = 1.0;
+        }
+        seedCellIDs[beamCellI] = fluidCellID;
+    }
+        reduce(resultVect, FieldSumOp<vector>());
+        result.primitiveFieldRef() = resultVect;
+        //- creating a link to beamProperties dictionary
+            const dictionary& linkToBeamProperties =
+                mesh.time().db().parent().lookupObject<dictionary>
+                (
+                    "beamProperties"
+                );
+            pointField points(beamCoords.size() + 1, vector::zero);
+
+            label startPatchID = mesh.boundaryMesh().findPatchID
             (
                 "left"
             );
-        label endPatchID = mesh.boundaryMesh().findPatchID
+            label endPatchID = mesh.boundaryMesh().findPatchID
             (
                 "right"
             );
 
-        forAll(points, i)
-        {
-            if (i == 0)
+            forAll(points, i)
             {
-                points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0]
-                  + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[startPatchID][0]
-                  + mesh.lookupObject<volVectorField>("W").boundaryField()[startPatchID][0];
+                if (i == 0 && mesh.nCells() != 0)
+                {
+                    points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0]
+                        + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[startPatchID][0]
+                        + mesh.lookupObject<volVectorField>("W").boundaryField()[startPatchID][0];
+                }
+                else if (i == beamCoords.size() && mesh.nCells() != 0)
+                {
+                    points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0]
+                        + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[endPatchID][0]
+                        + mesh.lookupObject<volVectorField>("W").boundaryField()[endPatchID][0];
+                }
+                else if (mesh.nCells() != 0)
+                {
+                    points[i] = mesh.Cf()[i-1]
+                        + mesh.lookupObject<surfaceVectorField>("refWf")[i-1]
+                        + mesh.lookupObject<volVectorField>("W")[i-1];
+                }
             }
-            else if (i == mesh.nCells())
-            {
-                points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0]
-                  + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[endPatchID][0]
-                  + mesh.lookupObject<volVectorField>("W").boundaryField()[endPatchID][0];
-            }
-            else
-            {
-                points[i] = mesh.Cf()[i-1]
-                  + mesh.lookupObject<surfaceVectorField>("refWf")[i-1]
-                  + mesh.lookupObject<volVectorField>("W")[i-1];
-            }
-        }
-        //- access to beam radius
-        dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
+            Pstream::broadcast(points);
+            //- access to beam radius
+            dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
 
         //- Calling the function to mark the cells in fluidMesh, based on the marking method
         const bool fractionalMarking =
             linkToBeamProperties
                 .subDict("coupledTotalLagNewtonRaphsonBeamCoeffs")
-                .lookupOrDefault<bool>("fractionalMarking", true);
+                .lookupOrDefault<bool>("fractionalMarking", false);
         if (fractionalMarking)
         {
             markCellsByPointFractionInCylinders(fluidMesh, points, radius.value(), markerResults);
@@ -191,9 +197,7 @@ namespace Foam
         }
 
         return std::make_pair(tresult, tmarkerResults);
-
     }
-
 } // End namespace Foam
 
 

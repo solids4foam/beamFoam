@@ -17,9 +17,9 @@
 
     // Grap source and set it to zero
     Field<scalarRectangularMatrix> source
-        (
-            mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
-        );
+    (
+        mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+    );
     // vector6Field& source = WThetaEqn.source();
     // source = vector6::zero;
 
@@ -618,13 +618,13 @@
                 vector f_gc_t (vector::zero);
                 if (seadbedFrictionActive_)
                 {
-                    if (kTangential_ * mag(ut[cellI]) >= muFriction_*mag(f_gc_n))
+                    if (kTangential_ *2.0*R()*mag(ut[cellI]) >= muFriction_*mag(f_gc_n))
                     {
                         f_gc_t = -muFriction_*mag(f_gc_n)*(ut[cellI]/(mag(ut[cellI]) + SMALL));
                     }
                     else
                     {
-                        f_gc_t = -kTangential_*ut[cellI];
+                        f_gc_t = -2.0*R()*kTangential_*ut[cellI];
                     }
                 }
                 source[cellI](0,0) += f_gc_t.x();
@@ -774,7 +774,7 @@
                     source[cellI](4,0) += MRho[cellI].y();
                     source[cellI](5,0) += MRho[cellI].z();
                 }
-		        //- An acess to fluid Mesh through the parent time
+		        //- An acess to fluid Mesh through the parent time()
                 const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
                 //- Coordinate for each beam's cell
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_ ;
@@ -802,7 +802,16 @@
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
 
-                        std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo = getFluidVelocity(fluidMesh,mesh(),beamCellCenterCoord,seedCellIDs,groundZ_,searchEngine_);
+                        std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo =
+                            getFluidVelocity
+                            (
+                                fluidMesh,
+                                mesh(),
+                                beamCellCenterCoord,
+                                seedCellIDs,
+                                groundZ_,
+                                searchEngine_
+                            );
 
                         fluidU_ = fluidInfo.first.ref();
 
@@ -835,7 +844,7 @@
                                 (
                                     ((Ur) & dRdScellHat)
                                     *dRdScellHat
-                                ) 
+                                )
                             )
                         );
                         // Tangent component of relative acceleration
@@ -855,7 +864,7 @@
                                 (
                                     ((acclb - acclf) & dRdScellHat)
                                     *dRdScellHat
-                                ) 
+                                )
                             )
                         );
 
@@ -1011,14 +1020,10 @@
     // Calculate equilibrium equations residual
     if (debug)
     {
-        // Note: we do not user a gSum here as the beam is assumed to be on one
-        // core
         const scalar eqResidual = sqrt(sum(magSqr(source)));
         Info<< "L2 norm of the equlibrium equations residual: "
             << eqResidual << endl;
     }
-
-
     // Block coupled solver call
 
     // Create Eigen linear solver
@@ -1034,6 +1039,7 @@
     // Solve the linear system
     // Currently this residual is not used, Check with Seevani.
     currentResidual = eigenSolver.solve(solVec, source); // peak RAM
+    reduce(currentResidual, sumOp<scalar>());
     Info<< "Equation Residual: " << currentResidual << endl;
 
     //vector6 eqnRes = WThetaEqn.solve().initialResidual();
@@ -1249,7 +1255,8 @@
 
         ThetaResidual =
             // gMax(mag(DTheta_.internalField())());
-            max(mag(DTheta_.primitiveFieldRef())());
+            gMax(mag(DTheta_.primitiveFieldRef())());
+            // max(mag(DTheta_.primitiveFieldRef())());
         // ThetaResidual =
         //     gMax(mag(DTheta_.internalField()))/denom;
     }
@@ -1274,7 +1281,8 @@
 
         WResidual =
             // gMax(mag(DW_.internalField())());
-            max(mag(DW_.primitiveFieldRef())());
+            gMax(mag(DW_.primitiveFieldRef())());
+            // max(mag(DW_.primitiveFieldRef())());
         // WResidual =
         //     gMax(mag(DW_.internalField()))/denom;
     }

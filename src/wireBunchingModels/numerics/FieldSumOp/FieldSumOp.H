@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*\
+/*---------------------------------------------------------------------------* \
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
@@ -23,33 +23,42 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Description
-    Helper function for two way coupled morrison equation
+    Class to perform operations on a list.
+
 Author
-    Amirhossein Taran, UCD
-    Philip Cardiff, UCD
+    Amirhossein Taran, UCD.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef samplingFluid_H
-#define samplingFluid_H
+#ifndef FieldSumOp_H
+#define FieldSumOp_H
 
-#include "fvMesh.H"
-#include "volFields.H"
-#include "meshSearch.H"
+#include "Field.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-    std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
-        const fvMesh& fluidMesh,
-        const fvMesh& mesh,
-        const vectorField& beamCellCenterCoord,
-        labelList& seedCellIDs,
-        const scalar groundZ,
-        const meshSearch& searchEngine
-        );
+
+    template<class Type>
+    struct FieldSumOp
+    {
+        public:
+
+        // Op function
+        Field<Type> operator()
+        (
+            const Field<Type>& x, const Field<Type>& y
+        ) const
+        {
+            return Field<Type>(x + y);
+        }
+    };
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
 } // End namespace Foam
+
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

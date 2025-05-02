@@ -62,8 +62,8 @@ namespace Foam
     }
 
     // Calculate the perpendicular distance from the point to the cylinder axis
-    // vector closestPoint = p1 + proj * dUnit;
-    vector closestPoint = p1 + (proj / dDotd) * d;
+    vector closestPoint = p1 + proj * dUnit;
+    // vector closestPoint = p1 + (proj / dDotd) * d;
     double distToAxis = mag(p - closestPoint);
 
     return (distToAxis <= radius + SMALL);
