@@ -590,7 +590,6 @@
             currentBeamPoints(),
             currentBeamTangents()
         );
-
         //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
         const vectorField& dRdScell = spline.midPointDerivatives();
         vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
@@ -787,7 +786,7 @@
                     (
                         currentBeamPoints(),
                         currentBeamTangents()
-                    );
+                    );           
 
                     //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                     const vectorField& dRdScell = spline.midPointDerivatives();

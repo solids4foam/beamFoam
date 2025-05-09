@@ -1494,6 +1494,16 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
     {
         label nPoints = mesh.nCells() + 1;
 
+        // Check if this processor has no cells
+        // If so, return an empty list
+        if (nPoints == 1)
+        {
+            return tmp<vectorField>
+            (
+                new vectorField(0)
+            );
+        }
+
         tmp<vectorField> tCurrentTangents
         (
             new vectorField(nPoints, vector::zero)
