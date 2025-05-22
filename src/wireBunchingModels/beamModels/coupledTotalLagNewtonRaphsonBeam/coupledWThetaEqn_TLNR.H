@@ -786,7 +786,7 @@
                     (
                         currentBeamPoints(),
                         currentBeamTangents()
-                    );           
+                    );
 
                     //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                     const vectorField& dRdScell = spline.midPointDerivatives();
@@ -877,16 +877,24 @@
 
 
                          // Explicit drag forces included in the source vector
-                        forAll(source, cellI)
+                        forAll(d, cellI)
                         {
+                            // --- implicit drag ---
+                            d[cellI](0,0) -= (Fdn[cellI] + Fdt[cellI])/runTime().deltaT().value();
+                            d[cellI](1,1) -= (Fdn[cellI] + Fdt[cellI])/runTime().deltaT().value();
+                            d[cellI](2,2) -= (Fdn[cellI] + Fdt[cellI])/runTime().deltaT().value();
                             // Normal drag contribution
                             source[cellI](0,0) += Fdn[cellI]*Urn[cellI].component(0);
                             source[cellI](1,0) += Fdn[cellI]*Urn[cellI].component(1);
                             source[cellI](2,0) += Fdn[cellI]*Urn[cellI].component(2);
-                            // Tangent drag contribution
+                            // // // Tangent drag contribution
                             source[cellI](0,0) += Fdt[cellI]*Urt[cellI].component(0);
                             source[cellI](1,0) += Fdt[cellI]*Urt[cellI].component(1);
                             source[cellI](2,0) += Fdt[cellI]*Urt[cellI].component(2);
+                            // --- implicit added mass ---
+                            d[cellI](0,0) -= (Fan[cellI] + Fat[cellI])/sqr(runTime().deltaT().value());
+                            d[cellI](1,1) -= (Fan[cellI] + Fat[cellI])/sqr(runTime().deltaT().value());
+                            d[cellI](2,2) -= (Fan[cellI] + Fat[cellI])/sqr(runTime().deltaT().value());
 
                             // Normal added Mass contribution
                             source[cellI](0,0) += Fan[cellI]*(acclrn[cellI].component(0));
@@ -900,7 +908,7 @@
 
                     }
                     //- beamFluidInteraction off
-                    else
+                    else if (!beamFluidInteraction_)
                     {
                         vectorField Ut
                         (
@@ -937,7 +945,7 @@
                                 (
                                     ((acclb) & dRdScellHat)
                                     *dRdScellHat
-                                ) 
+                                )
                             )
                         );
                         const scalarField Fdn(0.5*rhoFluid().value()*Cdn_*R()*L()*mag(dRdScell)*mag(Un));
