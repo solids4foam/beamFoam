@@ -1067,7 +1067,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // y-dir
             // const scalar width = crossSections()[0].widthY();
             // Check if the radius at 0 degrees is consistent with widthY
-            const scalar width = crossSections()[0].radius(0);
+            //const scalar width = crossSections()[0].radius(0);
+            const scalar width = crossSections()[0].h();
             const scalar A = crossSections()[0].A();
 
             // Update the force
