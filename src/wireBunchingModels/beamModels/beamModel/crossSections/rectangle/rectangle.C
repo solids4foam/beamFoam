@@ -143,6 +143,7 @@ tmp<vectorField> rectangle::greenLagrangianStrain
     avgE[4] = K.y();
     avgE[5] = K.z();
 
+
     scalarRectangularMatrix A(3, 6, 0);
 
     forAll(points_, pI)
@@ -160,7 +161,6 @@ tmp<vectorField> rectangle::greenLagrangianStrain
 
     return tE;
 }
-
 
 tmp<scalarField> rectangle::resultantTotalForce(const vectorField& S) const
 {
@@ -191,7 +191,13 @@ tmp<scalarField> rectangle::resultantTotalForce(const vectorField& S) const
     
     return trF;
 }
-    
+
+// remi
+scalar rectangle::h() const
+{
+    return h_;
+}
+
 vector rectangle::resultantForce(const vectorField& S) const
 {
     vector rF = vector::zero;
@@ -203,7 +209,6 @@ vector rectangle::resultantForce(const vectorField& S) const
     
     return rF;
 }
-
 
 void rectangle::resultantTangentMatrices
 (
@@ -229,6 +234,7 @@ void rectangle::resultantTangentMatrices
     // scalarRectangularMatrix ACA(6, 6, 0);
 
     scalarRectangularMatrix DSDE(6, 6, 0);
+
 
     for (label fI=0; fI<quadFaces_.size(); fI++)
     {
@@ -369,7 +375,6 @@ void rectangle::resultantTangentMatrices
     DMDK.zz() = DSDE[5][5];
 }
 
-
 vector rectangle::resultantMoment(const vectorField& S) const
 {
     vector rM = vector::zero;
@@ -394,7 +399,6 @@ vector rectangle::resultantMoment(const vectorField& S) const
     return rM;
 }
 
-
 void rectangle::writeVTK
 (
     const fileName& fn,
@@ -411,7 +415,6 @@ void rectangle::writeVTK
     vtkFile << "ASCII" << endl;
     vtkFile << "DATASET POLYDATA" << endl;
     // vtkFile << "DATASET UNSTRUCTURED_GRID" << endl;
-
 
     // Write points
     vtkFile << "\nPOINTS " << points_.size() << " float" << endl;

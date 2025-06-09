@@ -127,11 +127,11 @@ public:
             return h_/2;
         }
     
-        //- Return the width b
-        virtual scalar b() const
-        {
-            return b_;
-        }
+        //- Return the width h, remi
+        virtual scalar h() const;
+        //{
+        //    return b_;
+        //}
 
         //- Return cross-section area
         virtual scalar A() const

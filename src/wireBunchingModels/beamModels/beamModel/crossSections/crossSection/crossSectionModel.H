@@ -156,6 +156,15 @@ public:
     
         //- Return cross-section area
         virtual scalar A() const = 0;
+
+        // remi - Return width
+        virtual scalar h() const
+        {
+            FatalErrorInFunction
+                << "h() not implemented for base class crossSectionModel"
+                << exit(FatalError);
+            return 0;
+        }
     
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const = 0;
