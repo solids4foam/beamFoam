@@ -220,7 +220,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A);
     if (A.rows() == 0)
     {
-        Pout << "No cells on this rank (" << Pstream::myProcNo() << "), skipping solver." << endl;
+        //    Pout << "No cells on this rank (" << Pstream::myProcNo() << "), skipping solver." << endl;
         return 0.0;
     }
     // Create Eigen source and solution vector from foam vectors
