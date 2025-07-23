@@ -208,7 +208,7 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
         vectorField t = dRdS/(mag(dRdS) + SMALL);
         */
 
-	const tensorField& Lambdaf=
+	const tensorField& Lambdaf =
 
             patch().lookupPatchField<surfaceTensorField, tensor>("Lambdaf");
 
