@@ -68,29 +68,31 @@ void annularSector::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
 
     scalar halfSectorAngle = sectorAngle_/2;
 
-//    scalar A = halfSectorAngle*(sqr(outerRadius_) - sqr(innerRadius_));
+    // scalar A = halfSectorAngle*(sqr(outerRadius_) - sqr(innerRadius_));
 
     // Second moment of area for the sector about the geometric centroid
 
-        // Centroid location (yC0 = 0; symmetry about the local x-axis)
-//	scalar xC0 = (2.0/3.0)*(::sin(halfSectorAngle)/halfSectorAngle)
-//				*
-//				(
-//				(pow(outerRadius_,3) - pow(innerRadius_,3))
-//				/
-//				(sqr(outerRadius_) - sqr(innerRadius_))
-//				);
-//
+    // Centroid location (yC0 = 0; symmetry about the local x-axis)
+    // scalar xC0 = (2.0/3.0)*(::sin(halfSectorAngle)/halfSectorAngle)
+    //    *(
+    //         (pow(outerRadius_,3) - pow(innerRadius_,3)
+    //     )/
+    //     (
+    //         sqr(outerRadius_) - sqr(innerRadius_))
+    //     );
+
     Ixx = 0.25*(pow(outerRadius_,4) - pow(innerRadius_,4))
           *(halfSectorAngle - 0.5*::sin(2*halfSectorAngle));
 
-        Iyy = 0.25*(pow(outerRadius_,4) - pow(innerRadius_,4))
-          *
-          (
-          halfSectorAngle + 0.5*::sin(2*halfSectorAngle)
-          );
+    Iyy = 0.25
+       *(
+            pow(outerRadius_,4) - pow(innerRadius_,4)
+        )
+       *(
+            halfSectorAngle + 0.5*::sin(2*halfSectorAngle)
+        );
 
-          //- A*sqr(xC0);
+    //- A*sqr(xC0);
 
     Info << "Local Ixx: " << Ixx << endl;
     Info << "Local Iyy: " << Iyy << endl;
@@ -149,13 +151,10 @@ annularSector::annularSector
     // Calculate second moment of area
     calcSecondMomentOfArea(Ixx_, Iyy_);
 
-
-    //Set local mesh points
-
+    // Set local mesh points
     label nr = nRadialSegmentsSector_;
     scalar dPhi = sectorAngle_/nr;
     scalar halfSectorAngle = sectorAngle_/2;
-
     label npr = nr + 1;
 
     label pI = 0;
