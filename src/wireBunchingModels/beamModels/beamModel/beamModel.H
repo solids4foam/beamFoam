@@ -40,7 +40,6 @@ SourceFiles
 #define beamModel_H
 
 #include "fvMesh.H"
-//#include "fvMeshCsrAddressing.H"
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
@@ -50,13 +49,7 @@ SourceFiles
 #include "labelScalarVector.H"
 #include "labelScalarTimeVaryingVector.H"
 #include "interpolationTable.H"
-
-//#include "crossSectionModel.H"
-
-// #include "conicalPulley.H"
-// #include "toroidalPulley.H"
-
-// #include "beamContactModel.H"
+#include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
 
@@ -126,7 +119,7 @@ class beamModel
         labelList nBeamCells_;
 
         //- Beam cross-section model
-        //mutable PtrList<crossSectionModel> crossSections_;
+        mutable PtrList<crossSectionModel> crossSections_;
 
         //- Beam cross-section radius
         scalarField R_;
@@ -399,10 +392,10 @@ public:
             label globalCellIndex(const label localCellIndex) const;
 
             //- Beam cross-section model
-            //  const PtrList<crossSectionModel>& crossSections() const
-            //  {
-            //      return crossSections_;
-            //  }
+             const PtrList<crossSectionModel>& crossSections() const
+             {
+                 return crossSections_;
+             }
 
             //- Return beam cross-section radius
             const scalar& R(label bI = 0) const
@@ -418,57 +411,72 @@ public:
 
             inline dimensionedScalar A(label bI = 0) const
             {
-            //    if (crossSections_.size())
-            //    {
-            //        return dimensionedScalar("A", dimArea, crossSections_[bI].A());
-            //    }
+                if (crossSections_.size())
+                {
+                    return
+                        dimensionedScalar
+                        (
+                            "A", dimArea, crossSections_[bI].A()
+                        );
+                }
 
                 return dimensionedScalar("A", dimArea, M_PI*sqr(R(bI)));
-                // return A_;
             }
 
             inline dimensionedScalar I(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "I", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("I", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Iyy(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Iyy", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Iyy", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("Iyy", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Izz(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Izz", dimArea*dimArea, crossSections_[bI].Ixx()
+                       );
+                }
 
                 return dimensionedScalar("Izz", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar J(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "J", dimArea*dimArea, crossSections_[bI].IT()
+                       );
+                }
 
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
-                // return J_;
             }
 
             const dimensionedScalar& rho() const

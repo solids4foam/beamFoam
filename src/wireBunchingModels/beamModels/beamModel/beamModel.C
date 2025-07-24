@@ -240,6 +240,7 @@ Foam::beamModel::beamModel
     endPatchIndex_(),
     startCells_(),
     nBeamCells_(),
+    crossSections_(),
     R_(),
     U_(),
     E_("E",beamProperties()),
@@ -359,27 +360,27 @@ Foam::beamModel::beamModel
            )
         );
 
-        Info << "g is set for gravitational body force: "
-                << g()
+        Info<< "g is set for gravitational body force: "
+            << g()
             << endl;
-
 
         if (!beamProperties().found("rho"))
         {
-            FatalError
-            << "rho field not set in beamProperties for"
-            << " calculating the gravity body force"
-            << abort(FatalError);
+            FatalErrorInFunction
+                << "rho field not set in beamProperties for"
+                << " calculating the gravity body force"
+                << abort(FatalError);
         }
-        else if (rho().value()==0.0)
+        else if (mag(rho().value()) < SMALL)
         {
-            WarningIn("Constructor of beamModel.C")
-            << "rho field in constant/beamProperties = "
-            << "zero --> gravitational body force = 0"
-            << nl << endl;
+            WarningInFunction
+                << "rho field in constant/beamProperties = "
+                << "zero --> gravitational body force = 0"
+                << nl << endl;
         }
-    // To check whether density of fluid is specified to calculate
-     // buoyant body force
+
+        // To check whether density of fluid is specified to calculate
+        // buoyant body force
         if (beamProperties().found("rhoFluid"))
         {
             rhof_ = dimensionedScalar("rhoFluid",beamProperties());
@@ -387,9 +388,9 @@ Foam::beamModel::beamModel
         else
         {
             WarningIn("Constructor of beamModel.C")
-            << "density of fluid rhoFluid is not set in constant/beamProperties "
-            << "--> buoyant body force = 0"
-            << nl << endl;
+                << "density of fluid rhoFluid is not set in constant/beamProperties "
+                << "--> buoyant body force = 0"
+                << nl << endl;
         }
     }
     else
@@ -414,38 +415,37 @@ Foam::beamModel::beamModel
     // Read cross-sections of beams
     if (found("beams"))
     {
-//        Info << "Beam properties from cross-section model" << endl;
-//
-//        const PtrList<entry> entries(lookup("beams"));
-//
-//        label nBeams = entries.size();
-//
-//        // Info << "nBeams: " << nBeams << endl;
-//
-//        crossSections_.setSize(nBeams);
-//
-//        forAll(entries, beamI)
-//        {
-//            crossSections_.set
-//            (
-//                beamI,
-//                crossSectionModel::New
-//                (
-//                    word(entries[beamI].dict().lookup("crossSectionModel")),
-//                    entries[beamI].dict()
-//                )
-//            );
-//        }
-//
-//        R_.setSize(nBeams);
-//        U_.setSize(nBeams);
-//        forAll(crossSections_, beamI)
-//        {
-//            R_[beamI] = crossSections_[beamI].R();
-//            // U_[beamI] = crossSections_[beamI].U();
-//        }
-//
-//        Pout << "R: " << R_ << endl;
+       Info<< "Reading beam properties from cross-section model" << endl;
+
+       const PtrList<entry> entries(lookup("beams"));
+
+       const label nBeams = entries.size();
+
+       Info<< "nBeams: " << nBeams << endl;
+
+       crossSections_.setSize(nBeams);
+
+       forAll(entries, beamI)
+       {
+           crossSections_.set
+           (
+               beamI,
+               crossSectionModel::New
+               (
+                   word(entries[beamI].dict().lookup("crossSectionModel")),
+                   entries[beamI].dict()
+               )
+           );
+       }
+
+       R_.setSize(nBeams);
+       U_.setSize(nBeams);
+       forAll(crossSections_, beamI)
+       {
+           R_[beamI] = crossSections_[beamI].R();
+           // U_[beamI] = crossSections_[beamI].U();
+       }
+
     }
     else if (this->found("nBeams")) // Read beam radius
     {
@@ -475,19 +475,19 @@ Foam::beamModel::beamModel
     }
 
     // Write beam cross-section properties
-    Info << "A: " << A() << endl;
+    Info<< "A: " << A() << endl;
 
-    Info << "Iyy: " << Iyy() << endl;
-    Info << "Izz: " << Izz() << endl;
+    Info<< "Iyy: " << Iyy() << endl;
+    Info<< "Izz: " << Izz() << endl;
 
-    Info << "I: " << I() << endl;
-    Info << "J: " << J() << endl;
+    Info<< "I: " << I() << endl;
+    Info<< "J: " << J() << endl;
 
-    Info << "EI: " << EI() << endl;
-    Info << "GJ: " << GJ() << endl;
+    Info<< "EI: " << EI() << endl;
+    Info<< "GJ: " << GJ() << endl;
 
-    Info << "EA: " << EA() << endl;
-    Info << "GA: " << GA() << endl;
+    Info<< "EA: " << EA() << endl;
+    Info<< "GA: " << GA() << endl;
 
     word startPatchName(beamProperties_.lookup("startPatchName"));
     word endPatchName(beamProperties_.lookup("endPatchName"));
@@ -769,19 +769,19 @@ Foam::beamModel::beamModel
     }
     else
     {
-        Info << "Point forces do not exist" << endl;
+        Info<< "Point forces do not exist" << endl;
     }
 
     // Read conical pulleys
     // if (found("conicalPulleys"))
     // {
-    //     // Info << "Found conical pulleys" << endl;
+    //     // Info<< "Found conical pulleys" << endl;
 
     //     const PtrList<entry> entries(lookup("conicalPulleys"));
 
     //     label nPulleys = entries.size();
 
-    //     // Info << "nPulleys: " << nPulleys << endl;
+    //     // Info<< "nPulleys: " << nPulleys << endl;
 
     //     conicalPulleys_.setSize(nPulleys);
 
@@ -793,7 +793,7 @@ Foam::beamModel::beamModel
     //             new conicalPulley(entries[pulleyI].dict())
     //         );
 
-    //         // Info << entries[pulleyI].dict() << endl;
+    //         // Info<< entries[pulleyI].dict() << endl;
     //     }
     // }
 
@@ -847,9 +847,9 @@ Foam::scalar Foam::beamModel::evolve()
     // {
     //     if (runTime().value() > deleteConicalPulleysAt_)
     //     {
-    //         Info << "Delete conical pulleys ";
+    //         Info<< "Delete conical pulleys ";
     //         conicalPulleys_.clear();
-    //         Info << conicalPulleys_.size() << endl;
+    //         Info<< conicalPulleys_.size() << endl;
     //     }
     // }
 
@@ -1049,24 +1049,24 @@ void Foam::beamModel::writeFields()
 
     //         scalarField t = contact().splines()[bI].midPointParameters();
     //         // scalarField t = spline.midPointParameters();
-    //         // Info << "First beam length: "
+    //         // Info<< "First beam length: "
     //         //      << sum(spline.segLengths()) << endl;
 
     //         if (false)
     //         {
-    //             Info << "\nTotal forces for beam " << bI << endl;
+    //             Info<< "\nTotal forces for beam " << bI << endl;
     //             for (label i=0; i<nBeams; i++)
     //             {
     //                 if (i != bI)
     //                 {
-    //                     Info << ' ' << sum(contact().contactForces()[bI][i]);
+    //                     Info<< ' ' << sum(contact().contactForces()[bI][i]);
     //                 }
     //                 else
     //                 {
-    //                     Info << ' ' << 0;
+    //                     Info<< ' ' << 0;
     //                 }
     //             }
-    //             Info << endl;
+    //             Info<< endl;
     //         }
 
 
@@ -1087,11 +1087,11 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         forceFile << ' ' <<
-    // 		        mag
-    // 		        (
+    //                  mag
+    //                  (
     //                                 contact().lineContacts()[bI][segI][i]
-    // 		           .normalContactForce()
-    // 			);
+    //                     .normalContactForce()
+    //                  );
     //                     }
     //                     else
     //                     {
@@ -1121,8 +1121,8 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         gapFile << ' ' <<
-    // 		        contact().lineContacts()[bI][segI][i]
-    // 		       .normalGap();
+    //                  contact().lineContacts()[bI][segI][i]
+    //                 .normalGap();
 
     //                         // gapFile << ' '
     //                         //     << contact().contactGaps()[bI][i][segI];
@@ -1226,7 +1226,7 @@ void Foam::beamModel::writeFields()
 
     //                             // collectionFile.getLine(line);
     //                             // newCollectionFile << line << '\n';
-    //                             // Info << line << endl;
+    //                             // Info<< line << endl;
 
     //                             if
     //                             (
@@ -1391,7 +1391,7 @@ void Foam::beamModel::writeFields()
 
     //                             // collectionFile.getLine(line);
     //                             // newCollectionFile << line << '\n';
-    //                             // Info << line << endl;
+    //                             // Info<< line << endl;
 
     //                             if
     //                             (
