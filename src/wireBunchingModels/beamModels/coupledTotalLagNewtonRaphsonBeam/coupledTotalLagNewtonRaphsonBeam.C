@@ -679,7 +679,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     if (nBeams > 1)
     {
         // First beam is already initialized
-        for (label i=1; i<nBeams; i++)
+        for (label i = 1; i < nBeams; i++)
         {
             CQ_ +=
                 indicator(i)
@@ -794,7 +794,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         }
         else
         {
-            for (label bI=0; bI<nBeams; bI++)
+            for (label bI = 0; bI < nBeams; bI++)
             {
                 const cellZone& cz = mesh().cellZones()[bI];
                 label firstCell = min(cz);
@@ -841,14 +841,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 }
             }
         }
-
     }
     // Here, the values of tangent fields set by the user for an initially curved
     // or translated (and rotated) beam are assigned to dR0Ds_
     else
     {
         dR0Ds_ = refTangent_;
-        for (label pI=0; pI<nBeams; pI++)
+        for (label pI = 0; pI < nBeams; pI++)
         {
             dR0Ds_.boundaryFieldRef()[startPatchIndex(pI)] *= -1;
         }
@@ -938,14 +937,13 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         else
         {
             surfaceVectorField curCf(mesh().Cf() + refWf_);
-            for (label i=0; i<nBeams; i++)
+            for (label i = 0; i < nBeams; i++)
             {
                 vectorField beamPoints(this->beamPointData(curCf, i));
                 vectorField beamTangents(this->beamPointData(refTangent_, i));
 
                 if (beamPoints.size())
                 {
-
                     HermiteSpline spline
                     (
                         beamPoints,
@@ -999,113 +997,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-scalar coupledTotalLagNewtonRaphsonBeam::evolve()
-{
-    beamModel::evolve();
-
-    const int nCorr
-    (
-        beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
-    );
-
-    const scalar convergenceTol
-    (
-        beamProperties().lookupOrDefault<scalar>("convergenceTol", 1e-6)
-    );
-    scalar curConvergenceTol = convergenceTol;
-
-    const scalar materialTol
-    (
-        beamProperties().lookupOrDefault<scalar>
-        (
-            "materialTol",
-            curConvergenceTol
-        )
-    );
-
-    const bool debug
-    (
-        beamProperties().lookupOrDefault<bool>("debug", false)
-    );
-
-    scalar initialResidual = 1;
-    scalar currentResidual = 1;
-    scalar currentMaterialResidual = 0;
-    //bool completedElasticPrediction = false;
-    //blockLduMatrix::debug = debug;
-
-    scalar curContactResidual = 1;
-
-    iOuterCorr() = 0;
-    do
-    {
-        if (debug)
-        {
-            Info<< "iOuterCorr: " << iOuterCorr() << endl;
-        }
-
-        // if (contactActive())
-        // {
-        //     if (debug)
-        //     {
-        //         Info<< "Updating contact: start" << endl;
-        //     }
-
-        //     scalar tStart = runTime().elapsedCpuTime();
-
-        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
-        //     curContactResidual = contact().update();
-        //     scalar tEnd = runTime().elapsedCpuTime();
-
-        //     totalContactTime_ += tEnd - tStart;
-
-        //     if (debug)
-        //     {
-        //         Pout << "Current total contact update time: "
-        //              << totalContactTime_ << endl;
-        //     }
-
-        //     if (debug)
-        //     {
-        //         Info<< "curContactResidual: "
-        //             << curContactResidual << endl;
-
-        //         Info<< "Updating contact: end" << endl;
-        //     }
-        // }
-
-        scalar tStart = runTime().elapsedCpuTime();
-        #include "coupledWThetaEqn_TLNR.H"
-        scalar tEnd = runTime().elapsedCpuTime();
-
-        totalSolutionTime_ += tEnd-tStart;
-
-        if (debug)
-        {
-            Pout<< "Current total solution update time: "
-                << totalSolutionTime_ << endl;
-        }
-    }
-    while
-    (
-        (++iOuterCorr() < nCorr)
-     && (
-            (currentResidual > curConvergenceTol)
-         || (currentMaterialResidual > materialTol)
-        )
-    );
-
-    totalIter_ += iOuterCorr();
-
-    Info<< "\nInitial residual: " << initialResidual
-        << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
-        << ",\n iCorr = " << iOuterCorr() << nl
-        << "total Iterations " << totalIter_ << endl;
-
-    return initialResidual;
-}
 
 void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 {
@@ -1125,7 +1016,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
     {
         const face& curFace = faces[faceI];
 
-        vector C0 = curFace.centre(points);
+        const vector C0 = curFace.centre(points);
 
         forAll(curFace, pointI)
         {
@@ -1180,7 +1071,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 void coupledTotalLagNewtonRaphsonBeam::writeFields()
 {
     beamModel::writeFields();
-
 }
 
 
