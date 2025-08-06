@@ -1,3 +1,0 @@
-beamConvergenceData.C
-
-LIB = $(FOAM_USER_LIBBIN)/libbeamConvergenceDataFunctionObject

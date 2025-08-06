@@ -71,7 +71,8 @@ bool Foam::functionObjects::beamDisplacements::writeData()
                 << mesh.time().value() << " "
                 << avgW.x() << " "
                 << avgW.y() << " "
-                << avgW.z()
+                << avgW.z() << " "
+                << mag(avgW)
                 << endl;
             }
         }
@@ -176,7 +177,8 @@ Foam::functionObjects::beamDisplacements::beamDisplacements
                     << "Time" << " "
                     << "w_x" << " "
                     << "w_y" << " "
-                    << "w_z"
+                    << "w_z" << " "
+                    << "mag(w)"
                     << endl;
             }
         }
