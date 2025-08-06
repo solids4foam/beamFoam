@@ -32,6 +32,10 @@ $(boundaryConditions)/fixedPathRotation/fixedPathRotationFvPatchVectorField.C
 $(boundaryConditions)/myFixedRotation/myFixedRotationFvPatchVectorField.C
 $(boundaryConditions)/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDisplacementNRFvPatchVectorField.C
 
+functionObjects/beamEnergyData/beamEnergyData.C
+functionObjects/beamConvergenceData/beamConvergenceData.C
+functionObjects/beamDisplacements/beamDisplacements.C
+functionObjects/beamForcesMoments/beamForcesMoments.C
 
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C
