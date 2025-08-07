@@ -257,8 +257,8 @@ class coupledTotalLagNewtonRaphsonBeam
         /*-----------------------------------------------*/
 
         //- Update the coefficients associated with the primary
-        //- variables W_ and Theta_ 
-        //- Function call implemented in 
+        //- variables W_ and Theta_
+        //- Function call implemented in
         //- 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
         void updateEqnCoefficients();
 

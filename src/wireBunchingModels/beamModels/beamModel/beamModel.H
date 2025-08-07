@@ -29,6 +29,7 @@ Description
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
+    Seevani Bali, UCD.
 
 SourceFiles
     beamModel.C
@@ -180,8 +181,11 @@ class beamModel
         //- Steady state calculation
         bool steadyState_;
 
-        //- Use objective interpolation for rotation
-        bool objectiveInterpolation_;
+        // //- Use objective interpolation for rotation
+        // bool objectiveInterpolation_;
+
+        //- Artificial scaling factor for changing the inertia
+        //- tensor I_rho in the angular momentum tensor 
         scalar kCI_;
 
         //- Conical pullys
@@ -794,16 +798,18 @@ public:
                 return steadyState_;
             }
 
-            //- Steady state
-            bool objectiveInterpolation() const
+            // //- Objective interpolation
+            // bool objectiveInterpolation() const
+            // {
+            //     return objectiveInterpolation_;
+            // }
+
+            //- Artificial scaling factor for changing the inertia
+            //- tensor I_rho in the angular momentum tensor 
+            scalar kCI() const
             {
-                return objectiveInterpolation_;
+                return kCI_;
             }
-            //- Rotation inertia tensor scaling
- 	          scalar kCI() const
- 	          {
- 		            return kCI_;
- 	          }
 
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;
