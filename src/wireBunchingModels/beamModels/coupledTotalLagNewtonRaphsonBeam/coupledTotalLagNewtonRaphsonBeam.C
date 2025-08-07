@@ -739,11 +739,18 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
         )   << "The longitudinal axis of beam in the reference configuration " << nl
             << "is not aligned the global x-axis : This is a mandatory " << nl
-            << "requirement before running the beam solver. For example, " << nl
+            << "requirement before running the beam solver. Check the beam mesh " << nl
+            << "in paraview. For example, " << nl
             << "if the current beam is oriented in the Z direction, run the "
             << "following command: " << nl
             << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
-            << "after creating the beam mesh to set the correct reference "
+            << "after creating the beam mesh to set the correct reference " << nl
+            << nl
+            << "You might also be using a deprecated mesh utility " << nl
+            << " 'createCircularBeamMesh' or 'createMultipleBeamMesh' "
+            << " along with transformPoints command! " << nl << nl
+            << " Use 'createBeamMesh' utility instead! and remove  "
+            << " transformPoints command! " << nl
             << abort(FatalError);
     }
 

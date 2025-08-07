@@ -662,35 +662,35 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             }
 
 
-            if (objectiveInterpolation())
-            {
-                // Info<< "Using objective interpolation for rotation" << endl;
+            // if (objectiveInterpolation())
+            // {
+            //     // Info<< "Using objective interpolation for rotation" << endl;
 
-                // Calculate rotation matrix correction from
-                // cell-centre rotation vector correction
-                volTensorField DLambda(rotationMatrix(DTheta_));
+            //     // Calculate rotation matrix correction from
+            //     // cell-centre rotation vector correction
+            //     volTensorField DLambda(rotationMatrix(DTheta_));
 
-                // Update cell-centre rotation matrix
-                Lambda_ = (DLambda & Lambda_);
+            //     // Update cell-centre rotation matrix
+            //     Lambda_ = (DLambda & Lambda_);
 
-                // Calculate mean line curvature at cell-faces
-                K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
-                //K_ +=
-                //    (
-                //          (refLambdaf_.T() & Lambdaf_.T()) &
-                //        meanLineCurvature(DLambda)
-                //    );
+            //     // Calculate mean line curvature at cell-faces
+            //     K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
+            //     //K_ +=
+            //     //    (
+            //     //          (refLambdaf_.T() & Lambdaf_.T()) &
+            //     //        meanLineCurvature(DLambda)
+            //     //    );
 
-                // Objective cell-to-face interpolation of rotation matrix correction
-                //surfaceTensorField DLambdaf =
-                //   interpolateRotationMatrix(DLambda);
+            //     // Objective cell-to-face interpolation of rotation matrix correction
+            //     //surfaceTensorField DLambdaf =
+            //     //   interpolateRotationMatrix(DLambda);
 
-                // Update cell-face rotation matrix
-                //Lambdaf_ = (DLambdaf & Lambdaf_);
-                Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
-            }
-            else
-            {
+            //     // Update cell-face rotation matrix
+            //     //Lambdaf_ = (DLambdaf & Lambdaf_);
+            //     Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
+            // }
+            // else
+            // {
                 //Info<< "Rotations are not interpolated objectively \n" << endl;
                 const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
@@ -751,7 +751,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 {
                     Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
                 }
-            }
+            // }
 
             // Update axial and shear strain vector
             {

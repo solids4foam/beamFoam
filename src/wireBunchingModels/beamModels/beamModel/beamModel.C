@@ -304,10 +304,10 @@ Foam::beamModel::beamModel
     pointForces_(),
     iOuterCorr_(0),
     steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
-    objectiveInterpolation_
-    (
-        beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
-    ),
+    // objectiveInterpolation_
+    // (
+    //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
+    // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     startToRelaxTime_
