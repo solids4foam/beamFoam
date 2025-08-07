@@ -67,32 +67,32 @@ circle::circle
     ),
     scalingArea_
     (
-	crossSectionModelDict_.lookupOrDefault<scalar>("scalingArea", 1.0)
+        crossSectionModelDict_.lookupOrDefault<scalar>("scalingArea", 1.0)
     ),
-    scalingMI_
+    scalingSecondMomentArea_
     (
-	crossSectionModelDict_.lookupOrDefault<scalar>("scalingMI", 1.0)
+        crossSectionModelDict_
+        .lookupOrDefault<scalar>("scalingSecondMomentArea", 1.0)
     ),
     points_(0, vector::zero)
 {}
 
 // * * * * * * * * * * * * * * Member Functions * * * * * * * * * * * * * * * //
 
-tmp<vectorField> circle::greenLagrangianStrain
-(
-    const vector& Gamma,
-    const vector& K
-) const
-{    
-    tmp<vectorField> tE
-    (
-        new vectorField(points_.size(), vector::zero)
-    );
+// tmp<vectorField> circle::greenLagrangianStrain
+// (
+//     const vector& Gamma,
+//     const vector& K
+// ) const
+// {
+//     tmp<vectorField> tE
+//     (
+//         new vectorField(points_.size(), vector::zero)
+//     );
 
-    return tE;
-}
-    
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+//     return tE;
+// }
+
 
 } // End namespace Foam
 
