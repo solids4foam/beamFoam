@@ -171,33 +171,34 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
             W_.boundaryFieldRef().updateCoeffs();
             Theta_.boundaryFieldRef().updateCoeffs();
-            
+
             const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
             // Update the coefficients of W_ and Theta_ equations
             updateEqnCoefficients();
 
-            // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
-            // Newmark-beta integration scheme
-            if (!steadyState() && newmark_)
+            // SB: Initial accleration and velocity values at 0th iteration
+            // Valid for Newmark-beta integration scheme
+            // if (!steadyState() && newmark_)
+            if (d2dt2SchemeName_ == "Newmark" && iOuterCorr() == 0)
             {
-                if (iOuterCorr() == 0)
-                {
-                    Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
-                      - (0.5/betaN_ - 1)*Accl_.oldTime();
+                // if (iOuterCorr() == 0)
+                // {
+                Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
+                  - (0.5/betaN_ - 1)*Accl_.oldTime();
 
-                    U_ = U_.oldTime()
-                      + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
+                U_ = U_.oldTime()
+                  + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
 
-                    dotOmega_ =
-                      - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
-                      - (0.5/betaN_ - 1)*dotOmega_.oldTime();
+                dotOmega_ =
+                  - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
+                  - (0.5/betaN_ - 1)*dotOmega_.oldTime();
 
-                    Omega_ =
-                        Omega_.oldTime()
-                      + runTime().deltaT()
-                      *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
-                }
+                Omega_ =
+                    Omega_.oldTime()
+                  + runTime().deltaT()
+                  *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
+                // }
             }
 
             //- Assembling the diagonal and off-diagonal contributions
@@ -328,249 +329,234 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 Info<< "Number of cells in contact : " << cellsInContact << endl;
             }
 
-            // Add inertial forces
-            if (!steadyState())
+            // Add inertial components if not steadyState
+            // SB Note: The inertia terms have two components
+            // 1. Inertia term in the force balance equation
+            // 2. Inertia term in the moment balance equation
+
+            // The difference between Newmark and Euler is how
+            // linear and angular velocities/accelerations are updated.
+            // Note: The updations are done after solving the eqns
+            // Also the implicit contributions of inertia terms that
+            // go into the diagonal of the matrix are different
+            // for Euler and Newmark.
+
+            // Temporal Variables
+            // U_ = Linear Velocity
+            // Accl_ = Linear Acceleration
+            // Omega_ = Angular Velocity
+            // dotOmega_ = Angular Acceleration
+
+            // if (!steadyState())
+            if (d2dt2SchemeName_ != "steadyState")
             {
-                // First order Euler scheme
-                // Add inertial force
+                // The EXPLICIT inertial contributions to source
+                // 1. Inertial force
+                const vectorField QRho = ARho_*L()*Accl_;
+
+                // 2. Inertial angular momentum
+                const volVectorField MRho
+                (
+                    L()
+                    *(
+                        (Lambda_ & (CIRho_ & dotOmega_))
+                        + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                    )
+                );
+
+                forAll(source, cellI)
                 {
-                    // SB modified - (10/11/2023)
-                    if (newmark_)
-                    {
-                        const vectorField QRho = ARho_*L()*Accl_;
+                    // 1. Add the explicit inertial force contribution
+                    source[cellI](0,0) += QRho[cellI].x();
+                    source[cellI](1,0) += QRho[cellI].y();
+                    source[cellI](2,0) += QRho[cellI].z();
 
-                        forAll(source, cellI)
-                        {
-                            source[cellI](0,0) += QRho[cellI].x();
-                            source[cellI](1,0) += QRho[cellI].y();
-                            source[cellI](2,0) += QRho[cellI].z();
-                        }
-
-                        // Add diagonal contribution (N-R method)
-                        const scalarField QRhoCoeff =
-                            -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
-
-                        forAll(d, cellI)
-                        {
-                            d[cellI](0,0) += QRhoCoeff[cellI];
-                            d[cellI](1,1) += QRhoCoeff[cellI];
-                            d[cellI](2,2) += QRhoCoeff[cellI];
-                        }
-
-                    }
-                    else
-                    {
-                        const volVectorField a(fvc::ddt(U_));
-                        const vectorField QRho = rho().value()*A().value()*L()*a;
-
-                        forAll(source, cellI)
-                        {
-                            source[cellI](0,0) += QRho[cellI].x();
-                            source[cellI](1,0) += QRho[cellI].y();
-                            source[cellI](2,0) += QRho[cellI].z();
-                        }
-
-                        // Add diagonal contribution (N-R method)
-                        const scalarField QRhoCoeff =
-                            -L()*rho().value()*A().value()
-                            /sqr(runTime().deltaT().value());
-
-                        forAll(d, cellI)
-                        {
-                            d[cellI](0,0) += QRhoCoeff[cellI];
-                            d[cellI](1,1) += QRhoCoeff[cellI];
-                            d[cellI](2,2) += QRhoCoeff[cellI];
-                        }
-                    }
+                    // 2. Add the explicit inertial moment contribution
+                    source[cellI](3,0) += MRho[cellI].x();
+                    source[cellI](4,0) += MRho[cellI].y();
+                    source[cellI](5,0) += MRho[cellI].z();
                 }
 
+                // The IMPLICIT inertial contributions to source
+                // 1. Initialise implicit inertial force contribution to zero
+                scalarField QRhoCoeff(W_.size(), 0.0);
 
-                // Add inertial torque
+                // 2. Initialise implicit inertial moment contribution to zero
+                volTensorField MRhoCoeff
+                (
+                    IOobject
+                    (
+                        "MRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedTensor("zero", dimForce*dimLength, tensor::zero)
+                );
+
+                // if (newmark_)
+                if (d2dt2SchemeName_ == "Newmark")
                 {
-                    if (newmark_)
+                    // 1. Implicit inertial force coefficient
+                    QRhoCoeff =
+                        -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
+
+                    // 2. Implicit contribution of inertial torque because of
+                    // Newton-Raphson linearisation
+                    MRhoCoeff =
+                        L()
+                        *(
+                            spinTensor
+                            (
+                                (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                                + (Lambda_ & (CIRho_ & dotOmega_))
+                            )
+                            + (
+                                (spinTensor(Lambda_ & (CIRho_ & Omega_)))
+                                - (
+                                    Lambda_
+                                    & (
+                                        spinTensor(Omega_)
+                                        & (CIRho_ &  Lambda_.T())
+                                    )
+                                )
+                            )*(gammaN_/(betaN_*runTime().deltaT()))
+                            - (
+                                Lambda_ & (CIRho_ & Lambda_.T())
+                            )*(1/(betaN_*sqr(runTime().deltaT())))
+                        );
+                }
+                else if (d2dt2SchemeName_ == "Euler")
+                {
+                    // 1. Implicit inertial force coefficient
+                    QRhoCoeff =
+                        -L()*ARho_/sqr(runTime().deltaT().value());
+
+                    // 2. ZT code: Implicit contribution of inertial torque
+                    // because of Newton-Raphson linearisation
+                    MRhoCoeff =
+                        L()
+                        *(
+                            spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT()
+
+                            - (Lambda_ & (CIRho_ & Lambda_.T()))/sqr(runTime().deltaT())
+
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
+
+                            - spinTensor(Lambda_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
+
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
+
+                            + (Lambda_ & (spinTensor(Omega_) & (CIRho_ & Lambda_.T())))/runTime().deltaT()
+                        );
+                }
+
+                // Adding the implicit contribution to the diagonal
+                forAll(d, cellI)
                     {
-                        // Angular acceleration
-                        volVectorField dotOmega = dotOmega_;
+                        // 1. Add implicit inertia force contribution to diag
+                        d[cellI](0,0) += QRhoCoeff[cellI];
+                        d[cellI](1,1) += QRhoCoeff[cellI];
+                        d[cellI](2,2) += QRhoCoeff[cellI];
 
-                        volVectorField MRho
-                            (
+                        // 2. Add implicit inertia momentum contribution to diag
+                        d[cellI](3,3) += MRhoCoeff[cellI].xx();
+                        d[cellI](3,4) += MRhoCoeff[cellI].xy();
+                        d[cellI](3,5) += MRhoCoeff[cellI].xz();
 
-                                L()
-                               *(
-                                    (Lambda_ & (CIRho_ & dotOmega))
-                                  + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                )
-                            );
-                        forAll(source, cellI)
-                        {
-                            source[cellI](3,0) += MRho[cellI].x();
-                            source[cellI](4,0) += MRho[cellI].y();
-                            source[cellI](5,0) += MRho[cellI].z();
-                        }
+                        d[cellI](4,3) += MRhoCoeff[cellI].yx();
+                        d[cellI](4,4) += MRhoCoeff[cellI].yy();
+                        d[cellI](4,5) += MRhoCoeff[cellI].yz();
 
-                        // Add diagonal contribution (N-R method)- SB : Nov 2023
-                        // Implicit contrbution without tangent space
-                        volTensorField MRhoCoeff
-                            (
-                                L()
-                               *(
-                                    spinTensor
-                                    (
-                                        (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                      + (Lambda_ & (CIRho_ & dotOmega))
-                                    )
-                                  + (
-                                        (spinTensor(Lambda_ & (CIRho_ & Omega_)))
-                                      - (
-                                            Lambda_ 
-                                          & (
-                                                spinTensor(Omega_)
-                                              & (CIRho_ &  Lambda_.T())
-                                            )
-                                        )
-                                    )*(gammaN_/(betaN_*runTime().deltaT()))
-                                  - (
-                                        Lambda_ & (CIRho_ & Lambda_.T())
-                                    )*(1/(betaN_*sqr(runTime().deltaT())))
-                                )
-                            );
-                        forAll(d, cellI)
-                        {
-                            d[cellI](3,3) += MRhoCoeff[cellI].xx();
-                            d[cellI](3,4) += MRhoCoeff[cellI].xy();
-                            d[cellI](3,5) += MRhoCoeff[cellI].xz();
-
-                            d[cellI](4,3) += MRhoCoeff[cellI].yx();
-                            d[cellI](4,4) += MRhoCoeff[cellI].yy();
-                            d[cellI](4,5) += MRhoCoeff[cellI].yz();
-
-                            d[cellI](5,3) += MRhoCoeff[cellI].zx();
-                            d[cellI](5,4) += MRhoCoeff[cellI].zy();
-                            d[cellI](5,5) += MRhoCoeff[cellI].zz();
-                        }
+                        d[cellI](5,3) += MRhoCoeff[cellI].zx();
+                        d[cellI](5,4) += MRhoCoeff[cellI].zy();
+                        d[cellI](5,5) += MRhoCoeff[cellI].zz();
                     }
-                    else
+
+                //- Drag forces due to Morison's Equation
+                // SB: This drag force loop is common to both Euler and Newmark
+                // time integration schemes. It uses linear velocity term U_
+                // which can either be calculated using either time schemes.
+                // Hence put this loop outside of the Euler/Newmark loops above
+
+                // if (dragActive_ && !steadyState())
+                if (dragActive_)
+                {
+                    // Create spline using current beam points and tangents data
+                    HermiteSpline spline
+                    (
+                        currentBeamPoints(),
+                        currentBeamTangents()
+                    );
+
+                    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
+                    const vectorField& dRdScell = spline.midPointDerivatives();
+
+                    // Tangential component of velocity vector
+                    vectorField Ut
+                        (
+                            (
+                                (U_.internalField() & dRdScell)
+                                *dRdScell
+                            )
+                        );
+
+                    vectorField UtHat (Ut/(mag(Ut) + SMALL));
+
+                    // Normal component of velocity vector
+                    vectorField Un
+                        (
+                            (
+                                U_.internalField()
+                                - (
+                                    (U_.internalField() & dRdScell)
+                                    *dRdScell
+                                )
+                            )
+                        );
+
+                    vectorField UnHat (Un/(mag(Un) + SMALL));
+
+                    // Scalar values of drag force (normal and tangential)
+                    const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
+                    const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
+
+                    // Explicit drag forces included in the source vector
+                    forAll(source, cellI)
                     {
-                        // Angular acceleration
-                        volVectorField dotOmega(fvc::ddt(Omega_));
+                        source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
+                        source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
+                        source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
 
-                        volVectorField MRho
-                            (
-                                L()
-                                *(
-                                    (Lambda_ & (CIRho_ & dotOmega))
-                                    + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                )
-                            );
-
-                        forAll(source, cellI)
-                        {
-                            source[cellI](3,0) += MRho[cellI].x();
-                            source[cellI](4,0) += MRho[cellI].y();
-                            source[cellI](5,0) += MRho[cellI].z();
-                        }
-
-                        //- Drag forces due to Morison's Equation
-                        if (dragActive_ && !steadyState())
-                        {
-                            // Create spline using current beam points and tangents data
-                            HermiteSpline spline
-                            (
-                                currentBeamPoints(),
-                                currentBeamTangents()
-                            );
-
-                            // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-                            const vectorField& dRdScell = spline.midPointDerivatives();
-
-                            // Tangential component of velocity vector
-                            vectorField Ut
-                                (
-                                    (
-                                        (U_.internalField() & dRdScell)
-                                        *dRdScell
-                                    )
-                                );
-
-                            vectorField UtHat (Ut/(mag(Ut) + SMALL));
-
-                            // Normal component of velocity vector
-                            vectorField Un
-                                (
-                                    (
-                                        U_.internalField()
-                                        - (
-                                            (U_.internalField() & dRdScell)
-                                            *dRdScell
-                                        )
-                                    )
-                                );
-
-                            vectorField UnHat (Un/(mag(Un) + SMALL));
-
-                            // Scalar values of drag force (normal and tangential)
-                            const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
-                            const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
-
-                            // Explicit drag forces included in the source vector
-                            forAll(source, cellI)
-                            {
-                                source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-                                source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-                                source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
-
-                                source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-                                source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-                                source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
-                            }
-
-                        }
-                        else
-                        {
-                            WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
-                                << "Drag forces are zero for steady state calculation"
-                                << nl
-                                << "Set both 'steadyState' flag to false and "
-                                << "'dragActive' flag to  true to include drag force"
-                                << " contributions" << nl << endl;
-                        }
-
-                        // Add diagonal contribution (N-R method)-ZT code
-                        volTensorField MRhoCoeff
-                            (
-                                L()
-                                *(
-                                    spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT()
-
-                                    - (Lambda_ & (CIRho_ & Lambda_.T()))/sqr(runTime().deltaT())
-
-                                    - spinTensor(Lambda_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
-
-                                    - spinTensor(Lambda_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
-
-                                    - spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
-
-                                    + (Lambda_ & (spinTensor(Omega_) & (CIRho_ & Lambda_.T())))/runTime().deltaT()
-                                )
-                            );
-                        forAll(d, cellI)
-                        {
-                            d[cellI](3,3) += MRhoCoeff[cellI].xx();
-                            d[cellI](3,4) += MRhoCoeff[cellI].xy();
-                            d[cellI](3,5) += MRhoCoeff[cellI].xz();
-
-                            d[cellI](4,3) += MRhoCoeff[cellI].yx();
-                            d[cellI](4,4) += MRhoCoeff[cellI].yy();
-                            d[cellI](4,5) += MRhoCoeff[cellI].yz();
-
-                            d[cellI](5,3) += MRhoCoeff[cellI].zx();
-                            d[cellI](5,4) += MRhoCoeff[cellI].zy();
-                            d[cellI](5,5) += MRhoCoeff[cellI].zz();
-                        }
+                        source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
+                        source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
+                        source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
                     }
+
                 }
             }
 
+            // Throw warning if drag active flag is true but the time scheme is
+            // steady state because the drag forces will be zero.
+            if
+            (
+                dragActive_
+             && (
+                    d2dt2SchemeName_ == "steadyState"
+                 || ddtSchemeName_ == "steadyState"
+                )
+            )
+            {
+                WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
+                  << "Drag forces are zero for steady state calculation"
+                  << nl
+                  << "Set d2dt2Scheme type in system/fvSchemes as "
+                  << "'Euler' or 'Newmark' & 'dragActive' flag "
+                  << "in constant/beamProperties to true "
+                  << "to include drag force contributions" << nl << endl;
+            }
 
             // Calculate equilibrium equations residual
             if (debug)
@@ -646,21 +632,32 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Update displacement increment (for contact calculation of pulleys)
             WIncrement_ = W_ - W_.oldTime();
 
-            // Update mean line velocity field
-            //  SB added: (10/11/2023) Update mean line velocity field
-            if (newmark_)
+            // Update mean line linear velocity and acceleration fields
+            if (d2dt2SchemeName_ == "steadyState")
             {
+                // Do Nothing, no update of temporal variables reqd
+            }
+            else if (d2dt2SchemeName_ == "Newmark")
+            {
+                // SB: Update mean line acceleration field
                 U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
 
-                // SB added: (19/04/2023) Update mean line acceleration field
+                // SB: Update mean line acceleration field
                 Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
 
             }
-            else
+            else if (d2dt2SchemeName_ == "Euler")
             {
                 U_ = fvc::ddt(W_);
+                Accl_ = fvc::ddt(U_);
             }
-
+            else
+            {
+                FatalErrorInFunction
+                    << "Provided d2dt2Scheme is not implemented!"
+                    << "Valid choices are steadyState, Euler, Newmark"
+                    << abort(FatalError);
+            }
 
             // if (objectiveInterpolation())
             // {
@@ -691,66 +688,81 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // }
             // else
             // {
-                //Info<< "Rotations are not interpolated objectively \n" << endl;
-                const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
+            //Info<< "Rotations are not interpolated objectively \n" << endl;
+            const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
-                const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-                const surfaceTensorField DThetaHat(spinTensor(DThetaf));
+            const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
+            const surfaceTensorField DThetaHat(spinTensor(DThetaf));
 
-                const dimensionedTensor I("I", dimless, tensor::I);
+            const dimensionedTensor I("I", dimless, tensor::I);
 
-                // Tangent operator
-                const surfaceTensorField DT
-                (
-                    (Foam::sin(magDThetaf)/magDThetaf)*I
-                  + (
-                        (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
-                    )
-                   *(DThetaf*DThetaf)
-                  + (
-                        (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
-                    )*DThetaHat
-                );
+            // Tangent operator
+            const surfaceTensorField DT
+            (
+                (Foam::sin(magDThetaf)/magDThetaf)*I
+              + (
+                    (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
+                )
+               *(DThetaf*DThetaf)
+              + (
+                    (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
+                )*DThetaHat
+            );
 
-                // Update bending strain vector
-                K_ +=
-                (
-                    (refLambdaf_.T() & Lambdaf_.T())
-                  // & fvc::snGrad(DTheta_)
-                  & (DT.T() & fvc::snGrad(DTheta_))
-                );
+            // Update bending strain vector
+            K_ +=
+            (
+                (refLambdaf_.T() & Lambdaf_.T())
+              // & fvc::snGrad(DTheta_)
+              & (DT.T() & fvc::snGrad(DTheta_))
+            );
 
-                // Rodrigues formula
-                const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
+            // Rodrigues formula
+            const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
 
-                // Update rotation matrix
-                Lambdaf_ = (DLambdaf & Lambdaf_);
+            // Update rotation matrix
+            Lambdaf_ = (DLambdaf & Lambdaf_);
 
-                // Update cell-centre rotation matrix
-                const volTensorField DLambda(rotationMatrix(DTheta_));
+            // Update cell-centre rotation matrix
+            const volTensorField DLambda(rotationMatrix(DTheta_));
 
-                Lambda_ = (DLambda & Lambda_);
-                // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
+            Lambda_ = (DLambda & Lambda_);
+            // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
 
-                if (newmark_)
-                {
-                    // Update angular velocity
-                    // without tangent space
-                    Omega_ +=
-                        (
-                            gammaN_/(betaN_*runTime().deltaT())
-                        )*(Lambda_.T() & DTheta_);
+            // Update mean line angular velocity and acceleration fields
+            if (d2dt2SchemeName_ == "steadyState")
+            {
+                // Do nothing; no update of temporal variables reqd
+            }
+            else if (d2dt2SchemeName_ == "Newmark")
+            {
+                // Update angular velocity
+                // without tangent space
+                Omega_ +=
+                    (
+                        gammaN_/(betaN_*runTime().deltaT())
+                    )*(Lambda_.T() & DTheta_);
 
-                    // Update angular acceleration
-                    dotOmega_ +=
-                        (
-                            1/(betaN_*sqr(runTime().deltaT()))
-                        )*(Lambda_.T() & DTheta_);
-                }
-                else // First order Euler scheme
-                {
-                    Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
-                }
+                // Update angular acceleration
+                dotOmega_ +=
+                    (
+                        1/(betaN_*sqr(runTime().deltaT()))
+                    )*(Lambda_.T() & DTheta_);
+            }
+            else if (d2dt2SchemeName_ == "Euler") // First order Euler scheme
+            {
+                Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
+
+                dotOmega_ = fvc::ddt(Omega_);
+            }
+            else
+            {
+                FatalErrorInFunction
+                    << "Provided d2dt2Scheme is not implemented!"
+                    << "Valid choices are steadyState, Euler, Newmark"
+                    << abort(FatalError);
+            }
+
             // }
 
             // Update axial and shear strain vector

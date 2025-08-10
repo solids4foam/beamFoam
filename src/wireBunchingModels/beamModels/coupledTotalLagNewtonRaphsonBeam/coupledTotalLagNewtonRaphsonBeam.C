@@ -631,7 +631,24 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             0,            0,           kCI()*IzzRho().value()
         )
     ),
-    newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
+    ddtSchemeName_
+    (
+         mesh().ddtSchemes().found("ddt(w)")
+         ?
+         (mesh().ddtSchemes().lookup("ddt(w)"))
+         :
+         (mesh().ddtSchemes().lookup("default"))
+    ),
+    d2dt2SchemeName_
+    (
+         mesh().d2dt2Schemes().found("d2dt2(w)")
+         ?
+         (mesh().d2dt2Schemes().lookup("d2dt2(w)"))
+         :
+         (mesh().d2dt2Schemes().lookup("default"))
+    ),
+    // Newmark-beta time integration parameters
+    // newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
     betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
     gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
 
@@ -662,11 +679,75 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         dimensionedScalar("zero", dimless, 0)
     )
 {
+    // Check to enforce user to specify the d2dt2Schemes
+    // system/fvSchemes - Required for dynamic simulations
+
+    if (!List<word>({"steadyState", "Euler", "Newmark"}).found(d2dt2SchemeName_))
+    {
+        FatalErrorIn
+        (
+            "Constructor of coupledTotalLagNewtonRaphsonBeam"
+        )
+            << "The beam solver consists of 2nd order PDEs " << nl
+            << "Please specify the d2dt2Schemes in system/fvSchemes!" << nl
+            << "The valid schemes/keywords are: steadyState, Euler, Newmark." << nl
+            << "The Newmark or Newmark-beta time scheme is a second-order "
+            << "accurate time scheme for solving 2nd order PDEs." << nl
+            << abort(FatalError);
+    }
+
+    // Check to enforce that ddtSchemes and d2dt2Schemes are consistent
+    bool consistentTimeSchemes =
+        (ddtSchemeName_ == "Euler" && d2dt2SchemeName_ == "Euler")
+     || (ddtSchemeName_ == "steadyState" && d2dt2SchemeName_ == "steadyState")
+     || (ddtSchemeName_ == "steadyState" && d2dt2SchemeName_ == "Newmark");
+        // Newmark uses only d2dt2
+
+    if (!consistentTimeSchemes)
+    {
+        FatalErrorInFunction
+          << "Inconsistent time integration schemes! Specified schemes are: \n"
+          << "  ddtScheme:    " << ddtSchemeName_  << nl
+          << "  d2dt2Scheme:  " << d2dt2SchemeName_ << nl << nl
+          << "Allowed combinations of (ddtScheme, d2dt2Scheme) are:\n"
+          << "  (Euler, Euler)\n"
+          << "  (steadyState, steadyState)\n"
+          << "  (steadyState, Newmark)\n" << nl
+          << " Newmark time scheme does not have any ddt terms, so set"
+          << " ddtSchemes to steadyState if using Newmark time scheme!"
+          << abort(FatalError);
+    }
+
+    if (d2dt2SchemeName_ == "Newmark")
+    {
+        Info<< "The Newmark time-integration scheme is set as d2dt2Scheme.\n"
+            << nl
+            << "The time integration parameters of Newmark method can be "
+            << "specified in constant/beamProperties inside "
+            << "coupledTotalLagNewtonRaphsonBeamCoeffs sub-dictionary.\n"
+            << "The keywords for input are 'newmarkBeta' and 'newmarkGamma'. \n"
+            << "The default parameters set are, newmarkBeta = 0.25 "
+            << "& newmarkGamma = 0.5\n"
+            << "They represent constant acceleration method or trapezoidal rule"
+            << ", and are generally good. \n"
+            << endl;
+
+        if (betaN_ != 0.25 || gammaN_ != 0.5)
+        {
+            Info<< "The user specified Newmark time integration parameters are\n"
+                << "newmarkBeta = " << betaN_ << " , "
+                << "newmarkGamma = " << gammaN_
+                << endl;
+        }
+    }
+
     W_.oldTime();
     U_.oldTime();
+    Accl_.oldTime();
     Omega_.oldTime();
-    Lambda_.oldTime();
+    dotOmega_.oldTime();
 
+    Lambda_.oldTime();
     Gamma_.oldTime();
     K_.oldTime();
     Lambdaf_.oldTime();
@@ -731,7 +812,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     );
     R0 = mesh().C();
     const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
-    
+
     if (max(mag(refTangentError)) > 1e-06)
     {
         FatalErrorIn
