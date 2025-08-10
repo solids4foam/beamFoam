@@ -345,7 +345,7 @@ Foam::beamModel::beamModel
 
     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -395,7 +395,7 @@ Foam::beamModel::beamModel
     }
     else
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -454,7 +454,7 @@ Foam::beamModel::beamModel
         (
             nBeams,
             dimensionedScalar(this->lookup("R")).value()
-        );
+         );
         if (this->found("U"))
         {
             U_.setSize

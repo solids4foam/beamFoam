@@ -19,6 +19,11 @@ ddtSchemes
     default         steadyState;
 }
 
+d2dt2Schemes
+{
+    default         steadyState;
+}
+
 gradSchemes
 {
   default        none;
