@@ -292,23 +292,23 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Add body force due to gravity and buoyancy if fluid is present
             // Note that for buoyant force calculation it is assumed
             // that the entire beam is submerged in the fluid
-            forAll(source, cellI)
-            {
-                source[cellI](0,0) -=
-                    (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(0).value();
+            // forAll(source, cellI)
+            // {
+            //     source[cellI](0,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(0).value();
 
-                source[cellI](1,0) -=
-                    (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(1).value();
+            //     source[cellI](1,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(1).value();
 
-                source[cellI](2,0) -=
-                    (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(2).value();
-            }
+            //     source[cellI](2,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(2).value();
+            // }
 
             // ground contact contribution
             if (groundContactActive_)
@@ -538,7 +538,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
             }
 
-            // Throw warning if drag active flag is true but the time scheme is
+            // Throw error if drag active flag is true but the time scheme is
             // steady state because the drag forces will be zero.
             if
             (
@@ -549,13 +549,15 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 )
             )
             {
-                WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
+                FatalErrorInFunction
                   << "Drag forces are zero for steady state calculation"
                   << nl
                   << "Set d2dt2Scheme type in system/fvSchemes as "
-                  << "'Euler' or 'Newmark' & 'dragActive' flag "
-                  << "in constant/beamProperties to true "
-                  << "to include drag force contributions" << nl << endl;
+                  << "'Euler' or 'Newmark' & 'dragActive' flag to 'true' "
+                  << "inside coupledTotalLagNewtownRaphsonCoeffs "
+                  << "sub-dictionary of constant/beamProperties "
+                  << "to include drag force contributions"
+                  << abort(FatalError);
             }
 
             // Calculate equilibrium equations residual

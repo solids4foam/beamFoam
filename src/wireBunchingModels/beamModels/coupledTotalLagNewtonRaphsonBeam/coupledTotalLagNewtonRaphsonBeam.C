@@ -633,24 +633,23 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     ),
     ddtSchemeName_
     (
-         mesh().ddtSchemes().found("ddt(w)")
+         mesh().ddtSchemes().found("ddt(W)")
          ?
-         (mesh().ddtSchemes().lookup("ddt(w)"))
+         (mesh().ddtSchemes().lookup("ddt(W)"))
          :
          (mesh().ddtSchemes().lookup("default"))
     ),
     d2dt2SchemeName_
     (
-         mesh().d2dt2Schemes().found("d2dt2(w)")
+         mesh().d2dt2Schemes().found("d2dt2(W)")
          ?
-         (mesh().d2dt2Schemes().lookup("d2dt2(w)"))
+         (mesh().d2dt2Schemes().lookup("d2dt2(W)"))
          :
          (mesh().d2dt2Schemes().lookup("default"))
     ),
     // Newmark-beta time integration parameters
-    // newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
-    betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
-    gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
+    betaN_(0.0),
+    gammaN_(0.0),
 
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
@@ -700,8 +699,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     bool consistentTimeSchemes =
         (ddtSchemeName_ == "Euler" && d2dt2SchemeName_ == "Euler")
      || (ddtSchemeName_ == "steadyState" && d2dt2SchemeName_ == "steadyState")
-     || (ddtSchemeName_ == "steadyState" && d2dt2SchemeName_ == "Newmark");
-        // Newmark uses only d2dt2
+     || (ddtSchemeName_ == "Newmark" && d2dt2SchemeName_ == "Newmark");
+        // Newmark uses only d2dt2 scheme but set both to Newmark
 
     if (!consistentTimeSchemes)
     {
@@ -712,25 +711,25 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
           << "Allowed combinations of (ddtScheme, d2dt2Scheme) are:\n"
           << "  (Euler, Euler)\n"
           << "  (steadyState, steadyState)\n"
-          << "  (steadyState, Newmark)\n" << nl
-          << " Newmark time scheme does not have any ddt terms, so set"
-          << " ddtSchemes to steadyState if using Newmark time scheme!"
+          << "  (Newmark, Newmark)\n" << nl
           << abort(FatalError);
     }
 
     if (d2dt2SchemeName_ == "Newmark")
     {
-        Info<< "The Newmark time-integration scheme is set as d2dt2Scheme.\n"
+        Info<< "The Newmark-beta time-integration scheme is set as d2dt2Scheme.\n"
             << nl
             << "The time integration parameters of Newmark method can be "
-            << "specified in constant/beamProperties inside "
-            << "coupledTotalLagNewtonRaphsonBeamCoeffs sub-dictionary.\n"
-            << "The keywords for input are 'newmarkBeta' and 'newmarkGamma'. \n"
-            << "The default parameters set are, newmarkBeta = 0.25 "
-            << "& newmarkGamma = 0.5\n"
+            << "specified inside d2dt2Scheme of system/fvSchemes using "
+            << "keywords 'newmarkBeta(W)' and 'newmarkGamma(W)'. \n"
+            << "The default parameters set are, newmarkBeta(W) = 0.25 "
+            << "& newmarkGamma(W) = 0.5\n"
             << "They represent constant acceleration method or trapezoidal rule"
             << ", and are generally good. \n"
             << endl;
+
+        betaN_ = mesh().d2dt2Schemes().lookupOrDefault<scalar>("newmarkBeta(W)", 0.25);
+        gammaN_ = mesh().d2dt2Schemes().lookupOrDefault<scalar>("newmarkGamma(W)", 0.5);
 
         if (betaN_ != 0.25 || gammaN_ != 0.5)
         {
