@@ -304,10 +304,10 @@ Foam::beamModel::beamModel
     pointForces_(),
     iOuterCorr_(0),
     steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
-    objectiveInterpolation_
-    (
-        beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
-    ),
+    // objectiveInterpolation_
+    // (
+    //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
+    // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     startToRelaxTime_
@@ -345,7 +345,7 @@ Foam::beamModel::beamModel
 
     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -395,7 +395,7 @@ Foam::beamModel::beamModel
     }
     else
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -454,7 +454,7 @@ Foam::beamModel::beamModel
         (
             nBeams,
             dimensionedScalar(this->lookup("R")).value()
-        );
+         );
         if (this->found("U"))
         {
             U_.setSize

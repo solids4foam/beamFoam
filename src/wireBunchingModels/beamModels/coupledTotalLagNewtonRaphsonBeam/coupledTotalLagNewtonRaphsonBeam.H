@@ -202,22 +202,32 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceTensorField CDQDK_;
 
         //- Beam momentum inertial term constant
- 	    dimensionedScalar ARho_;
+        dimensionedScalar ARho_;
 
         //- Beam cross-section constant
- 	    dimensionedTensor CIRho_;
+        dimensionedTensor CIRho_;
 
-    // Fields related to Newmark-beta time integration scheme
+    //- Fields related to time integration schemes
+
+        //- ddtScheme name from fvSchemes dictionary
+        //- Used to check whether steadyState or not
+        const word ddtSchemeName_;
+
+        //- d2dt2Scheme name from fvSchemes dictionary
+        const word d2dt2SchemeName_;
+
+    //- Fields related to Newmark-beta time integration scheme
 
         //- Boolean to activate Newmark-beta time-integration scheme
-        bool newmark_;
+        // bool newmark_;
 
         //- Newmark beta coefficient
         scalar betaN_;
 
         //- Newmark gamma coefficient
         scalar gammaN_;
-        //- Fields related to drag forces due to Morrison's equation
+
+    //- Fields related to drag forces due to Morrison's equation
         //- Boolean to activate drag forces
         bool dragActive_;
 
@@ -257,8 +267,8 @@ class coupledTotalLagNewtonRaphsonBeam
         /*-----------------------------------------------*/
 
         //- Update the coefficients associated with the primary
-        //- variables W_ and Theta_ 
-        //- Function call implemented in 
+        //- variables W_ and Theta_
+        //- Function call implemented in
         //- 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
         void updateEqnCoefficients();
 
@@ -331,7 +341,6 @@ public:
         {}
 
     // Member Functions
-
         // Access
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
