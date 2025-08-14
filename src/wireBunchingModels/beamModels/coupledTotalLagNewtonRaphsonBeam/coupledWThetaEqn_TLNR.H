@@ -794,14 +794,11 @@
                     //- beam Acceleration vector
                     vectorField acclb (fvc::ddt(U_));
 
-                    //todo backward time schemes
-                    //todo changing coupling name
-
+                    //Info<< "immersedForce = " << immersedForce_ << endl;
                     if (beamFluidInteraction_)
                     {
                         labelList seedCellIDs(mesh().nCells(), -1);
-
-                        std::pair<tmp<volVectorField>, tmp<volScalarField>> fluidInfo =
+                        std::tuple<tmp<volVectorField>, tmp<volScalarField>, tmp<volVectorField>, labelList> fluidInfo =
                             getFluidVelocity
                             (
                                 fluidMesh,
@@ -811,16 +808,28 @@
                                 groundZ_,
                                 searchEngine_
                             );
-
-                        fluidU_ = fluidInfo.first.ref();
-
-                        cellMarker_ = fluidInfo.second.ref();
-
+                        fluidU_ = std::get<0>(fluidInfo).ref();
+                        cellMarker_ = std::get<1>(fluidInfo).ref();
+                        beamVelocity_ = std::get<2>(fluidInfo).ref();
+                        fluidCellIDs_ = std::get<3>(fluidInfo);
                         if (mesh().time().writeTime())
                         {
                             cellMarker_.write();
+                            // fluidCellIDs.write();
                         }
-
+                        // const vectorIOList& immersedForce = mesh().time().db().sortedNames();
+                        // Info<< "immersedForce = " << immersedForce_ << endl;
+                        //- Adding the immersed boundary force to the source
+                        if(immersedForceActive_)
+                        {
+                            Info<< "Applying immersed Force" << endl;
+                            forAll(source, cellI)
+                            {
+                                source[cellI](0,0) -= (immersedForce_[cellI].component(0));
+                                source[cellI](1,0) -= (immersedForce_[cellI].component(1));
+                                source[cellI](2,0) -= (immersedForce_[cellI].component(2));
+                            }
+                        }
                         // relative velocity vector
                         vectorField Ur (U_.internalField() - fluidU_.internalField());
                         // fluid acceleration

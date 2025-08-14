@@ -130,6 +130,31 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimVelocity, vector::zero)
     ),
+    fluidCellIDs_
+    (
+        IOobject
+        (
+            "fluidCellIDs",
+            mesh().time().timeName(),
+            mesh(),
+            IOobject::NO_READ,
+            IOobject::AUTO_WRITE
+        ),
+        mesh().nCells()
+    ),
+    immersedForce_
+    (
+        IOobject
+        (
+            "immersedForce",
+            mesh().time().timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        List<vector>(mesh().nCells(), vector::zero)
+    ),
+
     cellMarker_
     (
         IOobject
@@ -142,6 +167,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh().time().db().parent().lookupObject<fvMesh>("region0"),
         dimensionedScalar(dimless, 0)
+    ),
+    beamVelocity_
+    (
+        IOobject
+        (
+            "beamVelocity",
+            mesh().time().db().parent().lookupObject<fvMesh>("region0").time().timeName(),
+            mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh().time().db().parent().lookupObject<fvMesh>("region0"),
+        dimensionedVector("0", dimVelocity, vector::zero)
     ),
     Accl_
     (
@@ -664,6 +702,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
     beamFluidInteraction_(beamProperties().lookupOrDefault<bool>("beamFluidInteraction", false)),
+    immersedForceActive_(beamProperties().lookupOrDefault<bool>("immersedForceActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 

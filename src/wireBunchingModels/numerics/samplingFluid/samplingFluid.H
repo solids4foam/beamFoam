@@ -41,13 +41,21 @@ Author
 
 namespace Foam
 {
-    std::pair<tmp<volVectorField>, tmp<volScalarField>> getFluidVelocity(
-        const fvMesh& fluidMesh,
-        const fvMesh& mesh,
-        const vectorField& beamCellCenterCoord,
-        labelList& seedCellIDs,
-        const scalar groundZ,
-        const meshSearch& searchEngine
+    std::tuple
+        <
+            tmp<volVectorField>,
+            tmp<volScalarField>,
+            tmp<volVectorField>,
+            labelList
+        >
+        getFluidVelocity
+        (
+            const fvMesh& fluidMesh,
+            const fvMesh& mesh,
+            const vectorField& beamCellCenterCoord,
+            labelList& seedCellIDs,
+            const scalar groundZ,
+            const meshSearch& searchEngine // flag for using octree or not
         );
 } // End namespace Foam
 

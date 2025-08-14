@@ -1,4 +1,4 @@
- /*---------------------------------------------------------------------------* \
+/*---------------------------------------------------------------------------* \
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     |
@@ -50,6 +50,8 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "meshSearch.H"
+#include "vectorIOList.H"
+#include "vectorList.H"
 //#include "multibeamFvBlockMatrix.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -83,12 +85,21 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Fluid Velocity around the beam
         mutable volVectorField fluidU_;
-        
+
+        //- Fluid cell index that has been found for each beam cell
+        mutable labelIOList fluidCellIDs_;
+
+        //- immersed force acting on each beam cell
+        mutable vectorIOList immersedForce_;
+
         //- Cell marker function for drag calculation
         mutable volScalarField cellMarker_;
 
+        //- beam cell center veclocity stored on fluid mesh
+        mutable volVectorField beamVelocity_;
+
         //- Mean line acceleration field
- 	    mutable volVectorField Accl_;
+ 	mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -227,6 +238,9 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Boolean to enable beam-fluid coupling and its effect on drag calculations
         bool beamFluidInteraction_;
+
+        //- Boolean to enable immersed force on beam cells
+        bool immersedForceActive_;
 
         //- Normal drag coefficient
         scalar Cdn_;
@@ -439,6 +453,7 @@ public:
 
             //- Write fields
             virtual void writeFields();
+;
 };
 
 
