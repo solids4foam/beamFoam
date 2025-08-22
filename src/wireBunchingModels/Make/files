@@ -5,10 +5,7 @@ beamModels/beamModel/crossSections/crossSection/newCrossSectionModel.C
 beamModels/beamModel/crossSections/circle/circle.C
 beamModels/beamModel/crossSections/rectangle/rectangle.C
 beamModels/beamModel/crossSections/crossSection/quad/quadrilateral.C
-beamModels/beamModel/crossSections/polygon/polygon.C
 beamModels/beamModel/crossSections/annularSector/annularSector.C
-beamModels/beamModel/crossSections/polyline/polyline.C
-
 
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C

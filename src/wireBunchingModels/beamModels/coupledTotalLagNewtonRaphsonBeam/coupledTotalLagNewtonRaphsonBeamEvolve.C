@@ -538,6 +538,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
             }
 
+
             // Throw error if drag active flag is true but the time scheme is
             // steady state because the drag forces will be zero.
             if

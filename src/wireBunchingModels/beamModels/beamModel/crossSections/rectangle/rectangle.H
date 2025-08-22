@@ -76,6 +76,14 @@ class rectangle
         //- Number of segments in y-direction
         scalar ny_;
     
+        //- Artificial area scaling factor which affects the mechanical
+        //- properties of the beams
+        scalar scalingArea_;
+
+        //- Artificial second moment of area scaling factor which affects
+        //- the mechanical properties of the beams
+        scalar scalingSecondMomentArea_;
+
         //- Local mesh points
         vectorField points_;
 
@@ -136,19 +144,19 @@ public:
         //- Return cross-section area
         virtual scalar A() const
         {
-            return b_*h_;
+            return scalingArea_*b_*h_;
         }
     
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
-            return b_*pow(h_, 3)/12;
+            return scalingSecondMomentArea_*b_*pow(h_, 3)/12;
         }
     
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const
         {
-            return h_*pow(b_, 3)/12;
+            return scalingSecondMomentArea_*h_*pow(b_, 3)/12;
         }
     
         //- Return cross-section Saint-Venant torsion constant
@@ -157,12 +165,12 @@ public:
             return Ixx() + Iyy();
         }
 
-        //- Return cross-section coefficient of proportionality
-        //  between fully plastic axial force and fully plastic moment
-        virtual scalar CNM() const
-        {
-            return 4.0/h_;
-        }
+        // //- Return cross-section coefficient of proportionality
+        // //  between fully plastic axial force and fully plastic moment
+        // virtual scalar CNM() const
+        // {
+        //     return 4.0/h_;
+        // }
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const
@@ -175,10 +183,10 @@ public:
             );
 
             // Counter-clock-wise orientation
-            tCircumPoints.ref()[0] = vector(b_/2, -h_/2, 0);
-            tCircumPoints.ref()[1] = vector(-b_/2, -h_/2, 0);
-            tCircumPoints.ref()[2] = vector(-b_/2, h_/2, 0);
-            tCircumPoints.ref()[3] = vector(b_/2, h_/2, 0);
+            tCircumPoints.ref()[0] = vector(0, b_/2, -h_/2);
+            tCircumPoints.ref()[1] = vector(0, -b_/2, -h_/2);
+            tCircumPoints.ref()[2] = vector(0, -b_/2, h_/2);
+            tCircumPoints.ref()[3] = vector(0, b_/2, h_/2);
 
             return tCircumPoints;
         }
@@ -196,44 +204,44 @@ public:
             return points_;
         }
 
-        //- Return Green-Lagrangian strain at structured mesh points
-        //  for provided average tranlational and rotational strains
-        virtual tmp<vectorField> greenLagrangianStrain
-        (
-            const vector& Gamma,
-            const vector& K
-        ) const;
+        // //- Return Green-Lagrangian strain at structured mesh points
+        // //  for provided average tranlational and rotational strains
+        // virtual tmp<vectorField> greenLagrangianStrain
+        // (
+        //     const vector& Gamma,
+        //     const vector& K
+        // ) const;
 
-        //- Return cross-section resultant force
-        virtual tmp<scalarField> resultantTotalForce
-        (
-            const vectorField& S
-        ) const;
+        // //- Return cross-section resultant force
+        // virtual tmp<scalarField> resultantTotalForce
+        // (
+        //     const vectorField& S
+        // ) const;
 
-        //- Return cross-section resultant force
-        virtual vector resultantForce(const vectorField& S) const;
+        // //- Return cross-section resultant force
+        // virtual vector resultantForce(const vectorField& S) const;
 
-        //- Return cross-section resultant moment
-        virtual vector resultantMoment(const vectorField& S) const;
+        // //- Return cross-section resultant moment
+        // virtual vector resultantMoment(const vectorField& S) const;
 
-        //- Return cross-section resultant tangent matrices
-        void resultantTangentMatrices
-        (
-            const diagTensorField& dSdE,
-            tensor& DQDGamma,
-            tensor& DQDK,
-            tensor& DMDGamma,
-            tensor& DMDK
-        ) const;
+        // //- Return cross-section resultant tangent matrices
+        // void resultantTangentMatrices
+        // (
+        //     const diagTensorField& dSdE,
+        //     tensor& DQDGamma,
+        //     tensor& DQDK,
+        //     tensor& DMDGamma,
+        //     tensor& DMDK
+        // ) const;
     
-        //- Write cross-section scalar field in VTK format
-        virtual void writeVTK
-        (
-            const fileName& fn,
-            const scalarField& sf0,
-            const scalarField& sf1,
-            const vectorField& vf
-        ) const;
+        // //- Write cross-section scalar field in VTK format
+        // virtual void writeVTK
+        // (
+        //     const fileName& fn,
+        //     const scalarField& sf0,
+        //     const scalarField& sf1,
+        //     const vectorField& vf
+        // ) const;
 };
 
 
