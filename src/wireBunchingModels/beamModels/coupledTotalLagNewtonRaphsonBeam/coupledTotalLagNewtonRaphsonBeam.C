@@ -2032,64 +2032,9 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
     }
 }
 
-
-tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::
-currentDisplacementIncrement() const
-{
-    label nPoints = this->mesh().nCells() + 1;
-
-    tmp<vectorField> tDW
-    (
-        new vectorField(nPoints, vector::zero)
-    );
-    vectorField& DW(tDW.ref());
-
-    const surfaceVectorField DWf
-    (
-        fvc::interpolate(W_)
-      - fvc::interpolate(W_.oldTime())
-    );
-
-    const vectorField& DWfI = DWf.internalField();
-
-    DW[0] = DWf.boundaryField()[startPatchIndex()][0];
-    DW[nPoints-1] = DWf.boundaryField()[endPatchIndex()][0];
-    for (label i=0; i<DWfI.size(); i++)
-    {
-        DW[i+1] = DWfI[i];
-    }
-
-    return tDW;
-}
-
-tmp<tensorField> coupledTotalLagNewtonRaphsonBeam::
-currentRotationIncrement() const
-{
-    label nPoints = this->mesh().nCells() + 1;
-
-    tmp<tensorField> tDLambda
-    (
-        new tensorField(nPoints, tensor::zero)
-    );
-    tensorField& DLambda(tDLambda.ref());
-
-    const surfaceTensorField DLambdaf((Lambdaf_ & inv(Lambdaf_.oldTime())));
-
-    const tensorField& DLambdafI(DLambdaf.internalField());
-
-    DLambda[0] = DLambdaf.boundaryField()[startPatchIndex()][0];
-    DLambda[nPoints-1] = DLambdaf.boundaryField()[endPatchIndex()][0];
-    for (label i=0; i<DLambdafI.size(); i++)
-    {
-        DLambda[i+1] = DLambdafI[i];
-    }
-
-    return tDLambda;
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace solidModels
+} // End namespace beamModels
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

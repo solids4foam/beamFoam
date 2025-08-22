@@ -695,12 +695,6 @@ public:
                 vectorField& tangents
             ) const = 0;
 
-            //- Return current mean line displacement increment
-            virtual tmp<vectorField> currentDisplacementIncrement() const = 0;
-
-            //- Return current cross-section rotation matrix increment
-            virtual tmp<tensorField> currentRotationIncrement() const = 0;
-
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
 
@@ -797,12 +791,6 @@ public:
             {
                 return steadyState_;
             }
-
-            // //- Objective interpolation
-            // bool objectiveInterpolation() const
-            // {
-            //     return objectiveInterpolation_;
-            // }
 
             //- Artificial scaling factor for changing the inertia
             //- tensor I_rho in the angular momentum tensor 

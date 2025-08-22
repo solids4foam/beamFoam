@@ -436,12 +436,6 @@ public:
                 vectorField& tangents
             ) const;
 
-            //-
-            virtual tmp<vectorField> currentDisplacementIncrement() const;
-
-            //-
-            virtual tmp<tensorField> currentRotationIncrement() const;
-
         // Edit
 
             //- Evolve the beam solver and solve the mathematical model
