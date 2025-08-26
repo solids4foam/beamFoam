@@ -141,7 +141,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     }
 }
 
-
 Foam::tmp<Foam::surfaceScalarField>
 Foam::beamModel::indicator(const Foam::label bI) const
 {
@@ -242,16 +241,18 @@ Foam::beamModel::beamModel
     nBeamCells_(),
     crossSections_(),
     R_(),
-    U_(),
-    E_("E",beamProperties()),
-    G_("G",beamProperties()),
+    // U_(),
+    // E_("E",beamProperties()),
+    // G_("G",beamProperties()),
+    E_(),
+    G_(),
     rho_
     (
-        beamProperties().getOrDefault<dimensionedScalar>
-        (
-            "rho",
-            dimensionedScalar("rho", dimDensity, 0)
-        )
+        // beamProperties().getOrDefault<dimensionedScalar>
+        // (
+        //     "rho",
+        //     dimensionedScalar("rho", dimDensity, 0)
+        // )
     ),
     rhof_
     (
@@ -329,10 +330,10 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
-    if (beamProperties().found("rho"))
-    {
-        rho_ = dimensionedScalar("rho",beamProperties());
-    }
+    // if (beamProperties().found("rho"))
+    // {
+    //     rho_ = dimensionedScalar("rho",beamProperties());
+    // }
 
      // Header for gravitational acceleration
     IOobject gHeader
@@ -413,82 +414,172 @@ Foam::beamModel::beamModel
     }
 
     // Read cross-sections of beams
-    if (found("beams"))
+    // if (found("beams"))
+    // {
+    Info<< "Reading beam properties from cross-section model" << endl;
+
+    const PtrList<entry> entries(lookup("beams"));
+
+    const label nBeams = entries.size();
+
+    Info<< "nBeams: " << nBeams << endl;
+
+    crossSections_.setSize(nBeams);
+
+    forAll(entries, beamI)
     {
-       Info<< "Reading beam properties from cross-section model" << endl;
-
-       const PtrList<entry> entries(lookup("beams"));
-
-       const label nBeams = entries.size();
-
-       Info<< "nBeams: " << nBeams << endl;
-
-       crossSections_.setSize(nBeams);
-
-       forAll(entries, beamI)
-       {
-           crossSections_.set
-           (
-               beamI,
-               crossSectionModel::New
-               (
-                   word(entries[beamI].dict().lookup("crossSectionModel")),
-                   entries[beamI].dict()
-               )
-           );
-       }
-
-       R_.setSize(nBeams);
-       U_.setSize(nBeams);
-       forAll(crossSections_, beamI)
-       {
-           R_[beamI] = crossSections_[beamI].R();
-           // U_[beamI] = crossSections_[beamI].U();
-       }
-
-    }
-    else if (this->found("nBeams")) // Read beam radius
-    {
-        label nBeams = readInt(this->lookup("nBeams"));
-        R_.setSize
+        crossSections_.set
         (
-            nBeams,
-            dimensionedScalar(this->lookup("R")).value()
-         );
-        if (this->found("U"))
-        {
-            U_.setSize
+            beamI,
+            crossSectionModel::New
             (
-                nBeams,
-                dimensionedScalar(this->lookup("U")).value()
-            );
+                word(entries[beamI].dict().lookup("crossSectionModel")),
+                entries[beamI].dict()
+            )
+        );
+    }
+
+    R_.setSize(nBeams);
+    // U_.setSize(nBeams);
+    forAll(crossSections_, beamI)
+    {
+        R_[beamI] = crossSections_[beamI].R();
+        // U_[beamI] = crossSections_[beamI].U();
+    }
+    // }
+    // else if (this->found("nBeams")) // Read beam radius
+    // {
+    //     label nBeams = readInt(this->lookup("nBeams"));
+    //     R_.setSize
+    //     (
+    //         nBeams,
+    //         dimensionedScalar(this->lookup("R")).value()
+    //      );
+    //     if (this->found("U"))
+    //     {
+    //         U_.setSize
+    //         (
+    //             nBeams,
+    //             dimensionedScalar(this->lookup("U")).value()
+    //         );
+    //     }
+    //     else
+    //     {
+    //         U_.setSize(nBeams, 0);
+    //     }
+    // }
+    // else
+    // {
+    //     R_ = scalarField(this->lookup("R"));
+    //     U_ = scalarField(this->lookup("U"));
+    // }
+    
+    Info<< "Attempting to read global mechanical variables "
+        << "from constant/beamProperties "
+        << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
+        << endl;
+
+    dimensionedScalar globalE("E", dimPressure, 0.0);
+    dimensionedScalar globalG("G", dimPressure, 0.0);
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+
+    bool foundGlobalE = false;
+    bool foundGlobalG = false;
+    bool foundGlobalRho = false;
+
+    if (beamProperties().found("E"))
+    {
+        globalE = dimensionedScalar("E", beamProperties());
+        foundGlobalE = true;
+    }
+
+    if (beamProperties().found("G"))
+    {
+        globalG = dimensionedScalar("G", beamProperties());
+        foundGlobalG = true;
+    }
+
+    if (beamProperties().found("rho"))
+    {
+        globalRho = dimensionedScalar("rho", beamProperties());
+        foundGlobalRho = true;
+    }
+    
+    E_.setSize(nBeams, 0.0);
+    G_.setSize(nBeams, 0.0);
+    rho_.setSize(nBeams, 0.0);
+
+    forAll(crossSections_, beamI)
+    {
+        const dictionary& bDict = entries[beamI].dict();
+
+        if (
+               bDict.found("E")
+            || bDict.found("G")
+            || bDict.found("rho")
+           )
+        {
+            if (foundGlobalE || foundGlobalG || foundGlobalRho)
+            {
+                FatalErrorInFunction
+                    << "Both local and global inputs for"
+                    << "beam mechanical properties found!"
+                    << "Either specify the variables (E, G, rho) of type "
+                    << "*scalar* locally inside crossSectionModel dictionary, OR "
+                    << "specify them all as global variables of type "
+                    << "*dimensionedScalar*, i.e., specify with dimensions.\n"
+                    << "The global values are common "
+                    << "for all beams)!"
+                    << abort(FatalError);
+            }
+            else
+            {
+                Info<< "Local mechanical properties specific to beam "
+                    << beamI << " found!"  << endl;
+                
+                E_[beamI] = readScalar(bDict.lookup("E"));
+                G_[beamI] = readScalar(bDict.lookup("G"));
+                rho_[beamI] = bDict.getOrDefault<scalar>("rho", 0.0);
+            }            
+        }
+        else if (foundGlobalE || foundGlobalG || foundGlobalRho)
+        {
+            E_[beamI] = globalE.value();
+            G_[beamI] = globalG.value();
+            rho_[beamI] = globalRho.value();
         }
         else
         {
-            U_.setSize(nBeams, 0);
+            FatalErrorInFunction
+                << "Missing E, G: neither per-beam 'E'/'G' for beam " << beamI
+                << " nor global 'E'/'G' in " << beamProperties().name() << "."
+                << endl;
         }
-    }
-    else
-    {
-        R_ = scalarField(this->lookup("R"));
-        U_ = scalarField(this->lookup("U"));
+
     }
 
     // Write beam cross-section properties
-    Info<< "A: " << A() << endl;
+    for (label bI = 0; bI < nBeams; ++bI)
+    {
+        Info<< "\n\n Writing mechanical properties of beam no: " << bI << endl;
+        Info<< "E " << E(bI) << endl;
+        Info<< "G " << G(bI) << endl;
 
-    Info<< "Iyy: " << Iyy() << endl;
-    Info<< "Izz: " << Izz() << endl;
+        Info<< "A: " << A(bI) << endl;
 
-    Info<< "I: " << I() << endl;
-    Info<< "J: " << J() << endl;
+        Info<< "Iyy: " << Iyy(bI) << endl;
+        Info<< "Izz: " << Izz(bI) << endl;
 
-    Info<< "EI: " << EI() << endl;
-    Info<< "GJ: " << GJ() << endl;
+        Info<< "I: " << I(bI) << endl;
+        Info<< "J: " << J(bI) << endl;
 
-    Info<< "EA: " << EA() << endl;
-    Info<< "GA: " << GA() << endl;
+        Info<< "EI: " << EI(bI) << endl;
+        Info<< "GJ: " << GJ(bI) << endl;
 
+        Info<< "EA: " << EA(bI) << endl;
+        Info<< "GA: " << GA(bI) << endl;
+    }
+    
     word startPatchName(beamProperties_.lookup("startPatchName"));
     word endPatchName(beamProperties_.lookup("endPatchName"));
 

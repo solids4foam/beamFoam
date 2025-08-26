@@ -126,16 +126,20 @@ class beamModel
         scalarField R_;
 
         //- Beam convection velocity
-        scalarField U_;
+        // scalarField U_;
 
         //- Young modulus
-        dimensionedScalar E_;
+        // dimensionedScalar E_;
+        scalarList E_;
 
         //- Shear modulus
-        dimensionedScalar G_;
+        // dimensionedScalar G_;
+        scalarList G_;
 
         //- Beam Density
-        dimensionedScalar rho_;
+        // dimensionedScalar rho_;
+        scalarList rho_;
+    
         //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
 
@@ -185,7 +189,7 @@ class beamModel
         // bool objectiveInterpolation_;
 
         //- Artificial scaling factor for changing the inertia
-        //- tensor I_rho in the angular momentum tensor 
+        //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
 
         //- Conical pullys
@@ -408,10 +412,11 @@ public:
             }
 
             //- Return beam convection velocity
-            const scalar& U(label bI = 0) const
-            {
-                return U_[bI];
-            }
+            // const scalar& U(label bI = 0) const
+            // {
+            //     return U_
+            //     [bI];
+            // }
 
             inline dimensionedScalar A(label bI = 0) const
             {
@@ -483,14 +488,16 @@ public:
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
             }
 
-            const dimensionedScalar& rho() const
+            const dimensionedScalar rho(label bI = 0) const
             {
-                return rho_;
+                return dimensionedScalar("rhoBeam" + Foam::name(bI), dimDensity, rho_[bI]);
             }
+    
             const dimensionedScalar& rhoFluid() const
             {
                 return rhof_;
             }
+
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {
@@ -503,65 +510,74 @@ public:
                 return gPtr_();
             }
 
-            const dimensionedScalar& E() const
+            // const dimensionedScalar& E() const
+            // {
+            //     return E_;
+            // }
+            const dimensionedScalar E(label bI = 0) const
             {
-                return E_;
+                return dimensionedScalar("EBeam" + Foam::name(bI), dimPressure, E_[bI]);
             }
 
-            const dimensionedScalar& G() const
+            // const dimensionedScalar& G() const
+            // {
+            //     return G_;
+            // }
+
+            const dimensionedScalar G(label bI = 0) const
             {
-                return G_;
+                return dimensionedScalar("GBeam" + Foam::name(bI), dimPressure, G_[bI]);
             }
 
             inline dimensionedScalar GA(label bI = 0) const
             {
-                return G_*A(bI);
+                return G(bI)*A(bI);
             }
 
             inline dimensionedScalar GJ(label bI = 0) const
             {
-                return G_*J(bI);
+                return G(bI)*J(bI);
             }
 
             inline dimensionedScalar EA(label bI = 0) const
             {
-                return E_*A(bI);
+                return E(bI)*A(bI);
             }
 
             inline dimensionedScalar EI(label bI = 0) const
             {
-                return E_*I(bI);
+                return E(bI)*I(bI);
             }
 
             inline dimensionedScalar EIyy(label bI = 0) const
             {
-                return E_*Iyy(bI);
+                return E(bI)*Iyy(bI);
             }
 
             inline dimensionedScalar EIzz(label bI = 0) const
             {
-                return E_*Izz(bI);
+                return E(bI)*Izz(bI);
             }
             // Additional member functions added fo mass and rotation
  	          // inertia tensors for dynamics calculation
             inline dimensionedScalar ARho(label bI = 0) const
             {
-                return A(bI)*rho();
+                return A(bI)*rho(bI);
             }
 
             inline dimensionedScalar IyyRho(label bI = 0) const
             {
-                return rho()*Iyy(bI);
+                return rho(bI)*Iyy(bI);
             }
 
  	        inline dimensionedScalar IzzRho(label bI = 0) const
             {
-                return rho()*Izz(bI);
+                return rho(bI)*Izz(bI);
             }
 
  	        inline dimensionedScalar JRho(label bI = 0) const
             {
-                return rho()*J(bI);
+                return rho(bI)*J(bI);
             }
 
             //- Return segment length
