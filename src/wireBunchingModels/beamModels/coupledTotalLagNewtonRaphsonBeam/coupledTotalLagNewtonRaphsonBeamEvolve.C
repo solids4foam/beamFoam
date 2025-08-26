@@ -350,6 +350,21 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // if (!steadyState())
             if (d2dt2SchemeName_ != "steadyState")
             {
+                // Throw error if rho is set to zero for transient case
+                for (label bI = 0 ; bI < nBeams() ; ++bI)
+                {
+                    if (rho(bI).value() == 0.0)
+                    {
+                        FatalErrorInFunction
+                            << "The time integration scheme provided is " << d2dt2SchemeName_
+                            << " but density 'rho' is not specified!!\n"
+                            << "Specify density as scalar either locally in crossSectionModel dict "
+                            << "of constant/beamProperties or as a global variable with dimensions "
+                            << "inside coupledTotalLagNewtonRaphsonBeamCoeffs sub-dictionary"
+                            << abort(FatalError);
+                    }
+                }
+
                 // The EXPLICIT inertial contributions to source
                 // 1. Inertial force
                 const vectorField QRho = ARho_*L()*Accl_;
