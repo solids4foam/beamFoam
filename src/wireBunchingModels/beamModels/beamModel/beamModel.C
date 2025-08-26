@@ -522,14 +522,14 @@ Foam::beamModel::beamModel
             if (foundGlobalE || foundGlobalG || foundGlobalRho)
             {
                 FatalErrorInFunction
-                    << "Both local and global inputs for"
-                    << "beam mechanical properties found!"
+                    << "Both local and global inputs for "
+                    << "beam mechanical properties found!\n"
                     << "Either specify the variables (E, G, rho) of type "
                     << "*scalar* locally inside crossSectionModel dictionary, OR "
-                    << "specify them all as global variables of type "
+                    << "specify ALL of them as global variables of type "
                     << "*dimensionedScalar*, i.e., specify with dimensions.\n"
                     << "The global values are common "
-                    << "for all beams)!"
+                    << "to all beams!\n"
                     << abort(FatalError);
             }
             else
