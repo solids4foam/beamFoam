@@ -1,0 +1,74 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beams
+(
+    beam_0
+    {
+    
+        crossSectionModel circle;
+
+        circleCrossSectionModelDict
+        {
+            radius  0.65828153; //0.65828153;//0.65; //mm
+        }
+
+        length 100; // mm
+        nSegments 20;
+        E  2.3731844e8;      
+        G  1.1865922e8; //nu = 0
+     	
+    }
+
+    beam_1
+    {
+    
+        crossSectionModel circle;
+
+        circleCrossSectionModelDict
+        {
+            radius  0.65828153; //0.65828153;//0.65; //mm
+        }
+
+        length 100; // mm
+        nSegments 20;
+        E  2.3731844e8;      
+        G  1.1865922e8; //nu = 0
+     	
+    }
+
+ );
+
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    // E E [1 -1 -2 0 0 0 0] 2.3731844e8;
+    // G G [1 -1 -2 0 0 0 0] 1.1865922e8; //nu = 0
+    
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 1000;
+    convergenceTol 1e-10;
+    
+    debug yes;
+
+}
+
+// ************************************************************************* //
