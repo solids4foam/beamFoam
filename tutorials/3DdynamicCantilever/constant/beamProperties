@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------* \
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+beams
+(
+    beam_0
+    {
+	    crossSectionModel rectangle;
+	
+	    rectangleCrossSectionModelDict
+        {
+            b 0.2;
+            h 0.2;
+            nx 1;
+            ny 1;
+        }
+
+        length 2;
+        nSegments 20;
+        E  15.293e6;
+        G    5.882e6;
+        rho    1000;
+    }
+);
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    // rho rho [1 -3 0 0 0 0 0] 1000;
+    // E E [1 -1 -2 0 0 0 0] 1;
+    // G G [1 -1 -2 0 0 0 0] 5.882e6;
+    
+    startPatchName left;
+    endPatchName right;
+
+    nCorrectors 200;
+    convergenceTol 1e-10;
+
+    debug yes;
+    
+    // Newmark-beta parameters
+    // newmarkBeta    0.25;
+    // newmarkGamma    0.6;
+}
+// ************************************************************************* //
