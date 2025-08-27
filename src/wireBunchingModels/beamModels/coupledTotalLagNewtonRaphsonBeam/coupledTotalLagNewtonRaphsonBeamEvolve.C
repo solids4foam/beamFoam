@@ -67,14 +67,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     );
     scalar curConvergenceTol = convergenceTol;
 
-    const scalar materialTol
-    (
-        beamProperties().lookupOrDefault<scalar>
-        (
-            "materialTol",
-            curConvergenceTol
-        )
-    );
+    // const scalar materialTol
+    // (
+    //     beamProperties().lookupOrDefault<scalar>
+    //     (
+    //         "materialTol",
+    //         curConvergenceTol
+    //     )
+    // );
 
     const bool debug
     (
@@ -83,13 +83,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
     scalar initialResidual = 1;
     scalar currentResidual = 1;
-    scalar currentMaterialResidual = 0;
+    // scalar currentMaterialResidual = 0;
     //bool completedElasticPrediction = false;
     //blockLduMatrix::debug = debug;
 
-    scalar curContactResidual = 1;
+    // scalar curContactResidual = 1;
 
     iOuterCorr() = 0;
+
     do
     {
         if (debug)
@@ -576,15 +577,15 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                   << abort(FatalError);
             }
 
-            // Calculate equilibrium equations residual
-            if (debug)
-            {
-                // Note: we do not user a gSum here as the beam is assumed to be on one
-                // core
-                const scalar eqResidual = sqrt(sum(magSqr(source)));
-                Info<< "L2 norm of the equlibrium equations residual: "
-                    << eqResidual << endl;
-            }
+            // // Calculate equilibrium equations residual
+            // if (debug)
+            // {
+            //     // Note: we do not user a gSum here as the beam is assumed to be on one
+            //     // core
+            //     const scalar eqResidual = sqrt(sum(magSqr(source)));
+            //     Info<< "L2 norm of the equlibrium equations residual: "
+            //         << eqResidual << endl;
+            // }
 
             // Block coupled solver call
 
@@ -598,9 +599,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             );
 
             // Solve the linear system
-            // Currently this residual is not used, Check with Seevani.
-            currentResidual = eigenSolver.solve(solVec, source); // peak RAM
-            Info<< "Equation Residual: " << currentResidual << endl;
+            // This is the real residual of the system of equations
+            // This is not used as a convergence criteria
+            const scalar equationResidual = eigenSolver.solve(solVec, source); // peak RAM
+
+            Info<< "True Equation Residual (R = Ax-B): "
+                << equationResidual << endl;
 
             //vector6 eqnRes = WThetaEqn.solve().initialResidual();
             // vector eqnRes = vector::zero;
@@ -616,6 +620,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //DTheta_.boundaryField().evaluateCoupled();
             vectorField& DWI = DW_;
             vectorField& DThetaI = DTheta_;
+
             forAll(solVec, cellI)
             {
                 DWI[cellI][vector::X] = solVec[cellI](0, 0);
@@ -706,7 +711,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // }
             // else
             // {
-            //Info<< "Rotations are not interpolated objectively \n" << endl;
             const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
             const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
@@ -846,11 +850,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     denom = 1.0;
                 }
 
+                // Normalised Theta Residuals
                 ThetaResidual =
                     // gMax(mag(DTheta_.internalField())());
-                    max(mag(DTheta_.primitiveFieldRef())());
-                // ThetaResidual =
-                    // gMax(mag(DTheta_.internalField()))/denom;
+                    max(mag(DTheta_.primitiveFieldRef())())/denom;
             }
 
             // Calculate DW residual
@@ -871,11 +874,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     denom = 1.0;
                 }
 
+                // Normalised W Residuals
                 WResidual =
                     // gMax(mag(DW_.internalField())());
-                    max(mag(DW_.primitiveFieldRef())());
-                // WResidual =
-                //     gMax(mag(DW_.internalField()))/denom;
+                    max(mag(DW_.primitiveFieldRef())())/denom;
             }
 
             if (debug)
@@ -884,8 +886,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 Info<< "W residual: " << WResidual << endl;
             }
 
-            // this currentResidual is not normalized, check with Seevani
+            // Pick max of the two normalised residuals
             currentResidual = max(WResidual, ThetaResidual);
+
+            Info<< "Normalised Solution Residual (max(DTheta, DW)): "
+                << currentResidual << endl;
 
             if (iOuterCorr() == 0)
             {
@@ -908,7 +913,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         (++iOuterCorr() < nCorr)
      && (
             (currentResidual > curConvergenceTol)
-         || (currentMaterialResidual > materialTol)
+         // || (currentMaterialResidual > materialTol)
         )
     );
 
@@ -916,8 +921,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
     Info<< "\nInitial residual: " << initialResidual
         << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
+        // << ", current material residual: " << currentMaterialResidual
+        // << ", current contact force residual: " << curContactResidual
         << ",\n iCorr = " << iOuterCorr() << nl
         << "total Iterations " << totalIter_ << endl;
 
@@ -928,8 +933,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
 {
     const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-    // Info << "Updating coefficients" << endl;
 
     // Total rotation matrix
     const surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
@@ -950,6 +953,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
+    // SB - NOT USED
     CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
