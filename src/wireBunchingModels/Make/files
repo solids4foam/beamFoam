@@ -19,7 +19,7 @@ $(boundaryConditions)/momentBeamRotationNR/momentBeamRotationNRFvPatchVectorFiel
 $(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
-$(boundaryConditions)/myFixedRotation/myFixedRotationFvPatchVectorField.C
+$(boundaryConditions)/fixedRotation/fixedRotationFvPatchVectorField.C
 
 functionObjects/beamEnergyData/beamEnergyData.C
 functionObjects/beamConvergenceData/beamConvergenceData.C

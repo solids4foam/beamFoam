@@ -28,12 +28,12 @@ Description
     Specifying a beam rotation value at the patch
 
 SourceFiles
-    myFixedRotationFvPatchVectorField.C
+    fixedRotationFvPatchVectorField.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef myFixedRotationFvPatchVectorField_H
-#define myFixedRotationFvPatchVectorField_H
+#ifndef fixedRotationFvPatchVectorField_H
+#define fixedRotationFvPatchVectorField_H
 
 #include "fvPatchFields.H"
 #include "fixedValueFvPatchFields.H"
@@ -45,10 +45,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                   Class myFixedRotationFvPatch Declaration
+                   Class fixedRotationFvPatch Declaration
 \*---------------------------------------------------------------------------*/
 
-class myFixedRotationFvPatchVectorField
+class fixedRotationFvPatchVectorField
 :
     public fixedValueFvPatchVectorField
 {
@@ -66,20 +66,20 @@ class myFixedRotationFvPatchVectorField
 public:
 
     //- Runtime type information
-    TypeName("myFixedRotation");
+    TypeName("fixedRotation");
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        myFixedRotationFvPatchVectorField
+        fixedRotationFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        myFixedRotationFvPatchVectorField
+        fixedRotationFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
@@ -87,19 +87,19 @@ public:
         );
 
         //- Construct by mapping given
-        //  myFixedRotationFvPatchVectorField onto a new patch
-        myFixedRotationFvPatchVectorField
+        //  fixedRotationFvPatchVectorField onto a new patch
+        fixedRotationFvPatchVectorField
         (
-            const myFixedRotationFvPatchVectorField&,
+            const fixedRotationFvPatchVectorField&,
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        myFixedRotationFvPatchVectorField
+        fixedRotationFvPatchVectorField
         (
-            const myFixedRotationFvPatchVectorField&
+            const fixedRotationFvPatchVectorField&
         );
 
         //- Construct and return a clone
@@ -107,14 +107,14 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new myFixedRotationFvPatchVectorField(*this)
+                new fixedRotationFvPatchVectorField(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        myFixedRotationFvPatchVectorField
+        fixedRotationFvPatchVectorField
         (
-            const myFixedRotationFvPatchVectorField&,
+            const fixedRotationFvPatchVectorField&,
             const DimensionedField<vector, volMesh>&
         );
 
@@ -126,7 +126,7 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new myFixedRotationFvPatchVectorField(*this, iF)
+                new fixedRotationFvPatchVectorField(*this, iF)
             );
         }
 
