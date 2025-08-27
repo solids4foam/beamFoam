@@ -154,7 +154,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
                 runTime().timeName(),
                 mesh(),
                 IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE
             ),
             mesh(),
             dimensionedScalar("zero", dimless, 0)
@@ -171,7 +171,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
             runTime().timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedScalar("zero", dimless, 0),
@@ -271,7 +271,7 @@ Foam::beamModel::beamModel
             runTime.timeName(),
             this->mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         this->mesh(),
         dimensionedScalar("L", dimLength, 0)

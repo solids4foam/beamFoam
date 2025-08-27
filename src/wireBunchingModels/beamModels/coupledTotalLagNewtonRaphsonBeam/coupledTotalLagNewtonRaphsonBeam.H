@@ -116,9 +116,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Cross-section moment
         surfaceVectorField M_;
 
-        //- Cross-section moment (material)
-        surfaceVectorField Mref_;
-
         //- Explicit contribution to cross-section moment
         surfaceVectorField explicitM_;
 
