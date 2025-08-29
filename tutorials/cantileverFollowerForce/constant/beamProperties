@@ -28,29 +28,11 @@ beams
         }
 
         length 100; // mm
-        nSegments 20;
+        nSegments 40;
         E  2.3731844e8;      
         G  1.1865922e8; //nu = 0
      	
     }
-
-    beam_1
-    {
-    
-        crossSectionModel circle;
-
-        circleCrossSectionModelDict
-        {
-            radius  0.65828153; //0.65828153;//0.65; //mm
-        }
-
-        length 100; // mm
-        nSegments 20;
-        E  2.3731844e8;      
-        G  1.1865922e8; //nu = 0
-     	
-    }
-
  );
 
 
@@ -65,9 +47,10 @@ beamModel coupledTotalLagNewtonRaphsonBeam;
     endPatchName right;
 
     nCorrectors 1000;
-    convergenceTol 1e-10;
+    solutionTol 1e-13;
+    residualTol 1e-8;
     
-    debug yes;
+    debug no;
 
 }
 
