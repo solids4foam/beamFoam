@@ -37,7 +37,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
-
+#include "IOmanip.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -61,33 +61,39 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
     );
 
-    const scalar convergenceTol
+    // Tolerance for equation (force) residuals (R = Ax - B)
+    const scalar residualTol
     (
-        beamProperties().lookupOrDefault<scalar>("convergenceTol", 1e-6)
-    );
-    scalar curConvergenceTol = convergenceTol;
-
-    const scalar materialTol
-    (
-        beamProperties().lookupOrDefault<scalar>
-        (
-            "materialTol",
-            curConvergenceTol
-        )
+        beamProperties().lookupOrDefault<scalar>("residualTol", 1e-8)
     );
 
-    const bool debug
+    // Tolerance - displacement (DW) & rotation (DTheta_) correction variables
+    const scalar solutionTol
     (
-        beamProperties().lookupOrDefault<bool>("debug", false)
+        beamProperties().lookupOrDefault<scalar>("solutionTol", 1e-10)
     );
 
-    scalar initialResidual = 1;
-    scalar currentResidual = 1;
-    scalar currentMaterialResidual = 0;
-    //bool completedElasticPrediction = false;
-    //blockLduMatrix::debug = debug;
+    // Absolute tolerance
+    const scalar absoluteTol
+    (
+        beamProperties().lookupOrDefault<scalar>("absoluteTol", 1e-30)
+    );
 
-    scalar curContactResidual = 1;
+    // Tolerance to check of the solver has diverged
+    const scalar divTol
+    (
+        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e4)
+    );
+
+    const label writeResidualFrequency
+    (
+        beamProperties().lookupOrDefault<scalar>("infoFrequency", 1)
+    );
+
+    scalar initialResidualNorm = 1;
+    scalar currentResidualNorm = GREAT;
+    scalar deltaXNorm = GREAT;
+    scalar XNorm = GREAT;
 
     iOuterCorr() = 0;
     do
@@ -97,42 +103,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             Info<< "iOuterCorr: " << iOuterCorr() << endl;
         }
 
-        // if (contactActive())
-        // {
-        //     if (debug)
-        //     {
-        //         Info<< "Updating contact: start" << endl;
-        //     }
-
-        //     scalar tStart = runTime().elapsedCpuTime();
-
-        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
-        //     curContactResidual = contact().update();
-        //     scalar tEnd = runTime().elapsedCpuTime();
-
-        //     totalContactTime_ += tEnd - tStart;
-
-        //     if (debug)
-        //     {
-        //         Pout << "Current total contact update time: "
-        //              << totalContactTime_ << endl;
-        //     }
-
-        //     if (debug)
-        //     {
-        //         Info<< "curContactResidual: "
-        //             << curContactResidual << endl;
-
-        //         Info<< "Updating contact: end" << endl;
-        //     }
-        // }
-
         scalar tStart = runTime().elapsedCpuTime();
 
         {
-            scalar ThetaResidual = GREAT;
-            scalar WResidual = GREAT;
-
             // Initialise the block system
             Field<scalarSquareMatrix> d
             (
@@ -175,11 +148,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
             // Update the coefficients of W_ and Theta_ equations
+            // These coefficients are inputs to the Jacobian matrix
             updateEqnCoefficients();
 
             // SB: Initial accleration and velocity values at 0th iteration
             // Valid for Newmark-beta integration scheme
-            // if (!steadyState() && newmark_)
             if (d2dt2SchemeName_ == "Newmark" && iOuterCorr() == 0)
             {
                 // if (iOuterCorr() == 0)
@@ -202,7 +175,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             }
 
             //- Assembling the diagonal and off-diagonal contributions
-            //- of W_ and Theta_ to solve in block-coupled
+            //- of DW_ and DTheta_ to solve in block-coupled
             assembleMatrixCoefficients(d, l, u, source);
 
             // Add distributed force
@@ -350,6 +323,21 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // if (!steadyState())
             if (d2dt2SchemeName_ != "steadyState")
             {
+                // Throw error if rho is set to zero for transient case
+                for (label bI = 0 ; bI < nBeams() ; ++bI)
+                {
+                    if (rho(bI).value() == 0.0)
+                    {
+                        FatalErrorInFunction
+                            << "The time integration scheme provided is " << d2dt2SchemeName_
+                            << " but density 'rho' is not specified!!\n"
+                            << "Specify density as scalar either locally in crossSectionModel dict "
+                            << "of constant/beamProperties or as a global variable with dimensions "
+                            << "inside coupledTotalLagNewtonRaphsonBeamCoeffs sub-dictionary"
+                            << abort(FatalError);
+                    }
+                }
+
                 // The EXPLICIT inertial contributions to source
                 // 1. Inertial force
                 const vectorField QRho = ARho_*L()*Accl_;
@@ -538,7 +526,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
             }
 
-
             // Throw error if drag active flag is true but the time scheme is
             // steady state because the drag forces will be zero.
             if
@@ -561,16 +548,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                   << abort(FatalError);
             }
 
-            // Calculate equilibrium equations residual
-            if (debug)
-            {
-                // Note: we do not user a gSum here as the beam is assumed to be on one
-                // core
-                const scalar eqResidual = sqrt(sum(magSqr(source)));
-                Info<< "L2 norm of the equlibrium equations residual: "
-                    << eqResidual << endl;
-            }
-
             // Block coupled solver call
 
             // Create Eigen linear solver
@@ -583,24 +560,18 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             );
 
             // Solve the linear system
-            // Currently this residual is not used, Check with Seevani.
-            currentResidual = eigenSolver.solve(solVec, source); // peak RAM
-            Info<< "Equation Residual: " << currentResidual << endl;
-
-            //vector6 eqnRes = WThetaEqn.solve().initialResidual();
-            // vector eqnRes = vector::zero;
-            // currentResidual = mag(eqnRes);
+            // currentResidualNorm is the imbalance vector
+            currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
 
             if (iOuterCorr() == 0)
             {
-                initialResidual = currentResidual;
+                initialResidualNorm = currentResidualNorm;
             }
 
-            // Copy the solution from solVec into the DW and DTheta fields
-            //WThetaEqn.retrieveSolution(3, DTheta_.internalField());
-            //DTheta_.boundaryField().evaluateCoupled();
+            // Copy the solution from solVec into the DW_ and DTheta_ fields
             vectorField& DWI = DW_;
             vectorField& DThetaI = DTheta_;
+
             forAll(solVec, cellI)
             {
                 DWI[cellI][vector::X] = solVec[cellI](0, 0);
@@ -615,266 +586,24 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             DW_.correctBoundaryConditions();
             DTheta_.correctBoundaryConditions();
 
-            // DTheta_.internalField().replace(0, 0);
+            // Update all the solution and output variables for
+            // the current (Newton) iteration loop
+            updateSolutionVariables();
 
-            Theta_.primitiveFieldRef() +=
-                (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
+            // Calculating norm of primary correction variables DW_ & DTheta_
+            deltaXNorm = sqrt(sum(magSqr(solVec)));
 
-            // Theta_.internalField().replace(0, 0);
-
-            Theta_.correctBoundaryConditions();
-            Theta_.storePrevIter();
-
-            //WThetaEqn.retrieveSolution(0, DW_.internalField());
-            //DW_.boundaryField().evaluateCoupled();
-            W_.primitiveFieldRef() += DW_.internalField();
-
-            W_.correctBoundaryConditions();
-            W_.storePrevIter();
-
-            // Update displacement increment (for contact calculation of pulleys)
-            WIncrement_ = W_ - W_.oldTime();
-
-            // Update mean line linear velocity and acceleration fields
-            if (d2dt2SchemeName_ == "steadyState")
-            {
-                // Do Nothing, no update of temporal variables reqd
-            }
-            else if (d2dt2SchemeName_ == "Newmark")
-            {
-                // SB: Update mean line acceleration field
-                U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
-
-                // SB: Update mean line acceleration field
-                Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
-
-            }
-            else if (d2dt2SchemeName_ == "Euler")
-            {
-                U_ = fvc::ddt(W_);
-                Accl_ = fvc::ddt(U_);
-            }
-            else
-            {
-                FatalErrorInFunction
-                    << "Provided d2dt2Scheme is not implemented!"
-                    << "Valid choices are steadyState, Euler, Newmark"
-                    << abort(FatalError);
-            }
-
-            // if (objectiveInterpolation())
-            // {
-            //     // Info<< "Using objective interpolation for rotation" << endl;
-
-            //     // Calculate rotation matrix correction from
-            //     // cell-centre rotation vector correction
-            //     volTensorField DLambda(rotationMatrix(DTheta_));
-
-            //     // Update cell-centre rotation matrix
-            //     Lambda_ = (DLambda & Lambda_);
-
-            //     // Calculate mean line curvature at cell-faces
-            //     K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
-            //     //K_ +=
-            //     //    (
-            //     //          (refLambdaf_.T() & Lambdaf_.T()) &
-            //     //        meanLineCurvature(DLambda)
-            //     //    );
-
-            //     // Objective cell-to-face interpolation of rotation matrix correction
-            //     //surfaceTensorField DLambdaf =
-            //     //   interpolateRotationMatrix(DLambda);
-
-            //     // Update cell-face rotation matrix
-            //     //Lambdaf_ = (DLambdaf & Lambdaf_);
-            //     Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
-            // }
-            // else
-            // {
-            //Info<< "Rotations are not interpolated objectively \n" << endl;
-            const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
-
-            const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-            const surfaceTensorField DThetaHat(spinTensor(DThetaf));
-
-            const dimensionedTensor I("I", dimless, tensor::I);
-
-            // Tangent operator
-            const surfaceTensorField DT
-            (
-                (Foam::sin(magDThetaf)/magDThetaf)*I
-              + (
-                    (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
-                )
-               *(DThetaf*DThetaf)
-              + (
-                    (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
-                )*DThetaHat
-            );
-
-            // Update bending strain vector
-            K_ +=
-            (
-                (refLambdaf_.T() & Lambdaf_.T())
-              // & fvc::snGrad(DTheta_)
-              & (DT.T() & fvc::snGrad(DTheta_))
-            );
-
-            // Rodrigues formula
-            const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
-
-            // Update rotation matrix
-            Lambdaf_ = (DLambdaf & Lambdaf_);
-
-            // Update cell-centre rotation matrix
-            const volTensorField DLambda(rotationMatrix(DTheta_));
-
-            Lambda_ = (DLambda & Lambda_);
-            // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
-
-            // Update mean line angular velocity and acceleration fields
-            if (d2dt2SchemeName_ == "steadyState")
-            {
-                // Do nothing; no update of temporal variables reqd
-            }
-            else if (d2dt2SchemeName_ == "Newmark")
-            {
-                // Update angular velocity
-                // without tangent space
-                Omega_ +=
-                    (
-                        gammaN_/(betaN_*runTime().deltaT())
-                    )*(Lambda_.T() & DTheta_);
-
-                // Update angular acceleration
-                dotOmega_ +=
-                    (
-                        1/(betaN_*sqr(runTime().deltaT()))
-                    )*(Lambda_.T() & DTheta_);
-            }
-            else if (d2dt2SchemeName_ == "Euler") // First order Euler scheme
-            {
-                Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
-
-                dotOmega_ = fvc::ddt(Omega_);
-            }
-            else
-            {
-                FatalErrorInFunction
-                    << "Provided d2dt2Scheme is not implemented!"
-                    << "Valid choices are steadyState, Euler, Newmark"
-                    << abort(FatalError);
-            }
-
-            // }
-
-            // Update axial and shear strain vector
-            {
-                // W_.correctBoundaryConditions();
-
-                surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-                Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
-            }
-
-            // Q_ = (CQ_ & (Gamma_ - GammaP_));
-            // M_ = (CM_ & (K_ - KP_));
-
-            // Q_ = ((Lambdaf_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
-            // M_ = ((Lambdaf_ & refLambdaf_) & (CM_ & (K_ - KP_)));
-
-            // Calculate Q, where we ignore the orientation check
-            {
-                explicitQ_.setOriented(true);
-                surfaceVectorField implicitQ(CQW_ & fvc::snGrad(DW_));
-                implicitQ.setOriented(false);
-                implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
-                implicitQ.setOriented(true);
-                Q_ = explicitQ_ + implicitQ;
-            }
-
-            // Calculate M, where we ignore the orientation check
-            {
-                explicitM_.setOriented(true);
-                surfaceVectorField implicitM(CMTheta_ & fvc::snGrad(DTheta_));
-                implicitM.setOriented(false);
-                implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
-                implicitM.setOriented(true);
-                M_ = explicitM_ + implicitM;
-            }
-
-            // Calculate axial force
-            {
-                // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
-                // dRdS /= mag(dRdS);
-                // Qa_ = (dRdS & Q_);
-
-                Qa_ = (Lambdaf_.T() & Q_)().component(0);
-            }
-
-            // Calculate DTheta residual
-            {
-                scalar denom =
-                    // gMax
-                    max
-                    (
-                        mag
-                        (
-                            Theta_.primitiveFieldRef()
-                          - Theta_.oldTime().primitiveFieldRef()
-                        )()
-                    );
-
-                if (denom < 10*SMALL)
-                {
-                    // denom = max(gMax(mag(Theta_.internalField())), SMALL);
-                    denom = 1.0;
-                }
-
-                ThetaResidual =
-                    // gMax(mag(DTheta_.internalField())());
-                    max(mag(DTheta_.primitiveFieldRef())());
-                // ThetaResidual =
-                    // gMax(mag(DTheta_.internalField()))/denom;
-            }
-
-            // Calculate DW residual
-            {
-                scalar denom =
-                    max //gMax
-                    (
-                        mag
-                        (
-                            W_.primitiveFieldRef()
-                          - W_.oldTime().primitiveFieldRef()
-                        )()
-                    );
-
-                if (denom < 10*SMALL)
-                {
-                    // denom = max(gMax(mag(W_.internalField())), SMALL);
-                    denom = 1.0;
-                }
-
-                WResidual =
-                    // gMax(mag(DW_.internalField())());
-                    max(mag(DW_.primitiveFieldRef())());
-                // WResidual =
-                //     gMax(mag(DW_.internalField()))/denom;
-            }
-
-            if (debug)
-            {
-                Info<< "Theta residual: " << ThetaResidual << endl;
-                Info<< "W residual: " << WResidual << endl;
-            }
-
-            // this currentResidual is not normalized, check with Seevani
-            currentResidual = max(WResidual, ThetaResidual);
+            // Calculating the norm of W_ and Theta_
+            XNorm =
+                sqrt
+                (
+                    sum(magSqr(W_.primitiveFieldRef()))
+                  + sum(magSqr(Theta_.primitiveFieldRef()))
+                );
 
             if (iOuterCorr() == 0)
             {
-                initialResidual = currentResidual;
+                initialResidualNorm = currentResidualNorm;
             }
         }
 
@@ -890,31 +619,36 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     }
     while
     (
-        (++iOuterCorr() < nCorr)
-     && (
-            (currentResidual > curConvergenceTol)
-         || (currentMaterialResidual > materialTol)
+        !checkConvergence
+        (
+            currentResidualNorm,
+            initialResidualNorm,
+            deltaXNorm,
+            XNorm,
+            ++iOuterCorr(),
+            nCorr,
+            residualTol,
+            absoluteTol,
+            solutionTol,
+            divTol,
+            writeResidualFrequency
         )
     );
 
     totalIter_ += iOuterCorr();
 
-    Info<< "\nInitial residual: " << initialResidual
-        << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
-        << ",\n iCorr = " << iOuterCorr() << nl
-        << "total Iterations " << totalIter_ << endl;
+    if (debug)
+    {
+        Info<< "Total iterations " << totalIter_ << endl;
+    }
 
-    return initialResidual;
+    return initialResidualNorm;
 }
 
-//- Update the coefficients of the governing equations
+//- Update the matrix coefficients for the Jacobian matrix
 void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
 {
     const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-    // Info << "Updating coefficients" << endl;
 
     // Total rotation matrix
     const surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
@@ -935,6 +669,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
+    // SB - NOT USED
     CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
@@ -991,6 +726,277 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
             explicitMQ_.boundaryFieldRef()[patchI] *= 2;
         }
     }
+}
+
+//- Update the solution variables like displacements, rotations,
+//- translational and rotational strains, forces and moments
+void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
+{
+    Theta_.primitiveFieldRef() +=
+        (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
+
+    // Theta_.internalField().replace(0, 0);
+
+    Theta_.correctBoundaryConditions();
+    Theta_.storePrevIter();
+
+    //WThetaEqn.retrieveSolution(0, DW_.internalField());
+    //DW_.boundaryField().evaluateCoupled();
+    W_.primitiveFieldRef() += DW_.internalField();
+
+    W_.correctBoundaryConditions();
+    W_.storePrevIter();
+
+    // Update displacement increment (for contact calculation of pulleys)
+    WIncrement_ = W_ - W_.oldTime();
+
+    // Update mean line linear velocity and acceleration fields
+    if (d2dt2SchemeName_ == "steadyState")
+    {
+        // Do Nothing, no update of temporal variables reqd
+    }
+    else if (d2dt2SchemeName_ == "Newmark")
+    {
+        // SB: Update mean line acceleration field
+        U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
+
+        // SB: Update mean line acceleration field
+        Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
+
+    }
+    else if (d2dt2SchemeName_ == "Euler")
+    {
+        U_ = fvc::ddt(W_);
+        Accl_ = fvc::ddt(U_);
+    }
+    else
+    {
+        FatalErrorInFunction
+            << "Provided d2dt2Scheme is not implemented!"
+            << "Valid choices are steadyState, Euler, Newmark"
+            << abort(FatalError);
+    }
+
+    const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
+
+    const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
+    const surfaceTensorField DThetaHat(spinTensor(DThetaf));
+
+    const dimensionedTensor I("I", dimless, tensor::I);
+
+    // Tangent operator
+    const surfaceTensorField DT
+    (
+        (Foam::sin(magDThetaf)/magDThetaf)*I
+        + (
+            (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
+        )
+        *(DThetaf*DThetaf)
+        + (
+            (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
+        )*DThetaHat
+    );
+
+    // Update bending strain vector
+    K_ +=
+    (
+        (refLambdaf_.T() & Lambdaf_.T())
+        // & fvc::snGrad(DTheta_)
+        & (DT.T() & fvc::snGrad(DTheta_))
+    );
+
+    // Rodrigues formula
+    const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
+
+    // Update rotation matrix
+    Lambdaf_ = (DLambdaf & Lambdaf_);
+
+    // Update cell-centre rotation matrix
+    const volTensorField DLambda(rotationMatrix(DTheta_));
+
+    Lambda_ = (DLambda & Lambda_);
+    // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
+
+    // Update mean line angular velocity and acceleration fields
+    if (d2dt2SchemeName_ == "steadyState")
+    {
+        // Do nothing; no update of temporal variables reqd
+    }
+    else if (d2dt2SchemeName_ == "Newmark")
+    {
+        // Update angular velocity
+        // without tangent space
+        Omega_ +=
+            (
+                gammaN_/(betaN_*runTime().deltaT())
+            )*(Lambda_.T() & DTheta_);
+
+        // Update angular acceleration
+        dotOmega_ +=
+            (
+                1/(betaN_*sqr(runTime().deltaT()))
+            )*(Lambda_.T() & DTheta_);
+    }
+    else if (d2dt2SchemeName_ == "Euler") // First order Euler scheme
+    {
+        Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
+
+        dotOmega_ = fvc::ddt(Omega_);
+    }
+    else
+    {
+        FatalErrorInFunction
+            << "Provided d2dt2Scheme is not implemented!"
+            << "Valid choices are steadyState, Euler, Newmark"
+            << abort(FatalError);
+    }
+
+    // }
+
+    // Update axial and shear strain vector
+    {
+        // W_.correctBoundaryConditions();
+
+        surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+
+        Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
+    }
+
+    // Q_ = (CQ_ & (Gamma_ - GammaP_));
+    // M_ = (CM_ & (K_ - KP_));
+
+    // Q_ = ((Lambdaf_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
+    // M_ = ((Lambdaf_ & refLambdaf_) & (CM_ & (K_ - KP_)));
+
+    // Calculate Q, where we ignore the orientation check
+    {
+        explicitQ_.setOriented(true);
+        surfaceVectorField implicitQ(CQW_ & fvc::snGrad(DW_));
+        implicitQ.setOriented(false);
+        implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
+        implicitQ.setOriented(true);
+        Q_ = explicitQ_ + implicitQ;
+    }
+
+    // Calculate M, where we ignore the orientation check
+    {
+        explicitM_.setOriented(true);
+        surfaceVectorField implicitM(CMTheta_ & fvc::snGrad(DTheta_));
+        implicitM.setOriented(false);
+        implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
+        implicitM.setOriented(true);
+        M_ = explicitM_ + implicitM;
+    }
+
+    // Calculate axial force
+    {
+        // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
+        // dRdS /= mag(dRdS);
+        // Qa_ = (dRdS & Q_);
+
+        Qa_ = (Lambdaf_.T() & Q_)().component(0);
+    }
+}
+
+//- Function to check convergence of the outer (Newton) loop
+bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
+(
+    const scalar currentResidualNorm,
+    const scalar initialResidualNorm,
+    const scalar deltaXNorm,
+    const scalar xNorm,
+    const label iteration,
+    const label maxIterations,
+    const scalar rtol,
+    const scalar atol,
+    const scalar stol,
+    const scalar divtol,
+    const label writeResidualFrequency,
+    const bool writeConvergedReason
+)
+{
+    // Precompute tolerances
+    const scalar relativeResidualTol = rtol*initialResidualNorm;
+    const scalar stepTolerance = stol*xNorm;
+
+    // Log residuals if enabled
+    if (writeResidualFrequency > 0)
+    {
+        if (iteration == 1)
+        {
+            // Print the header with fixed widths
+            Info<< setw(10) << "Iteration"
+                << setw(20) << "Residual Norm"
+                << setw(20) << "Step Norm" << endl;
+        }
+
+        // Print each iteration's data with aligned fields
+        if (iteration % writeResidualFrequency == 0)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << currentResidualNorm
+                << setw(20) << deltaXNorm << endl;
+        }
+    }
+
+    // 1. Check Residual Norm against absolute tolerance
+    if (currentResidualNorm <= atol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Absolute residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 2. Check Residual Norm Convergence
+    if (currentResidualNorm <= relativeResidualTol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Relative residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 3. Check Step Norm Convergence
+    if (deltaXNorm <= stepTolerance)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Step norm relative tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 4. Check Divergence
+    if (currentResidualNorm >= divtol*initialResidualNorm)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Diverged - Residual grew excessively."
+            << abort(FatalError);
+        return false;
+    }
+
+    // 5. Check Maximum Iterations
+    if (iteration >= maxIterations)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Failed - Maximum iterations reached."
+            << abort(FatalError);
+        return false;
+    }
+
+    // 6. Not Converged Yet
+    return false;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

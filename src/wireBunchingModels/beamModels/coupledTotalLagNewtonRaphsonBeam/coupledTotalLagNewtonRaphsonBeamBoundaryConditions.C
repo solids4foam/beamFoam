@@ -33,14 +33,14 @@ License
 #include "spinTensor.H"
 #include "pseudoVector.H"
 
-#include "momentBeamRotationFvPatchVectorField.H"
+// #include "momentBeamRotationFvPatchVectorField.H"
 #include "momentBeamRotationNRFvPatchVectorField.H"
-#include "forceBeamDisplacementFvPatchVectorField.H"
+// #include "forceBeamDisplacementFvPatchVectorField.H"
 #include "forceBeamDisplacementNRFvPatchVectorField.H"
 #include "followerForceBeamDisplacementNRFvPatchVectorField.H"
-#include "axialForceTransverseDisplacementFvPatchVectorField.H"
-#include "axialForceTransverseDisplacementNRFvPatchVectorField.H"
-#include "extrapolatedBeamRotationFvPatchVectorField.H"
+// #include "axialForceTransverseDisplacementFvPatchVectorField.H"
+// #include "axialForceTransverseDisplacementNRFvPatchVectorField.H"
+// #include "extrapolatedBeamRotationFvPatchVectorField.H"
 
 #include "mergePoints.H"
 #include "scalarMatrices.H"
@@ -153,189 +153,189 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
                 }
             }
-            else if
-            (
-                isA<axialForceTransverseDisplacementNRFvPatchVectorField>
-                (
-                    W_.boundaryField()[patchI]
-                )
-            )
-            {
-                const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
-                    refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
-                    (
-                        W_.boundaryFieldRef()[patchI]
-                    );
+            // else if
+            // (
+            //     isA<axialForceTransverseDisplacementNRFvPatchVectorField>
+            //     (
+            //         W_.boundaryField()[patchI]
+            //     )
+            // )
+            // {
+            //     const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
+            //         refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
+            //         (
+            //             W_.boundaryFieldRef()[patchI]
+            //         );
 
-                const scalarField pDelta
-                (
-                    1.0/mesh().deltaCoeffs().boundaryField()[patchI]
-                );
-                const vectorField tang
-                (
-                    (
-                        Lambdaf_.boundaryField()[patchI]
-                      & dR0Ds_.boundaryField()[patchI]
-                    )
-                );
+            //     const scalarField pDelta
+            //     (
+            //         1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            //     );
+            //     const vectorField tang
+            //     (
+            //         (
+            //             Lambdaf_.boundaryField()[patchI]
+            //           & dR0Ds_.boundaryField()[patchI]
+            //         )
+            //     );
 
-                const vectorField& pWPrev
-                (
-                    W_.prevIter().boundaryField()[patchI]
-                );
-                const vectorField pWCorr(pW.refDisp() - pWPrev);
+            //     const vectorField& pWPrev
+            //     (
+            //         W_.prevIter().boundaryField()[patchI]
+            //     );
+            //     const vectorField pWCorr(pW.refDisp() - pWPrev);
 
-                const tensorField pCQWt(pCQW - ((tang*tang) & pCQW));
-                const tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
+            //     const tensorField pCQWt(pCQW - ((tang*tang) & pCQW));
+            //     const tensorField pCQThetat(pCQTheta - ((tang*tang) & pCQTheta));
 
-                // Diag contribution
-                forAll (pW, faceI)
-                {
-                    d[fc[faceI]](0,0) += -pCQWt[faceI].xx()/pDelta[faceI];
-                    d[fc[faceI]](0,1) += -pCQWt[faceI].xy()/pDelta[faceI];
-                    d[fc[faceI]](0,2) += -pCQWt[faceI].xz()/pDelta[faceI];
+            //     // Diag contribution
+            //     forAll (pW, faceI)
+            //     {
+            //         d[fc[faceI]](0,0) += -pCQWt[faceI].xx()/pDelta[faceI];
+            //         d[fc[faceI]](0,1) += -pCQWt[faceI].xy()/pDelta[faceI];
+            //         d[fc[faceI]](0,2) += -pCQWt[faceI].xz()/pDelta[faceI];
 
-                    d[fc[faceI]](1,0) += -pCQWt[faceI].yx()/pDelta[faceI];
-                    d[fc[faceI]](1,1) += -pCQWt[faceI].yy()/pDelta[faceI];
-                    d[fc[faceI]](1,2) += -pCQWt[faceI].yz()/pDelta[faceI];
+            //         d[fc[faceI]](1,0) += -pCQWt[faceI].yx()/pDelta[faceI];
+            //         d[fc[faceI]](1,1) += -pCQWt[faceI].yy()/pDelta[faceI];
+            //         d[fc[faceI]](1,2) += -pCQWt[faceI].yz()/pDelta[faceI];
 
-                    d[fc[faceI]](2,0) += -pCQWt[faceI].zx()/pDelta[faceI];
-                    d[fc[faceI]](2,1) += -pCQWt[faceI].zy()/pDelta[faceI];
-                    d[fc[faceI]](2,2) += -pCQWt[faceI].zz()/pDelta[faceI];
-                }
+            //         d[fc[faceI]](2,0) += -pCQWt[faceI].zx()/pDelta[faceI];
+            //         d[fc[faceI]](2,1) += -pCQWt[faceI].zy()/pDelta[faceI];
+            //         d[fc[faceI]](2,2) += -pCQWt[faceI].zz()/pDelta[faceI];
+            //     }
 
-                // Source contribution
-                forAll (pW, faceI)
-                {
-                    vector WContrib =
-                        (pCQWt[faceI] & pWCorr[faceI])/pDelta[faceI];
+            //     // Source contribution
+            //     forAll (pW, faceI)
+            //     {
+            //         vector WContrib =
+            //             (pCQWt[faceI] & pWCorr[faceI])/pDelta[faceI];
 
-                    source[fc[faceI]](0,0) -= WContrib.x();
-                    source[fc[faceI]](1,0) -= WContrib.y();
-                    source[fc[faceI]](2,0) -= WContrib.z();
-                }
+            //         source[fc[faceI]](0,0) -= WContrib.x();
+            //         source[fc[faceI]](1,0) -= WContrib.y();
+            //         source[fc[faceI]](2,0) -= WContrib.z();
+            //     }
 
-                if
-                (
-                    isA<momentBeamRotationNRFvPatchVectorField>
-                    (
-                        Theta_.boundaryField()[patchI]
-                    )
-                )
-                {
-                    const momentBeamRotationNRFvPatchVectorField& pTheta
-                    (
-                        refCast<momentBeamRotationNRFvPatchVectorField>
-                        (
-                            Theta_.boundaryFieldRef()[patchI]
-                        )
-                    );
-                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+            //     if
+            //     (
+            //         isA<momentBeamRotationNRFvPatchVectorField>
+            //         (
+            //             Theta_.boundaryField()[patchI]
+            //         )
+            //     )
+            //     {
+            //         const momentBeamRotationNRFvPatchVectorField& pTheta
+            //         (
+            //             refCast<momentBeamRotationNRFvPatchVectorField>
+            //             (
+            //                 Theta_.boundaryFieldRef()[patchI]
+            //             )
+            //         );
+            //         const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    // Diag contribution
-                    forAll(pTheta, faceI)
-                    {
-                        const tensor CqCt =
-                        (
-                            pCQThetat[faceI]
-                          & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
-                        );
+            //         // Diag contribution
+            //         forAll(pTheta, faceI)
+            //         {
+            //             const tensor CqCt =
+            //             (
+            //                 pCQThetat[faceI]
+            //               & (invCM[faceI] & (pCMTheta[faceI]/pDelta[faceI]))
+            //             );
 
-                        d[fc[faceI]](0,3) += CqCt.xx();
-                        d[fc[faceI]](0,4) += CqCt.xy();
-                        d[fc[faceI]](0,5) += CqCt.xz();
+            //             d[fc[faceI]](0,3) += CqCt.xx();
+            //             d[fc[faceI]](0,4) += CqCt.xy();
+            //             d[fc[faceI]](0,5) += CqCt.xz();
 
-                        d[fc[faceI]](1,3) += CqCt.yx();
-                        d[fc[faceI]](1,4) += CqCt.yy();
-                        d[fc[faceI]](1,5) += CqCt.yz();
+            //             d[fc[faceI]](1,3) += CqCt.yx();
+            //             d[fc[faceI]](1,4) += CqCt.yy();
+            //             d[fc[faceI]](1,5) += CqCt.yz();
 
-                        d[fc[faceI]](2,3) += CqCt.zx();
-                        d[fc[faceI]](2,4) += CqCt.zy();
-                        d[fc[faceI]](2,5) += CqCt.zz();
-                    }
+            //             d[fc[faceI]](2,3) += CqCt.zx();
+            //             d[fc[faceI]](2,4) += CqCt.zy();
+            //             d[fc[faceI]](2,5) += CqCt.zz();
+            //         }
 
-                    // Source contribution
-                    forAll(pTheta, faceI)
-                    {
-                        const tensor CqCt = pCQThetat[faceI];
-                        const vector thetaContrib =
-                            (
-                                CqCt
-                              & (
-                                    invCM[faceI]
-                                  & (
-                                        pTheta.moment()[faceI]
-                                      - pExplicitM[faceI]
-                                    )
-                                )
-                            );
+            //         // Source contribution
+            //         forAll(pTheta, faceI)
+            //         {
+            //             const tensor CqCt = pCQThetat[faceI];
+            //             const vector thetaContrib =
+            //                 (
+            //                     CqCt
+            //                   & (
+            //                         invCM[faceI]
+            //                       & (
+            //                             pTheta.moment()[faceI]
+            //                           - pExplicitM[faceI]
+            //                         )
+            //                     )
+            //                 );
 
-                        source[fc[faceI]](0,0) -= thetaContrib.x();
-                        source[fc[faceI]](1,0) -= thetaContrib.y();
-                        source[fc[faceI]](2,0) -= thetaContrib.z();
-                    }
-                }
-                else if
-                (
-                    isA<fixedValueFvPatchVectorField>
-                    (
-                        Theta_.boundaryField()[patchI]
-                    )
-                )
-                {
-                    const fixedValueFvPatchVectorField& pTheta
-                    (
-                        refCast<fixedValueFvPatchVectorField>
-                        (
-                            Theta_.boundaryFieldRef()[patchI]
-                        )
-                    );
+            //             source[fc[faceI]](0,0) -= thetaContrib.x();
+            //             source[fc[faceI]](1,0) -= thetaContrib.y();
+            //             source[fc[faceI]](2,0) -= thetaContrib.z();
+            //         }
+            //     }
+            //     else if
+            //     (
+            //         isA<fixedValueFvPatchVectorField>
+            //         (
+            //             Theta_.boundaryField()[patchI]
+            //         )
+            //     )
+            //     {
+            //         const fixedValueFvPatchVectorField& pTheta
+            //         (
+            //             refCast<fixedValueFvPatchVectorField>
+            //             (
+            //                 Theta_.boundaryFieldRef()[patchI]
+            //             )
+            //         );
 
-                    const vectorField& pThetaPrev =
-                        Theta_.prevIter().boundaryField()[patchI];
+            //         const vectorField& pThetaPrev =
+            //             Theta_.prevIter().boundaryField()[patchI];
 
-                    vectorField& pThetaCorr
-                    (
-                        DTheta_.boundaryFieldRef()[patchI]
-                    );
-                    // pThetaCorrSta = (pLambdaf & pThetaCorrStar);
-                    // pThetaCorrStar = (pTheta - pThetaPrev);
+            //         vectorField& pThetaCorr
+            //         (
+            //             DTheta_.boundaryFieldRef()[patchI]
+            //         );
+            //         // pThetaCorrSta = (pLambdaf & pThetaCorrStar);
+            //         // pThetaCorrStar = (pTheta - pThetaPrev);
 
-                    pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
+            //         pThetaCorr = (pLambdaf & (pTheta - pThetaPrev));
 
-                    // Info << "(ax) pThetaCorr = " << pThetaCorr << endl;
+            //         // Info << "(ax) pThetaCorr = " << pThetaCorr << endl;
 
-                    // Source contribution
-                    forAll (pTheta, faceI)
-                    {
-                        vector thetaContrib
-                        (
-                            (pCQThetat[faceI] & pThetaCorr[faceI])
-                        );
-                        source[fc[faceI]](0,0) -= thetaContrib.x();
-                        source[fc[faceI]](1,0) -= thetaContrib.y();
-                        source[fc[faceI]](2,0) -= thetaContrib.z();
-                    }
-                }
+            //         // Source contribution
+            //         forAll (pTheta, faceI)
+            //         {
+            //             vector thetaContrib
+            //             (
+            //                 (pCQThetat[faceI] & pThetaCorr[faceI])
+            //             );
+            //             source[fc[faceI]](0,0) -= thetaContrib.x();
+            //             source[fc[faceI]](1,0) -= thetaContrib.y();
+            //             source[fc[faceI]](2,0) -= thetaContrib.z();
+            //         }
+            //     }
 
-                // Add axial component of force
-                const vectorField pQa(tang*pW.axialForce());
-                forAll(pQa, faceI)
-                {
-                    source[fc[faceI]](0,0) -= pQa[faceI].x();
-                    source[fc[faceI]](1,0) -= pQa[faceI].y();
-                    source[fc[faceI]](2,0) -= pQa[faceI].z();
-                }
+            //     // Add axial component of force
+            //     const vectorField pQa(tang*pW.axialForce());
+            //     forAll(pQa, faceI)
+            //     {
+            //         source[fc[faceI]](0,0) -= pQa[faceI].x();
+            //         source[fc[faceI]](1,0) -= pQa[faceI].y();
+            //         source[fc[faceI]](2,0) -= pQa[faceI].z();
+            //     }
 
-                // Subtract explicit force contribution
-                const vectorField pExplicitQt(((tang*tang) & pExplicitQ));
-                forAll(pExplicitQ, faceI)
-                {
-                    source[fc[faceI]](0,0) += pExplicitQt[faceI].x();
-                    source[fc[faceI]](1,0) += pExplicitQt[faceI].y();
-                    source[fc[faceI]](2,0) += pExplicitQt[faceI].z();
-                }
-            }
+            //     // Subtract explicit force contribution
+            //     const vectorField pExplicitQt(((tang*tang) & pExplicitQ));
+            //     forAll(pExplicitQ, faceI)
+            //     {
+            //         source[fc[faceI]](0,0) += pExplicitQt[faceI].x();
+            //         source[fc[faceI]](1,0) += pExplicitQt[faceI].y();
+            //         source[fc[faceI]](2,0) += pExplicitQt[faceI].z();
+            //     }
+            // }
             else if
             (
                 isA<fixedValueFvPatchVectorField>
@@ -743,108 +743,50 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             Theta_.boundaryFieldRef()[patchI]
                         );
 
-                    // if (false)
-                    // {
-                    //     tensorField A(pCQW);
 
-                    //     tensorField B(pCMTheta);
+                    const scalarField pDelta
+                    (
+                        1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+                    );
+                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    //     tensorField C
-                    //     (
-                    //         B/pDelta
-                    //     - spinTensor(pExplicitM)
-                    //     );
+                    const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+                    const tensorField B((invCM & (pCMTheta/pDelta)));
 
-                    //     tensorField D
-                    //     (
-                    //         (inv(A) & spinTensor(pExplicitQ))
-                    //     - spinTensor(pDRdS)
-                    //     );
+                    const vectorField src
+                    (
+                        (pCMQTheta & A)
+                        - (pCMQW & ((invCQW & pCQTheta) & A))
+                    );
 
-                    //     vectorField src
-                    //     (
-                    //         (D & (inv(C) & (pTheta.moment() - pExplicitM)))
-                    //     - (inv(A) & (pW.force() - pExplicitQ))
-                    //     );
-                    //     src = -(spinTensor(pW.force()) & src)*pDelta;
+                    const tensorField diag
+                    (
+                        (pCMQTheta & B)
+                        - (pCMQW & ((invCQW & pCQTheta) & B))
+                    );
 
-                    //     // src = -(spinTensor(pExplicitQ) & src)*pDelta;
-
-                    //     tensorField diag((D & (inv(C) & B))/pDelta);
-                    //     diag = -(spinTensor(pW.force()) & diag)*pDelta;
-                    //     // diag = -(spinTensor(pExplicitQ) & diag)*pDelta;
-
-                    //     // Source contribution
-                    //     forAll (pTheta, faceI)
-                    //     {
-                    //         source[fc[faceI]](3,0) -= src[faceI].x();
-                    //         source[fc[faceI]](4,0) -= src[faceI].y();
-                    //         source[fc[faceI]](5,0) -= src[faceI].z();
-                    //     }
-
-                    //     // Diag contribution
-                    //     forAll (diag, faceI)
-                    //     {
-                    //         d[fc[faceI]](3,3) += diag[faceI].xx();
-                    //         d[fc[faceI]](3,4) += diag[faceI].xy();
-                    //         d[fc[faceI]](3,5) += diag[faceI].xz();
-
-                    //         d[fc[faceI]](4,3) += diag[faceI].yx();
-                    //         d[fc[faceI]](4,4) += diag[faceI].yy();
-                    //         d[fc[faceI]](4,5) += diag[faceI].yz();
-
-                    //         d[fc[faceI]](5,3) += diag[faceI].zx();
-                    //         d[fc[faceI]](5,4) += diag[faceI].zy();
-                    //         d[fc[faceI]](5,5) += diag[faceI].zz();
-                    //     }
-                    // }
-
-                    if (true)
+                    // Diag contribution
+                    forAll(pTheta, faceI)
                     {
-                        const scalarField pDelta
-                        (
-                            1.0/mesh().deltaCoeffs().boundaryField()[patchI]
-                        );
-                        const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+                        d[fc[faceI]](3,3) += diag[faceI].xx();
+                        d[fc[faceI]](3,4) += diag[faceI].xy();
+                        d[fc[faceI]](3,5) += diag[faceI].xz();
 
-                        const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
-                        const tensorField B((invCM & (pCMTheta/pDelta)));
+                        d[fc[faceI]](4,3) += diag[faceI].yx();
+                        d[fc[faceI]](4,4) += diag[faceI].yy();
+                        d[fc[faceI]](4,5) += diag[faceI].yz();
 
-                        const vectorField src
-                        (
-                            (pCMQTheta & A)
-                          - (pCMQW & ((invCQW & pCQTheta) & A))
-                        );
+                        d[fc[faceI]](5,3) += diag[faceI].zx();
+                        d[fc[faceI]](5,4) += diag[faceI].zy();
+                        d[fc[faceI]](5,5) += diag[faceI].zz();
+                    }
 
-                        const tensorField diag
-                        (
-                            (pCMQTheta & B)
-                          - (pCMQW & ((invCQW & pCQTheta) & B))
-                        );
-
-                        // Diag contribution
-                        forAll(pTheta, faceI)
-                        {
-                            d[fc[faceI]](3,3) += diag[faceI].xx();
-                            d[fc[faceI]](3,4) += diag[faceI].xy();
-                            d[fc[faceI]](3,5) += diag[faceI].xz();
-
-                            d[fc[faceI]](4,3) += diag[faceI].yx();
-                            d[fc[faceI]](4,4) += diag[faceI].yy();
-                            d[fc[faceI]](4,5) += diag[faceI].yz();
-
-                            d[fc[faceI]](5,3) += diag[faceI].zx();
-                            d[fc[faceI]](5,4) += diag[faceI].zy();
-                            d[fc[faceI]](5,5) += diag[faceI].zz();
-                        }
-
-                        // Source contribution
-                        forAll(pTheta, faceI)
-                        {
-                            source[fc[faceI]](3,0) -= src[faceI].x();
-                            source[fc[faceI]](4,0) -= src[faceI].y();
-                            source[fc[faceI]](5,0) -= src[faceI].z();
-                        }
+                    // Source contribution
+                    forAll(pTheta, faceI)
+                    {
+                        source[fc[faceI]](3,0) -= src[faceI].x();
+                        source[fc[faceI]](4,0) -= src[faceI].y();
+                        source[fc[faceI]](5,0) -= src[faceI].z();
                     }
                 }
 
@@ -934,161 +876,161 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                     }
                 }
             }
-            else if
-            (
-                isA<axialForceTransverseDisplacementNRFvPatchVectorField>
-                (
-                    W_.boundaryField()[patchI]
-                )
-            )
-            {
-                const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
-                    refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
-                    (
-                        W_.boundaryFieldRef()[patchI]
-                    );
+            // else if
+            // (
+            //     isA<axialForceTransverseDisplacementNRFvPatchVectorField>
+            //     (
+            //         W_.boundaryField()[patchI]
+            //     )
+            // )
+            // {
+            //     const axialForceTransverseDisplacementNRFvPatchVectorField& pW =
+            //         refCast<axialForceTransverseDisplacementNRFvPatchVectorField>
+            //         (
+            //             W_.boundaryFieldRef()[patchI]
+            //         );
 
-                const scalarField pDelta
-                (
-                    1.0/mesh().deltaCoeffs().boundaryField()[patchI]
-                );
-                const vectorField tang
-                (
-                    (
-                        Lambdaf_.boundaryField()[patchI]
-                      & dR0Ds_.boundaryField()[patchI]
-                    )
-                );
+            //     const scalarField pDelta
+            //     (
+            //         1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            //     );
+            //     const vectorField tang
+            //     (
+            //         (
+            //             Lambdaf_.boundaryField()[patchI]
+            //           & dR0Ds_.boundaryField()[patchI]
+            //         )
+            //     );
 
-                // tensorField pCQWt = pCQW - ((tang*tang) & pCQW);
-                const tensorField pCQThetat
-                (
-                    pCQTheta - ((tang*tang) & pCQTheta)
-                );
+            //     // tensorField pCQWt = pCQW - ((tang*tang) & pCQW);
+            //     const tensorField pCQThetat
+            //     (
+            //         pCQTheta - ((tang*tang) & pCQTheta)
+            //     );
 
-                const tensorField invCQW(inv(pCQW));
+            //     const tensorField invCQW(inv(pCQW));
 
-                const vectorField dwds0
-                (
-                    (
-                        invCQW
-                      & (
-                            pW.axialForce()*tang
-                          - ((tang*tang) & pExplicitQ)
-                        )
-                    )
-                );
+            //     const vectorField dwds0
+            //     (
+            //         (
+            //             invCQW
+            //           & (
+            //                 pW.axialForce()*tang
+            //               - ((tang*tang) & pExplicitQ)
+            //             )
+            //         )
+            //     );
 
-                // Source contribution
-                forAll(pW, faceI)
-                {
-                    const vector curSource = (pCMQW[faceI] & dwds0[faceI]);
+            //     // Source contribution
+            //     forAll(pW, faceI)
+            //     {
+            //         const vector curSource = (pCMQW[faceI] & dwds0[faceI]);
 
-                    source[fc[faceI]](3,0) -= curSource.x();
-                    source[fc[faceI]](4,0) -= curSource.y();
-                    source[fc[faceI]](5,0) -= curSource.z();
-                }
+            //         source[fc[faceI]](3,0) -= curSource.x();
+            //         source[fc[faceI]](4,0) -= curSource.y();
+            //         source[fc[faceI]](5,0) -= curSource.z();
+            //     }
 
-                if
-                (
-                    isA<momentBeamRotationNRFvPatchVectorField>
-                    (
-                        Theta_.boundaryField()[patchI]
-                    )
-                )
-                {
-                    const momentBeamRotationNRFvPatchVectorField& pTheta =
-                        refCast<momentBeamRotationNRFvPatchVectorField>
-                        (
-                            Theta_.boundaryFieldRef()[patchI]
-                        );
+            //     if
+            //     (
+            //         isA<momentBeamRotationNRFvPatchVectorField>
+            //         (
+            //             Theta_.boundaryField()[patchI]
+            //         )
+            //     )
+            //     {
+            //         const momentBeamRotationNRFvPatchVectorField& pTheta =
+            //             refCast<momentBeamRotationNRFvPatchVectorField>
+            //             (
+            //                 Theta_.boundaryFieldRef()[patchI]
+            //             );
 
-                    const scalarField pDelta
-                    (
-                        1.0/mesh().deltaCoeffs().boundaryField()[patchI]
-                    );
-                    const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
+            //         const scalarField pDelta
+            //         (
+            //             1.0/mesh().deltaCoeffs().boundaryField()[patchI]
+            //         );
+            //         const tensorField invCM(inv(pCMTheta/pDelta + pCMTheta2));
 
-                    const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
-                    const tensorField B((invCM & (pCMTheta/pDelta)));
+            //         const vectorField A((invCM & (pTheta.moment() - pExplicitM)));
+            //         const tensorField B((invCM & (pCMTheta/pDelta)));
 
-                    const vectorField src
-                    (
-                        (pCMQTheta & A)
-                      - (pCMQW & ((invCQW & pCQThetat) & A))
-                    );
-                    const tensorField diag
-                    (
-                        (pCMQTheta & B)
-                      - (pCMQW & ((invCQW & pCQThetat) & B))
-                    );
+            //         const vectorField src
+            //         (
+            //             (pCMQTheta & A)
+            //           - (pCMQW & ((invCQW & pCQThetat) & A))
+            //         );
+            //         const tensorField diag
+            //         (
+            //             (pCMQTheta & B)
+            //           - (pCMQW & ((invCQW & pCQThetat) & B))
+            //         );
 
-                    // Diag contribution
-                    forAll (pTheta, faceI)
-                    {
-                        d[fc[faceI]](3,3) += diag[faceI].xx();
-                        d[fc[faceI]](3,4) += diag[faceI].xy();
-                        d[fc[faceI]](3,5) += diag[faceI].xz();
+            //         // Diag contribution
+            //         forAll (pTheta, faceI)
+            //         {
+            //             d[fc[faceI]](3,3) += diag[faceI].xx();
+            //             d[fc[faceI]](3,4) += diag[faceI].xy();
+            //             d[fc[faceI]](3,5) += diag[faceI].xz();
 
-                        d[fc[faceI]](4,3) += diag[faceI].yx();
-                        d[fc[faceI]](4,4) += diag[faceI].yy();
-                        d[fc[faceI]](4,5) += diag[faceI].yz();
+            //             d[fc[faceI]](4,3) += diag[faceI].yx();
+            //             d[fc[faceI]](4,4) += diag[faceI].yy();
+            //             d[fc[faceI]](4,5) += diag[faceI].yz();
 
-                        d[fc[faceI]](5,3) += diag[faceI].zx();
-                        d[fc[faceI]](5,4) += diag[faceI].zy();
-                        d[fc[faceI]](5,5) += diag[faceI].zz();
-                    }
+            //             d[fc[faceI]](5,3) += diag[faceI].zx();
+            //             d[fc[faceI]](5,4) += diag[faceI].zy();
+            //             d[fc[faceI]](5,5) += diag[faceI].zz();
+            //         }
 
-                    // Source contribution
-                    forAll (pTheta, faceI)
-                    {
-                        source[fc[faceI]](3,0) -= src[faceI].x();
-                        source[fc[faceI]](4,0) -= src[faceI].y();
-                        source[fc[faceI]](5,0) -= src[faceI].z();
-                    }
-                }
-                else if
-                (
-                    isA<fixedValueFvPatchVectorField>
-                    (
-                        Theta_.boundaryField()[patchI]
-                    )
-                )
-                {
-                    const fixedValueFvPatchVectorField& pTheta =
-                        refCast<fixedValueFvPatchVectorField>
-                        (
-                            Theta_.boundaryFieldRef()[patchI]
-                        );
+            //         // Source contribution
+            //         forAll (pTheta, faceI)
+            //         {
+            //             source[fc[faceI]](3,0) -= src[faceI].x();
+            //             source[fc[faceI]](4,0) -= src[faceI].y();
+            //             source[fc[faceI]](5,0) -= src[faceI].z();
+            //         }
+            //     }
+            //     else if
+            //     (
+            //         isA<fixedValueFvPatchVectorField>
+            //         (
+            //             Theta_.boundaryField()[patchI]
+            //         )
+            //     )
+            //     {
+            //         const fixedValueFvPatchVectorField& pTheta =
+            //             refCast<fixedValueFvPatchVectorField>
+            //             (
+            //                 Theta_.boundaryFieldRef()[patchI]
+            //             );
 
-                    const vectorField& pThetaPrev =
-                        Theta_.prevIter().boundaryField()[patchI];
+            //         const vectorField& pThetaPrev =
+            //             Theta_.prevIter().boundaryField()[patchI];
 
-                    vectorField& pThetaCorrStar
-                    (
-                        DTheta_.boundaryFieldRef()[patchI]
-                    );
-                    pThetaCorrStar = (pTheta - pThetaPrev);
-                    const vectorField pThetaCorr((pLambdaf & pThetaCorrStar));
+            //         vectorField& pThetaCorrStar
+            //         (
+            //             DTheta_.boundaryFieldRef()[patchI]
+            //         );
+            //         pThetaCorrStar = (pTheta - pThetaPrev);
+            //         const vectorField pThetaCorr((pLambdaf & pThetaCorrStar));
 
-                    const vectorField dwds1
-                    (
-                        -((invCQW & pCQThetat) & pThetaCorr)
-                    );
+            //         const vectorField dwds1
+            //         (
+            //             -((invCQW & pCQThetat) & pThetaCorr)
+            //         );
 
-                    // Source contribution
-                    forAll (pTheta, faceI)
-                    {
-                        const vector curSource =
-                            (pCMQW[faceI] & dwds1[faceI])
-                          + (pCMQTheta[faceI] & pThetaCorr[faceI]);
+            //         // Source contribution
+            //         forAll (pTheta, faceI)
+            //         {
+            //             const vector curSource =
+            //                 (pCMQW[faceI] & dwds1[faceI])
+            //               + (pCMQTheta[faceI] & pThetaCorr[faceI]);
 
-                        source[fc[faceI]](3,0) -= curSource.x();
-                        source[fc[faceI]](4,0) -= curSource.y();
-                        source[fc[faceI]](5,0) -= curSource.z();
-                    }
-                }
-            }
+            //             source[fc[faceI]](3,0) -= curSource.x();
+            //             source[fc[faceI]](4,0) -= curSource.y();
+            //             source[fc[faceI]](5,0) -= curSource.z();
+            //         }
+            //     }
+            // }
             else if
             (
                 isA<fixedValueFvPatchVectorField>
@@ -1235,26 +1177,13 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
             // Add explicit force moment
             forAll(pExplicitMQ, faceI)
             {
-                if (true)
-                {
-                    const vector correctedOwnExplicitMQ = pExplicitMQ[faceI];
 
-                    // correctedOwnExplicitMQ =
-                    // (
-                    //     refLambdafI[fc[faceI]].T()
-                    //   & (LambdaI[fc[faceI]].T() & correctedOwnExplicitMQ)
-                    // );
-                    // correctedOwnExplicitMQ.x() = 0;
-                    // correctedOwnExplicitMQ =
-                    // (
-                    //     LambdaI[fc[faceI]]
-                    //  & (refLambdafI[fc[faceI]] & correctedOwnExplicitMQ)
-                    // );
+                const vector correctedOwnExplicitMQ = pExplicitMQ[faceI];
 
-                    source[fc[faceI]](3,0) -= correctedOwnExplicitMQ.x();
-                    source[fc[faceI]](4,0) -= correctedOwnExplicitMQ.y();
-                    source[fc[faceI]](5,0) -= correctedOwnExplicitMQ.z();
-                }
+                source[fc[faceI]](3,0) -= correctedOwnExplicitMQ.x();
+                source[fc[faceI]](4,0) -= correctedOwnExplicitMQ.y();
+                source[fc[faceI]](5,0) -= correctedOwnExplicitMQ.z();
+
             }
         }
     }
