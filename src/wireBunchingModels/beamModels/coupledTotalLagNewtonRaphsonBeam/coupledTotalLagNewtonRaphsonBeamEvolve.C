@@ -90,11 +90,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         beamProperties().lookupOrDefault<scalar>("infoFrequency", 1)
     );
 
-    const bool debug
-    (
-        beamProperties().lookupOrDefault<bool>("debug", false)
-    );
-
     scalar initialResidualNorm = 1;
     scalar currentResidualNorm = GREAT;
     scalar deltaXNorm = GREAT;
@@ -640,9 +635,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         )
     );
 
-
     totalIter_ += iOuterCorr();
-    Info<< "total Iterations " << totalIter_ << endl;
+
+    if (debug)
+    {
+        Info<< "Total iterations " << totalIter_ << endl;
+    }
 
     return initialResidualNorm;
 }
