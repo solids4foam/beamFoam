@@ -580,9 +580,11 @@ Foam::beamModel::beamModel
         Info<< "GA: " << GA(bI) << endl;
     }
     
-    word startPatchName(beamProperties_.lookup("startPatchName"));
-    word endPatchName(beamProperties_.lookup("endPatchName"));
-
+    // word startPatchName(beamProperties_.lookup("startPatchName"));
+    // word endPatchName(beamProperties_.lookup("endPatchName"));
+    word startPatchName = "left";
+    word endPatchName = "right";
+    
     label nCellZones = mesh().cellZones().size();
 
     // Check that there is at least one cell zone
