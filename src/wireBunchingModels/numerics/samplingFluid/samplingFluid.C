@@ -50,6 +50,7 @@ namespace Foam
         const vectorField& beamCellCenterCoord,
         labelList& seedCellIDs,
         const scalar groundZ,
+        const bool groundContactActive,
         const meshSearch& searchEngine // flag for using octree or not
     )
     {
@@ -136,17 +137,23 @@ namespace Foam
 
     seedCellIDs.setSize(beamCoords.size(), -1);
     vectorField resultVect(beamCoords.size(), vector::zero);
+
+    globalIndex gI(fluidMesh.nCells());
+
     labelList fluidCellIDs(beamCoords.size(), -1);
     // markerResults.storePrevIter();
-    forAll(beamCoords,beamCellI)
+    forAll(beamCoords, beamCellI)
     {
         if (!fluidMesh.bounds().contains(beamCoords[beamCellI]))
         {
             resultVect[beamCellI] = vector::zero;
             seedCellIDs[beamCellI] = -1;
+            // if its not within the bounding box, set the fluidCellID to -1!
+            fluidCellIDs[beamCellI] = -1;
             continue;
         }
-        if (beamCoords[beamCellI].z() <= groundZ)
+        // this part only should activate when we have a mooring case!
+        if (beamCoords[beamCellI].z() <= groundZ && groundContactActive)
         {
             seedCellIDs[beamCellI] = -1;
             resultVect[beamCellI] = vector::zero;
@@ -179,7 +186,8 @@ namespace Foam
         }
         else
         {
-            fluidCellIDs[beamCellI] = fluidCellID;
+            // fluidCellIDs[beamCellI] = fluidCellID;
+            fluidCellIDs[beamCellI] = gI.toGlobal(fluidCellID);
             resultVect[beamCellI] = fluidVelocity[fluidCellID];
             markerResults[fluidCellID] = 1.0;
             markerVelocity[fluidCellID] = beamUVec[beamCellI];
@@ -189,8 +197,10 @@ namespace Foam
     // markerResults = alpha * markerResults + (1 - alpha)*markerResultsPrevIter;
     reduce(resultVect, FieldSumOp<vector>());
 
-    // reduce(fluidCellIDs, maxOp<labelList>()); // how to reduce this list prop
-    // Pout<< __FILE__ << ": line " <<__LINE__ << endl;
+    forAll(fluidCellIDs, i)
+    {
+        reduce(fluidCellIDs[i], maxOp<label>());
+    }
     result.primitiveFieldRef() = resultVect;
 
     // reduce(markerVelocityVect, FieldSumOp<vector>());
@@ -252,7 +262,6 @@ namespace Foam
     // {
     //     //        markCellsByCellCentersInCylinders(fluidMesh, points, radius.value(), markerResults);
     // }
-    // Pout<< __FILE__ << ": line " <<__LINE__ << endl;
     return std::make_tuple(std::move(tresult), std::move(tmarkerResults), std::move(tmarkerVelocity), std::move(fluidCellIDs));
     }
 } // End namespace Foam

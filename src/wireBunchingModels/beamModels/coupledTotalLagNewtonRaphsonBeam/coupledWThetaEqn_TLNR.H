@@ -806,6 +806,7 @@
                                 beamCellCenterCoord,
                                 seedCellIDs,
                                 groundZ_,
+                                groundContactActive_,
                                 searchEngine_
                             );
                         fluidU_ = std::get<0>(fluidInfo).ref();
@@ -815,14 +816,18 @@
                         if (mesh().time().writeTime())
                         {
                             cellMarker_.write();
-                            // fluidCellIDs.write();
+                            // fluidCellIDs_.write();
                         }
-                        // const vectorIOList& immersedForce = mesh().time().db().sortedNames();
-                        // Info<< "immersedForce = " << immersedForce_ << endl;
                         //- Adding the immersed boundary force to the source
                         if(immersedForceActive_)
                         {
                             Info<< "Applying immersed Force" << endl;
+                            vector sumF(vector::zero);
+                            forAll(immersedForce_, cellI)
+                            {
+                                sumF += immersedForce_[cellI];
+                            }
+                            Info << "immersedForce sum on the beam side = " << sumF << endl;
                             forAll(source, cellI)
                             {
                                 source[cellI](0,0) -= (immersedForce_[cellI].component(0));

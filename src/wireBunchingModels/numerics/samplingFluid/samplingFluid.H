@@ -55,7 +55,8 @@ namespace Foam
             const vectorField& beamCellCenterCoord,
             labelList& seedCellIDs,
             const scalar groundZ,
-            const meshSearch& searchEngine // flag for using octree or not
+            const bool groundContactActive,
+            const meshSearch& searchEngine // flag for using octree
         );
 } // End namespace Foam
 
