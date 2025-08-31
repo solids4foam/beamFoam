@@ -39,4 +39,4 @@ jobs:
           source ${{ matrix.container-image.source }}
 
           # Compile the submodule
-          ./Allwmake
+          ./Allwmake -j
