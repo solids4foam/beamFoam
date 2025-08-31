@@ -32,7 +32,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Source OpenFOAM environment and compile Submodule
+      - name: Source OpenFOAM environment and compiling beamFoam
         shell: bash -l {0}
         run: |
           echo "Using OpenFOAM version: ${{ matrix.container-image.name }}"
