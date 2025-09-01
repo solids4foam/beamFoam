@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
@@ -9,8 +9,7 @@ application=`getApplication`
 runApplication createBeamMesh
 
 # Secondary utility to set initial configuration
-runApplication setInitialPositionBeam −cellZone beam 0 \
- −translate "(0 0 0)" −rotateAngle "((0 -1 0) 90)"
+runApplication setInitialPositionBeam -cellZone beam_0  -translate '(0 0 0)' -rotateAngle '((0 -1 0) 90)'
 
 # run beamFoam 
 runApplication $application

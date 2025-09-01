@@ -6,8 +6,8 @@ dispDataFile   = 'postProcessing/0/beamDisplacements_right.dat'
 #========================================
 # 1. Plot Energy Data — PNG
 #========================================
-set terminal pngcairo size 3000,2400 enhanced font 'Arial,24'
-set output 'energyPlot.png'
+set term pdfcairo dashed enhanced
+set output 'energyPlot.pdf'
 
 set title "Energy Components vs Time"
 set xlabel "Time (s)"
@@ -21,16 +21,16 @@ plot \
 #========================================
 # 2. Plot Energy Data — EPS
 #========================================
-set terminal postscript eps enhanced color font 'Arial,24' linewidth 2
-set output 'energyPlot.eps'
+#set terminal postscript eps enhanced color font 'Arial,24' linewidth 2
+#set output 'energyPlot.eps'
 
-replot
+#replot
 
 #========================================
 # 3. Plot Displacement Data — PNG
 #========================================
-set terminal pngcairo size 3000,2400 enhanced font 'Arial,24'
-set output 'displacementPlot.png'
+set term pdfcairo dashed enhanced
+set output 'displacementPlot.pdf'
 
 set title "Beam Displacement at Right End vs Time"
 set xlabel "Time (s)"

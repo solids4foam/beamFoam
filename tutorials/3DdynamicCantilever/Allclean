@@ -8,3 +8,5 @@ cleanCase
 rm -rf constant/polyMesh
 
 rm -f 0/ref* 0/pointW
+
+rm -f *.eps *.pdf *.png
