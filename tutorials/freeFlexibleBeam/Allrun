@@ -5,8 +5,17 @@
 # Get application name
 application=`getApplication`
 
+# Mesh utility
 runApplication createBeamMesh
 
+# Secondary utility to set the beam in initial configuration
 runApplication setInitialPositionBeam -cellZone beam_0 -translate '(0 0 0)' -rotateAngle '((0 0 -1) 53.130102)'
 
+# beamFoam 
 runApplication $application
+
+# Plotting displacement and energy plots
+gnuplot allPlots.gnuplot
+
+open displacementPlot.pdf
+open energyPlot.pdf
