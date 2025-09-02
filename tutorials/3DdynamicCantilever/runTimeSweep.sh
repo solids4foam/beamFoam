@@ -1,8 +1,12 @@
 #!/bin/bash
 
 # List of time dt values to test
-dt_sizes=(0.1 0.05 0.01 0.001 0.0001)
-write_interval=(1 1 10 100 1000)
+# NOTE: If dt = 0.0001 is used with Newmark time scheme, then
+# set newmarkBeta(W) to 0.25 and newmarkGamma(W) to 0.6 for damping
+# the high frequency components of energy build up which will also
+# make the equilibrium residuals converge better 
+dt_sizes=(0.1 0.05 0.01 0.001) # Works for both Euler and Newmark
+write_interval=(1 1 10 100)
 
 # File paths
 controlDict="system/controlDict"
