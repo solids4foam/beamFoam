@@ -5,6 +5,14 @@
 # Get application name
 application=`getApplication`
 
+# mesh utility
 runApplication createBeamMesh
 
+# beamFoam solver
 runApplication $application
+
+# Plotting displacement vs load graphs
+gnuplot allPlots.gnuplot
+
+open displacementPlot.pdf
+open energyPlot.pdf

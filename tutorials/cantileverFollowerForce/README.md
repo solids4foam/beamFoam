@@ -25,34 +25,30 @@ The load of 134 kN is applied in the **z-direction** in 1000 increments (pseudo 
 
 Example boundary condition setup is shown in `0/W` and `0/Theta`.
 
-## Solver Settings
-- Newton–Raphson convergence tolerance for both `W` and `Theta` fields set to:
-  \[
-  1 \times 10^{-10}
-  \]
-  (default code tolerance is \( 1 \times 10^{-6} \))
+## Solver Settings (constant/beamProperties)
+- solutionTol = 1e-10
 - Typical convergence is achieved in **4–6 iterations per load step**.
 
 ## Running the Case
 1. Ensure the beam mesh and case files are set up.
-2. Run the solver with:
-   ```bash
-   beamFoam
+2. Clean and run the solver with:
    ```
-3. Post-process results using ParaView:
+   ./Allclean
+   ./Allrun
+   ```
+3. To run the case for varying mesh sizes, and obtain the displacement-load graphs, run the command,
+    ```
+    ./runSweep.sh
+    ```
+4. Post-process results using ParaView:
    - Use the field `pointW` with the **Warp By Vector** filter to visualise the deformed configurations.
    - Displacement fields (`W`) can also be visualised with colour maps.
 
 ## Results
 - **Displacement response:**
-  Figure `cant-fol-force-disp` shows \( w_x \) and \( w_y \) displacements at the free end of the beam for meshes with 5, 10, and 20 cells. Results are in good agreement with Simo & Vu-Quoc (1986).
+  Figures dispComparison_Wx_MeshSizes.pdf  dispComparison_Wz_MeshSizes.pdf show  \( w_x \) and \( w_z \) displacements at the free end of the beam for meshes with 5, 10, and 20 cells. The reference results are stored in ReferenceResultsSimo.dat
 - **Mesh convergence:**
-  A quadratic rate of convergence is observed when refining from 10 → 80 CVs (Figure `cant-fol-force-mesh-conv`).
-- Residual convergence:
-  \[
-  \| \phi \| = \max (\| \Delta \mathbf{w} \|, \| \Delta \mathbf{R}_V \|) < 1 \times 10^{-10}
-  \]
-
+  A quadratic rate of convergence is observed when refining from 10 → 80 CVs.
 ---
 
 ## References
