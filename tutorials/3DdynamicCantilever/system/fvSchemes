@@ -16,12 +16,12 @@ FoamFile
 
 ddtSchemes
 {
-    default      Euler;
+    default      Newmark;
 }
 
 d2dt2Schemes
 {
-    default      Euler;
+    default      Newmark;
     
     // Use the following values for Newmark if you set deltaT = 0.0001
     // The gamma value is changed from default 0.5 to 0.6.

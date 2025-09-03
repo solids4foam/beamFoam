@@ -1,6 +1,6 @@
 # Test case 1 - 3D Dynamic Cantilever Beam
 
-## 1. Case description  
+## Case description  
 This benchmark reproduces the large-deformation 3-D cantilever column studied in Cardiff et al. (2025) using the `solids4Foam` toolbox and ABAQUS.  
 - A vertical cantilever beam with **square cross-section (0.2 m × 0.2 m)** and **length 2 m** is subjected to a sudden constant tip load.  
 - The applied load is  
@@ -16,7 +16,7 @@ acting on the top face from t=0 to t=1 s.
 
 ---
 
-## 2. Geometry and setup  
+## Geometry and setup  
 - Beam length: **2 m**  
 - Cross-section: **Square, side = 0.2 m**  
 - Material properties:  
@@ -28,7 +28,7 @@ acting on the top face from t=0 to t=1 s.
 
 ---
 
-## 3. Solver settings  
+## Solver settings  
 - Time integration:  
   - **Newmark-β scheme (second-order, implicit)**  
   - Optional: **Backward Euler (first-order, implicit)**  
@@ -38,24 +38,27 @@ acting on the top face from t=0 to t=1 s.
 
 ---
 
-## 4. How to run  
-```bash
-# Generate straight beam mesh
-createBeamMesh
-
-# Rotate into vertical orientation
-setInitialPositionBeam
-
-# Run solver
-beamFoam
+## Running a case  
+1. To run and individual case, execute:
+```
+./Allclean
+./Allrun
+```
+2. To perform a mesh discretisation study for a particular time scheme (Euler or Newmark), execute:
+```
+./runSweep.sh
+```
+3. To perform a time discretisation study, change timeSchemes in system/fvSchemes to either Euler or Newmark), and execute:
+```
+./runTimeSweep.sh
 ```
 
-# Plots in gnuplot
+## Plots in gnuplot
 # Run the command
-gnuplot allPlots.gnuplot
+gnuplot allPlots.gnuplot - generates diplacementPlot.pdf and energyPlot.pdf
 ---
 
-## 5. Post-processing  
+## Post-processing  
 - Open case in **ParaView** (`case.foam`)  
 - Use **WarpByVector** filter with `pointW` field to visualise deformation.  
 - Displacement of the top patch can be compared with reference ABAQUS and `solids4Foam` results.  
@@ -63,7 +66,7 @@ gnuplot allPlots.gnuplot
 
 ---
 
-## 6. Expected results  
+## Expected results  
 - **Displacement vs. time** at the top face shows good agreement with ABAQUS and `solids4Foam`.  
 - Even coarse meshes (5 cells) capture the response well; with 20 segments, results converge to the ABAQUS solution.  
 - **Performance:** `beamFoam` runs **orders of magnitude faster** (1.26 s vs. ~12,000 s for `solids4Foam`).  
