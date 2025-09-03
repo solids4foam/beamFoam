@@ -31,6 +31,13 @@ trajectories due to nonlinear interaction of bending in two planes with oscillat
   - Moments: `m(t) = (mₓ(t), mᵧ(t), 0)` with `|m| = 80 Nm`  
 - After `t = 2.5 s`, all external loads are removed, and the beam enters **free vibration** until `t = 40 s`.
 
+## Running a case
+1. To clean and run a case, execute:
+```
+./Allclean
+./Allrun
+```
+
 ## Results
 
 ### Deformation Pattern
@@ -38,32 +45,16 @@ trajectories due to nonlinear interaction of bending in two planes with oscillat
 - Endpoint A oscillates in `y` and `z` while moving forward in `x`.  
 - Residuals converge in ~3 iterations per timestep.  
 
-### Figures
-- ![Beam deformation pattern](figures/fig_case_flexBeam.eps)  
-- ![Displacement vs time](figures/dispFlexibleBeamPlot.eps)  
-
 ### Energy Conservation
 - Energy is conserved in free vibration (t > 2.5 s).  
 - Comparison:  
   - Euler scheme → **numerical damping** (energy decay).  
   - Newmark-β scheme → **energy conservation** for Δt = 0.01 s and Δt = 0.1 s.  
 
-- ![Energy stability](figures/case3_energy.png)
-
 ### Long-Time Simulation
 - Simulated up to `t = 1000 s`.  
 - Energy remains stable (small oscillations for Δt = 0.01 s).  
 
-## How to Run
-```bash
-# 1. Create initial beam
-setInitialPositionBeam
-
-# 2. Run simulation
-beamFoam
-```
-
-Energy can be extracted using the `beamEnergyData` functionObject in `controlDict`.
 
 ## References
 - Simo, J.C., Vu-Quoc, L. (1988). *On the dynamics in space of rods undergoing large motions — A geometrically exact approach*. International Journal for Numerical Methods in Engineering.  
