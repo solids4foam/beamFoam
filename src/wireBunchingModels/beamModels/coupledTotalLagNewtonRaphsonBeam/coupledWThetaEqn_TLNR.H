@@ -1114,6 +1114,9 @@
 
     // Update mean line velocity field
     //  SB added: (10/11/2023) Update mean line velocity field
+    // remembering before overwriting
+    U_.storePrevIter();
+
     if (newmark_)
     {
         U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
@@ -1125,7 +1128,10 @@
     else
     {
         U_ = fvc::ddt(W_);
+
     }
+    // relaxing
+    U_.relax();
 
 
     if (objectiveInterpolation())
