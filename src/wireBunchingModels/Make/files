@@ -26,6 +26,8 @@ functionObjects/beamConvergenceData/beamConvergenceData.C
 functionObjects/beamDisplacements/beamDisplacements.C
 functionObjects/beamForcesMoments/beamForcesMoments.C
 
+momentumContribution/momentumContribution.C
+
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C
 numerics/pseudoVector/pseudoVector.C

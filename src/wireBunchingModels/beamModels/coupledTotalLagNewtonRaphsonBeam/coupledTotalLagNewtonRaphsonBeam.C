@@ -637,6 +637,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
+    momentumContribPtr_(),
 
     // Drag Force related fields
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
@@ -1067,6 +1068,26 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     explicitM_.setOriented(true);
     Q_.setOriented(true);
     M_.setOriented(true);
+
+    // Create momentumContributions
+    IOobject momenContribHeader
+    (
+        "momentumContributionProperties",
+        runTime.constant(),
+        runTime,
+        IOobject::MUST_READ
+    );
+    if (!momenContribHeader.typeHeaderOk<IOobject>(true))
+    {
+        Info<< "Found momentumContributionProperties file: creating object"
+            << endl;
+        momentumContribPtr_ = momentumContribution::New(runTime);
+    }
+    else
+    {
+        Info<< "momentumContributionProperties file not found: skipping"
+            << endl;
+    }
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

@@ -52,7 +52,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-//#include "multibeamFvBlockMatrix.H"
+#include "momentumContribution.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,7 +84,7 @@ class coupledTotalLagNewtonRaphsonBeam
         mutable volVectorField U_;
 
         //- Mean line acceleration field
- 	    mutable volVectorField Accl_;
+        mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -131,7 +131,7 @@ class coupledTotalLagNewtonRaphsonBeam
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
 
-		//- Mean line reference displacement at face-centres
+        //- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
 
         //- Mean line reference displacement at cell-centres
@@ -224,7 +224,10 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Newmark gamma coefficient
         scalar gammaN_;
 
-    //- Fields related to drag forces due to Morrison's equation
+        //- Run-time selectable momentum contributions
+        autoPtr<momentumContribution> momentumContribPtr_;
+
+        //- Fields related to drag forces due to Morrison's equation
         //- Boolean to activate drag forces
         bool dragActive_;
 

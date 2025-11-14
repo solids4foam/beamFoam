@@ -586,6 +586,43 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                   << abort(FatalError);
             }
 
+            // Add run-time selectable momentum contributions
+            if (momentumContribPtr_.valid())
+            {
+                // Source contribution
+
+                const vectorField linMomSource
+                (
+                    momentumContribPtr_->linearMomentumSource(W_, Theta_)
+                );
+
+                const vectorField angMomSource
+                (
+                    momentumContribPtr_->angularMomentumSource(W_, Theta_)
+                );
+
+                forAll(source, cellI)
+                {
+                    source[cellI](0,0) += linMomSource[cellI][vector::X];
+                    source[cellI](1,0) += linMomSource[cellI][vector::Y];
+                    source[cellI](2,0) += linMomSource[cellI][vector::Z];
+
+                    source[cellI](3,0) += angMomSource[cellI][vector::X];
+                    source[cellI](4,0) += angMomSource[cellI][vector::Y];
+                    source[cellI](5,0) += angMomSource[cellI][vector::Z];
+                }
+
+                // Jacobian diagonal contribution
+
+                const Field<scalarSquareMatrix> diagCoeff
+                (
+                    momentumContribPtr_->diagCoeff(W_, Theta_)
+                );
+
+                d += diagCoeff;
+            }
+
+
             // Block coupled solver call
 
             // Create Eigen linear solver
