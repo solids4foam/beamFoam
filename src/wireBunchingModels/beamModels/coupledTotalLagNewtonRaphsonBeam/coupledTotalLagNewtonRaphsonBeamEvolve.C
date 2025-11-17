@@ -284,23 +284,23 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // }
 
             // ground contact contribution
-            if (groundContactActive_)
-            {
-                label cellsInContact = 0 ;
-                forAll(source, cellI)
-                {
-                    const vector coord = refW_[cellI] + W_[cellI];
+            // if (groundContactActive_)
+            // {
+            //     label cellsInContact = 0 ;
+            //     forAll(source, cellI)
+            //     {
+            //         const vector coord = refW_[cellI] + W_[cellI];
 
-                    if (coord.z() < groundZ_)
-                    {
-                        cellsInContact += 1;
-                        source[cellI](2,0) +=
-                            (2.0*gStiffness_*R()*(coord.z() - groundZ_))
-                            - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0));
-                    }
-                }
-                Info<< "Number of cells in contact : " << cellsInContact << endl;
-            }
+            //         if (coord.z() < groundZ_)
+            //         {
+            //             cellsInContact += 1;
+            //             source[cellI](2,0) +=
+            //                 (2.0*gStiffness_*R()*(coord.z() - groundZ_))
+            //                 - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0));
+            //         }
+            //     }
+            //     Info<< "Number of cells in contact : " << cellsInContact << endl;
+            // }
 
             // Add inertial components if not steadyState
             // SB Note: The inertia terms have two components
@@ -586,42 +586,43 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //       << abort(FatalError);
             // }
 
-            // Add run-time selectable momentum contributions
-            if (momentumContribPtr_.valid())
+            // // Add run-time selectable momentum contributions
+            if (momentumContribPtr_.size() > 0)
             {
-                // Source contribution
-
-                const vectorField linMomSource
-                (
-                    // momentumContribPtr_->linearMomentumSource(W_, Theta_)
-                    momentumContribPtr_->linearMomentumSource(*this, U_)
-                );
-
-                const vectorField angMomSource
-                (
-                    // momentumContribPtr_->angularMomentumSource(W_, Theta_)
-                    momentumContribPtr_->angularMomentumSource(*this, U_)
-                );
-
-                forAll(source, cellI)
+                forAll(momentumContribPtr_, i)
                 {
-                    source[cellI](0,0) += linMomSource[cellI][vector::X];
-                    source[cellI](1,0) += linMomSource[cellI][vector::Y];
-                    source[cellI](2,0) += linMomSource[cellI][vector::Z];
+                    const vectorField linMomSource
+                    (
+                        // momentumContribPtr_->linearMomentumSource(W_, Theta_)
+                        momentumContribPtr_[i].linearMomentumSource(*this, U_)
+                    );
 
-                    source[cellI](3,0) += angMomSource[cellI][vector::X];
-                    source[cellI](4,0) += angMomSource[cellI][vector::Y];
-                    source[cellI](5,0) += angMomSource[cellI][vector::Z];
+                    const vectorField angMomSource
+                    (
+                        // momentumContribPtr_->angularMomentumSource(W_, Theta_)
+                        momentumContribPtr_[i].angularMomentumSource(*this, U_)
+                    );
+
+                    forAll(source, cellI)
+                    {
+                        source[cellI](0,0) += linMomSource[cellI][vector::X];
+                        source[cellI](1,0) += linMomSource[cellI][vector::Y];
+                        source[cellI](2,0) += linMomSource[cellI][vector::Z];
+
+                        source[cellI](3,0) += angMomSource[cellI][vector::X];
+                        source[cellI](4,0) += angMomSource[cellI][vector::Y];
+                        source[cellI](5,0) += angMomSource[cellI][vector::Z];
+                    }
+
+                    // Jacobian diagonal contribution
+
+                    const Field<scalarSquareMatrix> diagCoeff
+                    (
+                         momentumContribPtr_[i].diagCoeff(*this, U_)
+                    );
+
+                    d += diagCoeff;   
                 }
-
-                // Jacobian diagonal contribution
-
-                const Field<scalarSquareMatrix> diagCoeff
-                (
-                    momentumContribPtr_->diagCoeff(*this, U_)
-                );
-
-                d += diagCoeff;
             }
 
 
@@ -844,7 +845,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
     else if (d2dt2SchemeName_ == "Euler")
     {
         U_ = fvc::ddt(W_);
-        // Accl_ = fvc::ddt(U_);
+        Accl_ = fvc::ddt(U_);
     }
     else
     {

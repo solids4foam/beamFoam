@@ -24,7 +24,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "morisonMomentum.H"
+#include "morisonDragContribution.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -34,35 +34,44 @@ namespace Foam
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-defineTypeNameAndDebug(morisonMomentum, 0);
-addToRunTimeSelectionTable(momentumContribution, morisonMomentum, dictionary);
+defineTypeNameAndDebug(morisonDragContribution, 0);
+addToRunTimeSelectionTable
+(
+    beamMomentumContribution, morisonDragContribution, dictionary
+);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 
-morisonMomentum::morisonMomentum
+morisonDragContribution::morisonDragContribution
 (
-    const Time& runTime
+    const word& name,
+    const dictionary& dict
 )
 :
-    momentumContribution(runTime),
+    beamMomentumContribution
+    (
+        name,
+        dict
+    ),
+    beamMomentumContribDict_(dict.subDict(name + "Coeffs")),
     Cdn_
     (
-        readScalar(this->subDict(typeName + "Coeffs").lookup("Cdn"))
+        readScalar(beamMomentumContribDict_.lookup("Cdn"))
     ),
     Cdt_
     (
-        readScalar(this->subDict(typeName + "Coeffs").lookup("Cdt"))
+        readScalar(beamMomentumContribDict_.lookup("Cdt"))
     )
 {
-    Info<< "Found momentumContribution type: " << typeName << endl;
+    Info<< "Found beamMomentumContribution type: " << typeName << endl;
 }
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 
-tmp<Field<scalarSquareMatrix>> morisonMomentum::diagCoeff
+tmp<Field<scalarSquareMatrix>> morisonDragContribution::diagCoeff
 (
     const beamModel& bm,
     const volVectorField& U
@@ -87,7 +96,7 @@ tmp<Field<scalarSquareMatrix>> morisonMomentum::diagCoeff
 }
 
 
-tmp<vectorField> morisonMomentum::linearMomentumSource
+tmp<vectorField> morisonDragContribution::linearMomentumSource
 (
     const beamModel& bm,
     const volVectorField& U
@@ -193,7 +202,7 @@ tmp<vectorField> morisonMomentum::linearMomentumSource
 }
 
 
-tmp<vectorField> morisonMomentum::angularMomentumSource
+tmp<vectorField> morisonDragContribution::angularMomentumSource
 (
     const beamModel& bm,
     const volVectorField& U

@@ -52,7 +52,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-#include "momentumContribution.H"
+#include "beamMomentumContribution.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -224,18 +224,18 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Newmark gamma coefficient
         scalar gammaN_;
 
-        //- Run-time selectable momentum contributions
-        autoPtr<momentumContribution> momentumContribPtr_;
+        //- Run-time selectable beam momentum contributions
+        PtrList<beamMomentumContribution> momentumContribPtr_;
 
-        //- Fields related to drag forces due to Morrison's equation
-        //- Boolean to activate drag forces
-        bool dragActive_;
+        // //- Fields related to drag forces due to Morrison's equation
+        // //- Boolean to activate drag forces
+        // bool dragActive_;
 
-        //- Normal drag coefficient
-        scalar Cdn_;
+        // //- Normal drag coefficient
+        // scalar Cdn_;
 
-        //- tangential drag coefficient
-        scalar Cdt_;
+        // //- tangential drag coefficient
+        // scalar Cdt_;
 
         // Ground contact related parameters.
 

@@ -637,12 +637,12 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
-    momentumContribPtr_(),
+    momentumContribPtr_(0),
 
-    // Drag Force related fields
-    dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
-    Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
-    Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
+    // // Drag Force related fields
+    // dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
+    // Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
+    // Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().getOrDefault<bool>("groundContactActive", false)),
@@ -1070,22 +1070,48 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     M_.setOriented(true);
 
     // Create momentumContributions
-    IOobject momenContribHeader
+    IOobject momentumContribHeader
     (
-        "momentumContributionProperties",
+        "beamMomentumContributionProperties",
         runTime.constant(),
         runTime,
         IOobject::MUST_READ
     );
-    if (!momenContribHeader.typeHeaderOk<IOobject>(true))
+    
+    if (momentumContribHeader.typeHeaderOk<dictionary>(true))
     {
-        Info<< "Found momentumContributionProperties file: creating object"
+        Info<< "Found beamMomentumContributionProperties file: creating object"
             << endl;
-        momentumContribPtr_ = momentumContribution::New(runTime);
+        
+        // TO CHECK: maybe we should not register this dict
+        IOdictionary beamMomentContribDict(momentumContribHeader);
+
+        const PtrList<entry> entries
+        (
+            beamMomentContribDict.lookup("beamMomentumContributions")
+        );
+
+        const label nContrib = entries.size();
+
+        momentumContribPtr_.setSize(nContrib);        
+        // dictionary& momentumContribDicts = dict.lookup("beamContributions");
+        
+        forAll(entries, i)
+        {
+            momentumContribPtr_.set
+            (
+                i,
+                beamMomentumContribution::New
+                (
+                    word(entries[i].dict().lookup("beamMomentumContributionType")),
+                    entries[i].dict()
+                )
+            );
+        }
     }
     else
     {
-        Info<< "momentumContributionProperties file not found: skipping"
+        Info<< "beamMomentumContributionProperties file not found: skipping"
             << endl;
     }
 }

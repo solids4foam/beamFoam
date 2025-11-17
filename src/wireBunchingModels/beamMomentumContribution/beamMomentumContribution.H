@@ -23,73 +23,104 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Class
-    Foam::momentumContribution::morisonMomentum
+    Foam::beamMomentumContribution
 
 Description
-    Derived class to add the Morison force contributions to the
-    linear and angular momentum equations of the beam solver
+    Abstract base class for adding external linear and angular momentum
+    contributions to the beam solver.
+
+    This class broadly follows the morisonForce class of Niels Gjoel Jacobsen,
+    Deltares.
 
 SourceFiles
-    morisonMomentum.C
+    beamMomentumContribution.C
 
 Author
-    Seevani Balii, UCD.
     Philip Cardiff, UCD.
-
+    Seevani Bali, UCD.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef morisonMomentum_H
-#define morisonMomentum_H
+#ifndef beamMomentumContribution_H
+#define beamMomentumContribution_H
 
-#include "momentumContribution.H"
-#include "HermiteSpline.H"
-// #include "beamModel.H"
-#include "coupledTotalLagNewtonRaphsonBeam.H"
+#include "fvMesh.H"
+#include "fvCFD.H"
+#include "volFields.H"
+#include "IOdictionary.H"
+#include "autoPtr.H"
+#include "runTimeSelectionTables.H"
+#include "beamModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// namespace momentumContributions
-// {
-
 /*---------------------------------------------------------------------------*\
-                           Class morisonMomentum Declaration
+                   Class beamMomentumContribution Declaration
 \*---------------------------------------------------------------------------*/
 
-class morisonMomentum
-:
-    public momentumContribution
+class beamMomentumContribution
+// :
+// public IOdictionary
 {
 
 private:
 
-    //- Normal drag coefficient for Morison Force
-    scalar Cdn_;
+    // Private data
+    const word name_;
 
-    //- Tangential drag coefficient for Morison Force
-    scalar Cdt_;
+    // Private Member Functions
+
+    //- Disallow default bitwise copy construct
+    beamMomentumContribution(const beamMomentumContribution&);
+
+    //- Disallow default bitwise assignment
+    void operator=(const beamMomentumContribution&);
 
 public:
 
     //- Runtime type information
-    TypeName("morisonMomentum");
+    TypeName("beamMomentumContribution");
+
+    // Declare run-time constructor selection table
+
+        declareRunTimeSelectionTable
+        (
+            autoPtr,
+            beamMomentumContribution,
+            dictionary,
+            (
+                // const Time& runTime
+             const word name,
+             const dictionary& dict
+            ),
+            (name, dict)
+        );
 
     // Constructors
 
-        //- Contruct from components
-        morisonMomentum
+        //- Construct from components
+        beamMomentumContribution
         (
-            const Time&
+            const word& name,
+            const dictionary& dict
+        );
+
+
+    // Selectors
+
+        static autoPtr<beamMomentumContribution> New
+        (
+            const word& name,
+            const dictionary& dict
         );
 
 
     // Destructor
 
-        ~morisonMomentum()
-        {}
+        virtual ~beamMomentumContribution();
 
 
     // Member Functions
@@ -102,8 +133,8 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U
-            // const volVectorField& Theta
-        );
+            // const volVectorField& Accl
+        ) = 0;
 
         //- Return the contribution to the linear momentum source
         //  U     : the current cell-centred velocity field
@@ -112,8 +143,8 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U
-            // const volVectorField& Theta
-        );
+            // const volVectorField& Accl
+        ) = 0;
 
         //- Return the contribution to the angular momentum source
         //  U     : the current cell-centred velocity field
@@ -123,13 +154,9 @@ public:
             const beamModel& bm,
             const volVectorField& U
             // const volVectorField& Accl
-        );
+        ) = 0;
 };
 
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-// } // End namespace momentumContributions
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

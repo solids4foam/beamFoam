@@ -139,7 +139,7 @@ class beamModel
         //- Beam Density
         // dimensionedScalar rho_;
         scalarList rho_;
-    
+
         //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
 
