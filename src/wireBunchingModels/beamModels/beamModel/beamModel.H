@@ -492,7 +492,7 @@ public:
             {
                 return dimensionedScalar("rhoBeam" + Foam::name(bI), dimDensity, rho_[bI]);
             }
-    
+
             const dimensionedScalar& rhoFluid() const
             {
                 return rhof_;

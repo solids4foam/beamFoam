@@ -23,17 +23,18 @@ License
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Class
-    Foam::momentumContributions::morisonMomentum
+    Foam::momentumContribution::morisonMomentum
 
 Description
-    SEEVANI!!!
+    Derived class to add the Morison force contributions to the
+    linear and angular momentum equations of the beam solver
 
 SourceFiles
     morisonMomentum.C
 
 Author
     Seevani Balii, UCD.
-    Philip Cradiff, UCD.
+    Philip Cardiff, UCD.
 
 
 \*---------------------------------------------------------------------------*/
@@ -42,14 +43,17 @@ Author
 #define morisonMomentum_H
 
 #include "momentumContribution.H"
+#include "HermiteSpline.H"
+// #include "beamModel.H"
+#include "coupledTotalLagNewtonRaphsonBeam.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-namespace momentumContributions
-{
+// namespace momentumContributions
+// {
 
 /*---------------------------------------------------------------------------*\
                            Class morisonMomentum Declaration
@@ -62,11 +66,11 @@ class morisonMomentum
 
 private:
 
-    // Protected data
+    //- Normal drag coefficient for Morison Force
+    scalar Cdn_;
 
-        //- SEEVANI
-        // vector Um_;
-        // scalar Tsoft_;
+    //- Tangential drag coefficient for Morison Force
+    scalar Cdt_;
 
 public:
 
@@ -92,34 +96,40 @@ public:
 
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<Field<scalarSquareMatrix>> diagCoeff
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Theta
         );
 
         //- Return the contribution to the linear momentum source
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<vectorField> linearMomentumSource
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Theta
         );
 
         //- Return the contribution to the angular momentum source
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<vectorField> angularMomentumSource
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Accl
         );
 };
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace momentumContributions
+// } // End namespace momentumContributions
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

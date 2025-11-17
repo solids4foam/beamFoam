@@ -27,6 +27,7 @@ functionObjects/beamDisplacements/beamDisplacements.C
 functionObjects/beamForcesMoments/beamForcesMoments.C
 
 momentumContribution/momentumContribution.C
+momentumContribution/morisonMomentum/morisonMomentum.C
 
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C

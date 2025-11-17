@@ -50,6 +50,7 @@ Author
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
+#include "beamModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -110,7 +111,6 @@ public:
 
     // Selectors
 
-        //- Return a reference to the selected turbulence model
         static autoPtr<momentumContribution> New
         (
             const Time& runTime
@@ -126,27 +126,33 @@ public:
 
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<Field<scalarSquareMatrix>> diagCoeff
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Accl
         ) = 0;
 
         //- Return the contribution to the linear momentum source
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<vectorField> linearMomentumSource
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Accl
         ) = 0;
 
         //- Return the contribution to the angular momentum source
-        //  W     : the current cell-centred displacement field
-        //  Theta : the current cell-centred rotation field
+        //  U     : the current cell-centred velocity field
+        //  Accl : the current cell-centred acceleration field
         virtual tmp<vectorField> angularMomentumSource
         (
-            const volVectorField& W, const volVectorField& Theta
+            const beamModel& bm,
+            const volVectorField& U
+            // const volVectorField& Accl
         ) = 0;
 };
 
