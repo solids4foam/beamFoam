@@ -1,0 +1,62 @@
+
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     3.2                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  | For copyright notice see file Copyright         |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamMomentumContributionProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamMomentumContributions
+(
+    morisonDrag
+    {
+        beamMomentumContributionType morisonDrag;
+
+        morisonDragCoeffs
+        {
+            Cdn    0.0; //0.25;
+            Cdt    0.0; //0.25;
+        }
+    }
+    
+    // gravity
+    // {
+    //     beamMomentumContributionType groundContactForce;
+
+    //     groundContactForceCoeffs
+    //     {
+    //         Cdn    1.0;
+    //         Cdt    1.0;
+    //     }
+    // }
+ );
+
+// streamFunctionUserCoeffsCoeffs
+// {
+//     #include "$FOAM_CASE//H040T10_UserCoeffs.txt";
+// }
+
+// interpolateWaveCoeffs
+// {
+//     #include "$FOAM_CASE/constant/H040T10_interpolate.txt";
+// }
+
+// userDefinedWaveCoeffs
+// {
+//     #include "$FOAM_CASE/constant/H040T10.txt";
+
+//     includeVertical   true;
+//     includeWaveNumber true;
+// }
+
+// ************************************************************************* //
