@@ -21,7 +21,15 @@ ddtSchemes
 
 d2dt2Schemes
 {
-    default    Newmark;
+    default      Newmark;
+    
+    // Use the following values for Newmark if you set deltaT = 0.0001
+    // The gamma value is changed from default 0.5 to 0.6.
+    // This helps in damping the high frequency components in energy plots
+    // and also helps the force residuals converge to values below 1e-6.
+    // For deltaT = 0.001, 0.01, 0.05, 0.1 - leave the below lines commented
+    // newmarkBeta(W)  0.25;
+    // newmarkGamma(W) 0.6;
 }
 
 gradSchemes

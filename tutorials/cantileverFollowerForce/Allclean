@@ -7,4 +7,6 @@ cleanCase
 
 rm -f constant/polyMesh/boundary
 
-rm -f 0/ref*
+rm -f 0/ref* 0/pointW
+
+rm -rf *.eps *.pdf *.png

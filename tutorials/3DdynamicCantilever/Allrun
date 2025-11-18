@@ -1,13 +1,24 @@
-#!/bin/sh
+#!/bin/bash
 # Source tutorial run functions
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 # Get application name
 application=`getApplication`
 
+# Mesh utility
 runApplication createBeamMesh
 
-runApplication setInitialPositionBeam −cellZone beam 0 \
- −translate "(0 0 0)" −rotateAngle "((0 -1 0) 90)"
+# Secondary utility to set initial configuration
+runApplication setInitialPositionBeam -cellZone beam_0  -translate '(0 0 0)' -rotateAngle '((0 -1 0) 90)'
 
+# run beamFoam 
 runApplication $application
+
+# Plotting the displacement and energy vs time graphs
+gnuplot allPlots.gnuplot
+
+echo "Plotting displacement vs time and energy vs time finished"
+echo "The plot names are displacementPlot.pdf and energyPlot.pdf"
+
+open displacementPlot.pdf
+open energyPlot.pdf

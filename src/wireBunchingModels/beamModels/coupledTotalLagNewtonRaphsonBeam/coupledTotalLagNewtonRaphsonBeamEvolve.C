@@ -339,18 +339,62 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
 
                 // The EXPLICIT inertial contributions to source
-                // 1. Inertial force
-                const vectorField QRho = ARho_*L()*Accl_;
+                // 1. Initialise explicit inertial force contribution to zero
+                vectorField QRho(W_.size(), vector(0,0,0));
 
-                // 2. Inertial angular momentum
-                const volVectorField MRho
+                // 2. Initialise explicit inertial moment contribution to zero
+                volVectorField MRho
                 (
-                    L()
-                    *(
-                        (Lambda_ & (CIRho_ & dotOmega_))
-                        + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                    )
+                    IOobject
+                    (
+                        "MRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedVector("zero", dimForce*dimLength, vector::zero)
                 );
+
+                if (d2dt2SchemeName_ == "Newmark")
+                {
+                    // 1. Inertial force
+                    QRho = ARho_*L()*Accl_;
+
+                    // 2. Inertial angular momentum
+                    MRho =
+                    (
+                        L()
+                        *(
+                            (Lambda_ & (CIRho_ & dotOmega_))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                        )
+                    );
+
+                }
+                else if (d2dt2SchemeName_ == "Euler")
+                {
+                    // 1. Inertial force
+                    QRho = ARho_*L()*fvc::ddt(U_);
+
+                    // 2. Inertial angular momentum
+                    MRho =
+                    (
+                        L()
+                        *(
+                          (Lambda_ & (CIRho_ & fvc::ddt(Omega_)))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                        )
+                    );
+
+                }
+                else
+                {
+                    FatalErrorInFunction
+                        << "d2dt2SchemeName undefined: " << d2dt2SchemeName_
+                        << exit(FatalError);
+                }
 
                 forAll(source, cellI)
                 {
@@ -841,7 +885,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
     {
         Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
 
-        dotOmega_ = fvc::ddt(Omega_);
+        // dotOmega_ = fvc::ddt(Omega_);
     }
     else
     {

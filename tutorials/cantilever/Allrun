@@ -8,3 +8,7 @@ application=`getApplication`
 runApplication createBeamMesh
 
 runApplication $application
+
+gnuplot allPlots.gnuplot
+
+open displacementPlot.pdf

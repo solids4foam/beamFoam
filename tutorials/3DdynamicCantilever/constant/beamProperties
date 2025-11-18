@@ -32,7 +32,7 @@ beams
         }
 
         length 2;
-        nSegments 20;
+        nSegments 40;
         E  15.293e6;
         G    5.882e6;
         rho    1000;
@@ -45,16 +45,9 @@ beams
     // E E [1 -1 -2 0 0 0 0] 1;
     // G G [1 -1 -2 0 0 0 0] 5.882e6;
     
-    startPatchName left;
-    endPatchName right;
-
     nCorrectors 200;
-    convergenceTol 1e-10;
+    solutionTol 1e-10;
 
-    debug yes;
-    
-    // Newmark-beta parameters
-    // newmarkBeta    0.25;
-    // newmarkGamma    0.6;
+    debug no;
 }
 // ************************************************************************* //
