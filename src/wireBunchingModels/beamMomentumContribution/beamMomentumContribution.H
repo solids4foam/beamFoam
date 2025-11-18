@@ -132,8 +132,8 @@ public:
         virtual tmp<Field<scalarSquareMatrix>> diagCoeff
         (
             const beamModel& bm,
-            const volVectorField& U
-            // const volVectorField& Accl
+            const volVectorField& U,
+            const volVectorField& Accl
         ) = 0;
 
         //- Return the contribution to the linear momentum source
@@ -142,8 +142,8 @@ public:
         virtual tmp<vectorField> linearMomentumSource
         (
             const beamModel& bm,
-            const volVectorField& U
-            // const volVectorField& Accl
+            const volVectorField& U,
+            const volVectorField& Accl
         ) = 0;
 
         //- Return the contribution to the angular momentum source
@@ -152,8 +152,8 @@ public:
         virtual tmp<vectorField> angularMomentumSource
         (
             const beamModel& bm,
-            const volVectorField& U
-            // const volVectorField& Accl
+            const volVectorField& U,
+            const volVectorField& Accl
         ) = 0;
 };
 

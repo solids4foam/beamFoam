@@ -102,29 +102,34 @@ public:
         //  Each block should be a 6x6 matrix
         //  U     : the current cell-centred velocity field
         //  Accl : the current cell-centred acceleration field
+        // bm: Reference to the beamModel object
         virtual tmp<Field<scalarSquareMatrix>> diagCoeff
         (
             const beamModel& bm,
-            const volVectorField& U
+            const volVectorField& U,
+            const volVectorField& Accl            
         );
 
         //- Return the contribution to the linear momentum source
         //  U     : the current cell-centred velocity field
         //  Accl : the current cell-centred acceleration field
+        // bm: Reference to the beamModel object
         virtual tmp<vectorField> linearMomentumSource
         (
             const beamModel& bm,
-            const volVectorField& U
+            const volVectorField& U,
+            const volVectorField& Accl            
         );
 
         //- Return the contribution to the angular momentum source
         //  U     : the current cell-centred velocity field
         //  Accl : the current cell-centred acceleration field
+        // bm: Reference to the beamModel object
         virtual tmp<vectorField> angularMomentumSource
         (
             const beamModel& bm,
-            const volVectorField& U
-            // const volVectorField& Accl
+            const volVectorField& U,
+            const volVectorField& Accl
         );
 };
 

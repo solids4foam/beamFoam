@@ -74,8 +74,8 @@ morisonDragContribution::morisonDragContribution
 tmp<Field<scalarSquareMatrix>> morisonDragContribution::diagCoeff
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     const volVectorField& W = bm.solutionW();
@@ -99,8 +99,8 @@ tmp<Field<scalarSquareMatrix>> morisonDragContribution::diagCoeff
 tmp<vectorField> morisonDragContribution::linearMomentumSource
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     // Take a reference to the mesh
@@ -205,8 +205,8 @@ tmp<vectorField> morisonDragContribution::linearMomentumSource
 tmp<vectorField> morisonDragContribution::angularMomentumSource
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     const volVectorField& W = bm.solutionW();

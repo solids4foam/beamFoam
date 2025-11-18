@@ -79,8 +79,8 @@ groundContactContribution::groundContactContribution
 tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     const volVectorField& W = bm.solutionW();
@@ -104,8 +104,8 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
 tmp<vectorField> groundContactContribution::linearMomentumSource
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     const volVectorField& W = bm.solutionW();
@@ -153,9 +153,9 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     }
 
     volVectorField& refW = refWPtr();
-    Info<< "refW " << refW << endl;
+    // Info<< "refW " << refW << endl;
     const scalar R = bm.R();
-    
+    Info<< "W " << W << endl;    
     // Prepare the result
     tmp<vectorField> tresult(new vectorField(mesh.nCells(), vector::zero));
     vectorField& result = tresult.ref();
@@ -186,8 +186,8 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 tmp<vectorField> groundContactContribution::angularMomentumSource
 (
     const beamModel& bm,
-    const volVectorField& U
-    // const volVectorField& Accl
+    const volVectorField& U,
+    const volVectorField& Accl
 )
 {
     const volVectorField& W = bm.solutionW();

@@ -594,13 +594,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     const vectorField linMomSource
                     (
                         // momentumContribPtr_->linearMomentumSource(W_, Theta_)
-                        momentumContribPtr_[i].linearMomentumSource(*this, U_)
+                     momentumContribPtr_[i].linearMomentumSource(*this, U_, Accl_)
                     );
 
                     const vectorField angMomSource
                     (
                         // momentumContribPtr_->angularMomentumSource(W_, Theta_)
-                        momentumContribPtr_[i].angularMomentumSource(*this, U_)
+                     momentumContribPtr_[i].angularMomentumSource(*this, U_, Accl_)
                     );
 
                     forAll(source, cellI)
@@ -618,7 +618,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                     const Field<scalarSquareMatrix> diagCoeff
                     (
-                         momentumContribPtr_[i].diagCoeff(*this, U_)
+                         momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
                     d += diagCoeff;   

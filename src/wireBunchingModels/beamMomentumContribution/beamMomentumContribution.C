@@ -46,29 +46,6 @@ autoPtr<beamMomentumContribution> beamMomentumContribution::New
     const dictionary& dict
 )
 {
-    // Info<< "Beam momentum contribution type: "
-    //     << beamMomentumContributionTypeName << endl;
-
-    // Enclose the creation of the dict to ensure it is
-    // deleted before the beamMomentumContribution is created otherwise the dictionary
-    // is entered in the database twice
-    // {
-    //     IOdictionary dict
-    //     (
-    //         IOobject
-    //         (
-    //             "beamMomentumContributionProperties",
-    //             runTime.constant(),
-    //             runTime,
-    //             IOobject::MUST_READ,
-    //             IOobject::NO_WRITE
-    //         )
-    //     );
-
-    //     dict.lookup("type")
-    //         >> beamMomentumContributionTypeName;
-    // }
-
     auto* cstrIter = dictionaryConstructorTable
     (
         beamMomentumContributionTypeName
@@ -91,15 +68,6 @@ autoPtr<beamMomentumContribution> beamMomentumContribution::New
             << exit(FatalIOError);
     }
 
-    // auto* ctorPtr = dictionaryConstructorTable(beamMomentumContributionTypeName);
-
-    // if (!ctorPtr)
-    // {
-    //     FatalErrorInFunction
-    //         << "Cannot find type = " << beamMomentumContributionTypeName
-    //         << exit(FatalIOError);
-    // }
-
     return autoPtr<beamMomentumContribution>
     (
         cstrIter
@@ -120,17 +88,6 @@ beamMomentumContribution::beamMomentumContribution
     const dictionary& dict
 )
 :
-//     IOdictionary dict
-//     (
-//         IOobject
-//         (
-//             "beamMomentumContributionProperties",
-//             runTime.constant(),
-//             runTime,
-//             IOobject::MUST_READ,
-//             IOobject::NO_WRITE
-//         )
-//      ),
     name_(name)
 {}
 
