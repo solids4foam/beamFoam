@@ -1,0 +1,42 @@
+# Build and test the solver using Docker containers
+name: Building beamFoam
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        container-image:
+          - name: "OpenFOAM-v2312"
+            image: "opencfd/openfoam-dev:2312"
+            source: "/usr/lib/openfoam/openfoam2312/etc/bashrc"
+            buildflags: "-j"
+
+    container:
+      image: ${{ matrix.container-image.image }}
+
+    steps:
+      - name: Install git on container
+        run: |
+          apt update
+          apt install -y git
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.CLONER_SECRET }}
+          submodules: true
+          fetch-depth: 0
+
+      - name: Source OpenFOAM environment and compiling beamFoam
+        shell: bash -l {0}
+        run: |
+          echo "Using OpenFOAM version: ${{ matrix.container-image.name }}"
+          source ${{ matrix.container-image.source }}
+
+          # Compile the submodule
+          ./Allwmake -j
