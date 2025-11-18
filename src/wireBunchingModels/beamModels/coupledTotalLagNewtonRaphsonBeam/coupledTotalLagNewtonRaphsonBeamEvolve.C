@@ -389,6 +389,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     );
 
                 }
+                else
+                {
+                    FatalErrorInFunction
+                        << "d2dt2SchemeName undefined: " << d2dt2SchemeName_
+                        << exit(FatalError);
+                }
 
                 forAll(source, cellI)
                 {
@@ -805,7 +811,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
     else if (d2dt2SchemeName_ == "Euler")
     {
         U_ = fvc::ddt(W_);
-        // Accl_ = fvc::ddt(U_);
+        Accl_ = fvc::ddt(U_);
     }
     else
     {
