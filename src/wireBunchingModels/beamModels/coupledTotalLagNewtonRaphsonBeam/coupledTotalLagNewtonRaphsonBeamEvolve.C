@@ -283,25 +283,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //         )*L()[cellI]*A().value()*g().component(2).value();
             // }
 
-            // ground contact contribution
-            // if (groundContactActive_)
-            // {
-            //     label cellsInContact = 0 ;
-            //     forAll(source, cellI)
-            //     {
-            //         const vector coord = refW_[cellI] + W_[cellI];
-
-            //         if (coord.z() < groundZ_)
-            //         {
-            //             cellsInContact += 1;
-            //             source[cellI](2,0) +=
-            //                 (2.0*gStiffness_*R()*(coord.z() - groundZ_))
-            //                 - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0));
-            //         }
-            //     }
-            //     Info<< "Number of cells in contact : " << cellsInContact << endl;
-            // }
-
             // Add inertial components if not steadyState
             // SB Note: The inertia terms have two components
             // 1. Inertia term in the force balance equation
@@ -500,91 +481,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         d[cellI](5,4) += MRhoCoeff[cellI].zy();
                         d[cellI](5,5) += MRhoCoeff[cellI].zz();
                     }
-
-            //     //- Drag forces due to Morison's Equation
-            //     // SB: This drag force loop is common to both Euler and Newmark
-            //     // time integration schemes. It uses linear velocity term U_
-            //     // which can either be calculated using either time schemes.
-            //     // Hence put this loop outside of the Euler/Newmark loops above
-
-                // if (dragActive_ && !steadyState())
-            //     if (dragActive_)
-            //     {
-            //         // Create spline using current beam points and tangents data
-            //         HermiteSpline spline
-            //         (
-            //             currentBeamPoints(),
-            //             currentBeamTangents()
-            //         );
-
-            //         // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-            //         const vectorField& dRdScell = spline.midPointDerivatives();
-
-            //         // Tangential component of velocity vector
-            //         vectorField Ut
-            //             (
-            //                 (
-            //                     (U_.internalField() & dRdScell)
-            //                     *dRdScell
-            //                 )
-            //             );
-
-            //         vectorField UtHat (Ut/(mag(Ut) + SMALL));
-
-            //         // Normal component of velocity vector
-            //         vectorField Un
-            //             (
-            //                 (
-            //                     U_.internalField()
-            //                     - (
-            //                         (U_.internalField() & dRdScell)
-            //                         *dRdScell
-            //                     )
-            //                 )
-            //             );
-
-            //         vectorField UnHat (Un/(mag(Un) + SMALL));
-
-            //         // Scalar values of drag force (normal and tangential)
-            //         const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
-            //         const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
-
-            //         // Explicit drag forces included in the source vector
-            //         forAll(source, cellI)
-            //         {
-            //             source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-            //             source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-            //             source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
-
-            //             source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-            //             source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-            //             source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
-            //         }
-
-            //     }
             }
-
-            // Throw error if drag active flag is true but the time scheme is
-            // steady state because the drag forces will be zero.
-            // if
-            // (
-            //     dragActive_
-            //  && (
-            //         d2dt2SchemeName_ == "steadyState"
-            //      || ddtSchemeName_ == "steadyState"
-            //     )
-            // )
-            // {
-            //     FatalErrorInFunction
-            //       << "Drag forces are zero for steady state calculation"
-            //       << nl
-            //       << "Set d2dt2Scheme type in system/fvSchemes as "
-            //       << "'Euler' or 'Newmark' & 'dragActive' flag to 'true' "
-            //       << "inside coupledTotalLagNewtownRaphsonCoeffs "
-            //       << "sub-dictionary of constant/beamProperties "
-            //       << "to include drag force contributions"
-            //       << abort(FatalError);
-            // }
 
             // // Add run-time selectable momentum contributions
             if (momentumContribPtr_.size() > 0)
@@ -593,14 +490,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 {
                     const vectorField linMomSource
                     (
-                        // momentumContribPtr_->linearMomentumSource(W_, Theta_)
-                     momentumContribPtr_[i].linearMomentumSource(*this, U_, Accl_)
+                        momentumContribPtr_[i].linearMomentumSource(*this, U_, Accl_)
                     );
 
                     const vectorField angMomSource
                     (
-                        // momentumContribPtr_->angularMomentumSource(W_, Theta_)
-                     momentumContribPtr_[i].angularMomentumSource(*this, U_, Accl_)
+                        momentumContribPtr_[i].angularMomentumSource(*this, U_, Accl_)
                     );
 
                     forAll(source, cellI)
@@ -615,7 +510,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     }
 
                     // Jacobian diagonal contribution
-
                     const Field<scalarSquareMatrix> diagCoeff
                     (
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)

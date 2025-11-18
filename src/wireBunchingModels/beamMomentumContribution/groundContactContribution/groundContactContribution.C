@@ -61,13 +61,12 @@ groundContactContribution::groundContactContribution
     ),
     gStiffness_
     (
-     readScalar(beamMomentumContribDict_.lookup("gStiffness"))
-     ),
+        readScalar(beamMomentumContribDict_.lookup("gStiffness"))
+    ),
     groundZ_
     (
-     readScalar(beamMomentumContribDict_.lookup("groundZ"))
+        readScalar(beamMomentumContribDict_.lookup("groundZ"))
     )
-
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
 }
@@ -124,7 +123,7 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     if (refWHeader.typeHeaderOk<volVectorField>(true))
     {
-        Info << "Reading refW from 0/" << endl;
+        // Info<< "Reading refW from 0/" << endl;
 
         refWPtr.reset
         (
@@ -133,7 +132,7 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     }
     else
     {
-        Info << "refW not found → using default zero field" << endl;
+        // Info<< "refW not found → using default zero field" << endl;
 
         refWPtr.reset
         (
@@ -153,16 +152,18 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     }
 
     volVectorField& refW = refWPtr();
-    // Info<< "refW " << refW << endl;
+
+    // Beam Radius
     const scalar R = bm.R();
-    Info<< "W " << W << endl;    
+
     // Prepare the result
     tmp<vectorField> tresult(new vectorField(mesh.nCells(), vector::zero));
     vectorField& result = tresult.ref();
 
     // TO-DO: Make the ground contact not just for z-direction but any
     // user specified direction
-    label cellsInContact = 0 ;
+    // ALSO need to add friction part of contact
+    label cellsInContact = 0;
 
     forAll(result, cellI)
     {
@@ -170,7 +171,7 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         Info<< "coord " << coord << endl;
         if (coord.z() < groundZ_)
         {
-            cellsInContact += 1;
+            cellsInContact++;
             result[cellI][vector::Z] +=
                 (2.0*gStiffness_*R*(coord.z() - groundZ_))
               - (2.0*gDamping_*R*max(U[cellI].component(2), 0));

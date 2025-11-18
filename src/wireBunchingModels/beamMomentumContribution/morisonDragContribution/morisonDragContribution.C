@@ -84,13 +84,13 @@ tmp<Field<scalarSquareMatrix>> morisonDragContribution::diagCoeff
 
     // Prepare the result
     tmp<Field<scalarSquareMatrix>> tresult
-     (
+    (
         new Field<scalarSquareMatrix>
         (
             mesh.nCells(), scalarSquareMatrix(6, 0.0)
         )
-     );
-    // Field<scalarSquareMatrix>& result = tresult.ref();
+    );
+   // Field<scalarSquareMatrix>& result = tresult.ref();
 
     return tresult;
 }
@@ -165,18 +165,6 @@ tmp<vectorField> morisonDragContribution::linearMomentumSource
         // Scalar values of drag force (normal and tangential)
         const scalarField Fdn(rho*Cdn_*R*L*(Un & Un));
         const scalarField Fdt(rho*Cdt_*R*L*(Ut & Ut));
-
-    //     // Explicit drag forces included in the source vector
-    //     forAll(source, cellI)
-    //     {
-    //         source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-    //         source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-    //         source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
-
-    //         source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-    //         source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-    //         source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
-    //     }
 
         forAll(result, cellI)
         {

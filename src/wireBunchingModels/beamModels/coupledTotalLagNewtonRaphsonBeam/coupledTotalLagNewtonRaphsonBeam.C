@@ -637,19 +637,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
+    // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
-
-    // // Drag Force related fields
-    // dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
-    // Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
-    // Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
-
-    // ground contact related parameters and switches
-    groundContactActive_(beamProperties().getOrDefault<bool>("groundContactActive", false)),
-    gDamping_(beamProperties().getOrDefault<scalar>("gDamping", 0.0)),
-    gStiffness_(beamProperties().getOrDefault<scalar>("gStiffness", 0.0)),
-    groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0)),
-
     totalContactTime_(0),
     totalSolutionTime_(),
     proc_

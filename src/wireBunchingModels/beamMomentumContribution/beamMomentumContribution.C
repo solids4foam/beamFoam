@@ -71,10 +71,10 @@ autoPtr<beamMomentumContribution> beamMomentumContribution::New
     return autoPtr<beamMomentumContribution>
     (
         cstrIter
-            (
-                 beamMomentumContributionTypeName,
-                 dict
-            )
+        (
+             beamMomentumContributionTypeName,
+             dict
+        )
     );
 }
 

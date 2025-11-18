@@ -29,6 +29,7 @@ Description
     Derived class to evaluate the ground contact force contribution
     due to seabed interactions -
     which will be added to the beam solver governing eqns
+    * For now, the seabed contact is only allowed in z-direction
 
 SourceFiles
     groundContactContribution.C
@@ -36,6 +37,7 @@ SourceFiles
 Author
     Seevani Bali, UCD.
     Philip Cardiff, UCD.
+    Amirhossein Taran, UCD.
 
 
 \*---------------------------------------------------------------------------*/

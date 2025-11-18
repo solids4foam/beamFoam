@@ -227,30 +227,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Run-time selectable beam momentum contributions
         PtrList<beamMomentumContribution> momentumContribPtr_;
 
-        // //- Fields related to drag forces due to Morrison's equation
-        // //- Boolean to activate drag forces
-        // bool dragActive_;
-
-        // //- Normal drag coefficient
-        // scalar Cdn_;
-
-        // //- tangential drag coefficient
-        // scalar Cdt_;
-
-        // Ground contact related parameters.
-
-        //- Boolean to check wether ground contact is active or not
-        bool groundContactActive_;
-
-        //-  damping coefficient for spring/damper ground model.
-        scalar gDamping_;
-
-        //- stiffness coefficient for spring/damper ground model.
-        scalar gStiffness_;
-
-        //- ground coordinate for ground contact Model.
-        scalar groundZ_;
-
     // Parallel performance data
 
         //- Total time spend on contact update
