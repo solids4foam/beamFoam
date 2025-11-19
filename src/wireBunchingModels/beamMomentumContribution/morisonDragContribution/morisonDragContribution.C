@@ -62,6 +62,10 @@ morisonDragContribution::morisonDragContribution
     Cdt_
     (
         readScalar(beamMomentumContribDict_.lookup("Cdt"))
+    ),
+    rhoFluid_
+    (
+        readScalar(beamMomentumContribDict_.lookup("rhoFluid"))
     )
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
@@ -163,8 +167,8 @@ tmp<vectorField> morisonDragContribution::linearMomentumSource
         const volScalarField& L = bm.L();
 
         // Scalar values of drag force (normal and tangential)
-        const scalarField Fdn(rho*Cdn_*R*L*(Un & Un));
-        const scalarField Fdt(rho*Cdt_*R*L*(Ut & Ut));
+        const scalarField Fdn(rhoFluid_*Cdn_*R*L*(Un & Un));
+        const scalarField Fdt(rhoFluid_*Cdt_*R*L*(Ut & Ut));
 
         forAll(result, cellI)
         {
