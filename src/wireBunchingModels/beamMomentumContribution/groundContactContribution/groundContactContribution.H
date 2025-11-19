@@ -72,11 +72,17 @@ private:
     //- beam momentum contributions sub dictionary
     dictionary beamMomentumContribDict_;
 
-    //-  damping coefficient for spring/damper ground model
-    scalar gDamping_;
+    //-  Normal stiffness coefficient for spring/damper ground model
+    scalar kNormal_;
 
-    //- stiffness coefficient for spring/damper ground model
-    scalar gStiffness_;
+    //- Normal damping coefficient for spring/damper ground model
+    scalar cNormal;
+
+    //- Tangential stiffness coefficient for spring/damper ground model
+    scalar KTangential_;
+
+    //- Friction coefficient for ground contact model
+    scalar muFriction_;
 
     //- ground coordinate for ground contact model
     scalar groundZ_;

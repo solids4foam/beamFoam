@@ -76,6 +76,9 @@ private:
     //- Tangential drag coefficient for Morison Force
     scalar Cdt_;
 
+    //- Fluid density
+    scalar rhoFluid_;
+
 public:
 
     //- Runtime type information

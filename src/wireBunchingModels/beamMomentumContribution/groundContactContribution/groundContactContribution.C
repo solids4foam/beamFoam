@@ -55,13 +55,21 @@ groundContactContribution::groundContactContribution
         dict
     ),
     beamMomentumContribDict_(dict.subDict(name + "Coeffs")),
-    gDamping_
+    kNormal_
     (
-        readScalar(beamMomentumContribDict_.lookup("gDamping"))
+        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
     ),
-    gStiffness_
+    cNormal_
     (
-        readScalar(beamMomentumContribDict_.lookup("gStiffness"))
+        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
+    ),
+    Ktangential_
+    (
+        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
+    ),
+    muFriction_
+    (
+        readScalar(beamMomentumContribDict_.lookup("muFriction_"))
     ),
     groundZ_
     (
@@ -88,12 +96,12 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
 
     // Prepare the result
     tmp<Field<scalarSquareMatrix>> tresult
-     (
+    (
         new Field<scalarSquareMatrix>
         (
             mesh.nCells(), scalarSquareMatrix(6, 0.0)
         )
-     );
+    );
     // Field<scalarSquareMatrix>& result = tresult.ref();
 
     return tresult;
@@ -162,9 +170,20 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     // TO-DO: Make the ground contact not just for z-direction but any
     // user specified direction
-    // ALSO need to add friction part of contact
-    label cellsInContact = 0;
 
+    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
+    const vectorField& dRdScell = spline.midPointDerivatives();
+
+    // Tangential component of velocity vector
+    vectorField Ut
+    (
+        (
+            (U.internalField() & dRdScell)
+            *dRdScell
+        )
+    );
+
+    label cellsInContact = 0;
     forAll(result, cellI)
     {
         const vector coord = refW[cellI] + W[cellI];
@@ -172,9 +191,22 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
-            result[cellI][vector::Z] +=
-                (2.0*gStiffness_*R*(coord.z() - groundZ_))
-              - (2.0*gDamping_*R*max(U[cellI].component(2), 0));
+            scalar f_gc_normal =
+                (2*R*kNormal_*(groundZ_ - coord.z()))
+              - (2*R*cNormal_*max(U[cellI].component(2), 0));
+            vector f_gc_tangential (vector::zero);
+            if (kTangential_ *2.0*R*mag(Ut[cellI]) >= muFriction_*mag(f_gc_normal))
+            {
+                f_gc_tangential = -muFriction_*mag(f_gc_normal)*(Ut[cellI]/(mag(Ut[cellI]) + SMALL));
+            }
+            else
+            {
+                f_gc_tangential = -2.0*R*kTangential_*Ut[cellI];
+            }
+            result[cellI][vector::X] += f_gc_tangential.x();
+            result[cellI][vector::Y] += f_gc_tangential.y();
+            result[cellI][vector::Z] += (f_gc_normal + f_gc_tangential.z());
+                
         }
      }
 
