@@ -76,10 +76,10 @@ private:
     scalar kNormal_;
 
     //- Normal damping coefficient for spring/damper ground model
-    scalar cNormal;
+    scalar cNormal_;
 
     //- Tangential stiffness coefficient for spring/damper ground model
-    scalar KTangential_;
+    scalar kTangential_;
 
     //- Friction coefficient for ground contact model
     scalar muFriction_;

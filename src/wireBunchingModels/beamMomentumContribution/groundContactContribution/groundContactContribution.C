@@ -57,19 +57,19 @@ groundContactContribution::groundContactContribution
     beamMomentumContribDict_(dict.subDict(name + "Coeffs")),
     kNormal_
     (
-        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
+        readScalar(beamMomentumContribDict_.lookup("kNormal"))
     ),
     cNormal_
     (
-        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
+        readScalar(beamMomentumContribDict_.lookup("cNormal"))
     ),
-    Ktangential_
+    kTangential_
     (
-        readScalar(beamMomentumContribDict_.lookup("kNormal_"))
+        readScalar(beamMomentumContribDict_.lookup("kTangential"))
     ),
     muFriction_
     (
-        readScalar(beamMomentumContribDict_.lookup("muFriction_"))
+        readScalar(beamMomentumContribDict_.lookup("muFriction"))
     ),
     groundZ_
     (
@@ -171,6 +171,13 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     // TO-DO: Make the ground contact not just for z-direction but any
     // user specified direction
 
+    // Create spline using current beam points and tangents data
+    HermiteSpline spline
+    (
+        bm.currentBeamPoints(),
+        bm.currentBeamTangents()
+    );
+
     // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
     const vectorField& dRdScell = spline.midPointDerivatives();
 
@@ -183,21 +190,35 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         )
     );
 
+    vectorField UtHat (Ut/(mag(Ut) + SMALL));
+
+    // Initialise beam cells in contact with ground
     label cellsInContact = 0;
+
     forAll(result, cellI)
     {
         const vector coord = refW[cellI] + W[cellI];
-        Info<< "coord " << coord << endl;
+        // Info<< "coord " << coord << endl;
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
             scalar f_gc_normal =
                 (2*R*kNormal_*(groundZ_ - coord.z()))
               - (2*R*cNormal_*max(U[cellI].component(2), 0));
+
             vector f_gc_tangential (vector::zero);
-            if (kTangential_ *2.0*R*mag(Ut[cellI]) >= muFriction_*mag(f_gc_normal))
+
+            if
+            (
+                (
+                    kTangential_*2.0*R*mag(Ut[cellI])
+                 >= muFriction_*mag(f_gc_normal)
+                )
+            )
             {
-                f_gc_tangential = -muFriction_*mag(f_gc_normal)*(Ut[cellI]/(mag(Ut[cellI]) + SMALL));
+                // Max value of friction as per Coulomb's law
+                f_gc_tangential =
+                    -muFriction_*mag(f_gc_normal)*UtHat[cellI];
             }
             else
             {
@@ -206,12 +227,12 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
             result[cellI][vector::X] += f_gc_tangential.x();
             result[cellI][vector::Y] += f_gc_tangential.y();
             result[cellI][vector::Z] += (f_gc_normal + f_gc_tangential.z());
-                
+
         }
      }
 
     Info<< "Number of cells in contact : " << cellsInContact << endl;
-    
+
     return tresult;
 }
 

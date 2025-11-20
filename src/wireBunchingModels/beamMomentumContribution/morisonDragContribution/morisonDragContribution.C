@@ -162,7 +162,7 @@ tmp<vectorField> morisonDragContribution::linearMomentumSource
 
         vectorField UnHat (Un/(mag(Un) + SMALL));
 
-        const scalar rho = bm.rho().value();
+        // Beam Radius and Length
         const scalar R = bm.R();
         const volScalarField& L = bm.L();
 
