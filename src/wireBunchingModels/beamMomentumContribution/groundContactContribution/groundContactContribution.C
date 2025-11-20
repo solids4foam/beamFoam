@@ -202,18 +202,16 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
-            scalar f_gc_normal =
+            const scalar f_gc_normal =
                 (2*R*kNormal_*(groundZ_ - coord.z()))
               - (2*R*cNormal_*max(U[cellI].component(2), 0));
 
-            vector f_gc_tangential (vector::zero);
+            vector f_gc_tangential(vector::zero);
 
             if
             (
-                (
-                    kTangential_*2.0*R*mag(Ut[cellI])
-                 >= muFriction_*mag(f_gc_normal)
-                )
+                kTangential_*2.0*R*mag(Ut[cellI])
+             >= muFriction_*mag(f_gc_normal)
             )
             {
                 // Max value of friction as per Coulomb's law
