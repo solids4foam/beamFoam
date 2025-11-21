@@ -52,7 +52,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
-//#include "multibeamFvBlockMatrix.H"
+#include "beamMomentumContribution.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,7 +84,7 @@ class coupledTotalLagNewtonRaphsonBeam
         mutable volVectorField U_;
 
         //- Mean line acceleration field
- 	    mutable volVectorField Accl_;
+        mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -131,7 +131,7 @@ class coupledTotalLagNewtonRaphsonBeam
         // //- Cell-centre mean line tangent
         // volVectorField dRdS_;
 
-		//- Mean line reference displacement at face-centres
+        //- Mean line reference displacement at face-centres
         surfaceVectorField refWf_;
 
         //- Mean line reference displacement at cell-centres
@@ -224,29 +224,8 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Newmark gamma coefficient
         scalar gammaN_;
 
-    //- Fields related to drag forces due to Morrison's equation
-        //- Boolean to activate drag forces
-        bool dragActive_;
-
-        //- Normal drag coefficient
-        scalar Cdn_;
-
-        //- tangential drag coefficient
-        scalar Cdt_;
-
-        // Ground contact related parameters.
-
-        //- Boolean to check wether ground contact is active or not
-        bool groundContactActive_;
-
-        //-  damping coefficient for spring/damper ground model.
-        scalar gDamping_;
-
-        //- stiffness coefficient for spring/damper ground model.
-        scalar gStiffness_;
-
-        //- ground coordinate for ground contact Model.
-        scalar groundZ_;
+        //- Run-time selectable beam momentum contributions
+        PtrList<beamMomentumContribution> momentumContribPtr_;
 
     // Parallel performance data
 

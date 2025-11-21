@@ -139,7 +139,7 @@ class beamModel
         //- Beam Density
         // dimensionedScalar rho_;
         scalarList rho_;
-    
+
         //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
 
@@ -492,7 +492,7 @@ public:
             {
                 return dimensionedScalar("rhoBeam" + Foam::name(bI), dimDensity, rho_[bI]);
             }
-    
+
             const dimensionedScalar& rhoFluid() const
             {
                 return rhof_;
