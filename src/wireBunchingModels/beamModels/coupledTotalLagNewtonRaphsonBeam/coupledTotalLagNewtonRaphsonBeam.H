@@ -98,8 +98,11 @@ class coupledTotalLagNewtonRaphsonBeam
         //- beam cell center veclocity stored on fluid mesh
         mutable volVectorField beamVelocity_;
 
+        //- actuator line method force acting on each beam cell
+        mutable volVectorField almForce_;
+
         //- Mean line acceleration field
- 	mutable volVectorField Accl_;
+ 	    mutable volVectorField Accl_;
 
         //- Mean line displacement field increment
         volVectorField DW_;
@@ -241,6 +244,12 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Boolean to enable immersed force on beam cells
         bool immersedForceActive_;
+
+        //- Boolean to enable ALM like sampling of the fluid velocity per each beam cell
+        bool almSamplingActive_;
+
+        //- Boolean to enable Morison Force drag and added mass force
+        bool MorisonForceActive_;
 
         //- Normal drag coefficient
         scalar Cdn_;

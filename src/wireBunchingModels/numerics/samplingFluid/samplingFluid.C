@@ -32,6 +32,7 @@ License
 #include "Pstream.H"
 #include "PstreamReduceOps.H"
 #include "FieldSumOp.H"
+#include "upstreamSampling.H"
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -51,6 +52,7 @@ namespace Foam
         labelList& seedCellIDs,
         const scalar groundZ,
         const bool groundContactActive,
+        const vectorField& dRdScell,
         const meshSearch& searchEngine // flag for using octree or not
     )
     {
@@ -141,6 +143,7 @@ namespace Foam
     globalIndex gI(fluidMesh.nCells());
 
     labelList fluidCellIDs(beamCoords.size(), -1);
+    labelList sampleCellIDs(beamCoords.size(), -1);
     // markerResults.storePrevIter();
     forAll(beamCoords, beamCellI)
     {
@@ -180,20 +183,66 @@ namespace Foam
         {
             fluidCellID = searchEngine.findCell(beamCoords[beamCellI],-1,true);
         }
-        if (fluidCellID == -1)
-        {
-            resultVect[beamCellI] = vector::zero;
-        }
+        // commented out since we are not getting the velocity here!
+        // if (fluidCellID == -1)
+        // {
+        //     resultVect[beamCellI] = vector::zero;
+        // }
         else
         {
             // fluidCellIDs[beamCellI] = fluidCellID;
             fluidCellIDs[beamCellI] = gI.toGlobal(fluidCellID);
-            resultVect[beamCellI] = fluidVelocity[fluidCellID];
+            // resultVect[beamCellI] = fluidVelocity[fluidCellID];
             markerResults[fluidCellID] = 1.0;
             markerVelocity[fluidCellID] = beamUVec[beamCellI];
         }
         seedCellIDs[beamCellI] = fluidCellID;
     }
+    // ALM sampling
+    const dictionary& linkToBeamProperties =
+        mesh.time().db().parent().lookupObject<dictionary>
+        (
+            "beamProperties"
+        );
+    dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
+
+    pointField Ps;
+    vectorField upstreamDir;
+    const scalar sampleDist = 2.0*radius.value();
+
+    // Use seedCellIDs (local fluid cell indices) for accessing fluidVelocity
+    computeUpstreamSamplingPoints(
+        beamCoords,
+        beamUVec,
+        fluidVelocity,
+        seedCellIDs,
+        dRdScell,
+        sampleDist,
+        Ps,
+        upstreamDir
+    );
+    label sampleCellID(-1);
+
+    forAll(Ps, pI)
+    {
+        if (fluidCellIDs[pI] != -1)
+        {
+            sampleCellID = searchEngine.findCell(Ps[pI],fluidCellIDs[pI]);
+        }
+        if (sampleCellID == -1)
+        {
+            sampleCellID = searchEngine.findCell(Ps[pI],-1,true);
+        }
+        if (sampleCellID == -1)
+        {
+            resultVect[pI] = vector::zero;
+        }
+        else
+        {
+            resultVect[pI] = fluidVelocity[sampleCellID];
+        }
+    }
+
     // markerResults = alpha * markerResults + (1 - alpha)*markerResultsPrevIter;
     reduce(resultVect, FieldSumOp<vector>());
 
@@ -205,63 +254,6 @@ namespace Foam
 
     // reduce(markerVelocityVect, FieldSumOp<vector>());
     // markerVelocity.primitiveFieldRef() = markerVelocityVect;
-    //- creating a link to beamProperties dictionary
-    const dictionary& linkToBeamProperties =
-        mesh.time().db().parent().lookupObject<dictionary>
-        (
-            "beamProperties"
-        );
-    pointField points(beamCoords.size() + 1, vector::zero);
-
-    label startPatchID = mesh.boundaryMesh().findPatchID
-    (
-        "left"
-    );
-    label endPatchID = mesh.boundaryMesh().findPatchID
-    (
-        "right"
-    );
-
-    forAll(points, i)
-    {
-        if (i == 0 && mesh.nCells() != 0)
-        {
-            points[i] = mesh.boundaryMesh()[startPatchID].faceCentres()[0]
-                + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[startPatchID][0]
-                + mesh.lookupObject<volVectorField>("W").boundaryField()[startPatchID][0];
-        }
-        else if (i == beamCoords.size() && mesh.nCells() != 0)
-        {
-            points[i] = mesh.boundaryMesh()[endPatchID].faceCentres()[0]
-                + mesh.lookupObject<surfaceVectorField>("refWf").boundaryField()[endPatchID][0]
-                + mesh.lookupObject<volVectorField>("W").boundaryField()[endPatchID][0];
-        }
-        else if (mesh.nCells() != 0)
-        {
-            points[i] = mesh.Cf()[i-1]
-                + mesh.lookupObject<surfaceVectorField>("refWf")[i-1]
-                + mesh.lookupObject<volVectorField>("W")[i-1];
-        }
-    }
-    Pstream::broadcast(points);
-    //- access to beam radius
-    dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
-
-    //- Calling the function to mark the cells in fluidMesh, based on the marking method
-    const bool fractionalMarking =
-        linkToBeamProperties
-            .subDict("coupledTotalLagNewtonRaphsonBeamCoeffs")
-            .lookupOrDefault<bool>("fractionalMarking", false);
-    // commenting just to select one cell per beam cell
-    // when commented out, it is important to manually adjust the beam's cell size
-    // if (fractionalMarking)
-    // {
-    //     markCellsByPointFractionInCylinders(fluidMesh, points, radius.value(), markerResults);
-    // }
-    // else
-    // {
-    //     //        markCellsByCellCentersInCylinders(fluidMesh, points, radius.value(), markerResults);
-    // }
     return std::make_tuple(std::move(tresult), std::move(tmarkerResults), std::move(tmarkerVelocity), std::move(fluidCellIDs));
     }
 } // End namespace Foam

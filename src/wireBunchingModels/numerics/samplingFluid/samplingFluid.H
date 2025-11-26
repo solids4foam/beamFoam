@@ -23,7 +23,7 @@ License
     Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 Description
-    Helper function for two way coupled morrison equation
+    Helper function for sampling fluid fields in two way coupled beam fluid interaction problems.
 Author
     Amirhossein Taran, UCD
     Philip Cardiff, UCD
@@ -56,6 +56,7 @@ namespace Foam
             labelList& seedCellIDs,
             const scalar groundZ,
             const bool groundContactActive,
+            const vectorField& dRdScell,
             const meshSearch& searchEngine // flag for using octree
         );
 } // End namespace Foam

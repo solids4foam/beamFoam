@@ -154,7 +154,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         List<vector>(mesh().nCells(), vector::zero)
     ),
-
     cellMarker_
     (
         IOobject
@@ -180,6 +179,19 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh().time().db().parent().lookupObject<fvMesh>("region0"),
         dimensionedVector("0", dimVelocity, vector::zero)
+    ),
+    almForce_
+    (
+        IOobject
+        (
+            "almForce",
+            mesh().time().timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh(),
+        dimensionedVector("0", dimless, vector::zero)
     ),
     Accl_
     (
@@ -703,6 +715,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
     beamFluidInteraction_(beamProperties().lookupOrDefault<bool>("beamFluidInteraction", false)),
     immersedForceActive_(beamProperties().lookupOrDefault<bool>("immersedForceActive", false)),
+    almSamplingActive_(beamProperties().lookupOrDefault<bool>("almSamplingActive", false)),
+    MorisonForceActive_(beamProperties().lookupOrDefault<bool>("MorisonForceActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
 
