@@ -31,6 +31,9 @@ Description
 SourceFiles
     followerForceBeamDisplacementNRFvPatchVectorField.C
 
+Author
+    Seevani Bali, UCD.
+
 \*---------------------------------------------------------------------------*/
 
 #ifndef followerForceBeamDisplacementNRFvPatchVectorField_H

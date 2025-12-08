@@ -154,7 +154,7 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
                     IOobject::NO_WRITE
                 ),
                 mesh,
-                dimensionedVector("refW", dimVelocity, vector::zero)
+                dimensionedVector("refW", dimLength, vector::zero)
             )
         );
     }
