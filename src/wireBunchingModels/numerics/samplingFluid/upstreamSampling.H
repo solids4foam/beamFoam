@@ -40,9 +40,9 @@ namespace Foam
 {
 
 // Compute upstream direction perpendicular to tangent
-inline vector upstreamDirPerpToTangent(const vector& vf, const vector& dRdScell)
+inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangents)
 {
-    vector t = dRdScell/(mag(dRdScell) + VSMALL);
+    vector t = beamTangents/(mag(beamTangents) + VSMALL);
     vector vPerp = vf - (vf & t)*t;
     scalar m = mag(vPerp);
     if (m < VSMALL)
@@ -58,7 +58,7 @@ inline void computeUpstreamSamplingPoints(
     const vectorField& beamUVec,
     const vectorField& fluidVelocity,
     const labelList& fluidCellIDs,
-    const vectorField& dRdScell,
+    const vectorField& beamTangents,
     const scalar sampleDist,
     pointField& Ps,
     vectorField& upstreamDir
@@ -75,7 +75,7 @@ inline void computeUpstreamSamplingPoints(
             vf = fluidVelocity[fluidCellIDs[i]] ;
         }
 
-        vector dir = upstreamDirPerpToTangent(vf, dRdScell[i]);
+        vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
         upstreamDir[i] = dir;
         Ps[i] = beamCoords[i] + sampleDist * dir;
     }

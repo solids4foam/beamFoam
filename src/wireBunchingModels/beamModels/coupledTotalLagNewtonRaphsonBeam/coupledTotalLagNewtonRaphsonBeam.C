@@ -46,6 +46,7 @@ License
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
 #include "samplingFluid.H"
+#include "IOmanip.H"
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -1101,8 +1102,37 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
     const int nCorr
     (
-        beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
+        beamProperties().lookupOrDefault<int>("nCorrectors", 20)
     );
+    //----------
+    const scalar residualTol
+    (
+        beamProperties().lookupOrDefault<scalar>("residualTol", 1e-8)
+    );
+
+    // Tolerance - displacement (DW) & rotation (DTheta_) correction variables
+    const scalar solutionTol
+    (
+        beamProperties().lookupOrDefault<scalar>("solutionTol", 1e-8)
+    );
+
+    // Absolute tolerance
+    const scalar absoluteTol
+    (
+        beamProperties().lookupOrDefault<scalar>("absoluteTol", 1e-8)
+    );
+
+    // Tolerance to check of the solver has diverged
+    const scalar divTol
+    (
+        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e4)
+    );
+
+    const label writeResidualFrequency
+    (
+        beamProperties().lookupOrDefault<scalar>("infoFrequency", 2)
+    );
+        //----------
 
     const scalar convergenceTol
     (
@@ -1124,13 +1154,16 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         beamProperties().lookupOrDefault<bool>("debug", false)
     );
 
-    scalar initialResidual = 1;
-    scalar currentResidual = 1;
-    scalar currentMaterialResidual = 0;
-    //bool completedElasticPrediction = false;
-    //blockLduMatrix::debug = debug;
+    // scalar initialResidual = 1;
+    // scalar currentResidual = 1;
+    // scalar currentMaterialResidual = 0;
 
-    scalar curContactResidual = 1;
+
+    //- Adding convergence check based on Seevani's implementation in main branch
+    scalar initialResidualNorm = 1;
+    scalar currentResidualNorm = GREAT;
+    scalar deltaXNorm = GREAT;
+    scalar XNorm = GREAT;
 
     iOuterCorr() = 0;
     do
@@ -1140,68 +1173,138 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             Info<< "iOuterCorr: " << iOuterCorr() << endl;
         }
 
-        // if (contactActive())
-        // {
-        //     if (debug)
-        //     {
-        //         Info<< "Updating contact: start" << endl;
-        //     }
-
-        //     scalar tStart = runTime().elapsedCpuTime();
-
-        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
-        //     curContactResidual = contact().update();
-        //     scalar tEnd = runTime().elapsedCpuTime();
-
-        //     totalContactTime_ += tEnd - tStart;
-
-        //     if (debug)
-        //     {
-        //         Pout << "Current total contact update time: "
-        //              << totalContactTime_ << endl;
-        //     }
-
-        //     if (debug)
-        //     {
-        //         Info<< "curContactResidual: "
-        //             << curContactResidual << endl;
-
-        //         Info<< "Updating contact: end" << endl;
-        //     }
-        // }
-
         scalar tStart = runTime().elapsedCpuTime();
         #include "coupledWThetaEqn_TLNR.H"
         scalar tEnd = runTime().elapsedCpuTime();
 
         totalSolutionTime_ += tEnd-tStart;
-
-        if (debug)
-        {
-            Pout<< "Current total solution update time: "
-                << totalSolutionTime_ << endl;
-        }
     }
+    // while
+    // (
+    //     (++iOuterCorr() < nCorr)
+    //  && (
+    //         (currentResidual > curConvergenceTol)
+    //     )
+    // );
     while
     (
-        (++iOuterCorr() < nCorr)
-     && (
-            (currentResidual > curConvergenceTol)
-         || (currentMaterialResidual > materialTol)
+        !checkConvergence
+        (
+            currentResidualNorm,
+            initialResidualNorm,
+            deltaXNorm,
+            XNorm,
+            ++iOuterCorr(),
+            nCorr,
+            residualTol,
+            absoluteTol,
+            solutionTol,
+            divTol,
+            writeResidualFrequency
         )
     );
 
     totalIter_ += iOuterCorr();
 
-    Info<< "\nInitial residual: " << initialResidual
-        << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
-        << ",\n iCorr = " << iOuterCorr() << nl
-        << "total Iterations " << totalIter_ << endl;
 
-    return initialResidual;
+    return initialResidualNorm;
 }
+//- Function to check convergence of the outer (Newton) loop
+bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
+(
+    const scalar currentResidualNorm,
+    const scalar initialResidualNorm,
+    const scalar deltaXNorm,
+    const scalar xNorm,
+    const label iteration,
+    const label maxIterations,
+    const scalar rtol,
+    const scalar atol,
+    const scalar stol,
+    const scalar divtol,
+    const label writeResidualFrequency,
+    const bool writeConvergedReason
+)
+{
+    // Pout<< "currentResidualNorm =" << currentResidualNorm << endl;
+    // Precompute tolerances
+    const scalar relativeResidualTol = rtol*initialResidualNorm;
+    const scalar stepTolerance = stol*xNorm;
+    // Log residuals if enabled
+    if (writeResidualFrequency > 0)
+    {
+        if (iteration == 1)
+        {
+            // Print the header with fixed widths
+            Info<< setw(10) << "Iteration"
+                << setw(20) << "Residual Norm"
+                << setw(20) << "Step Norm" << endl;
+        }
+
+        // Print each iteration's data with aligned fields
+        if (iteration % writeResidualFrequency == 0)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << currentResidualNorm
+                << setw(20) << deltaXNorm << endl;
+        }
+    }
+    // 1. Check Residual Norm against absolute tolerance
+    if (currentResidualNorm <= atol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Absolute residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+    // 2. Check Residual Norm Convergence
+    if (currentResidualNorm <= relativeResidualTol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Relative residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+    // 3. Check Step Norm Convergence
+    if (deltaXNorm <= stepTolerance)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Step norm relative tolerance met."
+                << endl;
+        }
+        return true;
+    }
+    // 4. Check Divergence
+    if (currentResidualNorm >= divtol*initialResidualNorm)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Diverged - Residual grew excessively."
+            << abort(FatalError);
+        return false;
+    }
+
+    // 5. Check Maximum Iterations
+    if (iteration >= maxIterations)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Failed - Maximum iterations reached."
+            << abort(FatalError);
+        return false;
+    }
+    // 6. Not Converged Yet
+    return false;
+}
+
 
 void coupledTotalLagNewtonRaphsonBeam::updateTotalFields()
 {

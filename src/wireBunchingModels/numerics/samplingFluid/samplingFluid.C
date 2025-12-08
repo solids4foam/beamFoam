@@ -117,6 +117,7 @@ namespace Foam
     volVectorField& markerVelocity = tmarkerVelocity.ref();
 
     vectorField beamCoords = beamCellCenterCoord;
+    vectorField beamTangents =  dRdScell;
     const volVectorField& fluidVelocity = fluidMesh.lookupObject<volVectorField>("U");
 
     //- this is the beam cell velocities stored on the beam mesh
@@ -135,6 +136,7 @@ namespace Foam
 
     // commenting only for serial check
     Pstream::broadcast(beamCoords);
+    Pstream::broadcast(beamTangents);
 
 
     seedCellIDs.setSize(beamCoords.size(), -1);
@@ -144,6 +146,7 @@ namespace Foam
 
     labelList fluidCellIDs(beamCoords.size(), -1);
     labelList sampleCellIDs(beamCoords.size(), -1);
+
     // markerResults.storePrevIter();
     forAll(beamCoords, beamCellI)
     {
@@ -190,41 +193,60 @@ namespace Foam
         // }
         else
         {
-            // fluidCellIDs[beamCellI] = fluidCellID;
-            fluidCellIDs[beamCellI] = gI.toGlobal(fluidCellID);
+            fluidCellIDs[beamCellI] = fluidCellID;
+            // fluidCellIDs[beamCellI] = gI.toGlobal(fluidCellID);
             // resultVect[beamCellI] = fluidVelocity[fluidCellID];
-            markerResults[fluidCellID] = 1.0;
+            // markerResults[fluidCellID] = 1.0;
             markerVelocity[fluidCellID] = beamUVec[beamCellI];
         }
         seedCellIDs[beamCellI] = fluidCellID;
     }
+    // i brought the reduce here, just to update fcellID before using it in the function
+    // forAll(fluidCellIDs, i)
+    // {
+    //     reduce(fluidCellIDs[i], maxOp<label>());
+    // }
+    // Initializing radius on all ranks
+    scalar radius(0.0);
     // ALM sampling
-    const dictionary& linkToBeamProperties =
-        mesh.time().db().parent().lookupObject<dictionary>
-        (
-            "beamProperties"
-        );
-    dimensionedScalar radius = linkToBeamProperties.get<dimensionedScalar>("R");
+    if (mesh.nCells() != 0)
+    {
+        const dictionary& linkToBeamProperties =
+            mesh.time().db().parent().lookupObject<dictionary>
+            (
+                "beamProperties"
+            );
+        radius = linkToBeamProperties.get<dimensionedScalar>("R").value();
+    }
+    Pstream::broadcast(radius);
 
     pointField Ps;
     vectorField upstreamDir;
-    const scalar sampleDist = 2.0*radius.value();
+    const scalar sampleDist = 2.0*radius;
 
     // Use seedCellIDs (local fluid cell indices) for accessing fluidVelocity
+
+
+    //---- parallel code up untill here
     computeUpstreamSamplingPoints(
-        beamCoords,
-        beamUVec,
-        fluidVelocity,
-        seedCellIDs,
-        dRdScell,
-        sampleDist,
-        Ps,
-        upstreamDir
+        beamCoords, // b-casted
+        beamUVec, // b-casted
+        fluidVelocity, // already on fluid mesh
+        fluidCellIDs,  // why seed cellIDs
+        beamTangents, // b-casted
+        sampleDist, // ok
+        Ps, // ok
+        upstreamDir // ok
     );
-    label sampleCellID(-1);
 
     forAll(Ps, pI)
     {
+        label sampleCellID = -1;
+        if (!fluidMesh.bounds().contains(Ps[pI]))
+        {
+            resultVect[pI] = vector::zero;
+            continue;
+        }
         if (fluidCellIDs[pI] != -1)
         {
             sampleCellID = searchEngine.findCell(Ps[pI],fluidCellIDs[pI]);
@@ -240,16 +262,12 @@ namespace Foam
         else
         {
             resultVect[pI] = fluidVelocity[sampleCellID];
+            // markerResults[sampleCellID] = 1.0;
         }
     }
 
     // markerResults = alpha * markerResults + (1 - alpha)*markerResultsPrevIter;
     reduce(resultVect, FieldSumOp<vector>());
-
-    forAll(fluidCellIDs, i)
-    {
-        reduce(fluidCellIDs[i], maxOp<label>());
-    }
     result.primitiveFieldRef() = resultVect;
 
     // reduce(markerVelocityVect, FieldSumOp<vector>());

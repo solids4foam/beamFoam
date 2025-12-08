@@ -867,8 +867,8 @@
                                     )
                                 )
                             );
-                            const scalarField Fdn(0.5 * rhoFluid().value() * Cdn_ * mag(Un) * R() * L());
-                            const scalarField Fdt(0.5 * rhoFluid().value() * Cdt_ * mag(Ut) * R() * L());
+                            const scalarField Fdn(rhoFluid().value() * Cdn_ * mag(Un) * R() * L());
+                            const scalarField Fdt(rhoFluid().value() * Cdt_ * mag(Ut) * R() * L());
 
                             forAll(source, cellI)
                             {
@@ -1114,24 +1114,19 @@
     );
 
     // Solve the linear system
-    // Currently this residual is not used, Check with Seevani.
-    currentResidual = eigenSolver.solve(solVec, source); // peak RAM
-    reduce(currentResidual, sumOp<scalar>());
-    Info<< "Equation Residual: " << currentResidual << endl;
-
-    //vector6 eqnRes = WThetaEqn.solve().initialResidual();
-    // vector eqnRes = vector::zero;
-    // currentResidual = mag(eqnRes);
-
+    // currentResidual = eigenSolver.solve(solVec, source); // peak RAM
+    // reduce(currentResidual, sumOp<scalar>());
+    // currentResidualNorm is the imbalance vector
+    currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+    reduce(currentResidualNorm, sumOp<scalar>());
 
     if (iOuterCorr() == 0)
     {
-        initialResidual = currentResidual;
+        // initialResidual = currentResidual;
+        initialResidualNorm = currentResidualNorm;
     }
 
     // Copy the solution from solVec into the DW and DTheta fields
-    //WThetaEqn.retrieveSolution(3, DTheta_.internalField());
-    //DTheta_.boundaryField().evaluateCoupled();
     vectorField& DWI = DW_;
     vectorField& DThetaI = DTheta_;
     forAll(solVec, cellI)
@@ -1148,18 +1143,17 @@
     DW_.correctBoundaryConditions();
     DTheta_.correctBoundaryConditions();
 
-    // DTheta_.internalField().replace(0, 0);
+
 
     Theta_.primitiveFieldRef() +=
         (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
 
-    // Theta_.internalField().replace(0, 0);
+
 
     Theta_.correctBoundaryConditions();
     Theta_.storePrevIter();
 
-    //WThetaEqn.retrieveSolution(0, DW_.internalField());
-    //DW_.boundaryField().evaluateCoupled();
+
     W_.primitiveFieldRef() += DW_.internalField();
 
     W_.correctBoundaryConditions();
@@ -1317,70 +1311,75 @@
         Qa_ = (Lambdaf_.T() & Q_)().component(0);
     }
 
-    // Calculate DTheta residual
-    {
-        scalar denom =
-            // gMax
-            max
-            (
-                mag
-                (
-                    Theta_.primitiveFieldRef()
-                  - Theta_.oldTime().primitiveFieldRef()
-                )()
-            );
+    // Calculating norm of primary correction variables DW_ & DTheta_
+    deltaXNorm = sqrt(sum(magSqr(solVec)));
 
-        if (denom < 10*SMALL)
-        {
-            // denom = max(gMax(mag(Theta_.internalField())), SMALL);
-            denom = 1.0;
-        }
+    // Calculating the norm of W_ and Theta_
+    XNorm =
+        sqrt
+        (
+            sum(magSqr(W_.primitiveFieldRef()))
+            + sum(magSqr(Theta_.primitiveFieldRef()))
+        );
+    reduce(deltaXNorm, sumOp<scalar>());
+    reduce(XNorm, sumOp<scalar>());
 
-        ThetaResidual =
-            // gMax(mag(DTheta_.internalField())());
-            gMax(mag(DTheta_.primitiveFieldRef())());
-            // max(mag(DTheta_.primitiveFieldRef())());
-        // ThetaResidual =
-        //     gMax(mag(DTheta_.internalField()))/denom;
-    }
+//     //from here
+//     // Calculate DTheta residual
+//     {
+//         scalar denom =
+//             // gMax
+//             max
+//             (
+//                 mag
+//                 (
+//                     Theta_.primitiveFieldRef()
+//                   - Theta_.oldTime().primitiveFieldRef()
+//                 )()
+//             );
 
-    // Calculate DW residual
-    {
-        scalar denom =
-            max //gMax
-            (
-                mag
-                (
-                    W_.primitiveFieldRef()
-                  - W_.oldTime().primitiveFieldRef()
-                )()
-            );
+//         if (denom < 10*SMALL)
+//         {
+//             // denom = max(gMax(mag(Theta_.internalField())), SMALL);
+//             denom = 1.0;
+//         }
 
-        if (denom < 10*SMALL)
-        {
-            // denom = max(gMax(mag(W_.internalField())), SMALL);
-            denom = 1.0;
-        }
+//         ThetaResidual =
+//             gMax(mag(DTheta_.primitiveFieldRef())());
+//     }
 
-        WResidual =
-            // gMax(mag(DW_.internalField())());
-            gMax(mag(DW_.primitiveFieldRef())());
-            // max(mag(DW_.primitiveFieldRef())());
-        // WResidual =
-        //     gMax(mag(DW_.internalField()))/denom;
-    }
+//     // Calculate DW residual
+//     {
+//         scalar denom =
+//             max //gMax
+//             (
+//                 mag
+//                 (
+//                     W_.primitiveFieldRef()
+//                   - W_.oldTime().primitiveFieldRef()
+//                 )()
+//             );
 
-    if (debug)
-    {
-        Info<< "Theta residual: " << ThetaResidual << endl;
-        Info<< "W residual: " << WResidual << endl;
-    }
+//         if (denom < 10*SMALL)
+//         {
+//             // denom = max(gMax(mag(W_.internalField())), SMALL);
+//             denom = 1.0;
+//         }
 
-    // this currentResidual is not normalized, check with Seevani
-    currentResidual = max(WResidual, ThetaResidual);
+//         WResidual =
+//             // gMax(mag(DW_.internalField())());
+//             gMax(mag(DW_.primitiveFieldRef())());
+//             // max(mag(DW_.primitiveFieldRef())());
+//         // WResidual =
+//         //     gMax(mag(DW_.internalField()))/denom;
+//     }
+//     // this currentResidual is not normalized, check with Seevani
+//     currentResidual = max(WResidual, ThetaResidual);
+// //up to here
 
     if (iOuterCorr() == 0)
     {
-        initialResidual = currentResidual;
+        //    initialResidual = currentResidual;
+        initialResidualNorm = currentResidualNorm;
     }
 }
