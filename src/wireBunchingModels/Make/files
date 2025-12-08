@@ -20,6 +20,7 @@ $(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVect
 $(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
 $(boundaryConditions)/fixedRotation/fixedRotationFvPatchVectorField.C
+$(boundaryConditions)/linearSpringForceBeamDisplacementNR/linearSpringForceBeamDisplacementNRFvPatchVectorField.C
 
 functionObjects/beamEnergyData/beamEnergyData.C
 functionObjects/beamConvergenceData/beamConvergenceData.C
