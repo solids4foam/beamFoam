@@ -16,7 +16,7 @@ FoamFile
 
 application     beamFoam;
 
-startFrom       latestTime;
+startFrom       startTime;
 
 startTime       0;
 
@@ -24,7 +24,7 @@ stopAt          endTime;
 
 endTime         1;
 
-deltaT          0.1;//0.002;
+deltaT          0.1;
 
 writeControl    timeStep;
 
