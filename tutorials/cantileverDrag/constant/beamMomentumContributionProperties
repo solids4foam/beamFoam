@@ -23,8 +23,9 @@ beamMomentumContributions
 
         morisonDragCoeffs
         {
-            Cdn    0.0; //0.25;
-            Cdt    0.0; //0.25;
+            rhoFluid 1000;
+            Cdn    0.0;
+            Cdt    0.0;
         }
     }
     
