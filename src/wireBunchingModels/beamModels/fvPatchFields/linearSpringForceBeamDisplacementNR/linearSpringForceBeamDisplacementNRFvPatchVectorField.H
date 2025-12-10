@@ -22,22 +22,23 @@ License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    followerForceBeamDisplacementNRFvPatchVectorField
+    linearSpringForceBeamDisplacementNRFvPatchVectorField
 
 Description
-    Implementation of a special boundary condition where the end load follows the deformation of the beam (follower load).
+    A linear spring boundary condition for the beam solver which takes the
+    spring stiffness and unit vector direction of spring to the
+    boundary patch
     -- Derived from forceBeamDisplacementNR boundary condition
 
 SourceFiles
-    followerForceBeamDisplacementNRFvPatchVectorField.C
+    linearSpringForceBeamDisplacementNRFvPatchVectorField.C
 
-Author
+Authors
     Seevani Bali, UCD.
-
 \*---------------------------------------------------------------------------*/
 
-#ifndef followerForceBeamDisplacementNRFvPatchVectorField_H
-#define followerForceBeamDisplacementNRFvPatchVectorField_H
+#ifndef linearSpringForceBeamDisplacementNRFvPatchVectorField_H
+#define linearSpringForceBeamDisplacementNRFvPatchVectorField_H
 
 #include "fvPatchFields.H"
 #include "forceBeamDisplacementNRFvPatchVectorField.H"
@@ -49,41 +50,48 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                   Class followerForceBeamDisplacementNRFvPatch Declaration
+        Class linearSpringForceBeamDisplacementNRFvPatch Declaration
 \*---------------------------------------------------------------------------*/
 
-class followerForceBeamDisplacementNRFvPatchVectorField
+class linearSpringForceBeamDisplacementNRFvPatchVectorField
 :
     public forceBeamDisplacementNRFvPatchVectorField
 {
     // Private Data
 
+    // Spring Stiffness
+    scalar springStiffness_;
 
-        //- Current follower force
-	vectorField followerForce_;
+    // Spring Direction
+    vector springDirection_;
 
-        //- Current follower force direction
-        // vectorField followerForceDir_;
+    // Spring Stiffness tensor
+    tensorField Ks_;
+
+    //- Offset force at spring BC end of beam
+    vectorField offsetForce_;
     
-        //- Follower force time series
-	interpolationTable<vector> followerForceSeries_;
+    //- Offset Force time series if present
+    interpolationTable<vector> offsetForceSeries_;
+
     
 public:
 
     //- Runtime type information
-    TypeName("followerForceBeamDisplacementNR");
+    TypeName("linearSpringForceBeamDisplacementNR");
+
 
     // Constructors
 
         //- Construct from patch and internal field
-        followerForceBeamDisplacementNRFvPatchVectorField
+        linearSpringForceBeamDisplacementNRFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        followerForceBeamDisplacementNRFvPatchVectorField
+        linearSpringForceBeamDisplacementNRFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
@@ -91,19 +99,19 @@ public:
         );
 
         //- Construct by mapping given
-        //  followerForceBeamDisplacementNRFvPatchVectorField onto a new patch
-        followerForceBeamDisplacementNRFvPatchVectorField
+        //  linearSpringForceBeamDisplacementNRFvPatchVectorField onto a new patch
+        linearSpringForceBeamDisplacementNRFvPatchVectorField
         (
-            const followerForceBeamDisplacementNRFvPatchVectorField&,
+            const linearSpringForceBeamDisplacementNRFvPatchVectorField&,
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        followerForceBeamDisplacementNRFvPatchVectorField
+        linearSpringForceBeamDisplacementNRFvPatchVectorField
         (
-            const followerForceBeamDisplacementNRFvPatchVectorField&
+            const linearSpringForceBeamDisplacementNRFvPatchVectorField&
         );
 
         //- Construct and return a clone
@@ -111,14 +119,14 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new followerForceBeamDisplacementNRFvPatchVectorField(*this)
+                new linearSpringForceBeamDisplacementNRFvPatchVectorField(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        followerForceBeamDisplacementNRFvPatchVectorField
+        linearSpringForceBeamDisplacementNRFvPatchVectorField
         (
-            const followerForceBeamDisplacementNRFvPatchVectorField&,
+            const linearSpringForceBeamDisplacementNRFvPatchVectorField&,
             const DimensionedField<vector, volMesh>&
         );
 
@@ -130,7 +138,7 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new followerForceBeamDisplacementNRFvPatchVectorField(*this, iF)
+                new linearSpringForceBeamDisplacementNRFvPatchVectorField(*this, iF)
             );
         }
 
@@ -138,7 +146,7 @@ public:
     // Member functions
 
         // Access
-  
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
@@ -154,14 +162,15 @@ public:
                 const labelList&
             );
 
+
         //- Update the coefficients associated with the patch field
         virtual void updateCoeffs();
 
-        // //- Evaluate the patch field, sets Updated to false
-        // virtual void evaluate
-        // (
-        //     const Pstream::commsTypes commsType = Pstream::blocking
-        // );
+        //- Evaluate the patch field, sets Updated to false
+        virtual void evaluate
+        (
+            const Pstream::commsTypes commsType = Pstream::commsTypes::blocking
+        );
 
         //- Write
         virtual void write(Ostream&) const;
