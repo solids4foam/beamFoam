@@ -47,9 +47,9 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     forceBeamDisplacementNRFvPatchVectorField(p, iF),
     springStiffness_(0.0),
     springDirection_(vector::zero),
-    Ks_(p.size(), tensor::zero) //,
-    // extraForce_(p.size(), vector::zero),
-    // forceSeries_()
+    Ks_(p.size(), tensor::zero),
+    offsetForce_(p.size(), vector::zero),
+    offsetForceSeries_()
 {
     // fixedValueFvPatchVectorField::operator==(patchInternalField());
     // gradient() = vector::zero;
@@ -68,9 +68,9 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     forceBeamDisplacementNRFvPatchVectorField(tdpvf, p, iF, mapper),
     springStiffness_(tdpvf.springStiffness_),
     springDirection_(tdpvf.springDirection_),
-    Ks_(tdpvf.Ks_, mapper) //,
-    // extraForce_(tdpvf.extraForce_, mapper),
-    // forceSeries_(tdpvf.forceSeries_)
+    Ks_(tdpvf.Ks_, mapper),
+    offsetForce_(tdpvf.offsetForce_, mapper),
+    offsetForceSeries_(tdpvf.offsetForceSeries_)
 {}
 
 
@@ -85,9 +85,9 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     forceBeamDisplacementNRFvPatchVectorField(p, iF),
     springStiffness_(0.0),
     springDirection_(vector::zero),
-    Ks_(p.size(), tensor::zero) //,
-    // extraForce_(p.size(), vector::zero),
-    // forceSeries_()
+    Ks_(p.size(), tensor::zero),
+    offsetForce_(p.size(), vector::zero),
+    offsetForceSeries_()
 {
     // // NOT SURE ABOUT THIS
     // if (dict.found("value"))
@@ -123,16 +123,19 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     // Spring stiffness tensor
     Ks_ = springStiffness_*(springDirection_*springDirection_);
 
-    // if (dict.found("forceSeries"))
-    // {
-    //     Info<< "force is time-varying" << endl;
-    //     forceSeries_ =
-    //         interpolationTable<vector>(dict.subDict("forceSeries"));
+    if (dict.found("offsetForceSeries"))
+    {
+        Info<< "Offset force found at spring BC of beam solver"
+            << " and the force is time-varying" << endl;
+        offsetForceSeries_ =
+            interpolationTable<vector>(dict.subDict("offsetForceSeries"));
 
-    //     extraForce_ = forceSeries_(this->db().time().timeOutputValue());
-    //     Info<< "Extra force" << extraForce_ << endl;
-    // }
-
+        offsetForce_ = offsetForceSeries_(this->db().time().timeOutputValue());
+    }
+    else
+    {
+        Info<< "Offset force not found! skipping" << endl;
+    }
 }
 
 
@@ -145,9 +148,9 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     forceBeamDisplacementNRFvPatchVectorField(tdpvf),
     springStiffness_(tdpvf.springStiffness_),
     springDirection_(tdpvf.springDirection_),
-    Ks_(tdpvf.Ks_) //,
-    // extraForce_(tdpvf.extraForce_),
-    // forceSeries_(tdpvf.forceSeries_)
+    Ks_(tdpvf.Ks_),
+    offsetForce_(tdpvf.offsetForce_),
+    offsetForceSeries_(tdpvf.offsetForceSeries_)
 {}
 
 
@@ -161,9 +164,9 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     forceBeamDisplacementNRFvPatchVectorField(tdpvf, iF),
     springStiffness_(tdpvf.springStiffness_),
     springDirection_(tdpvf.springDirection_),
-    Ks_(tdpvf.Ks_) //,
-    // extraForce_(tdpvf.extraForce_),
-    // forceSeries_(tdpvf.forceSeries_)
+    Ks_(tdpvf.Ks_),
+    offsetForce_(tdpvf.offsetForce_),
+    offsetForceSeries_(tdpvf.offsetForceSeries_)
 {}
 
 
@@ -176,7 +179,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::autoMap
 {
     forceBeamDisplacementNRFvPatchVectorField::autoMap(m);
     Ks_.autoMap(m);
-    // extraForce_.autoMap(m);
+    offsetForce_.autoMap(m);
 }
 
 
@@ -193,7 +196,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::rmap
         refCast<const linearSpringForceBeamDisplacementNRFvPatchVectorField>(ptf);
     
     Ks_.rmap(dmptf.Ks_, addr);
-    // extraForce_.rmap(dmptf.extraForce_, addr);    
+    offsetForce_.rmap(dmptf.offsetForce_, addr);
 }
 
 
@@ -203,6 +206,11 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
     if (updated())
     {
         return;
+    }
+
+    if (offsetForceSeries_.size())
+    {
+        offsetForce_ = offsetForceSeries_(this->db().time().timeOutputValue());
     }
 
     forceBeamDisplacementNRFvPatchVectorField::updateCoeffs();
@@ -230,8 +238,9 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
         // of global AX = B system.
 
         // This force is compressive and acts opposite of spring direction
-        force()[pFace] = -curSpringForceMag*springDirection_;
-          // + extraForce_[pFace];
+        force()[pFace] =
+            -curSpringForceMag*springDirection_
+          + offsetForce_[pFace];
     }
 
     // Other necessary fields to enforce the boundary condition
@@ -263,11 +272,14 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     const tensorField A(CQW/delta);
     
     // This coefficent changes due to the spring
+    // The sign is +ve infront of Ks because the spring force
+    // acting on the beam is negative (opp) to that acting on
+    // the spring itself
     const tensorField invAmodified
     (
         inv
         (
-            CQW/delta - Ks_
+            CQW/delta + Ks_
         )
     );
 

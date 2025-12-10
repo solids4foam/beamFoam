@@ -1,0 +1,4 @@
+(
+    ( 0 ( 100 0 0 ) ) // At time t = 0, offset force exists
+    ( 1 ( 100 0 0 ) )
+)

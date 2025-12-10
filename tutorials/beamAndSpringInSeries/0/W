@@ -41,6 +41,12 @@ boundaryField
             springDirection (1 0 0);
         }
 
+        offsetForceSeries
+        {
+            file    "$FOAM_CASE/constant/timeVsOffsetForce";
+            outOfBounds    clamp;
+        }
+
     }
     beam
     {

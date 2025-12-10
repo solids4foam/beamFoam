@@ -68,11 +68,11 @@ class linearSpringForceBeamDisplacementNRFvPatchVectorField
     // Spring Stiffness tensor
     tensorField Ks_;
 
-    // //- Extra force
-    // vectorField extraForce_;
+    //- Offset force at spring BC end of beam
+    vectorField offsetForce_;
     
-    // //- Additional Force time series if present
-    // interpolationTable<vector> forceSeries_;
+    //- Offset Force time series if present
+    interpolationTable<vector> offsetForceSeries_;
 
     
 public:
