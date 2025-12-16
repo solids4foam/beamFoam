@@ -46,6 +46,7 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
 :
     forceBeamDisplacementNRFvPatchVectorField(p, iF),
     springStiffness_(0.0),
+    orthogonalStiffnessRatio_(0.0),
     springDirection_(vector::zero),
     Ks_(p.size(), tensor::zero) //,
     // extraForce_(p.size(), vector::zero),
@@ -84,6 +85,7 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
 :
     forceBeamDisplacementNRFvPatchVectorField(p, iF),
     springStiffness_(0.0),
+    orthogonalStiffnessRatio_(0.0),
     springDirection_(vector::zero),
     Ks_(p.size(), tensor::zero) //,
     // extraForce_(p.size(), vector::zero),
@@ -111,6 +113,15 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     // Read the spring stiffness
     springStiffness_ = readScalar(springDict.lookup("springStiffness"));
 
+    // Read the orthogonal stiffness ratio
+    orthogonalStiffnessRatio_ =
+          springDict.lookupOrDefault<scalar>
+           (
+            "orthogonalStiffnessRatio",
+            0.0
+           );
+
+    
     // Read the spring direction
     springDirection_ = vector(springDict.lookup("springDirection"));
 
@@ -123,6 +134,16 @@ linearSpringForceBeamDisplacementNRFvPatchVectorField
     // Spring stiffness tensor
     Ks_ = springStiffness_*(springDirection_*springDirection_);
 
+    // Add stiffness springs in the tangential directions to weakly enforce zero displacement in the tangential directions
+    Ks_ += orthogonalStiffnessRatio_*springStiffness_*(I - sqr(springDirection_));    
+
+    if (Pstream::master())
+    {
+    Info << "Spring stiffness tensor Ks = " << Ks_ << nl;
+    }
+
+
+    
     // if (dict.found("forceSeries"))
     // {
     //     Info<< "force is time-varying" << endl;
@@ -221,8 +242,8 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     {
         // Spring force magnitude calculated from displacement
         // component in the spring direction
-        scalar curSpringForceMag =
-            springStiffness_*(pW[pFace] & springDirection_);
+      //        scalar curSpringForceMag =
+      //    springStiffness_*(pW[pFace] & springDirection_);
 
         // Spring force vector directly updated into base
         // forceBeamDisplacementNR class.
@@ -230,8 +251,44 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
         // of global AX = B system.
 
         // This force is compressive and acts opposite of spring direction
-        force()[pFace] = -curSpringForceMag*springDirection_;
+        //force()[pFace] = -curSpringForceMag*springDirection_;
           // + extraForce_[pFace];
+
+      // ============================================================================
+      // Current spring force evaluated using displacement from the previous
+      // Newton–Raphson iteration.
+      //
+      // This force contributes directly to the RHS (B) of the global
+      // linear system A * X = B solved by the beam Newton–Raphson solver.
+      // ============================================================================
+
+      // pW : patch field of beam displacement vectors (one per patch face)
+      // Ks_: spring stiffness tensor (or tensor field) defining force–displacement
+      //      coupling, allowing forces in arbitrary directions (not just axial)
+
+      // ---------------------------------------------------------------------------
+      // IMPORTANT:
+      // The contraction (Ks_ & pW) returns a tmp<Field<vector>>.
+      // We must *own* this temporary to avoid dangling references.
+      // ---------------------------------------------------------------------------
+      tmp<Field<vector>> tKspW = Ks_ & pW;
+
+      // Extract the underlying Field<vector> from the tmp<>.      
+      //Lifetime is guaranteed as long as tKspW remains in scope.
+      const Field<vector>& KspW = tKspW();
+      // Spring force is linear elastic:
+      //
+      //     F = -K * u
+      //
+      // where:
+      //   K  = spring stiffness tensor
+      //   u  = displacement vector
+      //
+      // The minus sign ensures the force is restoring (opposes displacement).
+      //
+      // force() is the fvPatchVectorField inherited from the base class and
+      // represents the force applied by the beam restraint on each patch face.
+      force()[pFace] = -KspW[pFace];
     }
 
     // Other necessary fields to enforce the boundary condition

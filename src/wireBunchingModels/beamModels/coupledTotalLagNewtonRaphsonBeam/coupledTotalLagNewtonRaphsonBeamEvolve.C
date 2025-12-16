@@ -54,6 +54,10 @@ namespace beamModels
 
 scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
+
+  Info << ">>> coupledTotalLagNewtonRaphsonBeam::evolve() called at time "
+         << runTime().timeName() << endl;
+  
     beamModel::evolve();
 
     const int nCorr

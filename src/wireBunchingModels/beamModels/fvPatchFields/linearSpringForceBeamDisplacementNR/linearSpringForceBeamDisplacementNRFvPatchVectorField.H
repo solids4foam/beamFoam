@@ -62,6 +62,9 @@ class linearSpringForceBeamDisplacementNRFvPatchVectorField
     // Spring Stiffness
     scalar springStiffness_;
 
+    // Orthogonal Stiffness Ratio
+    scalar orthogonalStiffnessRatio_;
+
     // Spring Direction
     vector springDirection_;
 

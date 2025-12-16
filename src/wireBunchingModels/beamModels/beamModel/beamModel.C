@@ -561,7 +561,9 @@ Foam::beamModel::beamModel
     // Write beam cross-section properties
     for (label bI = 0; bI < nBeams; ++bI)
     {
-        Info<< "\n\n Writing mechanical properties of beam no: " << bI << endl;
+        Info<< "\n"<< endl;
+        Info<< "Writing mechanical properties of beam no:" << bI << endl;
+	Info<< beamProperties().name() <<endl;
         Info<< "E " << E(bI) << endl;
         Info<< "G " << G(bI) << endl;
 
