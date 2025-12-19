@@ -222,22 +222,45 @@ namespace Foam
 
     pointField Ps;
     vectorField upstreamDir;
-    const scalar sampleDist = 2.0*radius;
+    const scalar sampleDist = 2.0*radius; // was 2
+    // added
+    vectorField vfAtBeam(beamCoords.size(), vector::zero);
+    forAll(beamCoords, i)
+    {
+        if (fluidCellIDs[i] >= 0)
+        {
+            // local rank contributes the velocity from its own cell
+            vector U_fluid = fluidVelocity[fluidCellIDs[i]];
+            // We should check the beam UVec!
+            vector U_beam = beamUVec[i];
+            // get the relative velocity, and use it for getting the correct sampling directions
+            vfAtBeam[i] = U_fluid - U_beam;
 
-    // Use seedCellIDs (local fluid cell indices) for accessing fluidVelocity
+            // temporarily set it back to the abs velocity
+            // vfAtBeam[i] = fluidVelocity[fluidCellIDs[i]];
+        }
+    }
+    // Reduce so that *all ranks* now have the SAME vfAtBeam
+    reduce(vfAtBeam, FieldSumOp<vector>());
+    // added
 
 
-    //---- parallel code up untill here
-    computeUpstreamSamplingPoints(
-        beamCoords, // b-casted
-        beamUVec, // b-casted
-        fluidVelocity, // already on fluid mesh
-        fluidCellIDs,  // why seed cellIDs
-        beamTangents, // b-casted
-        sampleDist, // ok
-        Ps, // ok
-        upstreamDir // ok
-    );
+    //---- parallel code up until here
+    if (Pstream::master())
+    {
+        computeUpstreamSamplingPoints(
+            beamCoords,    // broadcast earlier
+            vfAtBeam,      // fluid velocity at beam points, reduced across ranks
+            beamTangents,  // broadcast earlier
+            sampleDist,
+            Ps,
+            upstreamDir
+        );
+    }
+
+    // Broadcast upstream sampling points and directions so all ranks use the same Ps / upstreamDir
+    Pstream::broadcast(Ps);
+    Pstream::broadcast(upstreamDir);
 
     forAll(Ps, pI)
     {
@@ -247,13 +270,13 @@ namespace Foam
             resultVect[pI] = vector::zero;
             continue;
         }
-        if (fluidCellIDs[pI] != -1)
-        {
-            sampleCellID = searchEngine.findCell(Ps[pI],fluidCellIDs[pI]);
-        }
+        // try to also add searching with seed
+        sampleCellID = searchEngine.findCell(Ps[pI],-1,true);
         if (sampleCellID == -1)
         {
-            sampleCellID = searchEngine.findCell(Ps[pI],-1,true);
+            const vector dirHat = upstreamDir[pI]/(mag(upstreamDir[pI]) + VSMALL);
+            const point pPert = Ps[pI] + 1e-9*dirHat;   // small directional nudge
+            sampleCellID = searchEngine.findCell(pPert, -1, true);
         }
         if (sampleCellID == -1)
         {
@@ -262,7 +285,7 @@ namespace Foam
         else
         {
             resultVect[pI] = fluidVelocity[sampleCellID];
-            // markerResults[sampleCellID] = 1.0;
+            markerResults[sampleCellID] = 1.0;
         }
     }
 

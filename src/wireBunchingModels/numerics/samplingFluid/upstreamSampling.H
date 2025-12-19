@@ -44,20 +44,29 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
 {
     vector t = beamTangents/(mag(beamTangents) + VSMALL);
     vector vPerp = vf - (vf & t)*t;
-    scalar m = mag(vPerp);
+
+    // extra checks to enforce upstream always to be in -X direction
+    vector samplingDir = -vPerp;
+    if (samplingDir.x() > 0)
+    {
+        vector globalUpstream(-1, 0, 0); 
+        samplingDir = globalUpstream - (globalUpstream & t)*t;
+    }
+    
+    //    scalar m = mag(vPerp);
+    scalar m = mag(samplingDir);
     if (m < VSMALL)
     {
         return -t;
     }
-    return -vPerp/(m + VSMALL);
+    //    return -vPerp/(m + VSMALL);
+    return samplingDir/(m + VSMALL);
 }
 
 // Compute sampling points Ps (step 1 of ALM)
 inline void computeUpstreamSamplingPoints(
     const pointField& beamCoords,
-    const vectorField& beamUVec,
-    const vectorField& fluidVelocity,
-    const labelList& fluidCellIDs,
+    const vectorField& vfAtBeam,
     const vectorField& beamTangents,
     const scalar sampleDist,
     pointField& Ps,
@@ -69,11 +78,7 @@ inline void computeUpstreamSamplingPoints(
 
     forAll(beamCoords, i)
     {
-        vector vf = vector::zero;
-        if (fluidCellIDs[i] >= 0)
-        {
-            vf = fluidVelocity[fluidCellIDs[i]] ;
-        }
+        vector vf = vfAtBeam[i];
 
         vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
         upstreamDir[i] = dir;

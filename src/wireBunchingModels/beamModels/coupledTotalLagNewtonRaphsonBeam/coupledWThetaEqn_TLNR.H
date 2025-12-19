@@ -848,11 +848,11 @@
                             //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                             const vectorField& dRdScell = spline.midPointDerivatives();
                             vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
-                            vectorField Ur (fluidU_.internalField() - U_.internalField());
+                            // vectorField Ur (fluidU_.internalField() - U_.internalField());
                             vectorField Ut
                             (
                                 (
-                                    (Ur & dRdScell)
+                                    (fluidU_ & dRdScell)
                                     *dRdScell
                                 )
                             );
@@ -860,32 +860,61 @@
                             vectorField Un
                             (
                                 (
-                                    Ur -
+                                    fluidU_ -
                                     (
-                                        (Ur & dRdScell)
+                                        (fluidU_ & dRdScell)
                                         *dRdScell
                                     )
                                 )
                             );
-                            const scalarField Fdn(rhoFluid().value() * Cdn_ * mag(Un) * R() * L());
-                            const scalarField Fdt(rhoFluid().value() * Cdt_ * mag(Ut) * R() * L());
+                            // const scalarField Fdn(rhoFluid().value() * Cdn_ * mag(Un) * R() * L());
+                            // const scalarField Fdt(rhoFluid().value() * Cdt_ * mag(Ut) * R() * L());
+
+                            // forAll(source, cellI)
+                            // {
+                            //     source[cellI](0,0) -= Un[cellI].component(0) * Fdn[cellI];
+                            //     source[cellI](1,0) -= Un[cellI].component(1) * Fdn[cellI];
+                            //     source[cellI](2,0) -= Un[cellI].component(2) * Fdn[cellI];
+                            //     // // // Tangent drag contribution
+                            //     source[cellI](0,0) -= Ut[cellI].component(0) * Fdt[cellI];
+                            //     source[cellI](1,0) -= Ut[cellI].component(1) * Fdt[cellI];
+                            //     source[cellI](2,0) -= Ut[cellI].component(2) * Fdt[cellI];
+
+
+                            //     // populating almForce - unit : N/m
+                            //     const vector Fn = -Fdn[cellI] * Un[cellI]/L()[cellI]; // normal part
+                            //     const vector Ft = -Fdt[cellI] * Ut[cellI]/L()[cellI]; // tangential part
+                            //     almForce_[cellI] += (Fn + Ft);
+                            // }
+                            const vectorField Vs(Un + Ut);
+                            const scalarField Vs2(magSqr(Vs));      // ||v_s||^2
+
+                            const scalar Coeff_n = rhoFluid().value() * Cdn_ * R(); // = 0.5*rho*D*Cdn
+                            const scalar Coeff_t = rhoFluid().value() * Cdt_ * R(); // = 0.5*rho*D*Cdt
 
                             forAll(source, cellI)
                             {
-                                source[cellI](0,0) -= Un[cellI].component(0) * Fdn[cellI];
-                                source[cellI](1,0) -= Un[cellI].component(1) * Fdn[cellI];
-                                source[cellI](2,0) -= Un[cellI].component(2) * Fdn[cellI];
-                                // // // Tangent drag contribution
-                                source[cellI](0,0) -= Ut[cellI].component(0) * Fdt[cellI];
-                                source[cellI](1,0) -= Ut[cellI].component(1) * Fdt[cellI];
-                                source[cellI](2,0) -= Ut[cellI].component(2) * Fdt[cellI];
+                                const scalar magUn = mag(Un[cellI]);
+                                const scalar magUt = mag(Ut[cellI]);
 
+                                const vector e_n = Un[cellI]/(magUn + VSMALL);
+                                const vector e_t = Ut[cellI]/(magUt + VSMALL);
 
-                                // populating almForce - unit : N/m
-                                const vector Fn = -Fdn[cellI] * Un[cellI]/L()[cellI]; // normal part
-                                const vector Ft = -Fdt[cellI] * Ut[cellI]/L()[cellI]; // tangential part
-                                almForce_[cellI] += (Fn + Ft);
+                                // line forces (N/m)
+                                const vector fn_line = -Coeff_n * Vs2[cellI] * e_n;
+                                const vector ft_line = -Coeff_t * Vs2[cellI] * e_t;
+
+                                // cell force (N)
+                                const vector F_cell = (fn_line + ft_line) * L()[cellI];
+
+                                source[cellI](0,0) += F_cell.x();
+                                source[cellI](1,0) += F_cell.y();
+                                source[cellI](2,0) += F_cell.z();
+
+                                almForce_[cellI] += (fn_line + ft_line); // N/m
                             }
+                        
+                             Info << "sum F on the beam = " << sum(almForce_ * L()) <<endl;
                         }
                         if (MorisonForceActive_)
                         {
