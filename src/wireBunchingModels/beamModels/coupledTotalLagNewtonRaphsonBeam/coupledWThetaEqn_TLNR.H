@@ -935,7 +935,7 @@
                                 source[cellI](2,0) += F_cell_relaxed.z();
                             }
 
-                            const vector Fsum = sum(almForce_ * L());
+                            const vector Fsum(sum(almForce_ * L()).value());
                             Info<< "sum F on the beam (relaxed) = "
                                 << "(" << Fsum.x() << ", "
                                 << Fsum.y() << ", "
