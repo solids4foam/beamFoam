@@ -712,11 +712,12 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
     gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
 
-    // Drag Force related fields
+    // Fluid-beam coupling related parameters
     dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
     beamFluidInteraction_(beamProperties().lookupOrDefault<bool>("beamFluidInteraction", false)),
     immersedForceActive_(beamProperties().lookupOrDefault<bool>("immersedForceActive", false)),
     almSamplingActive_(beamProperties().lookupOrDefault<bool>("almSamplingActive", false)),
+    almForceRelaxation_(beamProperties().lookupOrDefault<scalar>("forceRelaxation", 1.0)),
     MorisonForceActive_(beamProperties().lookupOrDefault<bool>("MorisonForceActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),

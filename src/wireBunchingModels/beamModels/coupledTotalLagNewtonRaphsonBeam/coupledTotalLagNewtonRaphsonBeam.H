@@ -248,6 +248,9 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Boolean to enable ALM like sampling of the fluid velocity per each beam cell
         bool almSamplingActive_;
 
+        //- Force relaxation factor for ALM
+        scalar almForceRelaxation_;
+
         //- Boolean to enable Morison Force drag and added mass force
         bool MorisonForceActive_;
 

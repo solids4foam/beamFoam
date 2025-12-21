@@ -867,34 +867,14 @@
                                     )
                                 )
                             );
-                            // const scalarField Fdn(rhoFluid().value() * Cdn_ * mag(Un) * R() * L());
-                            // const scalarField Fdt(rhoFluid().value() * Cdt_ * mag(Ut) * R() * L());
 
-                            // forAll(source, cellI)
-                            // {
-                            //     source[cellI](0,0) -= Un[cellI].component(0) * Fdn[cellI];
-                            //     source[cellI](1,0) -= Un[cellI].component(1) * Fdn[cellI];
-                            //     source[cellI](2,0) -= Un[cellI].component(2) * Fdn[cellI];
-                            //     // // // Tangent drag contribution
-                            //     source[cellI](0,0) -= Ut[cellI].component(0) * Fdt[cellI];
-                            //     source[cellI](1,0) -= Ut[cellI].component(1) * Fdt[cellI];
-                            //     source[cellI](2,0) -= Ut[cellI].component(2) * Fdt[cellI];
-
-
-                            //     // populating almForce - unit : N/m
-                            //     const vector Fn = -Fdn[cellI] * Un[cellI]/L()[cellI]; // normal part
-                            //     const vector Ft = -Fdt[cellI] * Ut[cellI]/L()[cellI]; // tangential part
-                            //     almForce_[cellI] += (Fn + Ft);
-                            // }
-                            // 1. Define Relaxation Factor
-                            scalar relax = 0.1;
 
                             // 2. Memory Management
                             // Ensure almForce_ exists, but DO NOT reset it to zero. We need the history.
-                            if (almForce_.size() != source.size()) {
-                                almForce_.setSize(source.size());
-                                almForce_ = vector::zero;
-                            }
+                            // if (almForce_.size() != source.size()) {
+                            //     almForce_.setSize(source.size());
+                            //     almForce_ = vector::zero;
+                            // }
 
                             // Coefficients setup
                             const vectorField Vs(Un + Ut);
@@ -920,7 +900,8 @@
                                 // C. RELAXATION STEP
                                 // New = (relax * Target) + ((1 - relax) * Old)
                                 // If relax = 0.1, we only accept 10% of the new force change per step.
-                                vector F_line_relaxed = (relax * F_line_target) + ((1.0 - relax) * almForce_[cellI]);
+                                vector F_line_relaxed = (almForceRelaxation_ * F_line_target)
+                                  + ((1.0 - almForceRelaxation_) * almForce_[cellI]);
 
                                 // D. Update Storage
                                 // Save this relaxed value for the next time step

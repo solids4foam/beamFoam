@@ -290,12 +290,10 @@ namespace Foam
         }
     }
 
-    // markerResults = alpha * markerResults + (1 - alpha)*markerResultsPrevIter;
+
     reduce(resultVect, FieldSumOp<vector>());
     result.primitiveFieldRef() = resultVect;
 
-    // reduce(markerVelocityVect, FieldSumOp<vector>());
-    // markerVelocity.primitiveFieldRef() = markerVelocityVect;
     return std::make_tuple(std::move(tresult), std::move(tmarkerResults), std::move(tmarkerVelocity), std::move(fluidCellIDs));
     }
 } // End namespace Foam
