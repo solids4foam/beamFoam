@@ -848,11 +848,12 @@
                             //- Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
                             const vectorField& dRdScell = spline.midPointDerivatives();
                             const vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
-                            // vectorField Ur (fluidU_.internalField() - U_.internalField());
+                            vectorField Urel (fluidU_.internalField() - U_.internalField());
+                            
                             vectorField Ut
                             (
                                 (
-                                    (fluidU_ & dRdScellHat)
+                                    (Urel & dRdScellHat)
                                     *dRdScellHat
                                 )
                             );
@@ -860,9 +861,9 @@
                             vectorField Un
                             (
                                 (
-                                    fluidU_ -
+                                    Urel -
                                     (
-                                        (fluidU_ & dRdScellHat)
+                                        (Urel & dRdScellHat)
                                         *dRdScellHat
                                     )
                                 )
