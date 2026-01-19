@@ -1166,6 +1166,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar deltaXNorm = GREAT;
     scalar XNorm = GREAT;
 
+    // // Update fluidUPrevIter here
+    // fluidUPrevIter_ = fluidU_;
+
     iOuterCorr() = 0;
     do
     {

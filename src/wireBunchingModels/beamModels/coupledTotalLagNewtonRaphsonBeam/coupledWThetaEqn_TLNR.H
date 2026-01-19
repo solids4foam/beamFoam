@@ -814,6 +814,10 @@
                         cellMarker_ = std::get<1>(fluidInfo).ref();
                         beamVelocity_ = std::get<2>(fluidInfo).ref();
                         fluidCellIDs_ = std::get<3>(fluidInfo);
+
+                        // fluidU
+                        // fluidU = a*fluidU + (1 - a)*fluidUPrevIter;
+
                         if (mesh().time().writeTime())
                         {
                             cellMarker_.write();
@@ -849,7 +853,7 @@
                             const vectorField& dRdScell = spline.midPointDerivatives();
                             const vectorField dRdScellHat (dRdScell/(mag(dRdScell) + SMALL));
                             vectorField Urel (fluidU_.internalField() - U_.internalField());
-                            
+
                             vectorField Ut
                             (
                                 (
@@ -870,51 +874,36 @@
                             );
 
 
-                            // 2. Memory Management
-                            // Ensure almForce_ exists, but DO NOT reset it to zero. We need the history.
-                            // if (almForce_.size() != source.size()) {
-                            //     almForce_.setSize(source.size());
-                            //     almForce_ = vector::zero;
-                            // }
-
-                            // Coefficients setup
-                            const vectorField Vs(Un + Ut);
-                            const scalarField Vs2(magSqr(Vs));
-                            const scalar Coeff_n = rhoFluid().value() * Cdn_ * R();
-                            const scalar Coeff_t = rhoFluid().value() * Cdt_ * R();
+                            const scalar rhoF   = rhoFluid().value();
+                            const scalar Coeff_n = rhoF * Cdn_ * R();   // (units depend on your intended model)
+                            const scalar Coeff_t = rhoF * Cdt_ * R();
 
                             forAll(source, cellI)
                             {
-                                // A. Calculate Directions
-                                const scalar magUn = mag(Un[cellI]);
-                                const scalar magUt = mag(Ut[cellI]);
+                                const vector un = Un[cellI];
+                                const vector ut = Ut[cellI];
 
-                                const vector e_n = Un[cellI]/(magUn + VSMALL);
-                                const vector e_t = Ut[cellI]/(magUt + VSMALL);
+                                // Component-consistent drag laws:
+                                // fn ~ |Un| Un
+                                // ft ~ |Ut| Ut
+                                const vector fn_line_target = -Coeff_n * mag(un) * un;
+                                const vector ft_line_target = -Coeff_t * mag(ut) * ut;
 
-                                // B. Calculate the "Target" (Instantaneous) Physics Force (N/m)
-                                // This is the force the fluid "wants" to apply right now
-                                const vector fn_line_target = -Coeff_n * Vs2[cellI] * e_n;
-                                const vector ft_line_target = -Coeff_t * Vs2[cellI] * e_t;
                                 const vector F_line_target = fn_line_target + ft_line_target;
 
-                                // C. RELAXATION STEP
-                                // New = (relax * Target) + ((1 - relax) * Old)
-                                // If relax = 0.1, we only accept 10% of the new force change per step.
-                                vector F_line_relaxed = (almForceRelaxation_ * F_line_target)
-                                  + ((1.0 - almForceRelaxation_) * almForce_[cellI]);
+                                // Relaxation (your existing approach)
+                                const vector F_line_relaxed =
+                                    almForceRelaxation_ * F_line_target
+                                + (1.0 - almForceRelaxation_) * almForce_[cellI];
 
-                                // D. Update Storage
-                                // Save this relaxed value for the next time step
                                 almForce_[cellI] = F_line_relaxed;
 
-                                // E. Apply RELAXED force to Source (N)
-                                // We convert the smoothed N/m force to Newtons
-                                vector F_cell_relaxed = F_line_relaxed * L()[cellI];
+                                // Apply to beam source (convert N/m -> N using segment length)
+                                const vector F_cell = F_line_relaxed * L()[cellI];
 
-                                source[cellI](0,0) += F_cell_relaxed.x();
-                                source[cellI](1,0) += F_cell_relaxed.y();
-                                source[cellI](2,0) += F_cell_relaxed.z();
+                                source[cellI](0,0) += F_cell.x();
+                                source[cellI](1,0) += F_cell.y();
+                                source[cellI](2,0) += F_cell.z();
                             }
 
                             const vector Fsum(sum(almForce_ * L()).value());
@@ -1161,6 +1150,15 @@
         // initialResidual = currentResidual;
         initialResidualNorm = currentResidualNorm;
     }
+
+    // Optional: damp the solution correction, e.g. apply under-relaxation
+    // const scalar newtonRaphsonDampingFactor = 0.1;
+    // solVec *= newtonRaphsonDampingFactor;
+
+    // Instead of damped Newton, there are two alternatives:
+    // 1. line search
+    // 2. trust region
+
 
     // Copy the solution from solVec into the DW and DTheta fields
     vectorField& DWI = DW_;
