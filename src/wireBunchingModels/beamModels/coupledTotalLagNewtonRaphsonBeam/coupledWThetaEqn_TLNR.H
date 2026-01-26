@@ -882,12 +882,11 @@
                             {
                                 const vector un = Un[cellI];
                                 const vector ut = Ut[cellI];
+                                const scalar Umag = mag(Urel[cellI]); // new
 
-                                // Component-consistent drag laws:
-                                // fn ~ |Un| Un
-                                // ft ~ |Ut| Ut
-                                const vector fn_line_target = -Coeff_n * mag(un) * un;
-                                const vector ft_line_target = -Coeff_t * mag(ut) * ut;
+
+                                const vector fn_line_target = -Coeff_n * Umag * un;
+                                const vector ft_line_target = -Coeff_t * Umag * ut;
 
                                 const vector F_line_target = fn_line_target + ft_line_target;
 

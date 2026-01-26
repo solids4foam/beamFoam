@@ -47,11 +47,12 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
 
     // extra checks to enforce upstream always to be in -X direction
     vector samplingDir = -vPerp;
-    if (samplingDir.x() > 0)
-    {
-        vector globalUpstream(-1, 0, 0); 
-        samplingDir = globalUpstream - (globalUpstream & t)*t;
-    }
+    // // i just comment to check
+    // if (samplingDir.x() > 0)
+    // {
+    //     vector globalUpstream(-1, 0, 0); 
+    //     samplingDir = globalUpstream - (globalUpstream & t)*t;
+    // }
     
     //    scalar m = mag(vPerp);
     scalar m = mag(samplingDir);
