@@ -223,7 +223,7 @@ namespace Foam
     pointField Ps;
     vectorField upstreamDir;
     // @TODO read this sampling radius from user input
-    const scalar sampleDist = 5.0*radius; // was 2
+    const scalar sampleDist = 5.0*radius; // was 5
     // added
     vectorField vfAtBeam(beamCoords.size(), vector::zero);
     forAll(beamCoords, i)

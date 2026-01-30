@@ -874,12 +874,14 @@
                             );
 
 
-                            const scalar rhoF   = rhoFluid().value();
-                            const scalar Coeff_n = rhoF * Cdn_ * R();   // (units depend on your intended model)
-                            const scalar Coeff_t = rhoF * Cdt_ * R();
+                            const scalar rhoF = rhoFluid().value();
+                            const scalar D    = 2.0*R();                 // diameter
+                            const scalar coeffN = 0.5*rhoF*Cdn_*D;       // = rhoF*Cdn_*R()
+                            const scalar coeffT = 0.5*rhoF*Cdt_*D;
 
                             forAll(source, cellI)
                             {
+<<<<<<< HEAD
                                 const vector un = Un[cellI];
                                 const vector ut = Ut[cellI];
                                 const scalar Umag = mag(Urel[cellI]); // new
@@ -887,6 +889,28 @@
 
                                 const vector fn_line_target = -Coeff_n * Umag * un;
                                 const vector ft_line_target = -Coeff_t * Umag * ut;
+=======
+                                const vector un = Un[cellI];  // normal component vector (not unit)
+                                const vector ut = Ut[cellI];  // tangential component vector (not unit)
+
+                                // sampled relative velocity (Bral: v_s)
+                                const vector vs  = un + ut;
+                                
+                                // const scalar vs2 = magSqr(vs);        // |v_s|^2
+                                const scalar vsMag = mag(vs);
+
+                                // unit directions (Bral: e_tr, e_ax)
+                                const scalar magUn = mag(un);
+                                const scalar magUt = mag(ut);
+                                const vector e_n = un/(magUn + VSMALL);
+                                const vector e_t = ut/(magUt + VSMALL);
+
+                                // Bral-style line force (N/m): - (1/2 rho D |v_s|^2) * (Cdn e_n + Cdt e_t)
+                                // const vector fn_line_target = -coeffN * vs2 * e_n;
+                                // const vector ft_line_target = -coeffT * vs2 * e_t;
+                                const vector fn_line_target = -coeffN * vsMag * un;
+                                const vector ft_line_target = -coeffT * vsMag * ut;
+>>>>>>> 95228d7 ( Refactor force calculation formulation and improved upstream direction handling in samplingFluid)
 
                                 const vector F_line_target = fn_line_target + ft_line_target;
 
@@ -897,7 +921,7 @@
 
                                 almForce_[cellI] = F_line_relaxed;
 
-                                // Apply to beam source (convert N/m -> N using segment length)
+                                // Convert N/m -> N using local segment length (ds)
                                 const vector F_cell = F_line_relaxed * L()[cellI];
 
                                 source[cellI](0,0) += F_cell.x();
