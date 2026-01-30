@@ -881,21 +881,12 @@
 
                             forAll(source, cellI)
                             {
-<<<<<<< HEAD
-                                const vector un = Un[cellI];
-                                const vector ut = Ut[cellI];
-                                const scalar Umag = mag(Urel[cellI]); // new
-
-
-                                const vector fn_line_target = -Coeff_n * Umag * un;
-                                const vector ft_line_target = -Coeff_t * Umag * ut;
-=======
                                 const vector un = Un[cellI];  // normal component vector (not unit)
                                 const vector ut = Ut[cellI];  // tangential component vector (not unit)
 
                                 // sampled relative velocity (Bral: v_s)
                                 const vector vs  = un + ut;
-                                
+
                                 // const scalar vs2 = magSqr(vs);        // |v_s|^2
                                 const scalar vsMag = mag(vs);
 
@@ -910,7 +901,7 @@
                                 // const vector ft_line_target = -coeffT * vs2 * e_t;
                                 const vector fn_line_target = -coeffN * vsMag * un;
                                 const vector ft_line_target = -coeffT * vsMag * ut;
->>>>>>> 95228d7 ( Refactor force calculation formulation and improved upstream direction handling in samplingFluid)
+
 
                                 const vector F_line_target = fn_line_target + ft_line_target;
 
