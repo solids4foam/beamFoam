@@ -38,41 +38,6 @@ Author
 
 namespace Foam
 {
-
-// Compute upstream direction perpendicular to tangent
-// inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangents)
-// {
-//     vector t = beamTangents/(mag(beamTangents) + VSMALL);
-//     vector vPerp = vf - (vf & t)*t;
-
-<<<<<<< HEAD
-    // extra checks to enforce upstream always to be in -X direction
-    vector samplingDir = -vPerp;
-    // // i just comment to check
-    // if (samplingDir.x() > 0)
-    // {
-    //     vector globalUpstream(-1, 0, 0); 
-    //     samplingDir = globalUpstream - (globalUpstream & t)*t;
-    // }
-=======
-//     // extra checks to enforce upstream always to be in -X direction
-//     vector samplingDir = -vPerp;
-//     // if (samplingDir.x() > 0)
-//     // {
-//     //     vector globalUpstream(-1, 0, 0); 
-//     //     samplingDir = globalUpstream - (globalUpstream & t)*t;
-//     // }
->>>>>>> 95228d7 ( Refactor force calculation formulation and improved upstream direction handling in samplingFluid)
-    
-//     //    scalar m = mag(vPerp);
-//     scalar m = mag(samplingDir);
-//     if (m < VSMALL)
-//     {
-//         return -t;
-//     }
-//     //    return -vPerp/(m + VSMALL);
-//     return samplingDir/(m + VSMALL);
-// }
 inline vector makePerpUnit(const vector& t)
 {
     // Pick a reference axis that is NOT parallel to t
