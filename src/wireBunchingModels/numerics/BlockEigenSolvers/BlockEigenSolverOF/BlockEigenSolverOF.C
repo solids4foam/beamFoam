@@ -40,6 +40,9 @@ License
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
+
+//git check
+
 namespace Foam
 {
     defineTypeNameAndDebug(BlockEigenSolverOF, 0);
