@@ -40,9 +40,6 @@ License
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
-
-//git check
-
 namespace Foam
 {
     defineTypeNameAndDebug(BlockEigenSolverOF, 0);
@@ -77,11 +74,14 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     //         << endl;
     // }
 
-    const label nRows = 6*d.size();
+  //    const label nRows = 6*d.size();
+    const label nRows = 6*(d.size() + 1);
 
+    
     // Block CSR matrix storage
 
     //const labelList& rowPointers = mbMatrix.blockRowPointers();
+
     //const labelList& columnIndices = mbMatrix.blockColumnIndices();
     //const scalarField& coeffs = mbMatrix.blockCoeffs();
 
@@ -90,7 +90,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     // Create coefficient matrix: we must copy coeffs from CSR storage
     // Maybe it is possible to use CSR storage directly.
     std::vector< Eigen::Triplet<scalar> > coefficients;
-    coefficients.reserve(36*(d.size() + l.size() + u.size()));
+    coefficients.reserve(36*(d.size() + l.size() + u.size() + 1));
     //-----------------------------------------------------------------------------
     //                  diagonal
     //-----------------------------------------------------------------------------
@@ -117,6 +117,25 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 
         globalRowI += 6;
     }
+    // -------------------------------------------------------------------------
+    // Add rigid-body block (last cell): 6x6 identity
+    // -------------------------------------------------------------------------
+
+    const label rbRow = 6 * d.size();
+
+    for (label i = 0; i < 6; ++i)
+    {
+	coefficients.push_back
+	  (
+	   Eigen::Triplet<scalar>
+	   (
+            rbRow + i,
+            rbRow + i,
+            1.0
+	    )
+	   );
+}
+
 //-----------------------------------------------------------------------------
 //                  off-diagonal
 //-----------------------------------------------------------------------------
@@ -238,7 +257,13 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         b(index++) = foamB[cellI](4,0);
         b(index++) = foamB[cellI](5,0);
     }
+    // Rigid body RHS (usually zero or prescribed)
+    for (label i = 0; i < 6; ++i)
+      {
+	b(index++) = 0.0;   // or prescribed force/constraint
+      }
 
+    
     // Copy solution vector into Eigen vector
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> x(nRows);
     index = 0;
@@ -251,6 +276,12 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         x(index++) = foamX[cellI](4,0);
         x(index++) = foamX[cellI](5,0);
     }
+
+    for (label i = 0; i < 6; ++i)
+    {
+      x(index++) = 0.0;   // or previous rigid-body state
+    }
+    
 
     // Calculate initial residual
     const label nCells = d_.size();
@@ -265,7 +296,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             nCells, scalarRectangularMatrix(6, 1, 0.0)
         );
 
-        // Convert poroduct
+        // Convert product
         label k = 0;
         for (label i=0; i<nCells; i++)
         {
@@ -382,6 +413,13 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         foamX[cellI](4,0) = x(index++);
         foamX[cellI](5,0) = x(index++);
     }
+    vector rigidBodyX;
+
+    for (label i = 0; i < 6; ++i)
+      {
+	rigidBodyX[i] = x(index++);
+      }
+
 
     //
 
