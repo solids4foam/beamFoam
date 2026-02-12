@@ -74,10 +74,11 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     //         << endl;
     // }
 
-  //    const label nRows = 6*d.size();
+    // Colm- making number of rows larger by 6 rows
+    //    const label nRows = 6*d.size();
     const label nRows = 6*(d.size() + 1);
 
-    
+
     // Block CSR matrix storage
 
     //const labelList& rowPointers = mbMatrix.blockRowPointers();
@@ -89,6 +90,8 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 
     // Create coefficient matrix: we must copy coeffs from CSR storage
     // Maybe it is possible to use CSR storage directly.
+    
+    // Colm- reserving 6*6 = 36 more spaces for coefficients
     std::vector< Eigen::Triplet<scalar> > coefficients;
     coefficients.reserve(36*(d.size() + l.size() + u.size() + 1));
     //-----------------------------------------------------------------------------
@@ -118,23 +121,23 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
         globalRowI += 6;
     }
     // -------------------------------------------------------------------------
-    // Add rigid-body block (last cell): 6x6 identity
+    // Colm: Add rigid-body block: 6x6 identity
     // -------------------------------------------------------------------------
 
-    const label rbRow = 6 * d.size();
+    const label rbRow = 6*d.size();
 
     for (label i = 0; i < 6; ++i)
     {
-	coefficients.push_back
-	  (
-	   Eigen::Triplet<scalar>
-	   (
-            rbRow + i,
-            rbRow + i,
-            1.0
-	    )
-	   );
-}
+         coefficients.push_back
+         (
+             Eigen::Triplet<scalar>
+	     (
+                  rbRow + i,
+                  rbRow + i,
+                  1.0
+	     )
+        );
+    }
 
 //-----------------------------------------------------------------------------
 //                  off-diagonal
@@ -222,8 +225,9 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
 Foam::scalar Foam::BlockEigenSolverOF::solve
 (
     Foam::Field<Foam::scalarRectangularMatrix>& foamX,
-    const Foam::Field<Foam::scalarRectangularMatrix>& foamB
-)
+    const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
+    Foam::scalarRectangularMatrix& sixDOFx
+ )
 {
     // Allow to run in parallel, where each core solves its own independent
     // problem: this will not be correct if the beam is split across cores!
@@ -257,13 +261,13 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         b(index++) = foamB[cellI](4,0);
         b(index++) = foamB[cellI](5,0);
     }
-    // Rigid body RHS (usually zero or prescribed)
+    // Colm: Rigid body RHS 
     for (label i = 0; i < 6; ++i)
       {
-	b(index++) = 0.0;   // or prescribed force/constraint
+	b(index++) = 0.0;
       }
 
-    
+
     // Copy solution vector into Eigen vector
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> x(nRows);
     index = 0;
@@ -277,14 +281,16 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         x(index++) = foamX[cellI](5,0);
     }
 
+    // Colm: Rigid body solution vector
     for (label i = 0; i < 6; ++i)
     {
-      x(index++) = 0.0;   // or previous rigid-body state
+      x(index++) = 0.0;
     }
-    
+
 
     // Calculate initial residual
-    const label nCells = d_.size();
+    // Colm: +1 for extra 6 x 6 block
+    const label nCells = d_.size() + 1;
     scalar initialResidual = 0;
     {
 
@@ -413,11 +419,11 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         foamX[cellI](4,0) = x(index++);
         foamX[cellI](5,0) = x(index++);
     }
-    vector rigidBodyX;
+
 
     for (label i = 0; i < 6; ++i)
       {
-	rigidBodyX[i] = x(index++);
+	sixDOFx(i,0) = x(index++);
       }
 
 
@@ -451,5 +457,3 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 
     return initialResidual;
 }
-
-

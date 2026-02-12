@@ -131,7 +131,8 @@ public:
         scalar solve
         (
             Field<scalarRectangularMatrix>& x,
-            const Field<scalarRectangularMatrix>& b
+            const Field<scalarRectangularMatrix>& b,
+	    scalarRectangularMatrix& sixDOFx
         );
 
         // //- Re-initialise solver after matrix coefficient update

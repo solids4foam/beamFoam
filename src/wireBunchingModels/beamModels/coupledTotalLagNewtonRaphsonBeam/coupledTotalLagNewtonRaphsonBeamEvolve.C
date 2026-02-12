@@ -537,9 +537,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
 
+	    // Colm - create 6DOF vector
+	    scalarRectangularMatrix sixDOFx(6, 1, 0.0);
+	    
             // Solve the linear system
             // currentResidualNorm is the imbalance vector
-            currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+	      currentResidualNorm = eigenSolver.solve(solVec, source, sixDOFx); // peak RAM
 
             if (iOuterCorr() == 0)
             {
