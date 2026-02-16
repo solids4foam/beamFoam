@@ -75,10 +75,11 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     // }
 
     // Colm- making number of rows larger by 6 rows
-    //    const label nRows = 6*d.size();
+    const label nRows_orig = 6*d.size();
     const label nRows = 6*(d.size() + 1);
-
-
+    Info << "Number of rows in the original matrix = " << nRows_orig <<endl;
+    Info << "Number of rows in matrix = " << nRows << endl;
+      
     // Block CSR matrix storage
 
     //const labelList& rowPointers = mbMatrix.blockRowPointers();
@@ -249,7 +250,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     //Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
 
     const label nRows = A.rows();
-
+    Info << "Number of rows in matrix called by solver = " << nRows << endl; 
+    
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> b(nRows);
     label index = 0;
     forAll(foamB, cellI)
@@ -261,10 +263,48 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         b(index++) = foamB[cellI](4,0);
         b(index++) = foamB[cellI](5,0);
     }
-    // Colm: Rigid body RHS 
-    for (label i = 0; i < 6; ++i)
+
+    // Colm: rigidStart counter for starting work on rigidBody
+    label rigidStart = nRows - 6;
+
+    // Colm: defining variables for rigid body RHS
+    // Colm: in future variables will be read in
+
+    scalar rb_newmarkB_gamma = 0.5;
+    scalar rb_newmarkB_beta = 0.25;
+    scalar deltaT = 1;
+    
+    vector rb_v_old(1,1,1);
+    vector rb_disp_old(1,1,1);
+    vector rb_a(0.5,0.5,0.5);
+    vector rb_a_old(0.5,0.5,0.5);
+
+    vector rb_angMomentum_old(1,1,1);
+    vector rb_tau(0.5,0.5,0.5);
+    vector rb_tau_old(0.5,0.5,0.5);
+
+    
+    // Colm: Rigid body RHS
+
+    // Colm: Linear Motion- displacement
+    for (label i = 0; i < 3; ++i)
       {
-	b(index++) = 0.0;
+	b(rigidStart + i) =
+	  rb_disp_old[i]
+	  + deltaT*rb_v_old[i]
+	  + deltaT*deltaT*
+	  (rb_newmarkB_beta*rb_a[i]
+	   + (0.5 - rb_newmarkB_beta)*rb_a_old[i]);
+      }
+
+    // Colm: Angular Motion- correction to rotation
+    for (label i = 0; i < 3; ++i)
+      {
+	b(rigidStart + 3 + i) =
+	  deltaT*rb_angMomentum_old[i]
+	  + deltaT*deltaT*
+	  (rb_newmarkB_beta*rb_tau[i]
+	  + (0.5 - rb_newmarkB_beta)*rb_tau_old[i]);
       }
 
 
@@ -282,10 +322,14 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // Colm: Rigid body solution vector
+    Info << "Input sixDOFx:" << endl;
+    Info << "______________" << endl;
     for (label i = 0; i < 6; ++i)
     {
-      x(index++) = 0.0;
+      x(rigidStart + i) = 0.0;
+      Info << "    " << x(rigidStart + i) << endl;
     }
+    Info << "______________" << endl;
 
 
     // Calculate initial residual
@@ -420,12 +464,14 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         foamX[cellI](5,0) = x(index++);
     }
 
-
+    Info << "Output sixDOFx:" << endl;
+    Info << "______________" << endl;
     for (label i = 0; i < 6; ++i)
       {
-	sixDOFx(i,0) = x(index++);
+	sixDOFx(i,0) = x(rigidStart + i);
+	Info << "    " << x(rigidStart + i) << endl;
       }
-
+    Info << "______________" << endl;
 
     //
 
