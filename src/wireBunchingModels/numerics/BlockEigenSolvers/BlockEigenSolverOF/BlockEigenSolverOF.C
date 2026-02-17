@@ -227,7 +227,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 (
     Foam::Field<Foam::scalarRectangularMatrix>& foamX,
     const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
-    Foam::scalarRectangularMatrix& sixDOFx
+    Foam::scalarRectangularMatrix& sixDOFx,
+    Foam::scalarRectangularMatrix& sixDOF_source
  )
 {
     // Allow to run in parallel, where each core solves its own independent
@@ -270,42 +271,116 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     // Colm: defining variables for rigid body RHS
     // Colm: in future variables will be read in
 
+    
     scalar rb_newmarkB_gamma = 0.5;
     scalar rb_newmarkB_beta = 0.25;
     scalar deltaT = 1;
-    
-    vector rb_v_old(1,1,1);
-    vector rb_disp_old(1,1,1);
-    vector rb_a(0.5,0.5,0.5);
-    vector rb_a_old(0.5,0.5,0.5);
 
-    vector rb_angMomentum_old(1,1,1);
-    vector rb_tau(0.5,0.5,0.5);
-    vector rb_tau_old(0.5,0.5,0.5);
+    // Colm: initialising variables
+    Foam::vector rb_disp_prev(0,0,0);
+    Foam::vector rb_orientation_prev(0,0,0);
+    Foam::vector rb_v_prev(0,0,0);
+    Foam::vector rb_angMomentum_prev(0,0,0);
+    Foam::vector rb_a_prev(0,0,0);    
+    Foam::vector rb_tau_prev(0,0,0);
+    Foam::vector rb_a(0,0,0);
+    Foam::vector rb_tau(0,0,0);
+
+   
+    // Colm: read in source terms
+    Info << "Rigid Body Previous Displacement" << endl;
+    for (label i = 0; i < 3; i++)
+    {
+        rb_disp_prev[i] = sixDOF_source(i,0);
+	Info << "    " << rb_disp_prev[i] << endl;
+    }
+    Info << "Rigid Body Previous Orientation" << endl;
+    for (label i = 0; i < 3; i++)
+    {
+      rb_angMomentum_prev[i] = sixDOF_source(i + 3, 0);
+      Info << "    " << rb_angMomentum_prev[i] << endl;
+    }
+    Info << "Rigid Body Previous Linear Velocity" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_v_prev[i] = sixDOF_source(i + 6, 0);
+	Info << "    " << rb_v_prev[i] << endl;
+      }
+    Info << "Rigid Body Previous Angular Momentum" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_angMomentum_prev[i] = sixDOF_source(i + 9, 0);
+	Info << "    " << rb_angMomentum_prev[i] << endl;
+      }
+    Info << "Rigid Body Previous Linear Acceleration" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_a_prev[i] = sixDOF_source(i + 12, 0);
+	Info << "    " << rb_a_prev[i] << endl;
+      }
+    Info << "Rigid Body Previous Torque" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_tau_prev[i] = sixDOF_source(i + 15, 0);
+	Info << "    " << rb_tau_prev[i] << endl;
+      }
+    Info << "Rigid Body Updated Linear Acceleration" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_a[i] = sixDOF_source(i + 18, 0);
+	Info << "    " << rb_a[i] << endl;
+      }
+    Info << "Rigid Body Updated Torque" << endl;
+    for (label i = 0; i < 3; ++i)
+      {
+	rb_tau[i] = sixDOF_source(i + 21, 0);
+	Info << "    " << rb_tau[i] << endl;
+      }
 
     
     // Colm: Rigid body RHS
+    // Colm: Newmark-Beta Equations
 
+    // Colm: Solve for v and pi here
+    // Colm: Not sure what to do with result- following sixDofRigidBodyMotion/FvBeamNewmark structure
+    Foam::vector rb_v(0,0,0);
+    Foam::vector rb_angMomentum(0,0,0);
+
+    // Colm - linear motion- velocity
+    Info << "Rigid Body Updated Velocity" << endl;
+    for (label i = 0; i < 3; i++)
+    {
+        rb_v[i] = rb_v_prev[i] + deltaT*(rb_newmarkB_gamma*rb_a[i] +(1 - rb_newmarkB_gamma)*rb_a_prev[i]);
+	Info << "    " << rb_v[i] << endl;
+    }
+    // Colm - angular motion- angular momentum pi
+    Info << "Rigid Body Updated Angular Momentum" << endl;
+    for (label i = 0; i < 3; i++)
+    {
+        rb_angMomentum[i] = rb_angMomentum_prev[i] + deltaT*(rb_newmarkB_gamma*rb_tau[i] +(1 - rb_newmarkB_gamma)*rb_tau_prev[i]);
+	Info << "    " << rb_angMomentum[i] << endl;
+    }    
+    
     // Colm: Linear Motion- displacement
     for (label i = 0; i < 3; ++i)
-      {
+    {
 	b(rigidStart + i) =
-	  rb_disp_old[i]
-	  + deltaT*rb_v_old[i]
+ 	  rb_disp_prev[i]
+	  + deltaT*rb_v_prev[i]
 	  + deltaT*deltaT*
 	  (rb_newmarkB_beta*rb_a[i]
-	   + (0.5 - rb_newmarkB_beta)*rb_a_old[i]);
-      }
+	   + (0.5 - rb_newmarkB_beta)*rb_a_prev[i]);
+    }
 
     // Colm: Angular Motion- correction to rotation
     for (label i = 0; i < 3; ++i)
-      {
+    {
 	b(rigidStart + 3 + i) =
-	  deltaT*rb_angMomentum_old[i]
+	  deltaT*rb_angMomentum_prev[i]
 	  + deltaT*deltaT*
 	  (rb_newmarkB_beta*rb_tau[i]
-	  + (0.5 - rb_newmarkB_beta)*rb_tau_old[i]);
-      }
+	  + (0.5 - rb_newmarkB_beta)*rb_tau_prev[i]);
+    }
 
 
     // Copy solution vector into Eigen vector
@@ -322,14 +397,10 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     }
 
     // Colm: Rigid body solution vector
-    Info << "Input sixDOFx:" << endl;
-    Info << "______________" << endl;
     for (label i = 0; i < 6; ++i)
     {
       x(rigidStart + i) = 0.0;
-      Info << "    " << x(rigidStart + i) << endl;
     }
-    Info << "______________" << endl;
 
 
     // Calculate initial residual

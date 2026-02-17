@@ -132,7 +132,8 @@ public:
         (
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b,
-	    scalarRectangularMatrix& sixDOFx
+	    scalarRectangularMatrix& sixDOFx,
+	    scalarRectangularMatrix& sixDOF_source
         );
 
         // //- Re-initialise solver after matrix coefficient update
