@@ -44,8 +44,16 @@ inline vector makePerpUnit(const vector& t)
     const vector ex(1,0,0), ey(0,1,0), ez(0,0,1);
 
     vector a = ex;
-    if (mag(t & ex) > 0.9) a = ey;      // if nearly parallel to x, use y
-    if (mag(t & ey) > 0.9) a = ez;      // if nearly parallel to y, use z
+    // if nearly parallel to x, use y
+    if (mag(t & ex) > 0.9)
+    {
+        a = ey;
+    }
+    // if nearly parallel to y, use z
+    if (mag(t & ey) > 0.9)
+    {
+        a = ez;      // if nearly parallel to y, use z
+    }
 
     // Project a to be perpendicular to t
     vector p = a - (a & t)*t;
@@ -62,6 +70,7 @@ inline vector makePerpUnit(const vector& t)
 
 inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
 {
+
     const vector t = beamTangent/(mag(beamTangent) + VSMALL);
 
     // Component perpendicular to tangent
@@ -77,6 +86,24 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
     }
 
     return dir/(mag(dir) + VSMALL);
+
+    // vector t = beamTangent/(mag(beamTangent) + VSMALL);
+    // vector vPerp = vf - (vf & t)*t;
+
+    // // extra checks to enforce upstream always to be in -X direction
+    // vector samplingDir = -vPerp;
+    // if (samplingDir.x() > 0)
+    // {
+    //     vector globalUpstream(-1, 0, 0);
+    //     samplingDir = globalUpstream - (globalUpstream & t)*t;
+    // }
+
+    // scalar m = mag(samplingDir);
+    // if (m < VSMALL)
+    // {
+    //     return -t;
+    // };
+    // return samplingDir/(m + VSMALL);
 }
 
 // Compute sampling points Ps (step 1 of ALM)
