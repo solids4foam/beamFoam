@@ -524,7 +524,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     d += diagCoeff;   
                 }
             }
-
+	    
+	    // Amir
+	    // const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
+	    //	    Info<< "available objects = " << fluidMesh.names() << endl;
 
             // Block coupled solver call
 
