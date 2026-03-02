@@ -53,6 +53,7 @@ namespace Foam
         const scalar groundZ,
         const bool groundContactActive,
         const vectorField& dRdScell,
+        const scalar samplingRadius,
         const meshSearch& searchEngine // flag for using octree or not
     )
     {
@@ -222,8 +223,8 @@ namespace Foam
 
     pointField Ps;
     vectorField upstreamDir;
-    // @TODO read this sampling radius from user input
-    const scalar sampleDist = 5.0*radius; // was 5
+
+    const scalar sampleDist = samplingRadius*radius; // was 5
     // added
     vectorField vfAtBeam(beamCoords.size(), vector::zero);
     forAll(beamCoords, i)

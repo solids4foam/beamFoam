@@ -718,6 +718,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     immersedForceActive_(beamProperties().lookupOrDefault<bool>("immersedForceActive", false)),
     almSamplingActive_(beamProperties().lookupOrDefault<bool>("almSamplingActive", false)),
     almForceRelaxation_(beamProperties().lookupOrDefault<scalar>("forceRelaxation", 1.0)),
+    samplingRadius_(beamProperties().lookupOrDefault<scalar>("samplingRadius", 5.0)),
     MorisonForceActive_(beamProperties().lookupOrDefault<bool>("MorisonForceActive", false)),
     Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
     Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),

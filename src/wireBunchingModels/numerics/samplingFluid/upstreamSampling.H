@@ -70,6 +70,7 @@ inline vector makePerpUnit(const vector& t)
 
 inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
 {
+    /**
 
     const vector t = beamTangent/(mag(beamTangent) + VSMALL);
 
@@ -104,6 +105,24 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
     //     return -t;
     // };
     // return samplingDir/(m + VSMALL);
+    **/
+    vector t = beamTangent/(mag(beamTangent) + VSMALL);
+    vector vPerp = vf - (vf & t)*t;
+
+    // extra checks to enforce upstream always to be in -X direction
+    vector samplingDir = -vPerp;
+    if (samplingDir.x() > 0)
+    {
+        vector globalUpstream(-1, 0, 0); 
+        samplingDir = globalUpstream - (globalUpstream & t)*t;
+    }
+    
+    scalar m = mag(samplingDir);
+    if (m < VSMALL)
+    {
+        return -t;
+    };
+    return samplingDir/(m + VSMALL);
 }
 
 // Compute sampling points Ps (step 1 of ALM)

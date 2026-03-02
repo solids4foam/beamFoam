@@ -251,6 +251,9 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Force relaxation factor for ALM
         scalar almForceRelaxation_;
 
+        //- Sampling radius for ALM
+        scalar samplingRadius_;
+
         //- Boolean to enable Morison Force drag and added mass force
         bool MorisonForceActive_;
 

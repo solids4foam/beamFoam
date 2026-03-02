@@ -808,6 +808,7 @@
                                 groundZ_,
                                 groundContactActive_,
                                 dRdScell,
+                                samplingRadius_,
                                 searchEngine_
                             );
                         fluidU_ = std::get<0>(fluidInfo).ref();
