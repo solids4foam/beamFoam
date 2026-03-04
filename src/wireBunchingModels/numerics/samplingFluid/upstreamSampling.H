@@ -35,6 +35,7 @@ Author
 #include "vector.H"
 #include "pointField.H"
 #include "volFields.H"
+#include "IOmanip.H"
 
 namespace Foam
 {
