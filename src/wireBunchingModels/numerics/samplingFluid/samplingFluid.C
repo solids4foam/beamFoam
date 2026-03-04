@@ -113,8 +113,6 @@ namespace Foam
     );
     volVectorField& result = tresult.ref();
     volScalarField& markerResults = tmarkerResults.ref();
-
-    //- this field represents the beam cell velocity mapped on the fluid mesh
     volVectorField& markerVelocity = tmarkerVelocity.ref();
 
     vectorField beamCoords = beamCellCenterCoord;
@@ -134,28 +132,27 @@ namespace Foam
         }
     }
     Pstream::broadcast(beamUVec);
-
-    // commenting only for serial check
     Pstream::broadcast(beamCoords);
     Pstream::broadcast(beamTangents);
 
 
     seedCellIDs.setSize(beamCoords.size(), -1);
+    // resultVect is the fluid velocity on the beam mesh
     vectorField resultVect(beamCoords.size(), vector::zero);
 
-    globalIndex gI(fluidMesh.nCells());
 
     labelList fluidCellIDs(beamCoords.size(), -1);
     labelList sampleCellIDs(beamCoords.size(), -1);
-
-    // markerResults.storePrevIter();
+    boundBox bb = fluidMesh.bounds();
+    bb.inflate(0.01);
     forAll(beamCoords, beamCellI)
     {
-        if (!fluidMesh.bounds().contains(beamCoords[beamCellI]))
+        if (!bb.contains(beamCoords[beamCellI]))
         {
+            // if its not in the bounding box, return zero for fluid's U
             resultVect[beamCellI] = vector::zero;
             seedCellIDs[beamCellI] = -1;
-            // if its not within the bounding box, set the fluidCellID to -1!
+            // if its not within the bounding box, set the fluidCellID to -1
             fluidCellIDs[beamCellI] = -1;
             continue;
         }
@@ -170,11 +167,11 @@ namespace Foam
         {
             if (beamCellI == 0)
             {
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for seed in the next cells
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for the seed in the next cell
             }
             else
             {
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ;
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ; // look for the seed in the previous cell
             }
         }
         label fluidCellID = -1;
@@ -188,29 +185,26 @@ namespace Foam
             fluidCellID = searchEngine.findCell(beamCoords[beamCellI],-1,true);
         }
         // commented out since we are not getting the velocity here!
-        // if (fluidCellID == -1)
-        // {
-        //     resultVect[beamCellI] = vector::zero;
-        // }
-        else
+        if (fluidCellID != -1)
         {
             fluidCellIDs[beamCellI] = fluidCellID;
-            // fluidCellIDs[beamCellI] = gI.toGlobal(fluidCellID);
-            // resultVect[beamCellI] = fluidVelocity[fluidCellID];
-            // markerResults[fluidCellID] = 1.0;
+
             markerVelocity[fluidCellID] = beamUVec[beamCellI];
         }
+        // else
+        // {
+        // }
+
+        // fluidcellID may or may not be -1
+        // if -1, we could keep the old seed ...
         seedCellIDs[beamCellI] = fluidCellID;
     }
-    // i brought the reduce here, just to update fcellID before using it in the function
-    // forAll(fluidCellIDs, i)
-    // {
-    //     reduce(fluidCellIDs[i], maxOp<label>());
-    // }
+    // @todo check that each beam cell is found by only one procs.
+
     // Initializing radius on all ranks
     scalar radius(0.0);
     // ALM sampling
-    if (mesh.nCells() != 0)
+    if (Pstream::master())
     {
         const dictionary& linkToBeamProperties =
             mesh.time().db().parent().lookupObject<dictionary>
@@ -224,8 +218,8 @@ namespace Foam
     pointField Ps;
     vectorField upstreamDir;
 
-    const scalar sampleDist = samplingRadius*radius; // was 5
-    // added
+    const scalar sampleDist = samplingRadius*radius;
+
     vectorField vfAtBeam(beamCoords.size(), vector::zero);
     forAll(beamCoords, i)
     {
@@ -236,15 +230,12 @@ namespace Foam
             // We should check the beam UVec!
             vector U_beam = beamUVec[i];
             // get the relative velocity, and use it for getting the correct sampling directions
-            vfAtBeam[i] = U_fluid - U_beam;
-
-            // temporarily set it back to the abs velocity
-            // vfAtBeam[i] = fluidVelocity[fluidCellIDs[i]];
+            vfAtBeam[i] = U_fluid - U_beam; // check here @todo
         }
     }
     // Reduce so that *all ranks* now have the SAME vfAtBeam
+    // this assumes each beam cell maps to only one procs.
     reduce(vfAtBeam, FieldSumOp<vector>());
-    // added
 
 
     //---- parallel code up until here
@@ -263,6 +254,7 @@ namespace Foam
     // Broadcast upstream sampling points and directions so all ranks use the same Ps / upstreamDir
     Pstream::broadcast(Ps);
     Pstream::broadcast(upstreamDir);
+
 
     forAll(Ps, pI)
     {
