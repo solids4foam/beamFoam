@@ -1036,20 +1036,18 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
 
     // Update contact for restart
-    // if (contactActive())
-    // {
-    //     if (runTime.timeIndex()>1)
-    //     {
-        //     // Info<< "Inside if" << endl;
-    //         contact().update();
-    //         contact().finalUpdate();
-    //     }
-    //     else
-    //     {
-        //     // Info<< "else loop" << endl;
-    //         contact();
-    //     }
-    // }
+    if (contactActive())
+    {
+        if (runTime.timeIndex()>1)
+        {
+            contact().update();
+            contact().finalUpdate();
+        }
+        else
+        {
+            contact();
+        }
+    }
 
 
     // Set fields as oriented

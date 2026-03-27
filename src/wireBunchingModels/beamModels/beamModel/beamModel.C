@@ -27,7 +27,7 @@ License
 #include "volFields.H"
 #include "polyPatchID.H"
 
-// #include "beamContactModel.H"
+#include "beamContactModel.H"
 #include "IFstream.H"
 #include "beamHelperFunctions.H"
 #include "zeroGradientFvPatchFields.H"
@@ -226,6 +226,7 @@ Foam::beamModel::beamModel
             )
         )
     ),
+    //    csrAddressing_(meshPtr_()),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
     localToGlobalBeamPointsAddressing_(),
@@ -327,7 +328,7 @@ Foam::beamModel::beamModel
             0
         )
     ),
-    // contactPtr_(),
+    contactPtr_(),
     deltaTseries_()
 {
     // if (beamProperties().found("rho"))
@@ -473,7 +474,7 @@ Foam::beamModel::beamModel
     //     R_ = scalarField(this->lookup("R"));
     //     U_ = scalarField(this->lookup("U"));
     // }
-    
+
     Info<< "Attempting to read global mechanical variables "
         << "from constant/beamProperties "
         << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
@@ -481,7 +482,7 @@ Foam::beamModel::beamModel
 
     dimensionedScalar globalE("E", dimPressure, 0.0);
     dimensionedScalar globalG("G", dimPressure, 0.0);
-    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);
 
     bool foundGlobalE = false;
     bool foundGlobalG = false;
@@ -504,7 +505,7 @@ Foam::beamModel::beamModel
         globalRho = dimensionedScalar("rho", beamProperties());
         foundGlobalRho = true;
     }
-    
+
     E_.setSize(nBeams, 0.0);
     G_.setSize(nBeams, 0.0);
     rho_.setSize(nBeams, 0.0);
@@ -536,11 +537,11 @@ Foam::beamModel::beamModel
             {
                 Info<< "Local mechanical properties specific to beam "
                     << beamI << " found!"  << endl;
-                
+
                 E_[beamI] = readScalar(bDict.lookup("E"));
                 G_[beamI] = readScalar(bDict.lookup("G"));
                 rho_[beamI] = bDict.getOrDefault<scalar>("rho", 0.0);
-            }            
+            }
         }
         else if (foundGlobalE || foundGlobalG || foundGlobalRho)
         {
@@ -579,12 +580,12 @@ Foam::beamModel::beamModel
         Info<< "EA: " << EA(bI) << endl;
         Info<< "GA: " << GA(bI) << endl;
     }
-    
+
     // word startPatchName(beamProperties_.lookup("startPatchName"));
     // word endPatchName(beamProperties_.lookup("endPatchName"));
     word startPatchName = "left";
     word endPatchName = "right";
-    
+
     label nCellZones = mesh().cellZones().size();
 
     // Check that there is at least one cell zone
@@ -721,7 +722,8 @@ Foam::beamModel::beamModel
         reduce(nBeamCells_[nCellZones-1], sumOp<scalar>());
     }
 
-    // Create global-to-local and local-to-global cell addressing
+
+    // // Create global-to-local and local-to-global cell addressing
     // if (Pstream::parRun())
     // {
     //     localToGlobalCellAddressing_ =
@@ -812,7 +814,7 @@ Foam::beamModel::beamModel
     //     // sleep(5);
     // }
 
-    // Calculate beam points local-to-global and global-to-local addressing
+    // // Calculate beam points local-to-global and global-to-local addressing
     // {
     //     label nBeams = mesh().cellZones().size();
 
@@ -949,27 +951,27 @@ Foam::scalar Foam::beamModel::evolve()
     return 0;
 }
 
-// const Foam::beamContactModel& Foam::beamModel::contact() const
-// {
-//     if (contactPtr_.empty())
-//     {
-//         FatalErrorIn("beamModel::contact() const")
-//           << "Contact is not updated"
-//           << abort(FatalError);
-//     }
+const Foam::beamContactModel& Foam::beamModel::contact() const
+{
+    if (!contactPtr_)
+    {
+        FatalErrorIn("beamModel::contact() const")
+          << "Contact is not updated"
+          << abort(FatalError);
+    }
 
-//     return contactPtr_();
-// }
+    return contactPtr_();
+}
 
-// Foam::beamContactModel& Foam::beamModel::contact()
-// {
-//     if (contactPtr_.empty())
-//     {
-//         contactPtr_.set(new beamContactModel(*this));
-//     }
+Foam::beamContactModel& Foam::beamModel::contact()
+{
+    if (!contactPtr_)
+    {
+        contactPtr_.reset(new beamContactModel(*this));
+    }
 
-//     return contactPtr_();
-// }
+    return contactPtr_();
+}
 
 bool Foam::beamModel::read()
 {
@@ -1682,26 +1684,26 @@ Foam::label Foam::beamModel::whichCell
 }
 
 
-// Foam::label Foam::beamModel::localCellIndex
-// (
-//     const label globalCellIndex
-// ) const
-// {
-//     if (Pstream::parRun())
-//     {
-//         label lci =
-//             globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
+Foam::label Foam::beamModel::localCellIndex
+(
+    const label globalCellIndex
+) const
+{
+    if (Pstream::parRun())
+    {
+        label lci =
+            globalToLocalCellAddressing_[Pstream::myProcNo()][globalCellIndex];
 
-//         if (lci != -1)
-//         {
-//             lci -= csrAddr().globalNCellsOffset();
-//         }
+        // if (lci != -1)
+        // {
+        //     lci -= csrAddr().globalNCellsOffset();
+        // }
 
-//         return lci;
-//     }
+        return lci;
+    }
 
-//     return globalCellIndex;
-// }
+    return globalCellIndex;
+}
 
 
 Foam::labelPair Foam::beamModel::procLocalCellIndex

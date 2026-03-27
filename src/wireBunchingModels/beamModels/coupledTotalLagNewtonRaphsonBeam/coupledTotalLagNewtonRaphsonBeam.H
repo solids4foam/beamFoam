@@ -42,6 +42,8 @@ SourceFiles
     coupledTotalLagNewtonRaphsonBeamEvolve.C
     coupledTotalLagNewtonRaphsonBeamMatrix.C
     coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+    coupledTotalLagNewtonRaphsonBeamApplyContacts.C
+
 
 \*---------------------------------------------------------------------------*/
 
@@ -52,6 +54,7 @@ SourceFiles
 #include "volFields.H"
 #include "pointFields.H"
 #include "fvCFD.H"
+#include "scalarMatrices.H"
 #include "beamMomentumContribution.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -326,6 +329,25 @@ class coupledTotalLagNewtonRaphsonBeam
 
         // //- Apply point contact force
         // void applyPointContact(multibeamFvBlockMatrix& eqn);
+
+        //- Apply line contact force (ESI version)
+        void applyLineContact
+        (
+            Field<scalarSquareMatrix>& diag,
+            Field<scalarSquareMatrix>& lower,
+            Field<scalarSquareMatrix>& upper,
+            Field<scalarRectangularMatrix>& source
+        );
+
+        //- Apply point contact force (ESI version)
+        void applyPointContact
+        (
+            Field<scalarSquareMatrix>& diag,
+            Field<scalarSquareMatrix>& lower,
+            Field<scalarSquareMatrix>& upper,
+            Field<scalarRectangularMatrix>& source
+        );
+
 
         // //- Apply conical pulleys contact force
         // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);

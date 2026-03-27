@@ -54,12 +54,14 @@ SourceFiles
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
 
+#include "beamContactModel.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
 
-// class beamContactModel;
+    // class beamContactModel;
 
 /*---------------------------------------------------------------------------*\
                            Class beamModel Declaration
@@ -204,8 +206,8 @@ class beamModel
         //- Time period over which contact force will be relaxed
         scalar relaxationPeriod_;
 
-        // //- Beam contact model
-        // autoPtr<beamContactModel> contactPtr_;
+        //- Beam contact model
+        autoPtr<beamContactModel> contactPtr_;
 
         //- celtaT time series
         interpolationTable<scalar> deltaTseries_;
@@ -307,7 +309,7 @@ public:
                 return mesh().cellZones()[bI].size();
             }
 
-            //- Return CSR addressing
+            // //- Return CSR addressing
             // const fvMeshCsrAddressing& csrAddr() const
             // {
             //     return csrAddressing_;
@@ -391,7 +393,7 @@ public:
             label whichCell(const label beamIndex, const label segIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
-            // label localCellIndex(const label globalCellIndex) const;
+            label localCellIndex(const label globalCellIndex) const;
 
             //- For global cell index return local cell index (parallel runs)
             labelPair procLocalCellIndex(const label globalCellIndex) const;
@@ -715,20 +717,20 @@ public:
             tmp<vectorField> points(const label bI = 0) const;
 
             //- Return contact model
-            // beamContactModel& contact();
+            beamContactModel& contact();
 
-            // //- Return contact model
-            // const beamContactModel& contact() const;
+            //- Return contact model
+            const beamContactModel& contact() const;
 
             //- Check if beam-to-beam contact is active
-            // bool contactActive() const
-            // {
-	        // return
-            //     (
-            //         beamContactActive()
-            //      || pulleyContactActive()
-            //     );
-            // }
+            bool contactActive() const
+            {
+     	        return
+                (
+                    beamContactActive()
+                 // || pulleyContactActive()
+                );
+            }
 
             // //- Check if pulley-to-beam contact is active
             // bool pulleyContactActive() const
@@ -740,11 +742,11 @@ public:
             //     );
             // }
 
-            // //- Check if beam-to-beam contact is active
-            // bool beamContactActive() const
-            // {
-	        // return (mesh().cellZones().size() > 1);
-            // }
+            //- Check if beam-to-beam contact is active
+            bool beamContactActive() const
+            {
+                return (mesh().cellZones().size() > 1);
+            }
 
             //- Extract beam point data from surface geometric field
             template<class Type>
@@ -783,10 +785,10 @@ public:
             //- Update total fields
             virtual void updateTotalFields()
             {
-                // if (contactActive())
-                // {
-                //     contact().finalUpdate();
-                // }
+                if (contactActive())
+                {
+                    contact().finalUpdate();
+                }
             }
 
             //- Update fields
@@ -809,7 +811,7 @@ public:
             }
 
             //- Artificial scaling factor for changing the inertia
-            //- tensor I_rho in the angular momentum tensor 
+            //- tensor I_rho in the angular momentum tensor
             scalar kCI() const
             {
                 return kCI_;

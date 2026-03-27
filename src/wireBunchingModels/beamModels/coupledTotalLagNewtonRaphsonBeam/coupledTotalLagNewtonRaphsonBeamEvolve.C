@@ -521,9 +521,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
-                    d += diagCoeff;   
+                    d += diagCoeff;
                 }
             }
+
+            // Apply the contact forces (if any present)
+            applyPointContact(d, l, u, source);
+
+            applyLineContact(d, l, u, source);
 
 
             // Block coupled solver call

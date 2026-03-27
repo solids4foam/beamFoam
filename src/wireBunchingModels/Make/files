@@ -1,3 +1,17 @@
+beamContactModel/beamContactModel.C
+
+beamContactModel/allAngleContact/allAngleContact.C
+beamContactModel/pointContact/pointContact.C
+beamContactModel/lineContact/lineContact.C
+
+beamContactModel/contactModels/normalContactModels/normalContactModel/normalContactModel.C
+beamContactModel/contactModels/normalContactModels/normalContactModel/newNormalContactModel.C
+beamContactModel/contactModels/normalContactModels/standardPenalty/standardPenalty.C
+
+beamContactModel/contactModels/frictionContactModels/frictionContactModel/frictionContactModel.C
+beamContactModel/contactModels/frictionContactModels/frictionContactModel/newFrictionContactModel.C
+beamContactModel/contactModels/frictionContactModels/standardPenaltyFriction/standardPenaltyFriction.C
+
 beamModels/beamModel/beamModel.C
 beamModels/beamModel/newBeamModel.C
 beamModels/beamModel/crossSections/crossSection/crossSectionModel.C
@@ -11,6 +25,7 @@ beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamMatrix.C
 beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamApplyContacts.C
 
 beamModels/beamModel/lookupBeamModel.C
 

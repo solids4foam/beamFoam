@@ -217,7 +217,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
         (
             new Field<Type>(2, pTraits<Type>::zero)
         );
-        Field<Type>& pointData = tPointData();
+        Field<Type>& pointData = tPointData.ref();
 
         const Field<Type>& sfI = sf.internalField();
 
@@ -249,7 +249,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamPointData
         (
             new Field<Type>(2, pTraits<Type>::zero)
         );
-        Field<Type>& pointData = tPointData();
+        Field<Type>& pointData = tPointData.ref();
 
         const Field<Type>& sfI = sf.internalField();
 
@@ -328,7 +328,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamSegmentData
         (
             new Field<Type>(1, pTraits<Type>::zero)
         );
-        Field<Type>& segmentData = tSegmentData();
+        Field<Type>& segmentData = tSegmentData.ref();
 
         const Field<Type>& vfI = vf.internalField();
 
@@ -346,7 +346,7 @@ Foam::tmp<Foam::Field<Type> > Foam::beamModel::beamSegmentData
         (
             new Field<Type>(1, pTraits<Type>::zero)
         );
-        Field<Type>& segmentData = tSegmentData();
+        Field<Type>& segmentData = tSegmentData.ref();
 
         const Field<Type>& vfI = vf.internalField();
 
