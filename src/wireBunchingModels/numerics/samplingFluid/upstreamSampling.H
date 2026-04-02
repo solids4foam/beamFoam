@@ -39,6 +39,30 @@ Author
 
 namespace Foam
 {
+//     inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
+// {
+//     vector t = beamTangent/(mag(beamTangent) + VSMALL);
+    
+//     // 1. Force the direction to be based on the true global freestream (-X)
+//     vector globalUpstream(-1.0, 0.0, 0.0);
+    
+//     // 2. Make it perpendicular to the local beam tangent
+//     vector samplingDir = globalUpstream - (globalUpstream & t)*t;
+
+//     // 3. Prevent Z-escape for the 3D thin mesh
+//     samplingDir.z() = 0.0;
+
+//     scalar m = mag(samplingDir);
+    
+//     // 4. Fallback in case the beam ever bends to be completely horizontal
+//     if (m < VSMALL)
+//     {
+//         samplingDir = vector(0.0, 1.0, 0.0);
+//         m = 1.0;
+//     }
+
+//     return samplingDir / m;
+// }
 inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
 {
 
@@ -47,19 +71,21 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
 
     // extra checks to enforce upstream always to be in -X direction
     vector samplingDir = -vPerp;
-    if (samplingDir.x() > 0)
-    {
-        vector globalUpstream(-1, 0, 0);
-        samplingDir = globalUpstream - (globalUpstream & t)*t;
-    }
+    // if (samplingDir.x() > 0)
+    // {
+    //     vector globalUpstream(-1, 0, 0);
+    //     samplingDir = globalUpstream - (globalUpstream & t)*t;
+    // }
 
     scalar m = mag(samplingDir);
     if (m < VSMALL)
     {
-        FatalError
-            << "m " << m
-            << setw(20) << "m (mag(samplingDir) is less than SMALL!)"
-            << abort(FatalError);
+        // FatalError
+        //     << "m " << m
+        //     << setw(20) << "m (mag(samplingDir) is less than SMALL!)"
+        //     << abort(FatalError);
+        //        return -t;
+        return vector(0.0, 1.0, 0.0);
     };
     return samplingDir/(m + VSMALL);
 }
