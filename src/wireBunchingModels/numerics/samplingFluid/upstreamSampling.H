@@ -85,6 +85,8 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
         //     << setw(20) << "m (mag(samplingDir) is less than SMALL!)"
         //     << abort(FatalError);
         //        return -t;
+
+        // this should in the beam's direction! different for different problems!
         return vector(0.0, 1.0, 0.0);
     };
     return samplingDir/(m + VSMALL);
@@ -110,6 +112,7 @@ inline void computeUpstreamSamplingPoints(
         vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
         upstreamDir[i] = dir;
         Ps[i] = beamCoords[i] + sampleDist * dir;
+        // Ps[i].y() = 0.4;
     }
 }
 
