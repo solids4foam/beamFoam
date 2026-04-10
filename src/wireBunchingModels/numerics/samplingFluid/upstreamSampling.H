@@ -42,10 +42,10 @@ namespace Foam
 //     inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
 // {
 //     vector t = beamTangent/(mag(beamTangent) + VSMALL);
-    
+
 //     // 1. Force the direction to be based on the true global freestream (-X)
 //     vector globalUpstream(-1.0, 0.0, 0.0);
-    
+
 //     // 2. Make it perpendicular to the local beam tangent
 //     vector samplingDir = globalUpstream - (globalUpstream & t)*t;
 
@@ -53,7 +53,6 @@ namespace Foam
 //     samplingDir.z() = 0.0;
 
 //     scalar m = mag(samplingDir);
-    
 //     // 4. Fallback in case the beam ever bends to be completely horizontal
 //     if (m < VSMALL)
 //     {
@@ -71,22 +70,23 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
 
     // extra checks to enforce upstream always to be in -X direction
     vector samplingDir = -vPerp;
-    // if (samplingDir.x() > 0)
-    // {
-    //     vector globalUpstream(-1, 0, 0);
-    //     samplingDir = globalUpstream - (globalUpstream & t)*t;
-    // }
+    if (samplingDir.x() > 0)
+    {
+        vector globalUpstream(-1, 0, 0);
+        samplingDir = globalUpstream - (globalUpstream & t)*t;
+    }
 
     scalar m = mag(samplingDir);
     if (m < VSMALL)
     {
-        // FatalError
-        //     << "m " << m
-        //     << setw(20) << "m (mag(samplingDir) is less than SMALL!)"
-        //     << abort(FatalError);
-        //        return -t;
-
-        // this should in the beam's direction! different for different problems!
+        WarningInFunction
+            << "Sampling direction magnitude is below VSMALL." << nl
+            << "The relative flow is nearly parallel to the beam tangent, "
+            << "so the fallback upstream direction is being used." << nl
+            << "vf = " << vf << nl
+            << "beamTangent = " << beamTangent << nl
+            << "Fallback direction = (0 1 0)" << nl
+            << endl;
         return vector(0.0, 1.0, 0.0);
     };
     return samplingDir/(m + VSMALL);
@@ -112,7 +112,8 @@ inline void computeUpstreamSamplingPoints(
         vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
         upstreamDir[i] = dir;
         Ps[i] = beamCoords[i] + sampleDist * dir;
-        // Ps[i].y() = 0.4;
+        // todo : we have to change this for every problem?
+        Ps[i].z() = 0.0;
     }
 }
 
