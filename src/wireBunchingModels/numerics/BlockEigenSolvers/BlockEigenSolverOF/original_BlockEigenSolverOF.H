@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*\
+/*---------------------------------------------------------------------------* \
   =========                 |
   \\      /  F ield         | foam-extend: Open Source CFD
    \\    /   O peration     |
@@ -33,10 +33,8 @@ Description
 Author
     Philip Cardiff, UCD
     Amirhossein Taran, UCD
-    Colm McAlister UCD,
     Based on class from Zeljko Tukovic, FMENA, Zagreb
 
-    
 SourceFiles
     BlockEigenSolverOF.C
 
@@ -45,17 +43,19 @@ SourceFiles
 #ifndef BlockEigenSolverOF_H
 #define BlockEigenSolverOF_H
 
+// #include <functional>
+// #include <numeric>
 #include "typeInfo.H"
 #include "Switch.H"
-#include "scalarMatrices.H"
-#include "vector.H"
 #include <Eigen/Sparse>
-#include "RigidBodyCouplingData.H"
+#include "scalarMatrices.H"
 
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
-
 
 /*---------------------------------------------------------------------------*\
                       Class BlockEigenSolverOF Declaration
@@ -80,7 +80,6 @@ class BlockEigenSolverOF
         //- Const-reference to neighbour list
         const labelList& nei_;
 
-
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -88,7 +87,6 @@ class BlockEigenSolverOF
 
         //- Disallow default bitwise assignment
         void operator=(const BlockEigenSolverOF&);
-
 
 protected:
 
@@ -103,12 +101,10 @@ protected:
             Eigen::SparseMatrix<scalar>& A
         );
 
-
 public:
 
     //- Runtime type information
     TypeName("Eigen");
-
 
     // Constructors
 
@@ -120,14 +116,13 @@ public:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei
+            // const dictionary& dict
         );
-
 
     // Destructor
 
         virtual ~BlockEigenSolverOF()
         {}
-
 
     // Member Functions
 
@@ -137,8 +132,8 @@ public:
         (
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b,
-            RigidBodySolution& rigidBodySolution,
-            const RigidBodyStepData& rigidBodyData
+	    scalarRectangularMatrix& sixDOFx,
+	    scalarRectangularMatrix& sixDOF_source
         );
 
         // //- Re-initialise solver after matrix coefficient update
@@ -146,8 +141,11 @@ public:
         // {}
 };
 
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 

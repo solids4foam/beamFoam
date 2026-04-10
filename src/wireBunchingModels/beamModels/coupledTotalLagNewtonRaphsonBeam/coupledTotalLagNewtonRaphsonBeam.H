@@ -53,6 +53,7 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
+#include "BlockEigenSolverOF.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -204,6 +205,18 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant
         dimensionedTensor CIRho_;
 
+
+        // Colm
+
+        //- Processor index
+        volScalarField proc_;
+
+        //- Rigid-body data supplied by the sixDoF motion solver
+        RigidBodyStepData rigidBodyData_;
+
+        //- Flag indicating whether rigid-body data has been supplied
+        bool rigidBodyDataValid_;
+
     //- Fields related to time integration schemes
 
         //- ddtScheme name from fvSchemes dictionary
@@ -236,7 +249,7 @@ class coupledTotalLagNewtonRaphsonBeam
         scalar totalSolutionTime_;
 
         //- Processor index
-        volScalarField proc_;
+        // volScalarField proc_;
 
     // Private Member Functions
 
@@ -365,6 +378,14 @@ public:
         {}
 
     // Member Functions
+       // Colm
+           //- Set rigid-body data for coupling with the sixDoF solver
+          virtual  void setRigidBodyStepData(const RigidBodyStepData& data)
+            {
+                rigidBodyData_ = data;
+                rigidBodyDataValid_ = true;
+            }
+  
         // Access
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable

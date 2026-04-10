@@ -652,9 +652,14 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_WRITE
         ),
         mesh(),
-        dimensionedScalar("zero", dimless, 0)
+        dimensionedScalar("zero", dimless, 0)//,
+	// rigidBodyData_(),
+	//        rigidBodyDataValid_(false)
     )
 {
+  //  rigidBodyDataValid_(false);
+  rigidBodyDataValid_ = false;
+
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations
 

@@ -53,6 +53,7 @@ SourceFiles
 #include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
+#include "RigidBodyCouplingData.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -710,6 +711,9 @@ public:
                 vectorField& points,
                 vectorField& tangents
             ) const = 0;
+
+            virtual void setRigidBodyStepData(const RigidBodyStepData&)
+            {}
 
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;

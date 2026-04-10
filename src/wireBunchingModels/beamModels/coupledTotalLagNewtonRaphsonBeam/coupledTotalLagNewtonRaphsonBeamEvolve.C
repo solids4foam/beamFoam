@@ -539,48 +539,44 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             (
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
-
-	    // Colm - create 6DOF solution vector
-	    scalarRectangularMatrix sixDOFx(6, 1, 0.0);
-
-	    // Colm - create 6DOF source vector containing displacements, rotations, velocities and accelerations
-	    // Colm - 6DOF_source: (prev displacments x3, prev orientation x3,
-	    //                      prev linear velocity x3, prev angular momentum x3,
-	    //                      prev linear accelerations x3, prev torques x3
-	    //                      updated linear accelerations x3, updated torques x3)
-	    scalarRectangularMatrix sixDOF_source(24, 1, 0.0);
 	    
-	    
-	    // Colm - populate 6DOF source vector
-	    // Colm - in future will be read in
-	    // Colm - Displacements + orientation
-	    for (label i = 0; i < 6; i++)
-	    {
-	      sixDOF_source(i, 0) = scalar(i);
-	    }
+            //------------------------------------------------------------------
+	    // Colm - Codex
+	    //-------------------------------------------------------------------
+            // Create rigid-body solution holder
+            RigidBodySolution rigidBodySolution;
 
-	    // Colm - linear velocity + angular momentum
-	    for (label i = 6; i < 12; i++)
-	    {
-	      sixDOF_source(i, 0) = 1;
-	    }
+                       RigidBodyStepData localRigidBodyData;
 
-	    // Colm - previous linear accelerations + torque
-	    for (label i = 12; i < 18; i++)
-	    {
-	      sixDOF_source(i, 0) = 0.5;
-	    }
-	    
-	    // Colm - updated linear accelerations + torque
-	    for (label i = 18; i < 24; i++)
-	    {
-	      sixDOF_source(i, 0) = 0.5;
-	    }
-	    
-            // Solve the linear system
-            // currentResidualNorm is the imbalance vector
-	    currentResidualNorm = eigenSolver.solve(solVec, source, sixDOFx, sixDOF_source); // peak RAM
+            if (rigidBodyDataValid_)
+            {
+                localRigidBodyData = rigidBodyData_;
+            }
+            else
+            {
+                // Backward-compatible fallback for beam-only cases:
+                // zero rigid-body motion, zero acceleration, zero torque.
+                Info<< "No rigid-body data supplied; using zero rigid-body state"
+                    << endl;
+            }
 
+            currentResidualNorm =
+                eigenSolver.solve
+                (
+                    solVec,
+                    source,
+                    rigidBodySolution,
+                    localRigidBodyData
+                );
+
+
+	    // Colm- rigid body results
+            const vector& rbDisp = rigidBodySolution.displacement;
+            const vector& rbRotCorr = rigidBodySolution.rotationCorrection;
+
+            Info << "Rigid-body displacement correction: " << rbDisp << endl;
+            Info << "Rigid-body rotation correction: " << rbRotCorr << endl;	    
+	    
             if (iOuterCorr() == 0)
             {
                 initialResidualNorm = currentResidualNorm;
