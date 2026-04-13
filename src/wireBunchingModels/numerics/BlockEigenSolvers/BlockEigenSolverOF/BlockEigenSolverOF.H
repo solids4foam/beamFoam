@@ -33,6 +33,7 @@ Description
 Author
     Philip Cardiff, UCD
     Amirhossein Taran, UCD
+    Seevani Bali, UCD
     Based on class from Zeljko Tukovic, FMENA, Zagreb
 
 SourceFiles
@@ -80,6 +81,10 @@ class BlockEigenSolverOF
         //- Const-reference to neighbour list
         const labelList& nei_;
 
+        //- Const reference to the Eigen triplets list containing
+        // point-to-point beam contact contirbutions
+        const std::vector<Eigen::Triplet<scalar>>* pcTripletsPtr_;
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -119,6 +124,17 @@ public:
             // const dictionary& dict
         );
 
+        //- Construct from matrix
+        BlockEigenSolverOF
+        (
+            const Field<scalarSquareMatrix>& d,
+            const Field<scalarSquareMatrix>& l,
+            const Field<scalarSquareMatrix>& u,
+            const labelList& own,
+            const labelList& nei,
+            const std::vector<Eigen::Triplet<scalar>>& pcTriplets
+        );
+
     // Destructor
 
         virtual ~BlockEigenSolverOF()
@@ -132,6 +148,14 @@ public:
         (
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b
+        );
+
+        // Overloaded solve function to add contact source terms
+        scalar solve
+        (
+            Field<scalarRectangularMatrix>& x,
+            const Field<scalarRectangularMatrix>& b,
+            const Field<scalarRectangularMatrix>& pcB
         );
 
         // //- Re-initialise solver after matrix coefficient update

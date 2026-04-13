@@ -87,7 +87,15 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     // Create coefficient matrix: we must copy coeffs from CSR storage
     // Maybe it is possible to use CSR storage directly.
     std::vector< Eigen::Triplet<scalar> > coefficients;
-    coefficients.reserve(36*(d.size() + l.size() + u.size()));
+
+    // coefficients.reserve(36*(d.size() + l.size() + u.size()));
+    
+    coefficients.reserve
+    (
+        36*(d.size() + l.size() + u.size())
+      + (pcTripletsPtr_ ? pcTripletsPtr_->size() : 0)
+    );
+
     //-----------------------------------------------------------------------------
     //                  diagonal
     //-----------------------------------------------------------------------------
@@ -163,8 +171,19 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     }
     //-----------------------------------------------------------------------------
     //-----------------------------------------------------------------------------
+    // Adding the contact triplets
+    if (pcTripletsPtr_)
+    {
+        Info<< "Adding pointContact triplets " << endl;
+        coefficients.insert
+        (
+            coefficients.end(),
+            pcTripletsPtr_->begin(),
+            pcTripletsPtr_->end()
+        );
+    }
 
-        // Insert triplets into the matrix
+       // Insert triplets into the matrix
         //label bnRows = rowPointers.size()-1;
         //nRows = blockSize*bnRows;
     A.resize(nRows, nRows);
@@ -190,12 +209,52 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     l_(l),
     u_(u),
     own_(own),
-    nei_(nei)
+    nei_(nei),
+    pcTripletsPtr_(nullptr)
+{}
+
+//- Construct from matrix (with contact contributions)
+Foam::BlockEigenSolverOF::BlockEigenSolverOF
+(
+    const Field<scalarSquareMatrix>& d,
+    const Field<scalarSquareMatrix>& l,
+    const Field<scalarSquareMatrix>& u,
+    const labelList& own,
+    const labelList& nei,
+    const std::vector<Eigen::Triplet<scalar>>& pcTriplets
+)
+:
+    d_(d),
+    l_(l),
+    u_(u),
+    own_(own),
+    nei_(nei),
+    pcTripletsPtr_(&pcTriplets)
 {}
 
 // ************************************************************************* //
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Foam::scalar Foam::BlockEigenSolverOF::solve
+(
+    Foam::Field<Foam::scalarRectangularMatrix>& foamX,
+    const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
+    const Foam::Field<Foam::scalarRectangularMatrix>& pcB
+)
+{
+    Field<scalarRectangularMatrix> totalB(foamB);
+
+    forAll(totalB, cellI)
+    {
+        for (label i = 0; i < 6; ++i)
+        {
+            totalB[cellI](i,0) += pcB[cellI](i,0);
+        }
+    }
+
+    return solve(foamX, totalB);
+}
+
 
 Foam::scalar Foam::BlockEigenSolverOF::solve
 (
