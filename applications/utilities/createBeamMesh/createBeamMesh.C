@@ -97,23 +97,52 @@ int main(int argc, char *argv[])
 
     // Read cross-sections of beams
     PtrList<crossSectionModel> crossSections;
+    labelList beamEntryIDs;
     if (beamProperties.found("beams"))
     {
         const PtrList<entry> entries(beamProperties.lookup("beams"));
 
-        nBeams = entries.size();
+        DynamicList<label> beamEntryIDsDynamic;
+
+        forAll(entries, entryI)
+        {
+            const string entryName(entries[entryI].keyword());
+            label nEntryBeams = 1;
+
+            for (const char c : entryName)
+            {
+                if (c == '|')
+                {
+                    ++nEntryBeams;
+                }
+            }
+
+            for (label beamI = 0; beamI < nEntryBeams; ++beamI)
+            {
+                beamEntryIDsDynamic.append(entryI);
+            }
+        }
+
+        nBeams = beamEntryIDsDynamic.size();
+        beamEntryIDs.transfer(beamEntryIDsDynamic);
 
         crossSections.setSize(nBeams);
 
-        forAll(entries, beamI)
+        forAll(crossSections, beamI)
         {
             crossSections.set
             (
                 beamI,
                 crossSectionModel::New
                 (
-                 word(entries[beamI].dict().lookup("crossSectionModel")),
-                 entries[beamI].dict()
+                 word
+                 (
+                     entries[beamEntryIDs[beamI]].dict().lookup
+                     (
+                         "crossSectionModel"
+                     )
+                 ),
+                 entries[beamEntryIDs[beamI]].dict()
                 )
             );
         }
@@ -126,9 +155,11 @@ int main(int argc, char *argv[])
         {
             R[beamI] = crossSections[beamI].R();
 
-            L[beamI] = readScalar(entries[beamI].dict().lookup("length"));
+            const dictionary& beamDict = entries[beamEntryIDs[beamI]].dict();
 
-            nZ[beamI] = readInt(entries[beamI].dict().lookup("nSegments"));
+            L[beamI] = readScalar(beamDict.lookup("length"));
+
+            nZ[beamI] = readInt(beamDict.lookup("nSegments"));
 
             nTheta[beamI] = crossSections[beamI].nCircumferentialPoints();
         }

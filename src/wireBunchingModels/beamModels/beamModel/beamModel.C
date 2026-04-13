@@ -421,21 +421,51 @@ Foam::beamModel::beamModel
 
     const PtrList<entry> entries(lookup("beams"));
 
-    const label nBeams = entries.size();
+    DynamicList<label> beamEntryIDsDynamic;
+
+    forAll(entries, entryI)
+    {
+        const string entryName(entries[entryI].keyword());
+        label nEntryBeams = 1;
+
+        for (const char c : entryName)
+        {
+            if (c == '|')
+            {
+                ++nEntryBeams;
+            }
+        }
+
+        for (label beamI = 0; beamI < nEntryBeams; ++beamI)
+        {
+            beamEntryIDsDynamic.append(entryI);
+        }
+    }
+
+    labelList beamEntryIDs;
+    beamEntryIDs.transfer(beamEntryIDsDynamic);
+
+    const label nBeams = beamEntryIDs.size();
 
     Info<< "nBeams: " << nBeams << endl;
 
     crossSections_.setSize(nBeams);
 
-    forAll(entries, beamI)
+    forAll(crossSections_, beamI)
     {
         crossSections_.set
         (
             beamI,
             crossSectionModel::New
             (
-                word(entries[beamI].dict().lookup("crossSectionModel")),
-                entries[beamI].dict()
+                word
+                (
+                    entries[beamEntryIDs[beamI]].dict().lookup
+                    (
+                        "crossSectionModel"
+                    )
+                ),
+                entries[beamEntryIDs[beamI]].dict()
             )
         );
     }
@@ -512,7 +542,7 @@ Foam::beamModel::beamModel
 
     forAll(crossSections_, beamI)
     {
-        const dictionary& bDict = entries[beamI].dict();
+        const dictionary& bDict = entries[beamEntryIDs[beamI]].dict();
 
         if (
                bDict.found("E")
