@@ -42,7 +42,7 @@ SourceFiles
     coupledTotalLagNewtonRaphsonBeamEvolve.C
     coupledTotalLagNewtonRaphsonBeamMatrix.C
     coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
-    coupledTotalLagNewtonRaphsonBeamApplyContacts.C
+    coupledTotalLagNewtonRaphsonBeamContactContribution.C
 
 
 \*---------------------------------------------------------------------------*/
@@ -57,6 +57,7 @@ SourceFiles
 #include "scalarMatrices.H"
 #include "beamMomentumContribution.H"
 
+#include <Eigen/Sparse>
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
@@ -66,6 +67,14 @@ namespace Foam
 
 namespace beamModels
 {
+
+typedef Pair<scalarSquareMatrix> lcCoeffPair;
+typedef List<lcCoeffPair> lcCoeffPairList;
+typedef List<lcCoeffPairList> lcCoeffPairListList;
+
+typedef Pair<scalarSquareMatrix> pcCoeffPair;
+typedef List<pcCoeffPair> pcCoeffPairList;
+typedef List<pcCoeffPairList> pcCoeffPairListList;
 
 /*---------------------------------------------------------------------------*\
               Class coupledTotalLagNewtonRaphsonBeam Declaration
@@ -230,13 +239,26 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Run-time selectable beam momentum contributions
         PtrList<beamMomentumContribution> momentumContribPtr_;
 
-    // Parallel performance data
+    //- Beam-to-beam contact related variables
 
         //- Total time spend on contact update
         scalar totalContactTime_;
 
         //- Total time spend on solution of equilibrium equation
         scalar totalSolutionTime_;
+
+        //- Line contact coeffs between multiple beams
+        mutable PtrList<lcCoeffPairListList> lcInterBeamCoeffs_;
+
+        //- Source contribution to block matrix due to point contact
+        Field<scalarRectangularMatrix> pcSource_;
+
+        //- Eigen triplet list that stores all point-to-point
+        //- contact contributions between multiple beams
+        // mutable pcCoeffPairListList pcInterBeamCoeffs_;
+        std::vector<Eigen::Triplet<scalar>> pointContactTriplets_;
+
+    // Parallel performance data
 
         //- Processor index
         volScalarField proc_;
@@ -331,22 +353,50 @@ class coupledTotalLagNewtonRaphsonBeam
         // void applyPointContact(multibeamFvBlockMatrix& eqn);
 
         //- Apply line contact force (ESI version)
-        void applyLineContact
+        void lineContactContribution
         (
-            Field<scalarSquareMatrix>& diag,
-            Field<scalarSquareMatrix>& lower,
-            Field<scalarSquareMatrix>& upper,
-            Field<scalarRectangularMatrix>& source
+            Field<scalarSquareMatrix>& lcDiag,
+            Field<scalarRectangularMatrix>& lcSource,
+            PtrList<lcCoeffPairListList>& lcInterBeamCoeffs
         );
 
         //- Apply point contact force (ESI version)
-        void applyPointContact
+        void pointContactContribution
         (
-            Field<scalarSquareMatrix>& diag,
-            Field<scalarSquareMatrix>& lower,
-            Field<scalarSquareMatrix>& upper,
-            Field<scalarRectangularMatrix>& source
+            std::vector<Eigen::Triplet<scalar>>& pointContactTriplets,
+            Field<scalarSquareMatrix>& pcDiag,
+            Field<scalarRectangularMatrix>& pcSource,
+            Field<scalarSquareMatrix>& pcNeiUpperCoeffs,
+            Field<scalarSquareMatrix>& pcNeiLowerCoeffs,
+            pcCoeffPairListList& pcInterBeamCoeffs
         );
+
+        void appendBlockTriplets
+        (
+            std::vector<Eigen::Triplet<scalar>>& triplets,
+            const label blockRow,
+            const label blockCol,
+            const scalarSquareMatrix& block
+        );
+        // //- Apply line contact force (ESI version)
+        // void applyLineContact
+        // (
+        //     Field<scalarSquareMatrix>& diag,
+        //     Field<scalarSquareMatrix>& lower,
+        //     Field<scalarSquareMatrix>& upper,
+        //     Field<scalarRectangularMatrix>& source,
+        //     PtrList<lcCoeffPairListList>& lcCoeffs
+        // );
+
+        // //- Apply point contact force (ESI version)
+        // void applyPointContact
+        // (
+        //     Field<scalarSquareMatrix>& diag,
+        //     Field<scalarSquareMatrix>& lower,
+        //     Field<scalarSquareMatrix>& upper,
+        //     Field<scalarRectangularMatrix>& source,
+        //     pcCoeffPairListList& pcCoeffs
+        // );
 
 
         // //- Apply conical pulleys contact force

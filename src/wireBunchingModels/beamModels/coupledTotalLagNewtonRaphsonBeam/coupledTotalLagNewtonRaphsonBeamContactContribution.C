@@ -41,33 +41,40 @@ namespace Foam
 namespace beamModels
 {
 
-// SB (2026 - ESI):  New defn for off-diag coupling coeffs of beam contact
-typedef Pair<scalarSquareMatrix> lcCoeffPair;
-typedef List<lcCoeffPair> lcCoeffPairList;
-typedef List<lcCoeffPairList> lcCoeffPairListList;
-
-typedef Pair<scalarRectangularMatrix> pcCoeffPair;
-typedef List<pcCoeffPair> pcCoeffPairList;
-typedef List<pcCoeffPairList> pcCoeffPairListList;
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-void coupledTotalLagNewtonRaphsonBeam::applyLineContact
+void coupledTotalLagNewtonRaphsonBeam::appendBlockTriplets
 (
-    Field<scalarSquareMatrix>& diag,
-    Field<scalarSquareMatrix>& lower,
-    Field<scalarSquareMatrix>& upper,
-    Field<scalarRectangularMatrix>& source
+    std::vector<Eigen::Triplet<scalar>>& triplets,
+    const label blockRow,
+    const label blockCol,
+    const scalarSquareMatrix& block
+)
+{
+    for (label i = 0; i < 6; ++i)
+    {
+        for (label j = 0; j < 6; ++j)
+        {
+            triplets.emplace_back(6*blockRow + i, 6*blockCol + j, block(i,j));
+        }
+    }
+}
+
+void coupledTotalLagNewtonRaphsonBeam::lineContactContribution
+(
+    Field<scalarSquareMatrix>& lcDiag,
+    Field<scalarRectangularMatrix>& lcSource,
+    PtrList<lcCoeffPairListList>& lcInterBeamCoeffs
     //    multibeamFvBlockMatrix& eqn
 )
 {
     if (mesh().cellZones().size() > 1)
     {
-    	// Info << "Inside applyLineContact() in applyContacts.C \n" << endl;
         label nBeams = contact().splines().size();
-        
+
         // // Get matrix diagonal
         // tensor6Field& diag = eqn.diag().asSquare();
 
@@ -75,41 +82,11 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
         // vector6Field& source = eqn.source();
 
         // Grab beam coupling coeffs (foam-extend version)
-        //        PtrList<tensor6PairListList>& lcCoeffs = eqn.lineContactCoeffs();
-
-        // SB (2026 ESI) - A storage container to collect lcCoeffs for ESI version
-        // IMPORTANT - However, these coefficients are simply collected but not actually
-        // added to the block matrix of beam solver -
-        // The lcCoeffs (and pcCoeffs) were passed to multiBeamFvMatrix class where
-        // contributions were added. Since we do not use the class, the contribution of
-        // the coeffs is simply being lost at this point.        
-        PtrList<lcCoeffPairListList> lcCoeffs(nBeams);
-
-        const lcCoeffPair lcZero
-        (
-            scalarSquareMatrix(3, Zero),
-            scalarSquareMatrix(3, Zero)
-        );
-
-        for (label bI=0; bI<nBeams; ++bI)
-        {
-            const label nSeg = contact().splines()[bI].nSegments();
-
-            lcCoeffs.set
-            (
-                bI,
-                new lcCoeffPairListList(nSeg)
-            );
-
-            for (label segI=0; segI<nSeg; ++segI)
-            {
-                lcCoeffs[bI][segI].setSize(nBeams, lcZero);
-            }
-        }
+        //        PtrList<tensor6PairListList>& lcInterBeamCoeffs = eqn.lineContactCoeffs();
 
         // Explicit part of the line contact force
         label start = 0;
-        // Info << "Explicit line contact force: start " << endl;
+
         for (label bI=0; bI<nBeams; bI++)
         {
             const lineContactListList& curLineContacts =
@@ -214,8 +191,6 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
                 label faceID = mesh().neighbour().find(globalNeiSegI);
 				if (faceID == -1) // first cell
 				{
-				    //   Info << "bI " << bI << " nbI " << nbI
-					//   << " neiSegI "<< neiSegI <<  " first cell DR " << endl;
 				    // const unallocLabelList& faceCells =
                     const labelUList& faceCells =
 					mesh().boundary()[startPatchIndex(nbI)].faceCells();
@@ -261,31 +236,17 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
                 label cellID =
                     localCellIndex(globalSegIndex);
 
-		//   if (mag(curq[segI]) != 0)
-		//   {
-		    //   if
-		    //   (
-		    //   segI == 0
-		    //   || segI == (contact().splines()[bI].nSegments() - 1)
-		    //   )
-		    //   {
-		    //   Info << "lc force " << mag(curq[segI]) << tab
-			 //   << "segI " << segI << tab
-			 //   << "cellID " << cellID << endl;
-		    //   }
-		//   }
-
                 if (cellID != -1)
                 {
                     // W equation
-                    source[cellID](0, 0) -= curq[segI].x()*L()[cellID];
-                    source[cellID](1, 0) -= curq[segI].y()*L()[cellID];
-                    source[cellID](2, 0) -= curq[segI].z()*L()[cellID];
+                    lcSource[cellID](0, 0) -= curq[segI].x()*L()[cellID];
+                    lcSource[cellID](1, 0) -= curq[segI].y()*L()[cellID];
+                    lcSource[cellID](2, 0) -= curq[segI].z()*L()[cellID];
 
                     // Theta equation
-                    source[cellID](3, 0) -= curm[segI].x()*L()[cellID];
-                    source[cellID](4, 0) -= curm[segI].y()*L()[cellID];
-                    source[cellID](5, 0) -= curm[segI].z()*L()[cellID];
+                    lcSource[cellID](3, 0) -= curm[segI].x()*L()[cellID];
+                    lcSource[cellID](4, 0) -= curm[segI].y()*L()[cellID];
+                    lcSource[cellID](5, 0) -= curm[segI].z()*L()[cellID];
                 }
             }
 
@@ -403,86 +364,86 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
                                 //   }
 
                                 //- Contact force derivative (W)
-                                diag[cellID](0,0) +=
+                                lcDiag[cellID](0,0) +=
                                     curContactForceDerivative.xx();
-                                diag[cellID](0,1) +=
+                                lcDiag[cellID](0,1) +=
                                     curContactForceDerivative.xy();
-                                diag[cellID](0,2) +=
+                                lcDiag[cellID](0,2) +=
                                     curContactForceDerivative.xz();
 
-                                diag[cellID](1,0) +=
+                                lcDiag[cellID](1,0) +=
                                     curContactForceDerivative.yx();
-                                diag[cellID](1,1) +=
+                                lcDiag[cellID](1,1) +=
                                     curContactForceDerivative.yy();
-                                diag[cellID](1,2) +=
+                                lcDiag[cellID](1,2) +=
                                     curContactForceDerivative.yz();
 
-                                diag[cellID](2,0) +=
+                                lcDiag[cellID](2,0) +=
                                     curContactForceDerivative.zx();
-                                diag[cellID](2,1) +=
+                                lcDiag[cellID](2,1) +=
                                     curContactForceDerivative.zy();
-                                diag[cellID](2,2) +=
+                                lcDiag[cellID](2,2) +=
                                     curContactForceDerivative.zz();
 
                                 //   //- Contact force derivative (Theta)
-                                //   diag[cellID](0,3) +=
+                                //   lcDiag[cellID](0,3) +=
                                     //   curCircumContactForceThetaDerivative.xx()
                                    //   *L()[cellID];
-                                //   diag[cellID](0,4) +=
+                                //   lcDiag[cellID](0,4) +=
                                     //   curCircumContactForceThetaDerivative.xy()
                                    //   *L()[cellID];
-                                //   diag[cellID](0,5) +=
+                                //   lcDiag[cellID](0,5) +=
                                     //   curCircumContactForceThetaDerivative.xz()
                                    //   *L()[cellID];
 
-                                //   diag[cellID](1,3) +=
+                                //   lcDiag[cellID](1,3) +=
                                     //   curCircumContactForceThetaDerivative.yx()
                                    //   *L()[cellID];
-                                //   diag[cellID](1,4) +=
+                                //   lcDiag[cellID](1,4) +=
                                     //   curCircumContactForceThetaDerivative.yy()
                                    //   *L()[cellID];
-                                //   diag[cellID](1,5) +=
+                                //   lcDiag[cellID](1,5) +=
                                     //   curCircumContactForceThetaDerivative.yz()
                                    //   *L()[cellID];
 
-                                //   diag[cellID](2,3) +=
+                                //   lcDiag[cellID](2,3) +=
                                     //   curCircumContactForceThetaDerivative.zx()
                                    //   *L()[cellID];
-                                //   diag[cellID](2,4) +=
+                                //   lcDiag[cellID](2,4) +=
                                     //   curCircumContactForceThetaDerivative.zy()
                                    //   *L()[cellID];
-                                //   diag[cellID](2,5) +=
+                                //   lcDiag[cellID](2,5) +=
                                     //   curCircumContactForceThetaDerivative.zz()
                                    //   *L()[cellID];
 
                                 //   //- Contact moment derivative
-                                //   diag[cellID](3,3) +=
+                                //   lcDiag[cellID](3,3) +=
                                     //   curContactMomentDerivative.xx()
                                    //   *L()[cellID];
-                                //   diag[cellID](3,4) +=
+                                //   lcDiag[cellID](3,4) +=
                                     //   curContactMomentDerivative.xy()
                                    //   *L()[cellID];
-                                //   diag[cellID](3,5) +=
+                                //   lcDiag[cellID](3,5) +=
                                     //   curContactMomentDerivative.xz()
                                    //   *L()[cellID];
 
-                                //   diag[cellID](4,3) +=
+                                //   lcDiag[cellID](4,3) +=
                                     //   curContactMomentDerivative.yx()
                                    //   *L()[cellID];
-                                //   diag[cellID](4,4) +=
+                                //   lcDiag[cellID](4,4) +=
                                     //   curContactMomentDerivative.yy()
                                    //   *L()[cellID];
-                                //   diag[cellID](4,5) +=
+                                //   lcDiag[cellID](4,5) +=
                                     //   curContactMomentDerivative.yz()
                                    //   *L()[cellID];
 
-                                //   diag[cellID](5,3) +=
+                                //   lcDiag[cellID](5,3) +=
                                     //   curContactMomentDerivative.zx()
                                    //   *L()[cellID];
-                                //   diag[cellID](5,4) +=
+                                //   lcDiag[cellID](5,4) +=
                                     //   curContactMomentDerivative.zy()
                                    //   *L()[cellID];
-                                //   diag[cellID](5,5) +=
+                                //   lcDiag[cellID](5,5) +=
                                     //   curContactMomentDerivative.zz()
                                    //   *L()[cellID];
 
@@ -492,181 +453,178 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
                                     curLineContacts[segI][nbI].secondBeamWeight();
                                 scalar w1 = 1.0 - w0;
 
-				//   Info << "weight w0: " << w0 << endl;
-				//   Info << "w1: " << w1 << endl;
-
                                 // Contact force derivative (W)
 
                                 //- lower
-                                lcCoeffs[bI][segI][nbI].first()(0, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(0, 0) -=
                                     curContactForceDerivative.xx()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(0, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(0, 1) -=
                                     curContactForceDerivative.xy()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(0, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(0, 2) -=
                                     curContactForceDerivative.xz()*w0;
 
-                                lcCoeffs[bI][segI][nbI].first()(1, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(1, 0) -=
                                     curContactForceDerivative.yx()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(1, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(1, 1) -=
                                     curContactForceDerivative.yy()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(1, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(1, 2) -=
                                     curContactForceDerivative.yz()*w0;
 
-                                lcCoeffs[bI][segI][nbI].first()(2, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(2, 0) -=
                                     curContactForceDerivative.zx()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(2, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(2, 1) -=
                                     curContactForceDerivative.zy()*w0;
-                                lcCoeffs[bI][segI][nbI].first()(2, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].first()(2, 2) -=
                                     curContactForceDerivative.zz()*w0;
 
                                 //- upper
-                                lcCoeffs[bI][segI][nbI].second()(0, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(0, 0) -=
                                     curContactForceDerivative.xx()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(0, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(0, 1) -=
                                     curContactForceDerivative.xy()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(0, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(0, 2) -=
                                     curContactForceDerivative.xz()*w1;
 
-                                lcCoeffs[bI][segI][nbI].second()(1, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(1, 0) -=
                                     curContactForceDerivative.yx()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(1, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(1, 1) -=
                                     curContactForceDerivative.yy()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(1, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(1, 2) -=
                                     curContactForceDerivative.yz()*w1;
 
-                                lcCoeffs[bI][segI][nbI].second()(2, 0) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(2, 0) -=
                                     curContactForceDerivative.zx()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(2, 1) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(2, 1) -=
                                     curContactForceDerivative.zy()*w1;
-                                lcCoeffs[bI][segI][nbI].second()(2, 2) -=
+                                lcInterBeamCoeffs[bI][segI][nbI].second()(2, 2) -=
                                     curContactForceDerivative.zz()*w1;
 
 
                                 //   // Contact force derivative (Theta)
 
                                 //   //- lower
-                                //   lcCoeffs[bI][segI][nbI].first()(0, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(0, 3) +=
                                     //   curCircumContactForceThetaDerivative.xx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(0, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(0, 4) +=
                                     //   curCircumContactForceThetaDerivative.xy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(0, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(0, 5) +=
                                     //   curCircumContactForceThetaDerivative.xz()
                                    //   *L()[cellID]*w0;
 
-                                //   lcCoeffs[bI][segI][nbI].first()(1, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(1, 3) +=
                                     //   curCircumContactForceThetaDerivative.yx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(1, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(1, 4) +=
                                     //   curCircumContactForceThetaDerivative.yy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(1, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(1, 5) +=
                                     //   curCircumContactForceThetaDerivative.yz()
                                    //   *L()[cellID]*w0;
 
-                                //   lcCoeffs[bI][segI][nbI].first()(2, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(2, 3) +=
                                     //   curCircumContactForceThetaDerivative.zx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(2, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(2, 4) +=
                                     //   curCircumContactForceThetaDerivative.zy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(2, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(2, 5) +=
                                     //   curCircumContactForceThetaDerivative.zz()
                                    //   *L()[cellID]*w0;
 
                                 //   //- upper
-                                //   lcCoeffs[bI][segI][nbI].second()(0, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(0, 3) +=
                                     //   curCircumContactForceThetaDerivative.xx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(0, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(0, 4) +=
                                     //   curCircumContactForceThetaDerivative.xy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(0, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(0, 5) +=
                                     //   curCircumContactForceThetaDerivative.xz()
                                    //   *L()[cellID]*w1;
 
-                                //   lcCoeffs[bI][segI][nbI].second()(1, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(1, 3) +=
                                     //   curCircumContactForceThetaDerivative.yx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(1, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(1, 4) +=
                                     //   curCircumContactForceThetaDerivative.yy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(1, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(1, 5) +=
                                     //   curCircumContactForceThetaDerivative.yz()
                                    //   *L()[cellID]*w1;
 
-                                //   lcCoeffs[bI][segI][nbI].second()(2, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(2, 3) +=
                                     //   curCircumContactForceThetaDerivative.zx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(2, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(2, 4) +=
                                     //   curCircumContactForceThetaDerivative.zy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(2, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(2, 5) +=
                                     //   curCircumContactForceThetaDerivative.zz()
                                    //   *L()[cellID]*w1;
 
                                 // Contact moment derivative
 
                                 //   //- lower
-                                //   lcCoeffs[bI][segI][nbI].first()(3, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(3, 3) +=
                                     //   curContactMomentDerivative.xx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(3, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(3, 4) +=
                                     //   curContactMomentDerivative.xy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(3, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(3, 5) +=
                                     //   curContactMomentDerivative.xz()
                                    //   *L()[cellID]*w0;
 
-                                //   lcCoeffs[bI][segI][nbI].first()(4, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(4, 3) +=
                                     //   curContactMomentDerivative.yx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(4, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(4, 4) +=
                                     //   curContactMomentDerivative.yy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(4, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(4, 5) +=
                                     //   curContactMomentDerivative.yz()
                                    //   *L()[cellID]*w0;
 
-                                //   lcCoeffs[bI][segI][nbI].first()(5, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(5, 3) +=
                                     //   curContactMomentDerivative.zx()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(5, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(5, 4) +=
                                     //   curContactMomentDerivative.zy()
                                    //   *L()[cellID]*w0;
-                                //   lcCoeffs[bI][segI][nbI].first()(5, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].first()(5, 5) +=
                                     //   curContactMomentDerivative.zz()
                                    //   *L()[cellID]*w0;
 
                                 //   //- upper
-                                //   lcCoeffs[bI][segI][nbI].second()(3, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(3, 3) +=
                                     //   curContactMomentDerivative.xx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(3, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(3, 4) +=
                                     //   curContactMomentDerivative.xy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(3, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(3, 5) +=
                                     //   curContactMomentDerivative.xz()
                                    //   *L()[cellID]*w1;
 
-                                //   lcCoeffs[bI][segI][nbI].second()(4, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(4, 3) +=
                                     //   curContactMomentDerivative.yx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(4, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(4, 4) +=
                                     //   curContactMomentDerivative.yy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(4, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(4, 5) +=
                                     //   curContactMomentDerivative.yz()
                                    //   *L()[cellID]*w1;
 
-                                //   lcCoeffs[bI][segI][nbI].second()(5, 3) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(5, 3) +=
                                     //   curContactMomentDerivative.zx()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(5, 4) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(5, 4) +=
                                     //   curContactMomentDerivative.zy()
                                    //   *L()[cellID]*w1;
-                                //   lcCoeffs[bI][segI][nbI].second()(5, 5) +=
+                                //   lcInterBeamCoeffs[bI][segI][nbI].second()(5, 5) +=
                                     //   curContactMomentDerivative.zz()
                                    //   *L()[cellID]*w1;
                             }
@@ -681,12 +639,14 @@ void coupledTotalLagNewtonRaphsonBeam::applyLineContact
 
 
 
-void coupledTotalLagNewtonRaphsonBeam::applyPointContact
+void coupledTotalLagNewtonRaphsonBeam::pointContactContribution
 (
-    Field<scalarSquareMatrix>& diag,
-    Field<scalarSquareMatrix>& lower,
-    Field<scalarSquareMatrix>& upper,
-    Field<scalarRectangularMatrix>& source
+    std::vector<Eigen::Triplet<scalar>>& pointContactTriplets,
+    Field<scalarSquareMatrix>& pcDiag,
+    Field<scalarRectangularMatrix>& pcSource,
+    Field<scalarSquareMatrix>& pcNeiUpperCoeffs,
+    Field<scalarSquareMatrix>& pcNeiLowerCoeffs,
+    pcCoeffPairListList& pcInterBeamCoeffs
     // multibeamFvBlockMatrix& eqn
 )
 {
@@ -696,6 +656,8 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
      && !Pstream::parRun()
     )
     {
+        // std::vector<Eigen::Triplet<scalar>> pointContactTriplets;
+        // pointContactTriplets.reserve(300*contact().pointContacts().size());
     // Info << "Inside applyPointContact() in applyContacts.C \n" << endl;
     // // Get matrix diagonal
     // tensor6Field& diag = eqn.diag().asSquare();
@@ -710,26 +672,8 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
     // vector6Field& source = eqn.source();
 
     // Grab beam coupling coeffs (foam-extend version)
-    //    tensor6PairListList& pcCoeffs = eqn.pointContactCoeffs();
+    //    tensor6PairListList& pcInterBeamCoeffs = eqn.pointContactCoeffs();
 
-    // SB (2026 ESI) - A storage container to collect lcCoeffs for ESI version
-    // IMPORTANT - However, these coefficients are simply collected but not actually
-    // added to the block matrix of beam solver -
-    // The lcCoeffs (and pcCoeffs) were passed to multiBeamFvMatrix class where
-    // contributions were added. Since we do not use the class, the contribution of
-    // the coeffs is simply being lost at this point.
-    pcCoeffPairListList pcCoeffs(contact().pointContacts().size());
-
-    const pcCoeffPair pcZero
-    (
-        scalarRectangularMatrix(6, 3, Zero),
-        scalarRectangularMatrix(6, 3, Zero)
-    );
-
-    forAll(pcCoeffs, pcI)
-    {
-        pcCoeffs[pcI].setSize(2, pcZero);
-    }
 
     const labelList& own = mesh().owner();
     const labelList& nei = mesh().neighbour();
@@ -738,46 +682,29 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
 
     const surfaceScalarField& dc = mesh().deltaCoeffs();
 
-    // label start = 0;
+
     forAll(contact().pointContacts(), pcI)
     {
-	//   Info << "\nInside contact().pointContacts() in applyContacts.C" << endl;
+
         labelList bI(2, -1);
         labelList globalSegI(2, -1);
         scalarField zeta(2, -2);
         vectorList contactForce(2, vector::zero);
         vectorList tangContactForce(2, vector::zero);
 
-	//   volVectorField Wprev = W_.prevIter();
-
-	//   Info << "W:\n " << Wprev << "\n\nW: " << W_ << endl;
-
-
         //Owner
         {
             bI[0] = contact().pointContacts()[pcI].firstBeam();
             label segI = contact().pointContacts()[pcI].firstBeamSegment();
             zeta[0] = contact().pointContacts()[pcI].firstBeamZeta();
-
-            // label start = 0;
-            // label i = 0;
-            // while(i < bI[0])
-            // {
-            //     start += contact().splines()[i].nSegments();
-            //     i++;
-            // }
-            // globalSegI[0] = start + segI;
-
             globalSegI[0] = whichCell(bI[0], segI);
 
 	    // SB (2023 May): changed the explicit contact contribution
             contactForce[0] =
                 contact().pointContacts()[pcI].normalContactForce();
-	    tangContactForce[0] =
+    	    tangContactForce[0] =
                 contact().pointContacts()[pcI].firstBeamTangContactForce()
               - contact().pointContacts()[pcI].secondBeamTangContactForce();
-
-	   //   Info << "segI " << segI << endl;
 
         }
 
@@ -786,16 +713,6 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
             bI[1] = contact().pointContacts()[pcI].secondBeam();
             label neiSegI = contact().pointContacts()[pcI].secondBeamSegment();
             zeta[1] = contact().pointContacts()[pcI].secondBeamZeta();
-
-            // label neiStart = 0;
-            // label i = 0;
-            // while(i < bI[1])
-            // {
-            //     neiStart += contact().splines()[i].nSegments();
-            //     i++;
-            // }
-            // globalSegI[1] = neiStart + neiSegI;
-
             globalSegI[1] = whichCell(bI[1], neiSegI);
 
 
@@ -819,11 +736,10 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                 // label faceID = findIndex(own, globalSegI[sI]);
                 label faceID = own.find(globalSegI[sI]);
 
-                //		Info << "faceID own: " << faceID << endl;
                 if (faceID == -1) // last cell
                 {
                     // const unallocLabelList& faceCells =
-                    const labelUList& faceCells =                        
+                    const labelUList& faceCells =
                         mesh().boundary()[endPatchIndex(bI[sI])].faceCells();
 
                     // label bFaceID = findIndex(faceCells, globalSegI[sI]);
@@ -843,16 +759,16 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
             else
             {
                 // label faceID = findIndex(nei, globalSegI[sI]);
-                label faceID = nei.find(globalSegI[sI]);                
-                //		Info << "faceID nei: " << faceID << endl;
+                label faceID = nei.find(globalSegI[sI]);
+
                 if (faceID == -1) // first cell
                 {
                     // const unallocLabelList& faceCells =
-                    const labelUList& faceCells =                    
+                    const labelUList& faceCells =
                         mesh().boundary()[startPatchIndex(bI[sI])].faceCells();
 
                     // label bFaceID = findIndex(faceCells, globalSegI[sI]);
-                    label bFaceID = faceCells.find(globalSegI[sI]);                    
+                    label bFaceID = faceCells.find(globalSegI[sI]);
 
                     DR = zeta[sI]
                        *dRdS.boundaryField()[startPatchIndex(bI[sI])][bFaceID]
@@ -866,38 +782,35 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                 }
             }
 
+            Info<< "Tangent contact Force " << tangContactForce[sI] << endl;
+            Info<< "Mag normal contact force " << mag(contactForce[sI]) << endl;
+
             vector F0 = contactForce[sI] + tangContactForce[sI];
 
             vector M0 =  (spinTensor(DR) & F0);
 
-
-
-
-            // label index = 6*globalSegI[sI];
-            // b(index++) -= F0.x();
-            // b(index++) -= F0.y();
-            // b(index++) -= F0.z();
-            // b(index++) -= M0.x();
-            // b(index++) -= M0.y();
-            // b(index++) -= M0.z();
-
             // W equation
-            source[globalSegI[sI]](0, 0) -= F0.x();
-            source[globalSegI[sI]](1, 0) -= F0.y();
-            source[globalSegI[sI]](2, 0) -= F0.z();
+            pcSource[globalSegI[sI]](0, 0) -= F0.x();
+            pcSource[globalSegI[sI]](1, 0) -= F0.y();
+            pcSource[globalSegI[sI]](2, 0) -= F0.z();
 
 
             // Theta equation
-            source[globalSegI[sI]](3, 0) -= M0.x();
-            source[globalSegI[sI]](4, 0) -= M0.y();
-            source[globalSegI[sI]](5, 0) -= M0.z();
+            pcSource[globalSegI[sI]](3, 0) -= M0.x();
+            pcSource[globalSegI[sI]](4, 0) -= M0.y();
+            pcSource[globalSegI[sI]](5, 0) -= M0.z();
+
+            Info<< "pcSource: " <<  pcSource[globalSegI[sI]](1, 0) << endl;
         }
     }
 
-    //Info << "Explicit part of point force calculation done " << endl;
 
-    // Create Eigen sparse matrix and set coeffs
-    Eigen::SparseMatrix<scalar> A;
+    // forAll(pcSource, cellI)
+    //     {
+    //         Info<< "cellI: " << cellI <<  "pcSource: " << pcSource[cellI] << endl;
+    //     };
+    // // Create Eigen sparse matrix and set coeffs
+    // Eigen::SparseMatrix<scalar> A;
 
     const cellList& cells = mesh().cells();
     // const labelList& own = mesh().owner();
@@ -923,13 +836,13 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
         //   vectorList contactForce(2, vector::zero);
         tensorList contactForceDerivative(2, tensor::zero);
 	//SB (2023 May): Added contact force dn component
-	tensorList contactForceDn(2, tensor::zero);
+    	tensorList contactForceDn(2, tensor::zero);
 
         vectorList tangentialContactForce(2, vector::zero);
         tensorList tangContactForceDerivative(2, tensor::zero);
-	tensorList tangContactForceDt(2,tensor::zero);
+	    tensorList tangContactForceDt(2,tensor::zero);
 
-	tensorList couplingTangentContactForceCoeffs(2,tensor::zero);
+    	tensorList couplingTangentContactForceCoeffs(2,tensor::zero);
 
 
         //Owner
@@ -960,8 +873,8 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
             contactForceDerivative[0] =
                 contact().pointContacts()[pcI].normalContactForceDerivative();
 
-	    //SB (2023 May): Added contact force dn component
-	    contactForceDn[0] = contact().pointContacts()[pcI].normalContactForceDn();
+    	    //SB (2023 May): Added contact force dn component
+    	    contactForceDn[0] = contact().pointContacts()[pcI].normalContactForceDn();
 
             tangentialContactForce[0] =
                 contact().pointContacts()[pcI].firstBeamTangContactForce();
@@ -975,16 +888,16 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
 	    /*--SB (2023 May): changed the frictional contact contributions---*/
 
 	    tangContactForceDerivative[0] =
-		contact().pointContacts()[pcI].firstBeamTangContactForceDerivative()
+    		contact().pointContacts()[pcI].firstBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].couplingFirstBeamTangContactForceDerivative();
 
 
 	    tangContactForceDt[0] =
-		contact().pointContacts()[pcI].firstBeamTangContactForceDt()
+    		contact().pointContacts()[pcI].firstBeamTangContactForceDt()
 	      + contact().pointContacts()[pcI].couplingFirstBeamTangContactForceDt();
 
 	    couplingTangentContactForceCoeffs[0] =
-		contact().pointContacts()[pcI].secondBeamTangContactForceDerivative()
+	    	contact().pointContacts()[pcI].secondBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].secondBeamTangContactForceDt()
 	      + contact().pointContacts()[pcI].couplingSecondBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].couplingSecondBeamTangContactForceDt();
@@ -1030,12 +943,12 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
 	    /*--SB (2023 May): changed the frictional contact contributions---*/
 
 	    tangContactForceDerivative[1] =
-		contact().pointContacts()[pcI].secondBeamTangContactForceDerivative()
+    		contact().pointContacts()[pcI].secondBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].couplingSecondBeamTangContactForceDerivative();
 
 
 	    tangContactForceDt[1] =
-		contact().pointContacts()[pcI].secondBeamTangContactForceDt()
+    		contact().pointContacts()[pcI].secondBeamTangContactForceDt()
 	      + contact().pointContacts()[pcI].couplingSecondBeamTangContactForceDt();
 
 	    //   tangContactForceDerivative[1] =
@@ -1046,7 +959,7 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
 		//   contact().pointContacts()[pcI].secondBeamTangContactForceDt();
 
 	    couplingTangentContactForceCoeffs[1] =
-		contact().pointContacts()[pcI].firstBeamTangContactForceDerivative()
+    		contact().pointContacts()[pcI].firstBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].firstBeamTangContactForceDt()
 	      + contact().pointContacts()[pcI].couplingFirstBeamTangContactForceDerivative()
 	      + contact().pointContacts()[pcI].couplingFirstBeamTangContactForceDt();
@@ -1075,9 +988,13 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
         neiZeta[0] = zeta[1];
         neiZeta[1] = zeta[0];
 
+        // Info<<"global Segments: " << globalSegI[0] << tab << globalSegI[1]
+        //     << "\nglobal lower seg: " << globalLowerSegI[0] << tab << globalLowerSegI[1]
+        //     << "\nglobal Upper Segment: " << globalUpperSegI[0] << tab << globalUpperSegI[1]
+        //     << endl;
+
         forAll(globalSegI, sI)
         {
-	    //   Info << "sI: " << sI << endl;
             vector DR = vector::zero;
             if (zeta[sI] > 0)
             {
@@ -1086,12 +1003,12 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                 if (faceID == -1) // last cell
                 {
                     // const unallocLabelList& faceCells =
-                    const labelUList& faceCells =                        
+                    const labelUList& faceCells =
                         mesh().boundary()[endPatchIndex(bI[sI])].faceCells();
 
                     // label bFaceID = findIndex(faceCells, globalSegI[sI]);
                     label bFaceID = faceCells.find(globalSegI[sI]);
-                    
+
                     DR = zeta[sI]
                        *dRdS.boundaryField()[endPatchIndex(bI[sI])][bFaceID]
                        /dc.boundaryField()[endPatchIndex(bI[sI])][bFaceID];
@@ -1109,7 +1026,7 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                 if (faceID == -1) // first cell
                 {
                     // const unallocLabelList& faceCells =
-                    const labelUList& faceCells =                        
+                    const labelUList& faceCells =
                         mesh().boundary()[startPatchIndex(bI[sI])].faceCells();
 
                     // label bFaceID =
@@ -1128,10 +1045,10 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
             }
 
             tensor DMCoeff =
-	    (
-		spinTensor(DR)
-		& (contactForceDerivative[sI] + contactForceDn[sI])
-	    );
+            (
+                spinTensor(DR)
+                & (contactForceDerivative[sI] + contactForceDn[sI])
+            );
 
 	    //   tensor DMCoeff = tensor::zero;
 
@@ -1153,143 +1070,158 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                     cells[globalUpperSegI[sI]]
                 );
 
+            Info<< "wDiag for global seg: " << globalSegI[sI] << " is " << wDiag << endl;
+            Info<< "For beam " << bI[0] << " - Shared face between "
+                << "cells: " << globalLowerSegI[sI] << " and "
+                << globalUpperSegI[sI] << " is face "
+                << sharedFaceIndex << " and owner of face "
+                << sharedFaceIndex << " is " << own[sharedFaceIndex]
+                << endl;
+
+            // Info<< "diagCell: " << diagCell << " , and wDiag " << wDiag << endl;
+            Info<< "contactForceDerivative:\n" << contactForceDerivative[sI]
+                << "\ncontactForceDn:\n" << contactForceDn[sI]
+                << endl;
+            
+            scalarSquareMatrix localPcDiag(6, 0.0);
+
             //-- wDiag
             //- Force
-            diag[diagCell](0, 0) +=
+            localPcDiag(0, 0) =
                 wDiag*contactForceDerivative[sI].xx()
               + wDiag*tangContactForceDerivative[sI].xx()
-	      + wDiag*contactForceDn[sI].xx()
-	      + wDiag*tangContactForceDt[sI].xx();
+    	      + wDiag*contactForceDn[sI].xx()
+	          + wDiag*tangContactForceDt[sI].xx();
 
-            diag[diagCell](0, 1) +=
+            localPcDiag(0, 1) =
                 wDiag*contactForceDerivative[sI].xy()
               + wDiag*tangContactForceDerivative[sI].xy()
-	      + wDiag*contactForceDn[sI].xy()
+    	      + wDiag*contactForceDn[sI].xy()
               + wDiag*tangContactForceDt[sI].xy();
 
-            diag[diagCell](0, 2) +=
+            localPcDiag(0, 2) =
                 wDiag*contactForceDerivative[sI].xz()
               + wDiag*tangContactForceDerivative[sI].xz()
-	      + wDiag*contactForceDn[sI].xz()
+    	      + wDiag*contactForceDn[sI].xz()
               + wDiag*tangContactForceDt[sI].xz();
 
-            diag[diagCell](1, 0) +=
+            localPcDiag(1, 0) =
                 wDiag*contactForceDerivative[sI].yx()
               + wDiag*tangContactForceDerivative[sI].yx()
-	      + wDiag*contactForceDn[sI].yx()
-	      + wDiag*tangContactForceDt[sI].yx();
+    	      + wDiag*contactForceDn[sI].yx()
+	          + wDiag*tangContactForceDt[sI].yx();
 
-            diag[diagCell](1, 1) +=
+            localPcDiag(1, 1) =
                 wDiag*contactForceDerivative[sI].yy()
               + wDiag*tangContactForceDerivative[sI].yy()
-	      + wDiag*contactForceDn[sI].yy()
-	      + wDiag*tangContactForceDt[sI].yy();
+    	      + wDiag*contactForceDn[sI].yy()
+	          + wDiag*tangContactForceDt[sI].yy();
 
-            diag[diagCell](1, 2) +=
+            localPcDiag(1, 2) =
                 wDiag*contactForceDerivative[sI].yz()
               + wDiag*tangContactForceDerivative[sI].yz()
-	      + wDiag*contactForceDn[sI].yz()
-	      + wDiag*tangContactForceDt[sI].yz();
+    	      + wDiag*contactForceDn[sI].yz()
+	          + wDiag*tangContactForceDt[sI].yz();
 
 
-            diag[diagCell](2, 0) +=
+            localPcDiag(2, 0) =
                 wDiag*contactForceDerivative[sI].zx()
               + wDiag*tangContactForceDerivative[sI].zx()
-	      + wDiag*contactForceDn[sI].zx()
-	      + wDiag*tangContactForceDt[sI].zx();
+    	      + wDiag*contactForceDn[sI].zx()
+	          + wDiag*tangContactForceDt[sI].zx();
 
-            diag[diagCell](2, 1) +=
+            localPcDiag(2, 1) =
                 wDiag*contactForceDerivative[sI].zy()
               + wDiag*tangContactForceDerivative[sI].zy()
               + wDiag*contactForceDn[sI].zy()
-	      + wDiag*tangContactForceDt[sI].zy();
+    	      + wDiag*tangContactForceDt[sI].zy();
 
-            diag[diagCell](2, 2) +=
+            localPcDiag(2, 2) =
                 wDiag*contactForceDerivative[sI].zz()
               + wDiag*tangContactForceDerivative[sI].zz()
               + wDiag*contactForceDn[sI].zz()
-	      + wDiag*tangContactForceDt[sI].zz();
+    	      + wDiag*tangContactForceDt[sI].zz();
 
 
             //- Moment
-            diag[diagCell](3, 0) += wDiag*DMCoeff.xx();
-            diag[diagCell](3, 1) += wDiag*DMCoeff.xy();
-            diag[diagCell](3, 2) += wDiag*DMCoeff.xz();
+            localPcDiag(3, 0) = wDiag*DMCoeff.xx();
+            localPcDiag(3, 1) = wDiag*DMCoeff.xy();
+            localPcDiag(3, 2) = wDiag*DMCoeff.xz();
 
-            diag[diagCell](4, 0) += wDiag*DMCoeff.yx();
-            diag[diagCell](4, 1) += wDiag*DMCoeff.yy();
-            diag[diagCell](4, 2) += wDiag*DMCoeff.yz();
+            localPcDiag(4, 0) = wDiag*DMCoeff.yx();
+            localPcDiag(4, 1) = wDiag*DMCoeff.yy();
+            localPcDiag(4, 2) = wDiag*DMCoeff.yz();
 
-            diag[diagCell](5, 0) += wDiag*DMCoeff.zx();
-            diag[diagCell](5, 1) += wDiag*DMCoeff.zy();
-            diag[diagCell](5, 2) += wDiag*DMCoeff.zz();
+            localPcDiag(5, 0) = wDiag*DMCoeff.zx();
+            localPcDiag(5, 1) = wDiag*DMCoeff.zy();
+            localPcDiag(5, 2) = wDiag*DMCoeff.zz();
+
+
+            appendBlockTriplets(pointContactTriplets, diagCell, diagCell, localPcDiag);
+
+            pcDiag[diagCell] += localPcDiag;
 
             //-- w1
             if (sharedFaceIndex != -1)
             {
-                scalarSquareMatrix* curCoeffPtr = &(upper[sharedFaceIndex]);
-                if (own[sharedFaceIndex] != globalSegI[sI])
-                {
-                    curCoeffPtr = &(lower[sharedFaceIndex]);
-                }
-                scalarSquareMatrix& curCoeff = *curCoeffPtr;
+                scalarSquareMatrix curCoeff(6, 0.0);
 
                 //- Force
                 curCoeff(0, 0) +=
                     (1.0-wDiag)*contactForceDerivative[sI].xx()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].xx()
                   + (1.0-wDiag)*contactForceDn[sI].xx()
-		  + (1.0-wDiag)*tangContactForceDt[sI].xx();
+		          + (1.0-wDiag)*tangContactForceDt[sI].xx();
 
                 curCoeff(0, 1) +=
                     (1.0-wDiag)*contactForceDerivative[sI].xy()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].xy()
                   + (1.0-wDiag)*contactForceDn[sI].xy()
-		  + (1.0-wDiag)*tangContactForceDt[sI].xy();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].xy();
 
                 curCoeff(0, 2) +=
                     (1.0-wDiag)*contactForceDerivative[sI].xz()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].xz()
                   + (1.0-wDiag)*contactForceDn[sI].xz()
-		  + (1.0-wDiag)*tangContactForceDt[sI].xz();
+		          + (1.0-wDiag)*tangContactForceDt[sI].xz();
 
 
                 curCoeff(1, 0) +=
                     (1.0-wDiag)*contactForceDerivative[sI].yx()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].yx()
                   + (1.0-wDiag)*contactForceDn[sI].yx()
-		  + (1.0-wDiag)*tangContactForceDt[sI].yx();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].yx();
 
                 curCoeff(1, 1) +=
                     (1.0-wDiag)*contactForceDerivative[sI].yy()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].yy()
                   + (1.0-wDiag)*contactForceDn[sI].yy()
-		  + (1.0-wDiag)*tangContactForceDt[sI].yy();
+		          + (1.0-wDiag)*tangContactForceDt[sI].yy();
 
                 curCoeff(1, 2) +=
                     (1.0-wDiag)*contactForceDerivative[sI].yz()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].yz()
                   + (1.0-wDiag)*contactForceDn[sI].yz()
-		  + (1.0-wDiag)*tangContactForceDt[sI].yz();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].yz();
 
 
                 curCoeff(2, 0) +=
                     (1.0-wDiag)*contactForceDerivative[sI].zx()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].zx()
                   + (1.0-wDiag)*contactForceDn[sI].zx()
-		  + (1.0-wDiag)*tangContactForceDt[sI].zx();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].zx();
 
                 curCoeff(2, 1) +=
                     (1.0-wDiag)*contactForceDerivative[sI].zy()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].zy()
                   + (1.0-wDiag)*contactForceDn[sI].zy()
-		  + (1.0-wDiag)*tangContactForceDt[sI].zy();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].zy();
 
                 curCoeff(2, 2) +=
                     (1.0-wDiag)*contactForceDerivative[sI].zz()
                   + (1.0-wDiag)*tangContactForceDerivative[sI].zz()
                   + (1.0-wDiag)*contactForceDn[sI].zz()
-		  + (1.0-wDiag)*tangContactForceDt[sI].zz();
+        		  + (1.0-wDiag)*tangContactForceDt[sI].zz();
 
 
                 //- Moment
@@ -1313,8 +1245,33 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
                     (1.0-wDiag)*DMCoeff.zy();
                 curCoeff(5, 2) +=
                     (1.0-wDiag)*DMCoeff.zz();
-            }
 
+
+                if (own[sharedFaceIndex] != globalSegI[sI])
+                {
+                    pcNeiLowerCoeffs[sharedFaceIndex] += curCoeff;
+
+                    appendBlockTriplets
+                    (
+                        pointContactTriplets,
+                        nei[sharedFaceIndex], // row
+                        own[sharedFaceIndex], // column
+                        curCoeff
+                    );
+                }
+                else
+                {
+                    pcNeiUpperCoeffs[sharedFaceIndex] += curCoeff;
+
+                    appendBlockTriplets
+                    (
+                        pointContactTriplets,
+                        own[sharedFaceIndex], // row
+                        nei[sharedFaceIndex], // column
+                        curCoeff
+                    );
+                }
+            }
 
 
             // Off-diagonal
@@ -1326,216 +1283,163 @@ void coupledTotalLagNewtonRaphsonBeam::applyPointContact
             scalar w0 = neiWeight[sI];
             scalar w1 = 1.0 - w0;
 
+            Info<< "w0: " << w0 << endl;
 
-            // label nNeiSegments =
-            //     contact().splines()[nbI[sI]].nSegments();
-            // scalarField neiL =
-            //     contact().splines()[nbI[sI]].segLengths();
-
-            // if
-            // (
-            //     (neiSegI[sI] > 0)
-            //  && (neiSegI[sI] < (nNeiSegments-1))
-            // )
-            // {
-            //     if (neiZeta[sI] >= 0)
-            //     {
-            //         globalNeiSeg1 = globalNeiSegI[sI] + 1;
-            //         scalar l = 0.5*neiL[neiSegI[sI]]
-            //           + 0.5*neiL[neiSegI[sI]+1];
-            //         scalar l0 = neiZeta[sI]*neiL[neiSegI[sI]]/2;
-            //         w0 = (l-l0)/l;
-            //         w1 = 1-w0;
-            //     }
-            //     else
-            //     {
-            //         globalNeiSeg0 = globalNeiSegI[sI] - 1;
-            //         scalar l = 0.5*neiL[neiSegI[sI]-1]
-            //           + 0.5*neiL[neiSegI[sI]];
-            //         scalar l1 = -neiZeta[sI]*neiL[neiSegI[sI]]/2;
-            //         w1 = (l-l1)/l;
-            //         w0 = 1-w1;
-            //     }
-            // }
-
-            // label IN0 = 6*globalNeiSeg0;
-            // label IN1 = 6*globalNeiSeg1;
+            scalarSquareMatrix pcLocalInterBeamCoeffsFirst(6, 0.0);
+            scalarSquareMatrix pcLocalInterBeamCoeffsSecond(6, 0.0);
 
             //-- IN0
             //- Force
-            pcCoeffs[pcI][sI].first()(0,0) -=
+            pcLocalInterBeamCoeffsFirst(0,0) -=
                 w0*contactForceDerivative[sI].xx()
               + w0*contactForceDn[sI].xx()
-	      + w0*couplingTangentContactForceCoeffs[sI].xx();
-            pcCoeffs[pcI][sI].first()(0,1) -=
+    	      + w0*couplingTangentContactForceCoeffs[sI].xx();
+            pcLocalInterBeamCoeffsFirst(0,1) -=
                 w0*contactForceDerivative[sI].xy()
               + w0*contactForceDn[sI].xy()
-	      + w0*couplingTangentContactForceCoeffs[sI].xy();
-            pcCoeffs[pcI][sI].first()(0,2) -=
+	          + w0*couplingTangentContactForceCoeffs[sI].xy();
+            pcLocalInterBeamCoeffsFirst(0,2) -=
                 w0*contactForceDerivative[sI].xz()
               + w0*contactForceDn[sI].xz()
-	      + w0*couplingTangentContactForceCoeffs[sI].xz();
+	          + w0*couplingTangentContactForceCoeffs[sI].xz();
 
-            pcCoeffs[pcI][sI].first()(1,0) -=
+            pcLocalInterBeamCoeffsFirst(1,0) -=
                 w0*contactForceDerivative[sI].yx()
               + w0*contactForceDn[sI].yx()
-	      + w0*couplingTangentContactForceCoeffs[sI].yx();
-            pcCoeffs[pcI][sI].first()(1,1) -=
+	          + w0*couplingTangentContactForceCoeffs[sI].yx();
+            pcLocalInterBeamCoeffsFirst(1,1) -=
                 w0*contactForceDerivative[sI].yy()
               + w0*contactForceDn[sI].yy()
-	      + w0*couplingTangentContactForceCoeffs[sI].yy();
-            pcCoeffs[pcI][sI].first()(1,2) -=
+    	      + w0*couplingTangentContactForceCoeffs[sI].yy();
+            pcLocalInterBeamCoeffsFirst(1,2) -=
                 w0*contactForceDerivative[sI].yz()
               + w0*contactForceDn[sI].yz()
-	      + w0*couplingTangentContactForceCoeffs[sI].yz();
+	          + w0*couplingTangentContactForceCoeffs[sI].yz();
 
-            pcCoeffs[pcI][sI].first()(2,0) -=
+            pcLocalInterBeamCoeffsFirst(2,0) -=
                 w0*contactForceDerivative[sI].zx()
               + w0*contactForceDn[sI].zx()
-	      + w0*couplingTangentContactForceCoeffs[sI].zx();
-            pcCoeffs[pcI][sI].first()(2,1) -=
+	          + w0*couplingTangentContactForceCoeffs[sI].zx();
+            pcLocalInterBeamCoeffsFirst(2,1) -=
                 w0*contactForceDerivative[sI].zy()
               + w0*contactForceDn[sI].zy()
-	      + w0*couplingTangentContactForceCoeffs[sI].zy();
-            pcCoeffs[pcI][sI].first()(2,2) -=
+    	      + w0*couplingTangentContactForceCoeffs[sI].zy();
+            pcLocalInterBeamCoeffsFirst(2,2) -=
                 w0*contactForceDerivative[sI].zz()
               + w0*contactForceDn[sI].zz()
-	      + w0*couplingTangentContactForceCoeffs[sI].zz();
+    	      + w0*couplingTangentContactForceCoeffs[sI].zz();
 
-	    //Info << "pcCoeffs force: " << pcCoeffs << endl;
+
             //- Moment
-            pcCoeffs[pcI][sI].first()(3,0) -=
+            pcLocalInterBeamCoeffsFirst(3,0) -=
                 w0*DMCoeff.xx();
-            pcCoeffs[pcI][sI].first()(3,1) -=
+            pcLocalInterBeamCoeffsFirst(3,1) -=
                 w0*DMCoeff.xy();
-            pcCoeffs[pcI][sI].first()(3,2) -=
+            pcLocalInterBeamCoeffsFirst(3,2) -=
                 w0*DMCoeff.xz();
 
-            pcCoeffs[pcI][sI].first()(4,0) -=
+            pcLocalInterBeamCoeffsFirst(4,0) -=
                 w0*DMCoeff.yx();
-            pcCoeffs[pcI][sI].first()(4,1) -=
+            pcLocalInterBeamCoeffsFirst(4,1) -=
                 w0*DMCoeff.yy();
-            pcCoeffs[pcI][sI].first()(4,2) -=
+            pcLocalInterBeamCoeffsFirst(4,2) -=
                 w0*DMCoeff.yz();
 
-            pcCoeffs[pcI][sI].first()(5,0) -=
+            pcLocalInterBeamCoeffsFirst(5,0) -=
                 w0*DMCoeff.zx();
-            pcCoeffs[pcI][sI].first()(5,1) -=
+            pcLocalInterBeamCoeffsFirst(5,1) -=
                 w0*DMCoeff.zy();
-            pcCoeffs[pcI][sI].first()(5,2) -=
+            pcLocalInterBeamCoeffsFirst(5,2) -=
                 w0*DMCoeff.zz();
-	    //Info << "pcCoeffs moment: " << pcCoeffs << endl;
+
             //-- IN1
             //- Force
-            pcCoeffs[pcI][sI].second()(0,0) -=
+            pcLocalInterBeamCoeffsSecond(0,0) -=
                 w1*contactForceDerivative[sI].xx()
               + w1*contactForceDn[sI].xx()
-	      + w1*couplingTangentContactForceCoeffs[sI].xx();
-            pcCoeffs[pcI][sI].second()(0,1) -=
+	          + w1*couplingTangentContactForceCoeffs[sI].xx();
+            pcLocalInterBeamCoeffsSecond(0,1) -=
                 w1*contactForceDerivative[sI].xy()
               + w1*contactForceDn[sI].xy()
-	      + w1*couplingTangentContactForceCoeffs[sI].xy();
-            pcCoeffs[pcI][sI].second()(0,2) -=
+	          + w1*couplingTangentContactForceCoeffs[sI].xy();
+            pcLocalInterBeamCoeffsSecond(0,2) -=
                 w1*contactForceDerivative[sI].xz()
               + w1*contactForceDn[sI].xz()
-	      + w1*couplingTangentContactForceCoeffs[sI].xz();
+    	      + w1*couplingTangentContactForceCoeffs[sI].xz();
 
-            pcCoeffs[pcI][sI].second()(1,0) -=
+            pcLocalInterBeamCoeffsSecond(1,0) -=
                 w1*contactForceDerivative[sI].yx()
               + w1*contactForceDn[sI].yx()
-	      + w1*couplingTangentContactForceCoeffs[sI].yx();
-            pcCoeffs[pcI][sI].second()(1,1) -=
+    	      + w1*couplingTangentContactForceCoeffs[sI].yx();
+            pcLocalInterBeamCoeffsSecond(1,1) -=
                 w1*contactForceDerivative[sI].yy()
               + w1*contactForceDn[sI].yy()
-	      + w1*couplingTangentContactForceCoeffs[sI].yy();
-            pcCoeffs[pcI][sI].second()(1,2) -=
+	          + w1*couplingTangentContactForceCoeffs[sI].yy();
+            pcLocalInterBeamCoeffsSecond(1,2) -=
                 w1*contactForceDerivative[sI].yz()
               + w1*contactForceDn[sI].yz()
-	      + w1*couplingTangentContactForceCoeffs[sI].yz();
+	          + w1*couplingTangentContactForceCoeffs[sI].yz();
 
-            pcCoeffs[pcI][sI].second()(2,0) -=
+            pcLocalInterBeamCoeffsSecond(2,0) -=
                 w1*contactForceDerivative[sI].zx()
               + w1*contactForceDn[sI].zx()
-	      + w1*couplingTangentContactForceCoeffs[sI].zx();
-            pcCoeffs[pcI][sI].second()(2,1) -=
+    	      + w1*couplingTangentContactForceCoeffs[sI].zx();
+            pcLocalInterBeamCoeffsSecond(2,1) -=
                 w1*contactForceDerivative[sI].zy()
               + w1*contactForceDn[sI].zy()
-	      + w1*couplingTangentContactForceCoeffs[sI].zy();
-            pcCoeffs[pcI][sI].second()(2,2) -=
+	          + w1*couplingTangentContactForceCoeffs[sI].zy();
+            pcLocalInterBeamCoeffsSecond(2,2) -=
                 w1*contactForceDerivative[sI].zz()
               + w1*contactForceDn[sI].zz()
-	      + w1*couplingTangentContactForceCoeffs[sI].zz();
+	          + w1*couplingTangentContactForceCoeffs[sI].zz();
 
             //- Moment
-            pcCoeffs[pcI][sI].second()(3,0) -=
+            pcLocalInterBeamCoeffsSecond(3,0) -=
                 w1*DMCoeff.xx();
-            pcCoeffs[pcI][sI].second()(3,1) -=
+            pcLocalInterBeamCoeffsSecond(3,1) -=
                 w1*DMCoeff.xy();
-            pcCoeffs[pcI][sI].second()(3,2) -=
+            pcLocalInterBeamCoeffsSecond(3,2) -=
                 w1*DMCoeff.xz();
 
-            pcCoeffs[pcI][sI].second()(4,0) -=
+            pcLocalInterBeamCoeffsSecond(4,0) -=
                 w1*DMCoeff.yx();
-            pcCoeffs[pcI][sI].second()(4,1) -=
+            pcLocalInterBeamCoeffsSecond(4,1) -=
                 w1*DMCoeff.yy();
-            pcCoeffs[pcI][sI].second()(4,2) -=
+            pcLocalInterBeamCoeffsSecond(4,2) -=
                 w1*DMCoeff.yz();
 
-            pcCoeffs[pcI][sI].second()(5,0) -=
+            pcLocalInterBeamCoeffsSecond(5,0) -=
                 w1*DMCoeff.zx();
-            pcCoeffs[pcI][sI].second()(5,1) -=
+            pcLocalInterBeamCoeffsSecond(5,1) -=
                 w1*DMCoeff.zy();
-            pcCoeffs[pcI][sI].second()(5,2) -=
+            pcLocalInterBeamCoeffsSecond(5,2) -=
                 w1*DMCoeff.zz();
 
-	    //Info << "pcCoeffs: " << pcCoeffs << endl;
-            // // Tangential force direction corrector
-            // if (false)
-            // {
-            //     scalar delta;
-            //     label ID = 6*globalSegI[sI];
-            //     label ID1 = 6*globalSeg1;
-            //     label IND = globalNeiSegI[sI];
+            appendBlockTriplets
+            (
+                pointContactTriplets,
+                globalSegI[sI], // row
+                globalLowerNeiSegI[sI], // column
+                pcLocalInterBeamCoeffsFirst
+            );
 
-            //     if (globalSeg1 > globalSegI[sI])
-            //     {
-            //         delta = (0.5*L()[segI[sI]] + 0.5*L()[segI[sI]+1]);
-            //     }
-            //     else
-            //     {
-            //         delta = -(0.5*L()[segI[sI]-1] + 0.5*L()[segI[sI]]);
-            //     }
+            appendBlockTriplets
+            (
+                pointContactTriplets,
+                globalSegI[sI], // row
+                globalUpperNeiSegI[sI], // column
+                pcLocalInterBeamCoeffsSecond
+            );
 
-            //     //
-            //     A.coeffRef(ID,ID) -=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(ID+1,ID+1) -=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(ID+2,ID+2) -=
-            //         mag(tangentialContactForce[sI])/delta;
+            // Info<< "Global seg I: " << globalSegI[sI]
+            //     << "\nGlobal Lower NeiSeg I: " << globalLowerNeiSegI[sI]
+            //     << "\nGlobal Upper NeiSeg I: " << globalUpperNeiSegI[sI]
+            //     << endl;
 
-            //     A.coeffRef(ID,ID1) +=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(ID+1,ID1+1) +=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(ID+2,ID1+2) +=
-            //         mag(tangentialContactForce[sI])/delta;
 
-            //     //
-            //     A.coeffRef(IND,ID) +=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(IND+1,ID+1) +=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(IND+2,ID+2) +=
-            //         mag(tangentialContactForce[sI])/delta;
+            pcInterBeamCoeffs[pcI][sI].first() += pcLocalInterBeamCoeffsFirst;
+            pcInterBeamCoeffs[pcI][sI].second() += pcLocalInterBeamCoeffsSecond;
 
-            //     A.coeffRef(IND,ID1) -=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(IND+1,ID1+1) -=
-            //         mag(tangentialContactForce[sI])/delta;
-            //     A.coeffRef(IND+2,ID1+2) -=
-            //         mag(tangentialContactForce[sI])/delta;
-            // }
         }
     }
     }

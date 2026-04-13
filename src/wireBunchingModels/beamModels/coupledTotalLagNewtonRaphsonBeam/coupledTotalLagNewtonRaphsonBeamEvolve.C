@@ -95,12 +95,49 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar deltaXNorm = GREAT;
     scalar XNorm = GREAT;
 
+    // Contact residual initialise
+    scalar curContactResidual = 1;
+
     iOuterCorr() = 0;
     do
     {
         if (debug)
         {
             Info<< "iOuterCorr: " << iOuterCorr() << endl;
+        }
+        if (contactActive())
+        {
+            if (debug)
+            {
+                Info << "Updating contact: start" << endl;
+            }
+
+            scalar tStart = runTime().elapsedCpuTime();
+
+            // SB(2026)
+            // Check the contact criteria between multiple beams
+            // and store all the contact locations and forces
+            // These forces will be applied on a later step
+
+            curContactResidual = contact().update();
+
+            scalar tEnd = runTime().elapsedCpuTime();
+
+            totalContactTime_ += tEnd - tStart;
+
+            if (debug)
+            {
+                Pout << "Current total contact update time: "
+                     << totalContactTime_ << endl;
+            }
+
+            if (debug)
+            {
+                Info << "curContactResidual: "
+                    << curContactResidual << endl;
+
+                Info << "Updating contact: end" << endl;
+            }
         }
 
         scalar tStart = runTime().elapsedCpuTime();
@@ -525,16 +562,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
             }
 
-            // Apply the contact forces (if any present)
-            applyPointContact(d, l, u, source);
-
-            applyLineContact(d, l, u, source);
-
-
-            // Block coupled solver call
-
-            // Create Eigen linear solver
-            BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
+            Foam::autoPtr<BlockEigenSolverOF> eigenSolverPtr;
 
             // Create solution vector
             Field<scalarRectangularMatrix> solVec
@@ -542,9 +570,155 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
 
-            // Solve the linear system
-            // currentResidualNorm is the imbalance vector
-            currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+            // Field<scalarRectangularMatrix> pcSource
+            // (
+            //     mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+            // );
+
+            if (contactActive())
+            {
+                // SB (2026 - ESI):  New defn for off-diag coupling coeffs of beam contact
+
+                // // Initialise the line contact diag and source contributions
+                // Field<scalarSquareMatrix> lcDiag
+                // (
+                //     mesh().nCells(), scalarSquareMatrix(6, 0.0)
+                // );
+
+                // Field<scalarRectangularMatrix> lcSource
+                // (
+                //     mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+                // );
+
+                // Initialise the line contact diag and source contributions
+                Field<scalarSquareMatrix> pcDiag
+                (
+                    mesh().nCells(), scalarSquareMatrix(6, 0.0)
+                );
+
+                // DONT DO THIS (BUG) - It resizes only if the size is different but does
+                // NOT zero the values in pcSource_
+                // pcSource_.setSize(mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0));)
+
+
+                if (pcSource_.size() != mesh().nCells())
+                {
+                    pcSource_.setSize(mesh().nCells());
+                }
+                // Ensure contact source is reset every outer iteration.
+                pcSource_ = scalarRectangularMatrix(6, 1, 0.0);
+
+                Field<scalarSquareMatrix> pcNeiUpperCoeffs
+                (
+                    mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+                );
+
+                Field<scalarSquareMatrix> pcNeiLowerCoeffs
+                (
+                    mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+                );
+
+               // InterBeam coeffs for point contact
+               pcCoeffPairListList pcInterBeamCoeffs;
+
+               pcInterBeamCoeffs.setSize(contact().pointContacts().size());
+
+                const pcCoeffPair pcZero
+                (
+                    scalarSquareMatrix(6, Zero),
+                    scalarSquareMatrix(6, Zero)
+                );
+
+                forAll(pcInterBeamCoeffs, pcI)
+                {
+                    pcInterBeamCoeffs[pcI].setSize(2, pcZero);
+                }
+
+                // std::vector<Eigen::Triplet<scalar>> pointContactTriplets;
+                // Point contact - Eight 6x6 implicit contact blocks for a contact pair
+                pointContactTriplets_.clear();
+                pointContactTriplets_.reserve(36*8*contact().pointContacts().size());
+
+            // // Storage container for line contact coeffcients
+            //    lcInterBeamCoeffs_.setSize(nBeams());
+
+            //    const lcCoeffPair lcZero
+            //    (
+            //        scalarSquareMatrix(6, Zero),
+            //        scalarSquareMatrix(6, Zero)
+            //    );
+
+            //    for (label bI = 0; bI < nBeams(); ++bI)
+            //    {
+            //        const label nSeg = contact().splines()[bI].nSegments();
+
+            //        lcInterBeamCoeffs_.set
+            //        (
+            //            bI,
+            //            new lcCoeffPairListList(nSeg)
+            //        );
+
+            //        for (label segI = 0; segI < nSeg; ++segI)
+            //        {
+            //            lcInterBeamCoeffs_[bI][segI].setSize(nBeams(), lcZero);
+            //        }
+            //    }
+
+                // // Apply the contact forces to diag and source
+                // // and collect the off-diag contributions in
+                // // lcCoeffs and pcCoeffs
+                // applyPointContact(d, l, u, source, pcInterBeamCoeffs_);
+
+                // applyLineContact(d, l, u, source, lcInterBeamCoeffs_);
+                // lineContactContribution(lcDiag, lcSource, lcInterBeamCoeffs_);
+
+                pointContactContribution
+                (
+                    pointContactTriplets_,
+                    pcDiag,
+                    pcSource_,
+                    pcNeiUpperCoeffs,
+                    pcNeiLowerCoeffs,
+                    pcInterBeamCoeffs
+                );
+
+            }
+
+            // //Temporarily clear the triplet to check whether pcSOurce is causing issue
+            // pointContactTriplets_.clear();
+
+            // Block coupled solver call
+            if (contactActive())
+            {
+                eigenSolverPtr.reset
+                (
+                    new BlockEigenSolverOF(d, l, u, own, nei, pointContactTriplets_)
+                );
+
+                currentResidualNorm =
+                    eigenSolverPtr->solve(solVec, source, pcSource_);
+            }
+            else
+            {
+                eigenSolverPtr.reset
+                (
+                    new BlockEigenSolverOF(d, l, u, own, nei)
+                );
+
+                currentResidualNorm =
+                    eigenSolverPtr->solve(solVec, source);
+            }
+
+            // // Solve the linear system
+            // // currentResidualNorm is the imbalance vector
+            // currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+
+            Info<< "iOuterCorr = " << iOuterCorr()
+                << ", nPointContacts = " << contact().pointContacts().size()
+                << ", nPointTriplets = " << pointContactTriplets_.size()
+                << endl;
+
+            Info<< "\n*-------------*\n" << endl;
 
             if (iOuterCorr() == 0)
             {
