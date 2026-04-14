@@ -48,7 +48,7 @@ void Foam::beamContactModel::initializeLineContact
 )
 {
 
-    //   Info << "initializeLineContact: " <<  bI << ", " << segI << endl;
+    //   Info<< "initializeLineContact: " <<  bI << ", " << segI << endl;
 
     const vectorField& neiPoints = splines_[nbI].points();
     const vectorField& neidRdS = splines_[nbI].dRdS();
@@ -64,62 +64,62 @@ void Foam::beamContactModel::initializeLineContact
     )
     {
         scalar testValue =
-		(
-			neidRdS[nbSegI]
-			& (curCentres[segI] - neiPoints[nbSegI])
-		)
+        (
+            neidRdS[nbSegI]
+            & (curCentres[segI] - neiPoints[nbSegI])
+        )
        *(
-			neidRdS[nbSegI + 1]
-			& (curCentres[segI] - neiPoints[nbSegI + 1])
-		);
+            neidRdS[nbSegI + 1]
+            & (curCentres[segI] - neiPoints[nbSegI + 1])
+        );
 
-		// Info << "Contact search testValue " << testValue << endl;
+        // Info<< "Contact search testValue " << testValue << endl;
 
-		if (testValue <= 0)
-		{
-			curNearestPoint =
-				splines_[nbI].nearestPoint
-				(
-				nbSegI,
-				curCentres[segI]
-				);
-			break;
-		}
+        if (testValue <= 0)
+        {
+            curNearestPoint =
+                splines_[nbI].nearestPoint
+                (
+                    nbSegI,
+                    curCentres[segI]
+                );
+            break;
+        }
     }
 
     label nbSegI = curNearestPoint.first();
     scalar nbZeta = curNearestPoint.second();
 
-     //   Info << "_: " << bI << ", " << segI << ", " << nbI << ", "
-     	 //   << nbSegI << ", " << nbZeta << endl;
+     //   Info<< "_: " << bI << ", " << segI << ", " << nbI << ", "
+     //   << nbSegI << ", " << nbZeta << endl;
 
     // This set() takes the solver to lineContacts.C and executes the set() there
     lineContacts_[bI][segI][nbI].set
     (
         bI,
-	segI,
-	0,
-	nbI,
-	nbSegI,
-	nbZeta,
-	beam_.runTime().timeIndex()
+        segI,
+        0,
+        nbI,
+        nbSegI,
+        nbZeta,
+        beam_.runTime().timeIndex()
     );
 }
 
 
 void Foam::beamContactModel::initializeLineContacts()
 {
-    //   Info << "Inside initializeLineContacts() in beamContactModel.C" << endl;
+    //   Info<< "Inside initializeLineContacts() in beamContactModel.C" << endl;
     label nBeams = beam_.mesh().cellZones().size();
 
     // Update nearest points and contact angles
 
     label start = 0;
 
-    for(label bI = 0; bI<nBeams; bI++)
+    for (label bI = 0; bI<nBeams; bI++)
     {
         for (label segI=0; segI<splines_[bI].nSegments(); segI++)
-	{
+        {
             label globalSegIndex = start + segI;
 
             label cellID =
@@ -135,7 +135,7 @@ void Foam::beamContactModel::initializeLineContacts()
                     }
                 }
             }
-	}
+        }
 
         start += splines_[bI].nSegments();
     }
@@ -143,17 +143,17 @@ void Foam::beamContactModel::initializeLineContacts()
 
 void Foam::beamContactModel::updateLineContacts()
 {
-    Info << "Updating line contacts: beamContactModel()" << endl;
+    Info<< "Updating line contacts: beamContactModel()" << endl;
 
     label nBeams = beam_.mesh().cellZones().size();
 
     // Update nearest points and contact angles
     label start = 0;
 
-    for(label bI=0; bI<nBeams; bI++)
+    for (label bI=0; bI<nBeams; bI++)
     {
-	for (label segI=0; segI<splines_[bI].nSegments(); segI++)
-	{
+        for (label segI=0; segI<splines_[bI].nSegments(); segI++)
+        {
             label globalSegIndex = start + segI;
 
             label cellID =
@@ -172,8 +172,8 @@ void Foam::beamContactModel::updateLineContacts()
 
                         if (oldNeiSegI != -1)
                         {
-			    //   Info << "Updating line contact for" << " beam " << bI
-			    //   << " segI " << segI << " nbI " << nbI << endl;
+                            //   Info<< "Updating line contact for" << " beam " << bI
+                            //   << " segI " << segI << " nbI " << nbI << endl;
                             updateLineContact(bI, segI, nbI);
                         }
                         else
@@ -188,7 +188,7 @@ void Foam::beamContactModel::updateLineContacts()
                 // Pout << "Global segment: " << globalSegIndex
                 //      << " not present on this processor" << endl;
             }
-	}
+        }
 
         start += splines_[bI].nSegments();
     }
@@ -201,10 +201,6 @@ void Foam::beamContactModel::updateLineContact
     const label nbI
 )
 {
-    //   if(debug)
-    //   {
-	//   Info << "updateLineContact: " <<  bI << ", " << segI << endl;
-    //   }
     const vectorField& neiPoints = splines_[nbI].points();
     const vectorField& neidRdS = splines_[nbI].dRdS();
     const vectorField& curCentres = splines_[bI].midPoints();
@@ -214,16 +210,16 @@ void Foam::beamContactModel::updateLineContact
     if (oldNeiSegI == -1)
     {
         FatalErrorIn
-		(
+        (
             "Foam::beamContactModel::updateLineContact(...) const"
-		)
-		<< "Trying to update line contact which is not initialized before."
-		<< abort(FatalError);
+        )
+            << "Trying to update line contact which is not initialized before."
+            << abort(FatalError);
     }
 
     label offset = 1;
 
-    label fNeiSegI = oldNeiSegI-offset;
+    label fNeiSegI = oldNeiSegI - offset;
 
     if (fNeiSegI < 0)
     {
@@ -245,44 +241,44 @@ void Foam::beamContactModel::updateLineContact
     )
     {
         scalar testValue =
-		(
-			neidRdS[nbSegI]
-			& (curCentres[segI] - neiPoints[nbSegI])
-		)
-		*(
-			neidRdS[nbSegI + 1]
-			& (curCentres[segI] - neiPoints[nbSegI + 1])
-		);
-		//   Info << "tV: " << testValue << endl;
-		if (testValue <= 0)
-		{
-			curNearestPoint =
-				splines_[nbI].nearestPoint
-				(
-				nbSegI,
-				curCentres[segI]
-				);
-			//   Info << "curNearestPoint " << curNearestPoint << endl;
-			break;
-		}
+        (
+            neidRdS[nbSegI]
+            & (curCentres[segI] - neiPoints[nbSegI])
+        )
+       *(
+            neidRdS[nbSegI + 1]
+            & (curCentres[segI] - neiPoints[nbSegI + 1])
+        );
+
+        if (testValue <= 0)
+        {
+            curNearestPoint =
+                splines_[nbI].nearestPoint
+                (
+                    nbSegI,
+                    curCentres[segI]
+                );
+
+            break;
+        }
     }
 
     label neiSegI = curNearestPoint.first();
-    //   Info << "neiSegI: " << neiSegI << endl;
+
 
     if (neiSegI != -1)
     {
         scalar neiZeta = curNearestPoint.second();
 
         lineContacts_[bI][segI][nbI].set
-	(
+        (
             bI,
-	    segI,
-	    0,
-	    nbI,
-	    neiSegI,
-	    neiZeta,
-	    beam_.runTime().timeIndex()
+            segI,
+            0,
+            nbI,
+            neiSegI,
+            neiZeta,
+            beam_.runTime().timeIndex()
         );
     }
     else
@@ -295,14 +291,14 @@ void Foam::beamContactModel::updateLineContact
 
 void Foam::beamContactModel::updateLineContactForces()
 {
-    //   Info << "beamContactModel::updateLineContactForces() start " << endl;
+    //   Info<< "beamContactModel::updateLineContactForces() start " << endl;
     label nBeams = beam_.mesh().cellZones().size();
 
     label start = 0;
     for(label bI=0; bI<nBeams; bI++)
     {
-	for (label segI=0; segI<splines_[bI].nSegments(); segI++)
-	{
+        for (label segI=0; segI<splines_[bI].nSegments(); segI++)
+        {
             label globalSegIndex = start + segI;
 
             label cellID =
@@ -315,7 +311,7 @@ void Foam::beamContactModel::updateLineContactForces()
                     if (nbI != bI) // No self-contact
                     {
                         //   Pout << bI << ", " << segI  << endl;
-			//   Info << "Line contacts size \n" << lineContacts_.size() << endl;
+                        //   Info<< "Line contacts size \n" << lineContacts_.size() << endl;
 
                         lineContacts_[bI][segI][nbI].updateForce
                         (
@@ -323,14 +319,14 @@ void Foam::beamContactModel::updateLineContactForces()
                             splines_,
                             normalModel_(),
                             frictionModel_(),
-			    lowerContactAngleLimit_,
+                            lowerContactAngleLimit_,
                             upperContactAngleLimit_,
                             augmentedLagrangian_
                         );
                     }
                 }
             }
-	}
+        }
 
         start += splines_[bI].nSegments();
     }
@@ -348,7 +344,7 @@ void Foam::beamContactModel::updateNormalGapOffset()
     FieldField<Field, scalar> avgPen(nBeams);
     FieldField<Field, scalar> maxPen(nBeams);
     
-    for(label bI=0; bI<nBeams; bI++)
+    for (label bI=0; bI<nBeams; bI++)
     {
         avgPen.set(bI, new scalarField(nBeams, 0));
         maxPen.set(bI, new scalarField(nBeams, 0));
@@ -388,7 +384,7 @@ void Foam::beamContactModel::updateNormalGapOffset()
             }
         }
 
-        // Info << bI << ", avgPen: " << avgPen[bI]
+        // Info<< bI << ", avgPen: " << avgPen[bI]
         //      << ", maxPen: " << maxPen[bI] << endl;
     }
 
@@ -413,15 +409,13 @@ void Foam::beamContactModel::updateNormalGapOffset()
 
 void Foam::beamContactModel::initializePointContacts()
 {
-     // Info << "Initialize point contacts" << endl;
-
-    for(label bI=0; bI<splines_.size(); bI++)
+    for (label bI=0; bI<splines_.size(); bI++)
     {
-	//   Info << "bI " << bI << endl;
+        //   Info<< "bI " << bI << endl;
 
         for (label nbI=bI; nbI<splines_.size(); nbI++)
         {
-	    //   Info << "nbI " << nbI << endl;
+            //   Info<< "nbI " << nbI << endl;
             if (nbI != bI) // No self-contact
             {
                 for (label segI=0; segI<splines_[bI].nSegments(); segI++)
@@ -434,42 +428,39 @@ void Foam::beamContactModel::initializePointContacts()
                         neiSegI++
                     )
                     {
-			// SB - 27 June 2023 -
-			// pinball sphere search for point contact search
+                        // SB - 27 June 2023 -
+                        // pinball sphere search for point contact search
 
-			//   vector c = splines_[bI].position(segI,0);
-			//   vector neiC = splines_[nbI].position(neiSegI,0);
+                        //   vector c = splines_[bI].position(segI,0);
+                        //   vector neiC = splines_[nbI].position(neiSegI,0);
 
-			//   scalar rc = 0.5*splines_[bI].length(segI, 0);
-			//   scalar neiRc = 0.5*splines_[nbI].length(neiSegI,0);
+                        //   scalar rc = 0.5*splines_[bI].length(segI, 0);
+                        //   scalar neiRc = 0.5*splines_[nbI].length(neiSegI,0);
 
-			//   scalar dc = mag(c - neiC) - (rc + neiRc);
+                        //   scalar dc = mag(c - neiC) - (rc + neiRc);
 
-			//   scalar zetaC = -2;
-			//   scalar neiZetaC = -2;
+                        //   scalar zetaC = -2;
+                        //   scalar neiZetaC = -2;
 
-			//   if (dc <= SMALL)
-			//   {
-			    //   ++count;
+                        //   if (dc <= SMALL)
+                        //   {
+                            //   ++count;
 
-			    // Check for point contact
-			    Tuple2<scalar, scalar> zetas =
-				splines_[bI].checkPointContact
-				(
-				    segI,
-				    splines_[nbI],
-				    neiSegI,
-				    lowerContactAngleLimit_
-				);
-			    //   scalar zetaC = zetas.first();
-			    //   scalar neiZetaC = zetas.second();
-			    scalar zetaC = zetas.first();
-			    scalar neiZetaC = zetas.second();
-		        //   }
+                            // Check for point contact
+                            Tuple2<scalar, scalar> zetas =
+                                splines_[bI].checkPointContact
+                                (
+                                    segI,
+                                    splines_[nbI],
+                                    neiSegI,
+                                    lowerContactAngleLimit_
+                                );
+
+                            scalar zetaC = zetas.first();
+                            scalar neiZetaC = zetas.second();
 
                         if
                         (
-			//- SB changed (18 Aug 2022): > -1 to >= -1
                             (zetaC > -1) && (zetaC <= 1.0)
                          && (neiZetaC > -1) && (neiZetaC <= 1.0)
                         )
@@ -490,46 +481,40 @@ void Foam::beamContactModel::initializePointContacts()
                             scalar contactAngle =
                                 ::acos(mag(tan0 & tan1))*180.0/M_PI;
 
-			    Info << "contact Angle " << tab << contactAngle << endl;
+                            Info<< "contact Angle " << tab << contactAngle << endl;
 
-                            //if (contactAngle > lowerContactAngleLimit_)
-                            //{
-                                if (bI < nbI)
-                                {
-				    //   Info << "hello " << endl;
-                                    pointContacts_.append
+                            if (bI < nbI)
+                            {
+                                pointContacts_.append
+                                (
+                                    pointContact
                                     (
-                                        pointContact
-                                        (
-                                            bI,
-                                            segI,
-                                            zetaC,
-                                            nbI,
-                                            neiSegI,
-                                            neiZetaC,
-                                            beam_.runTime().timeIndex()
-                                        )
-                                    );
-                                }
-                                else
-                                {
-				    //   Info << "beta: " << endl;
-                                    pointContacts_.append
+                                        bI,
+                                        segI,
+                                        zetaC,
+                                        nbI,
+                                        neiSegI,
+                                        neiZetaC,
+                                        beam_.runTime().timeIndex()
+                                    )
+                                );
+                            }
+                            else
+                            {
+                                pointContacts_.append
+                                (
+                                    pointContact
                                     (
-                                        pointContact
-                                        (
-                                            nbI,
-                                            neiSegI,
-                                            neiZetaC,
-                                            bI,
-                                            segI,
-                                            zetaC,
-                                            beam_.runTime().timeIndex()
-                                        )
-                                    );
-                                }
-                            //}
-			    //   Info << "Bye" << endl;
+                                        nbI,
+                                        neiSegI,
+                                        neiZetaC,
+                                        bI,
+                                        segI,
+                                        zetaC,
+                                        beam_.runTime().timeIndex()
+                                    )
+                                );
+                            }
                         }
                     }
                 }
@@ -537,15 +522,15 @@ void Foam::beamContactModel::initializePointContacts()
         }
     }
 
-    Info << "Initialize point contacts: finished" << endl;
-    //   Info << "count " << count << endl;
+    Info<< "Initialize point contacts: finished" << endl;
+
     // Calculate current point contact forces
     updatePointContactForces();
 }
 
 void Foam::beamContactModel::updatePointContacts()
 {
-    Info << "Inside updatePointContacts() beamContactModel.C" << endl;
+    Info<< "Inside updatePointContacts() beamContactModel.C" << endl;
     forAll(pointContacts_, pcI)
     {
         label bI = pointContacts_[pcI].firstBeam();
@@ -585,35 +570,35 @@ void Foam::beamContactModel::updatePointContacts()
             // Find nearest segment
             for (label nsI=fNeiSegI; nsI<=lNeiSegI; nsI++)
             {
-		// SB - 27 June 2023 -
-		// pinball sphere search for point contact search
+                // SB - 27 June 2023 -
+                // pinball sphere search for point contact search
 
-		//   vector c = splines_[bI].position(sI,0);
-		//   vector neiC = splines_[nbI].position(nsI,0);
+                //   vector c = splines_[bI].position(sI,0);
+                //   vector neiC = splines_[nbI].position(nsI,0);
 
-		//   scalar rc = 0.5*splines_[bI].length(sI, 0);
-		//   scalar neiRc = 0.5*splines_[nbI].length(nsI,0);
+                //   scalar rc = 0.5*splines_[bI].length(sI, 0);
+                //   scalar neiRc = 0.5*splines_[nbI].length(nsI,0);
 
-		//   scalar dc = mag(c - neiC) - (rc + neiRc);
+                //   scalar dc = mag(c - neiC) - (rc + neiRc);
 
-		//   scalar zetaC = -2;
-		//   scalar neiZetaC = -2;
+                //   scalar zetaC = -2;
+                //   scalar neiZetaC = -2;
 
-		//   if (dc <= SMALL)
-		//   {
+                //   if (dc <= SMALL)
+                //   {
 
-		    // Check for point contact
-		    Tuple2<scalar, scalar> zetas =
-			splines_[bI].checkPointContact
-			(
-			    sI,
-			    splines_[nbI],
-			    nsI,
-			    lowerContactAngleLimit_
-			);
-		    scalar zetaC = zetas.first();
-		    scalar neiZetaC = zetas.second();
-		//   }
+                    // Check for point contact
+                    Tuple2<scalar, scalar> zetas =
+                        splines_[bI].checkPointContact
+                        (
+                            sI,
+                            splines_[nbI],
+                            nsI,
+                            lowerContactAngleLimit_
+                        );
+                    scalar zetaC = zetas.first();
+                    scalar neiZetaC = zetas.second();
+                //   }
 
                 if
                 (
@@ -634,48 +619,45 @@ void Foam::beamContactModel::updatePointContacts()
                         );
                     tan1 /= mag(tan1);
 
-                    scalar contactAngle =
-                        ::acos(mag(tan0 & tan1))*180.0/M_PI;
+                    // scalar contactAngle =
+                    //     ::acos(mag(tan0 & tan1))*180.0/M_PI;
 
-                   // if (contactAngle > lowerContactAngleLimit_)
-                   // {
-                        if (bI < nbI)
-                        {
-                            pointContacts_[pcI].set
-                            (
-                                bI,
-                                sI,
-                                zetaC,
-                                nbI,
-                                nsI,
-                                neiZetaC,
-                                beam_.runTime().timeIndex()
-                            );
-                        }
-                        else
-                        {
-                            pointContacts_[pcI].set
-                            (
-                                nbI,
-                                nsI,
-                                neiZetaC,
-                                bI,
-                                sI,
-                                zetaC,
-                                beam_.runTime().timeIndex()
-                            );
-                        }
+                    if (bI < nbI)
+                    {
+                        pointContacts_[pcI].set
+                        (
+                            bI,
+                            sI,
+                            zetaC,
+                            nbI,
+                            nsI,
+                            neiZetaC,
+                            beam_.runTime().timeIndex()
+                        );
+                    }
+                    else
+                    {
+                        pointContacts_[pcI].set
+                        (
+                            nbI,
+                            nsI,
+                            neiZetaC,
+                            bI,
+                            sI,
+                            zetaC,
+                            beam_.runTime().timeIndex()
+                        );
+                    }
 
-                        updated = true;
-                        break;
-                   // }
+                    updated = true;
+                    break;
                 }
             }
         }
 
         if (!updated)
         {
-            Info << "Point contact " << pointContacts_[pcI]
+            Info<< "Point contact " << pointContacts_[pcI]
                  << " is not updated." << endl;
         }
     }
@@ -702,36 +684,36 @@ void Foam::beamContactModel::addNewPointContacts()
                         neiSegI++
                     )
                     {
-			//   // SB - 27 June 2023 -
-			//   // pinball sphere search for point contact search
+                        //   // SB - 27 June 2023 -
+                        //   // pinball sphere search for point contact search
 
-			//   vector c = splines_[bI].position(segI,0);
-			//   vector neiC = splines_[nbI].position(neiSegI,0);
+                        //   vector c = splines_[bI].position(segI,0);
+                        //   vector neiC = splines_[nbI].position(neiSegI,0);
 
-			//   scalar rc = 0.5*splines_[bI].length(segI, 0);
-			//   scalar neiRc = 0.5*splines_[nbI].length(neiSegI,0);
+                        //   scalar rc = 0.5*splines_[bI].length(segI, 0);
+                        //   scalar neiRc = 0.5*splines_[nbI].length(neiSegI,0);
 
-			//   scalar dc = mag(c - neiC) - (rc + neiRc);
+                        //   scalar dc = mag(c - neiC) - (rc + neiRc);
 
-			//   scalar zetaC = -2;
-			//   scalar neiZetaC = -2;
+                        //   scalar zetaC = -2;
+                        //   scalar neiZetaC = -2;
 
-			//   if (dc <= SMALL)
-			//   {
-			    // Check for point contact
-			    Tuple2<scalar, scalar> zetas =
-				splines_[bI].checkPointContact
-				(
-				    segI,
-				    splines_[nbI],
-				    neiSegI,
-				    lowerContactAngleLimit_
-				);
-			    scalar zetaC = zetas.first();
-			    scalar neiZetaC = zetas.second();
-			    //   zetaC = zetas.first();
-			    //   neiZetaC = zetas.second();
-		        //   }
+                        //   if (dc <= SMALL)
+                        //   {
+                            // Check for point contact
+                            Tuple2<scalar, scalar> zetas =
+                                splines_[bI].checkPointContact
+                                (
+                                    segI,
+                                    splines_[nbI],
+                                    neiSegI,
+                                    lowerContactAngleLimit_
+                                );
+                            scalar zetaC = zetas.first();
+                            scalar neiZetaC = zetas.second();
+                            //   zetaC = zetas.first();
+                            //   neiZetaC = zetas.second();
+                        //   }
 
                         if
                         (
@@ -801,7 +783,7 @@ void Foam::beamContactModel::addNewPointContacts()
 
                                 if (!exist)
                                 {
-                                     Info << "contactAngle: "
+                                     Info<< "contactAngle: "
                                          << contactAngle << endl;
 
                                     newPointContact.updateForce
@@ -810,8 +792,8 @@ void Foam::beamContactModel::addNewPointContacts()
                                         splines_,
                                         pointNormalModel_(),
                                         pointFrictionModel_(),
-					lowerContactAngleLimit_,
-					upperContactAngleLimit_,
+                                        lowerContactAngleLimit_,
+                                        upperContactAngleLimit_,
                                         augmentedLagrangian_
                                     );
 
@@ -823,7 +805,7 @@ void Foam::beamContactModel::addNewPointContacts()
                                     {
                                         pointContacts_.append(newPointContact);
                                     }
-                                     Info << "adding contact point: "
+                                     Info<< "adding contact point: "
                                           << newPointContact << endl;
                                 }
                           //  }
@@ -846,13 +828,13 @@ void Foam::beamContactModel::updatePointContactForces()
             splines_,
             pointNormalModel_(),
             pointFrictionModel_(),
-	    lowerContactAngleLimit_,
-	    upperContactAngleLimit_,
+            lowerContactAngleLimit_,
+            upperContactAngleLimit_,
             augmentedLagrangian_
         );
     }
 
-     Info << "pointContacts_.size(): " << pointContacts_.size() << endl;
+     Info<< "pointContacts_.size(): " << pointContacts_.size() << endl;
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -878,8 +860,8 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
         (
             //   word(lookup("normalContactModel")),
             //   *this
-	    word(subDict("lineContact").lookup("normalContactModel")),
-	    subDict("lineContact")
+            word(subDict("lineContact").lookup("normalContactModel")),
+            subDict("lineContact")
         )
     ),
     frictionModel_
@@ -888,124 +870,27 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
         (
             //   word(lookup("frictionContactModel")),
             //   *this
-	    word(subDict("lineContact").lookup("frictionContactModel")),
-	    subDict("lineContact")
+            word(subDict("lineContact").lookup("frictionContactModel")),
+            subDict("lineContact")
         )
     ),
     pointNormalModel_
     (
-	normalContactModel::New
-	(
-	    word(subDict("pointContact").lookup("normalContactModel")),
-	    subDict("pointContact")
-	)
+        normalContactModel::New
+        (
+            word(subDict("pointContact").lookup("normalContactModel")),
+            subDict("pointContact")
+        )
     ),
     pointFrictionModel_
     (
-	frictionContactModel::New
-	(
-	    word(subDict("pointContact").lookup("frictionContactModel")),
-	    subDict("pointContact")
-	)
+        frictionContactModel::New
+        (
+            word(subDict("pointContact").lookup("frictionContactModel")),
+            subDict("pointContact")
+        )
     ),
     lineContacts_(),
-    // conicalPulleyContacts_(),
-    // toroidalPulleyContacts_(),
-    // conicalPulleyLoads_(0),
-    // conicalPulleyContactGaps_(),
-    // activeConicalPulleyContact_
-    // (
-    //     IOobject
-    //     (
-    //         "activeConicalPulleyContact",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedScalar("zero", dimless, -1)
-    // ),
-    // conicalPulleyNormalContactForce_
-    // (
-    //     IOobject
-    //     (
-    //         "conicalPulleyNormalContactForce",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedVector("zero", dimless, vector::zero)
-    // ),
-    // conicalPulleyAxialContactForce_
-    // (
-    //     IOobject
-    //     (
-    //         "conicalPulleyAxialContactForce",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedVector("zero", dimless, vector::zero)
-    // ),
-    // conicalPulleyContactForceRatio_
-    // (
-    //     IOobject
-    //     (
-    //         "conicalPulleyFctByFcn",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedVector("zero", dimless, vector::zero)
-    // ),
-    // toroidalPulleyLoads_(0),
-    // toroidalPulleyContactGaps_(),
-    // activeToroidalPulleyContact_
-    // (
-    //     IOobject
-    //     (
-    //         "activeToroidalPulleyContact",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedScalar("zero", dimless, -1)
-    // ),
-    // toroidalPulleyNormalContactForce_
-    // (
-    //     IOobject
-    //     (
-    //         "toroidalPulleyNormalContactForce",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedVector("zero", dimless, vector::zero)
-    // ),
-    // toroidalPulleyContactForceRatio_
-    // (
-    //     IOobject
-    //     (
-    //         "toroidalPulleyFctByFcn",
-    //         beam.runTime().timeName(),
-    //         beam.mesh(),
-    //         IOobject::READ_IF_PRESENT,
-    //         IOobject::AUTO_WRITE
-    //     ),
-    //     beam.mesh(),
-    //     dimensionedVector("zero", dimless, vector::zero)
-    // ),
     nearestPoints_(),
     contactForces_(),
     contactForceDerivatives_(),
@@ -1017,7 +902,7 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
     contactOffsets_(),
     implicit_(lookupOrDefault<bool>("implicit", true)),
     augmentedLagrangian_(lookupOrDefault<bool>("augmentedLagrangian", false)),
-	sendAllPointsAndTangents_
+    sendAllPointsAndTangents_
     (
         lookupOrDefault<bool>("sendAllPointsAndTangents", true)
     ),
@@ -1029,8 +914,8 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
 {
     label nBeams = beam_.mesh().cellZones().size();
 
-    Info << "lower contact angle " << tab << lowerContactAngleLimit_ << endl;
-    Info << "upper contact angle " << tab << upperContactAngleLimit_ << endl;
+    Info<< "lower contact angle " << tab << lowerContactAngleLimit_ << endl;
+    Info<< "upper contact angle " << tab << upperContactAngleLimit_ << endl;
 
     // Create splines
     {
@@ -1042,7 +927,7 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
             vectorField curPoints;
             vectorField curTangents;
 
-	    //   Info << "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
+            //   Info<< "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
             beam_.currentGlobalBeamPointsAndTangents
             (
                 sI,
@@ -1050,8 +935,8 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
                 curTangents
             );
 
-	    //   Info << "\nBeam points and tangents set" << endl;
-	    //   Info << "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
+            //   Info<< "\nBeam points and tangents set" << endl;
+            //   Info<< "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
             splines_.set
             (
                 sI,
@@ -1097,11 +982,11 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
 
         forAll(lineContacts_[bI], segI)
         {
-	    lineContacts_[bI][segI] =
-	        lineContactList
-	        (
-		    nBeams,
-		    lineContact()
+            lineContacts_[bI][segI] =
+                lineContactList
+                (
+                    nBeams,
+                    lineContact()
                 );
         }
     }
@@ -1123,106 +1008,20 @@ Foam::beamContactModel::beamContactModel(const beamModel& beam)
                              //   lineContacts_[bI][segI][nbI]
                             //   .secondBeamSegment();
 
-			//   scalar nbZeta =
+                        //   scalar nbZeta =
                              //   lineContacts_[bI][segI][nbI]
                             //   .secondBeamZeta();
 
-                         //   Info << bI << ", " << segI << ", "
+                         //   Info<< bI << ", " << segI << ", "
                               //   << nbI << ", " << nbSegI << ", "<< nbZeta << endl;
                      //   }
-         	//   }
+             //   }
              //   }
          //   }
      //   }
 
     // Pout << "print initial contact" << endl;
     // sleep(5);
-
-    // // Initialiye conical pulley contacts
-    // label nPulleys = beam_.conicalPulleys().size();
-    // if (nPulleys)
-    // {
-    //     conicalPulleyContacts_.setSize(nBeams);
-
-    //     conicalPulleyContactGaps_.setSize(nBeams);
-
-    //     forAll(conicalPulleyContacts_, bI)
-    //     {
-    //         conicalPulleyContacts_.set
-    //         (
-    //             bI,
-    //             new conicalPulleyContactListList
-    //             (
-    //                 splines_[bI].nSegments()
-    //             )
-    //         );
-
-    //         conicalPulleyContactGaps_.set
-    //         (
-    //             bI,
-    //             new scalarPairList(nPulleys, scalarPair(GREAT, GREAT))
-    //             // new scalarField(nPulleys, GREAT)
-    //         );
-
-    //         forAll(conicalPulleyContacts_[bI], segI)
-    //         {
-    //             conicalPulleyContacts_[bI][segI] =
-    //                 conicalPulleyContactList
-    //                 (
-    //                     nPulleys,
-    //                     conicalPulleyContact(conicalPulleyContacts_)
-    //                 );
-    //         }
-    //     }
-
-    //     updateConicalPulleyContacts();
-
-    //     conicalPulleyLoads_.setSize(nPulleys, vector::zero);
-    // }
-
-
-    // // Initialiye toroidal pulley contacts
-    // nPulleys = beam_.toroidalPulleys().size();
-    // if (nPulleys)
-    // {
-    //     toroidalPulleyContacts_.setSize(nBeams);
-
-    //     toroidalPulleyContactGaps_.setSize(nBeams);
-
-    //     forAll(toroidalPulleyContacts_, bI)
-    //     {
-    //         toroidalPulleyContacts_.set
-    //         (
-    //             bI,
-    //             new toroidalPulleyContactListList
-    //             (
-    //                 splines_[bI].nSegments()
-    //             )
-    //         );
-
-    //         toroidalPulleyContactGaps_.set
-    //         (
-    //             bI,
-    //             new scalarPairList(nPulleys, scalarPair(GREAT, GREAT))
-    //             // new scalarField(nPulleys, GREAT)
-    //         );
-
-    //         forAll(toroidalPulleyContacts_[bI], segI)
-    //         {
-    //             toroidalPulleyContacts_[bI][segI] =
-    //                 toroidalPulleyContactList
-    //                 (
-    //                     nPulleys,
-    //                     toroidalPulleyContact()
-    //                 );
-    //         }
-    //     }
-
-    //     updateToroidalPulleyContacts();
-
-    //     toroidalPulleyLoads_.setSize(nPulleys, vector::zero);
-    // }
-
 
     // Initialize nearest points
     nearestPoints_.setSize(nBeams);
@@ -1440,7 +1239,7 @@ Foam::beamContactModel::~beamContactModel()
 
 Foam::scalar Foam::beamContactModel::update()
 {
-    Info << "Inside update() function of beamContactModel.C file" << endl;
+    Info<< "Inside update() function of beamContactModel.C file" << endl;
     bool debug
     (
         lookupOrDefault<bool>
@@ -1452,8 +1251,6 @@ Foam::scalar Foam::beamContactModel::update()
 
     label nBeams = beam_.mesh().cellZones().size();
 
-    //   Info << "nBeams: \n " << nBeams << endl;
-
     // Update spline geometry
     if (beam_.iOuterCorr() == 0)
     {
@@ -1464,7 +1261,6 @@ Foam::scalar Foam::beamContactModel::update()
     {
         scalar tStart = beam_.runTime().elapsedCpuTime();
 
-        // Info << "tStart: \n" << tStart << endl;
 
         // Update splines
         forAll(splines_, sI)
@@ -1478,9 +1274,9 @@ Foam::scalar Foam::beamContactModel::update()
                 sI,
                 curPoints,
                 curTangents
-                );
-	    //   Info << "\nUpdating beam splines and tangents" << endl;
-	    //   Info << "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
+            );
+            //   Info<< "\nUpdating beam splines and tangents" << endl;
+            //   Info<< "\ncurPoints: " << curPoints << "\ncurTangents: " << curTangents << endl;
             splines_[sI].movePoints(curPoints, curTangents);
         }
 
@@ -1721,44 +1517,20 @@ Foam::scalar Foam::beamContactModel::update()
         totalSplinesUpdateTime_ += tEnd - tStart;
     }
 
-    //   for(label i = 0; i < nBeams ; ++i)
-    //   {
-	//   Info << "beam_" << i << endl;
-	//   Info << splines_[i].points() << endl;
-    //   }
-
     if (debug)
     {
-        Info << "Total spline update time: \n "
+        Info<< "Total spline update time: \n "
              << totalSplinesUpdateTime_ << endl;
     }
 
-    // if (debug)
-    // {
-    //     Info << "Update conical pulley contact forces." << endl;
-    // }
-
-    // // Update conical pulleys contact
-    // updateConicalPulleyContacts();
-    // updateConicalPulleyContactForces();
-
-    // if (debug)
-    // {
-    //     Info << "Update toroidal pulley contact forces." << endl;
-    // }
-
-    // // Update toroidal pulleys contact
-    // updateToroidalPulleyContacts();
-    // updateToroidalPulleyContactForces();
-
     if (debug)
     {
-        Info << "Contact points calculation." << endl;
+        Info<< "Contact points calculation." << endl;
     }
 
     if (debug)
     {
-        Info << "Calculating line contact contribution" << endl;
+        Info<< "Calculating line contact contribution" << endl;
     }
 
     // Update line contacts
@@ -1772,121 +1544,121 @@ Foam::scalar Foam::beamContactModel::update()
     updateLineContactForces();
 
     // Update nearest points and contact angles
-    if (false) // SB: changed this to true to check whether point contact is working, 04/05/2022
+    if (false)
     {
-    for(label bI=0; bI<nearestPoints_.size(); bI++)
-    {
-        labelScalarListList& curNearestPoints = nearestPoints_[bI];
-        scalarListList& curContactAngles = contactAngles_[bI];
-        const vectorField& curCentres = splines_[bI].midPoints();
-
-        for (label nbI=0; nbI<nearestPoints_.size(); nbI++)
+        for(label bI=0; bI<nearestPoints_.size(); bI++)
         {
-            if (nbI != bI) // No self-contact
+            labelScalarListList& curNearestPoints = nearestPoints_[bI];
+            scalarListList& curContactAngles = contactAngles_[bI];
+            const vectorField& curCentres = splines_[bI].midPoints();
+
+            for (label nbI=0; nbI<nearestPoints_.size(); nbI++)
             {
-                const vectorField& neiPoints = splines_[nbI].points();
-                const vectorField& neidRdS = splines_[nbI].dRdS();
-
-                DynamicList<labelScalarLabelScalar> curPointContactPoints;
-
-                for (label segI=0; segI<curNearestPoints[nbI].size(); segI++)
+                if (nbI != bI) // No self-contact
                 {
-                    // Find nearest segment
-                    for
-                    (
-                        label nbSegI=0;
-                        nbSegI<splines_[nbI].nSegments();
-                        nbSegI++
-                    )
-                    {
-                        scalar testValue =
-                        (
-                            neidRdS[nbSegI]
-                          & (curCentres[segI] - neiPoints[nbSegI])
-                        )
-                       *(
-                            neidRdS[nbSegI+1]
-                          & (curCentres[segI] - neiPoints[nbSegI+1])
-                        );
+                    const vectorField& neiPoints = splines_[nbI].points();
+                    const vectorField& neidRdS = splines_[nbI].dRdS();
 
-                        if (testValue <= 0)
+                    DynamicList<labelScalarLabelScalar> curPointContactPoints;
+
+                    for (label segI=0; segI<curNearestPoints[nbI].size(); segI++)
+                    {
+                        // Find nearest segment
+                        for
+                        (
+                            label nbSegI=0;
+                            nbSegI<splines_[nbI].nSegments();
+                            nbSegI++
+                        )
                         {
-                            curNearestPoints[nbI][segI] =
-                            // nearestPoints_[bI][nbI][segI] =
-                                splines_[nbI].nearestPoint
-                                (
-                                    nbSegI,
-                                    curCentres[segI]
-                                );
-                            break;
+                            scalar testValue =
+                            (
+                                neidRdS[nbSegI]
+                              & (curCentres[segI] - neiPoints[nbSegI])
+                            )
+                           * (
+                                neidRdS[nbSegI+1]
+                              & (curCentres[segI] - neiPoints[nbSegI+1])
+                            );
+
+                            if (testValue <= 0)
+                            {
+                                curNearestPoints[nbI][segI] =
+                                // nearestPoints_[bI][nbI][segI] =
+                                    splines_[nbI].nearestPoint
+                                    (
+                                        nbSegI,
+                                        curCentres[segI]
+                                    );
+                                break;
+                            }
                         }
+
+                        // Calculating potential contact angle
+                        vector tan0 = splines_[bI].firstDerivative(segI, 0);
+                        tan0 /= mag(tan0)+SMALL;
+
+                        label nbSegI = nearestPoints_[bI][nbI][segI].first();
+                        label nbZeta = nearestPoints_[bI][nbI][segI].second();
+                        vector tan1 = splines_[nbI].firstDerivative(nbSegI, nbZeta);
+                        tan1 /= mag(tan1)+SMALL;
+
+                        curContactAngles[nbI][segI] =
+                           ::acos(mag(tan0 & tan1))*180.0/M_PI;
                     }
 
-                    // Calculating potential contact angle
-                    vector tan0 = splines_[bI].firstDerivative(segI, 0);
-                    tan0 /= mag(tan0)+SMALL;
-
-                    label nbSegI = nearestPoints_[bI][nbI][segI].first();
-                    label nbZeta = nearestPoints_[bI][nbI][segI].second();
-                    vector tan1 = splines_[nbI].firstDerivative(nbSegI, nbZeta);
-                    tan1 /= mag(tan1)+SMALL;
-
-                    curContactAngles[nbI][segI] =
-                       ::acos(mag(tan0 & tan1))*180.0/M_PI;
-                }
-
-                if (debug)
-                {
-                    Info << "Contact angle (" << bI << ", " << nbI << "), avg: "
-                         << average(curContactAngles[nbI])
-                         << ", max: " << max(curContactAngles[nbI])
-                         << ", min: " << min(curContactAngles[nbI]) << endl;
+                    if (debug)
+                    {
+                        Info<< "Contact angle (" << bI << ", " << nbI << "), avg: "
+                             << average(curContactAngles[nbI])
+                             << ", max: " << max(curContactAngles[nbI])
+                             << ", min: " << min(curContactAngles[nbI]) << endl;
+                    }
                 }
             }
         }
     }
-    }
 
     if (debug)
     {
-        Info << "Calculating point contact contribution" << endl;
+        Info<< "Calculating point contact contribution" << endl;
     }
 
     // // Calculating point contact
-     bool reusePrevPointContacts
-     (
-         lookupOrDefault<bool>
-         (
-             "reusePrevPointContacts",
-             false
-         )
-     );
+    bool reusePrevPointContacts
+    (
+        lookupOrDefault<bool>
+        (
+            "reusePrevPointContacts",
+            false
+        )
+    );
 
     // Here the point contact initialization is done.
     // The else loop is executed here
-     if (reusePrevPointContacts && pointContacts_.size())
-     {
-         updatePointContacts();
+    if (reusePrevPointContacts && pointContacts_.size())
+    {
+        updatePointContacts();
 
-         if (curTimeIndex_ < beam_.runTime().timeIndex())
-         {
-	    addNewPointContacts();
-         }
-     }
-     else
-     {
-         pointContacts_.clear();
+        if (curTimeIndex_ < beam_.runTime().timeIndex())
+        {
+            addNewPointContacts();
+        }
+    }
+    else
+    {
+        pointContacts_.clear();
 
-	 Info << "Fresh point contact points calculated: beamContactModel.C" << endl;
-         initializePointContacts();
+        Info<< "Fresh point contact points calculated: beamContactModel.C" << endl;
+        initializePointContacts();
 
-         // Info << "Num of point contacts: "
-         // << pointContacts_.size() << endl;
-     }
+        // Info<< "Num of point contacts: "
+        // << pointContacts_.size() << endl;
+    }
 
     if (debug)
     {
-        Info << "Contact points calculation finished. "
+        Info<< "Contact points calculation finished. "
            << "Calculating contact forces" << endl;
     }
 
@@ -1993,9 +1765,9 @@ Foam::scalar Foam::beamContactModel::update()
                         param[segI] = curNearestPoints[nbI][segI].second();
                     }
 
-                    Info << "Nearest point segment parameters" << endl;
-                    Info << "bI = " << bI << ", nbI = " << nbI << endl;
-                    Info << "max: " << max(param) << ", avg: "
+                    Info<< "Nearest point segment parameters" << endl;
+                    Info<< "bI = " << bI << ", nbI = " << nbI << endl;
+                    Info<< "max: " << max(param) << ", avg: "
                          << average(param) << ", min: " << min(param) << endl;
                 }
             }
@@ -2035,158 +1807,6 @@ bool Foam::beamContactModel::finalUpdate()
 
         splines_[sI].movePoints(curPoints, curTangents);
     }
-
-    label nBeams = beam_.mesh().cellZones().size();
-    // label nPulleys = beam_.conicalPulleys().size();
-
-    // if (nPulleys)
-    // {
-    //     // Update angular velocity of pulleys
-    //     {
-    //         label start = 0;
-    //         scalarField omega(nPulleys, 0);
-    //         labelList nContactSegments(nPulleys, 0);
-    //         const vectorField& DW = beam_.solutionDW();
-    //         // const vectorField& oldW = beam_.solutionW().oldTime();
-    //         for(label bI=0; bI<nBeams; bI++)
-    //         {
-    //             for (label segI=0; segI<splines_[bI].nSegments(); segI++)
-    //             {
-    //                 label globalSegI = start + segI;
-
-    //                 for (label pulleyI=0; pulleyI<nPulleys; pulleyI++)
-    //                 {
-    //                     scalarField magOldFcn(2, 0);
-
-    //                     magOldFcn[0] =
-    //                         mag
-    //                         (
-    //                             conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .oldNormalContactForce()[0]
-    //                         );
-
-    //                     magOldFcn[1] =
-    //                         mag
-    //                         (
-    //                             conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .oldNormalContactForce()[1]
-    //                         );
-
-    //                     // scalar maxOldFcn = max(magOldFcn);
-    //                     // scalar minOldFcn = min(magOldFcn);
-    //                     // scalar DOldFcn = maxOldFcn - minOldFcn;
-
-    //                     scalarField magFcn(2, 0);
-
-    //                     magFcn[0] =
-    //                         mag
-    //                         (
-    //                             conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .normalContactForce()[0]
-    //                         );
-
-    //                     magFcn[1] =
-    //                         mag
-    //                         (
-    //                             conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .normalContactForce()[1]
-    //                         );
-
-    //                     // scalar maxFcn = max(magFcn);
-    //                     // scalar minFcn = min(magFcn);
-    //                     // scalar DFcn = maxFcn - minFcn;
-
-    //                     scalar smallFcn =
-    //                         conicalPulleyContacts_[bI][segI][pulleyI].smallFcn_;
-
-    //                     if
-    //                     (
-    //                         (
-    //                             (magOldFcn[0] > smallFcn)
-    //                          || (magOldFcn[1] > smallFcn)
-    //                         )
-    //                      && (
-    //                             (magFcn[0] > smallFcn)
-    //                          || (magFcn[1] > smallFcn)
-    //                         )
-    //                     )
-    //                     {
-    //                         const vector& C = splines()[bI].midPoints()[segI];
-    //                         vector T = splines()[bI].dRdS()[segI];
-    //                         T /= mag(T) + SMALL;
-
-    //                         vector DWa =
-    //                             T*(T&DW[globalSegI]);
-    //                             // T*(T&(W[globalSegI] - oldW[globalSegI]));
-
-    //                         vector r =
-    //                             C - beam_.conicalPulleys()[pulleyI].origin();
-    //                         scalar sgn =
-    //                             sign
-    //                             (
-    //                                 (r ^ DWa) &
-    //                                 beam_.conicalPulleys()[pulleyI].axis()
-    //                             );
-
-    //                         // scalar phi =
-    //                         // (
-    //                         //     conicalPulleyContacts_[bI][segI][pulleyI]
-    //                         //    .pulleyContactCoordinates()[0].y()
-    //                         //   + conicalPulleyContacts_[bI][segI][pulleyI]
-    //                         //    .pulleyContactCoordinates()[1].y()
-    //                         // )/2;
-
-    //                         // scalar oldPhi =
-    //                         // (
-    //                         //     conicalPulleyContacts_[bI][segI][pulleyI]
-    //                         //    .oldPulleyContactCoordinates()[0].y()
-    //                         //   + conicalPulleyContacts_[bI][segI][pulleyI]
-    //                         //    .oldPulleyContactCoordinates()[1].y()
-    //                         // )/2;
-
-    //                         // scalar DPhi = phi - oldPhi;
-
-    //                         scalar avgContactRadius =
-    //                         (
-    //                             conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .pulleyContactCoordinates()[0].x()
-    //                           + conicalPulleyContacts_[bI][segI][pulleyI]
-    //                            .pulleyContactCoordinates()[1].x()
-    //                         )/2;
-
-    //                         omega[pulleyI] +=
-    //                             sgn*mag(DWa)/
-    //                             beam_.conicalPulleys()[pulleyI].minRadius();
-    //                             // avgContactRadius;
-
-
-    //                         nContactSegments[pulleyI] += 1;
-    //                     }
-
-    //                     // 2100
-    //                     // omega[pulleyI] = -2400/beam_.conicalPulleys()[pulleyI].minRadius();
-    //                 }
-    //             }
-
-    //             start++;
-    //         }
-
-            // forAll(omega, pulleyI)
-            // {
-            //     // scalar Omega = omega[pulleyI];
-            //     scalar Omega =
-            //         (omega[pulleyI]/(nContactSegments[pulleyI] + SMALL))
-            //        /beam_.runTime().deltaT().value();
-
-            //     const_cast<conicalPulley&>(beam_.conicalPulleys()[pulleyI])
-            //    .setAngularVelocity(Omega); //-2;
-
-            //     Info << "Pulley: " << pulleyI << ", angular velocity: "
-            //          << beam_.conicalPulleys()[pulleyI].angularVelocity()
-            //          << " (" << Omega << ")" << endl;
-            // }
-    //     }
-    // }
 
     return true;
 }
