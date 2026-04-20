@@ -141,7 +141,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     }
 }
 
-
 Foam::tmp<Foam::surfaceScalarField>
 Foam::beamModel::indicator(const Foam::label bI) const
 {
@@ -155,7 +154,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
                 runTime().timeName(),
                 mesh(),
                 IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE
             ),
             mesh(),
             dimensionedScalar("zero", dimless, 0)
@@ -172,7 +171,7 @@ Foam::beamModel::indicator(const Foam::label bI) const
             runTime().timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedScalar("zero", dimless, 0),
@@ -240,17 +239,20 @@ Foam::beamModel::beamModel
     endPatchIndex_(),
     startCells_(),
     nBeamCells_(),
+    crossSections_(),
     R_(),
-    U_(),
-    E_("E",beamProperties()),
-    G_("G",beamProperties()),
+    // U_(),
+    // E_("E",beamProperties()),
+    // G_("G",beamProperties()),
+    E_(),
+    G_(),
     rho_
     (
-        beamProperties().getOrDefault<dimensionedScalar>
-        (
-            "rho",
-            dimensionedScalar("rho", dimDensity, 0)
-        )
+        // beamProperties().getOrDefault<dimensionedScalar>
+        // (
+        //     "rho",
+        //     dimensionedScalar("rho", dimDensity, 0)
+        // )
     ),
     rhof_
     (
@@ -269,7 +271,7 @@ Foam::beamModel::beamModel
             runTime.timeName(),
             this->mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         this->mesh(),
         dimensionedScalar("L", dimLength, 0)
@@ -303,10 +305,10 @@ Foam::beamModel::beamModel
     pointForces_(),
     iOuterCorr_(0),
     steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
-    objectiveInterpolation_
-    (
-        beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
-    ),
+    // objectiveInterpolation_
+    // (
+    //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
+    // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
 
     startToRelaxTime_
@@ -328,10 +330,10 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
-    if (beamProperties().found("rho"))
-    {
-        rho_ = dimensionedScalar("rho",beamProperties());
-    }
+    // if (beamProperties().found("rho"))
+    // {
+    //     rho_ = dimensionedScalar("rho",beamProperties());
+    // }
 
      // Header for gravitational acceleration
     IOobject gHeader
@@ -344,7 +346,7 @@ Foam::beamModel::beamModel
 
     if (gHeader.typeHeaderOk<uniformDimensionedVectorField>(true))
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -359,27 +361,27 @@ Foam::beamModel::beamModel
            )
         );
 
-        Info << "g is set for gravitational body force: "
-                << g()
+        Info<< "g is set for gravitational body force: "
+            << g()
             << endl;
-
 
         if (!beamProperties().found("rho"))
         {
-            FatalError
-            << "rho field not set in beamProperties for"
-            << " calculating the gravity body force"
-            << abort(FatalError);
+            FatalErrorInFunction
+                << "rho field not set in beamProperties for"
+                << " calculating the gravity body force"
+                << abort(FatalError);
         }
-        else if (rho().value()==0.0)
+        else if (mag(rho().value()) < SMALL)
         {
-            WarningIn("Constructor of beamModel.C")
-            << "rho field in constant/beamProperties = "
-            << "zero --> gravitational body force = 0"
-            << nl << endl;
+            WarningInFunction
+                << "rho field in constant/beamProperties = "
+                << "zero --> gravitational body force = 0"
+                << nl << endl;
         }
-    // To check whether density of fluid is specified to calculate
-     // buoyant body force
+
+        // To check whether density of fluid is specified to calculate
+        // buoyant body force
         if (beamProperties().found("rhoFluid"))
         {
             rhof_ = dimensionedScalar("rhoFluid",beamProperties());
@@ -387,14 +389,14 @@ Foam::beamModel::beamModel
         else
         {
             WarningIn("Constructor of beamModel.C")
-            << "density of fluid rhoFluid is not set in constant/beamProperties "
-            << "--> buoyant body force = 0"
-            << nl << endl;
+                << "density of fluid rhoFluid is not set in constant/beamProperties "
+                << "--> buoyant body force = 0"
+                << nl << endl;
         }
     }
     else
     {
-        gPtr_.set
+        gPtr_.reset
         (
             new uniformDimensionedVectorField
             (
@@ -412,86 +414,177 @@ Foam::beamModel::beamModel
     }
 
     // Read cross-sections of beams
-    if (found("beams"))
+    // if (found("beams"))
+    // {
+    Info<< "Reading beam properties from cross-section model" << endl;
+
+    const PtrList<entry> entries(lookup("beams"));
+
+    const label nBeams = entries.size();
+
+    Info<< "nBeams: " << nBeams << endl;
+
+    crossSections_.setSize(nBeams);
+
+    forAll(entries, beamI)
     {
-//        Info << "Beam properties from cross-section model" << endl;
-//
-//        const PtrList<entry> entries(lookup("beams"));
-//
-//        label nBeams = entries.size();
-//
-//        // Info << "nBeams: " << nBeams << endl;
-//
-//        crossSections_.setSize(nBeams);
-//
-//        forAll(entries, beamI)
-//        {
-//            crossSections_.set
-//            (
-//                beamI,
-//                crossSectionModel::New
-//                (
-//                    word(entries[beamI].dict().lookup("crossSectionModel")),
-//                    entries[beamI].dict()
-//                )
-//            );
-//        }
-//
-//        R_.setSize(nBeams);
-//        U_.setSize(nBeams);
-//        forAll(crossSections_, beamI)
-//        {
-//            R_[beamI] = crossSections_[beamI].R();
-//            // U_[beamI] = crossSections_[beamI].U();
-//        }
-//
-//        Pout << "R: " << R_ << endl;
-    }
-    else if (this->found("nBeams")) // Read beam radius
-    {
-        label nBeams = readInt(this->lookup("nBeams"));
-        R_.setSize
+        crossSections_.set
         (
-            nBeams,
-            dimensionedScalar(this->lookup("R")).value()
-        );
-        if (this->found("U"))
-        {
-            U_.setSize
+            beamI,
+            crossSectionModel::New
             (
-                nBeams,
-                dimensionedScalar(this->lookup("U")).value()
-            );
+                word(entries[beamI].dict().lookup("crossSectionModel")),
+                entries[beamI].dict()
+            )
+        );
+    }
+
+    R_.setSize(nBeams);
+    // U_.setSize(nBeams);
+    forAll(crossSections_, beamI)
+    {
+        R_[beamI] = crossSections_[beamI].R();
+        // U_[beamI] = crossSections_[beamI].U();
+    }
+    // }
+    // else if (this->found("nBeams")) // Read beam radius
+    // {
+    //     label nBeams = readInt(this->lookup("nBeams"));
+    //     R_.setSize
+    //     (
+    //         nBeams,
+    //         dimensionedScalar(this->lookup("R")).value()
+    //      );
+    //     if (this->found("U"))
+    //     {
+    //         U_.setSize
+    //         (
+    //             nBeams,
+    //             dimensionedScalar(this->lookup("U")).value()
+    //         );
+    //     }
+    //     else
+    //     {
+    //         U_.setSize(nBeams, 0);
+    //     }
+    // }
+    // else
+    // {
+    //     R_ = scalarField(this->lookup("R"));
+    //     U_ = scalarField(this->lookup("U"));
+    // }
+    
+    Info<< "Attempting to read global mechanical variables "
+        << "from constant/beamProperties "
+        << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
+        << endl;
+
+    dimensionedScalar globalE("E", dimPressure, 0.0);
+    dimensionedScalar globalG("G", dimPressure, 0.0);
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+
+    bool foundGlobalE = false;
+    bool foundGlobalG = false;
+    bool foundGlobalRho = false;
+
+    if (beamProperties().found("E"))
+    {
+        globalE = dimensionedScalar("E", beamProperties());
+        foundGlobalE = true;
+    }
+
+    if (beamProperties().found("G"))
+    {
+        globalG = dimensionedScalar("G", beamProperties());
+        foundGlobalG = true;
+    }
+
+    if (beamProperties().found("rho"))
+    {
+        globalRho = dimensionedScalar("rho", beamProperties());
+        foundGlobalRho = true;
+    }
+    
+    E_.setSize(nBeams, 0.0);
+    G_.setSize(nBeams, 0.0);
+    rho_.setSize(nBeams, 0.0);
+
+    forAll(crossSections_, beamI)
+    {
+        const dictionary& bDict = entries[beamI].dict();
+
+        if (
+               bDict.found("E")
+            || bDict.found("G")
+            || bDict.found("rho")
+           )
+        {
+            if (foundGlobalE || foundGlobalG || foundGlobalRho)
+            {
+                FatalErrorInFunction
+                    << "Both local and global inputs for "
+                    << "beam mechanical properties found!\n"
+                    << "Either specify the variables (E, G, rho) of type "
+                    << "*scalar* locally inside crossSectionModel dictionary, OR "
+                    << "specify ALL of them as global variables of type "
+                    << "*dimensionedScalar*, i.e., specify with dimensions.\n"
+                    << "The global values are common "
+                    << "to all beams!\n"
+                    << abort(FatalError);
+            }
+            else
+            {
+                Info<< "Local mechanical properties specific to beam "
+                    << beamI << " found!"  << endl;
+                
+                E_[beamI] = readScalar(bDict.lookup("E"));
+                G_[beamI] = readScalar(bDict.lookup("G"));
+                rho_[beamI] = bDict.getOrDefault<scalar>("rho", 0.0);
+            }            
+        }
+        else if (foundGlobalE || foundGlobalG || foundGlobalRho)
+        {
+            E_[beamI] = globalE.value();
+            G_[beamI] = globalG.value();
+            rho_[beamI] = globalRho.value();
         }
         else
         {
-            U_.setSize(nBeams, 0);
+            FatalErrorInFunction
+                << "Missing E, G: neither per-beam 'E'/'G' for beam " << beamI
+                << " nor global 'E'/'G' in " << beamProperties().name() << "."
+                << endl;
         }
-    }
-    else
-    {
-        R_ = scalarField(this->lookup("R"));
-        U_ = scalarField(this->lookup("U"));
+
     }
 
     // Write beam cross-section properties
-    Info << "A: " << A() << endl;
+    for (label bI = 0; bI < nBeams; ++bI)
+    {
+        Info<< "\n\n Writing mechanical properties of beam no: " << bI << endl;
+        Info<< "E " << E(bI) << endl;
+        Info<< "G " << G(bI) << endl;
 
-    Info << "Iyy: " << Iyy() << endl;
-    Info << "Izz: " << Izz() << endl;
+        Info<< "A: " << A(bI) << endl;
 
-    Info << "I: " << I() << endl;
-    Info << "J: " << J() << endl;
+        Info<< "Iyy: " << Iyy(bI) << endl;
+        Info<< "Izz: " << Izz(bI) << endl;
 
-    Info << "EI: " << EI() << endl;
-    Info << "GJ: " << GJ() << endl;
+        Info<< "I: " << I(bI) << endl;
+        Info<< "J: " << J(bI) << endl;
 
-    Info << "EA: " << EA() << endl;
-    Info << "GA: " << GA() << endl;
+        Info<< "EI: " << EI(bI) << endl;
+        Info<< "GJ: " << GJ(bI) << endl;
 
-    word startPatchName(beamProperties_.lookup("startPatchName"));
-    word endPatchName(beamProperties_.lookup("endPatchName"));
-
+        Info<< "EA: " << EA(bI) << endl;
+        Info<< "GA: " << GA(bI) << endl;
+    }
+    
+    // word startPatchName(beamProperties_.lookup("startPatchName"));
+    // word endPatchName(beamProperties_.lookup("endPatchName"));
+    word startPatchName = "left";
+    word endPatchName = "right";
+    
     label nCellZones = mesh().cellZones().size();
 
     // Check that there is at least one cell zone
@@ -769,19 +862,19 @@ Foam::beamModel::beamModel
     }
     else
     {
-        Info << "Point forces do not exist" << endl;
+        Info<< "Point forces do not exist" << endl;
     }
 
     // Read conical pulleys
     // if (found("conicalPulleys"))
     // {
-    //     // Info << "Found conical pulleys" << endl;
+    //     // Info<< "Found conical pulleys" << endl;
 
     //     const PtrList<entry> entries(lookup("conicalPulleys"));
 
     //     label nPulleys = entries.size();
 
-    //     // Info << "nPulleys: " << nPulleys << endl;
+    //     // Info<< "nPulleys: " << nPulleys << endl;
 
     //     conicalPulleys_.setSize(nPulleys);
 
@@ -793,7 +886,7 @@ Foam::beamModel::beamModel
     //             new conicalPulley(entries[pulleyI].dict())
     //         );
 
-    //         // Info << entries[pulleyI].dict() << endl;
+    //         // Info<< entries[pulleyI].dict() << endl;
     //     }
     // }
 
@@ -847,9 +940,9 @@ Foam::scalar Foam::beamModel::evolve()
     // {
     //     if (runTime().value() > deleteConicalPulleysAt_)
     //     {
-    //         Info << "Delete conical pulleys ";
+    //         Info<< "Delete conical pulleys ";
     //         conicalPulleys_.clear();
-    //         Info << conicalPulleys_.size() << endl;
+    //         Info<< conicalPulleys_.size() << endl;
     //     }
     // }
 
@@ -1049,24 +1142,24 @@ void Foam::beamModel::writeFields()
 
     //         scalarField t = contact().splines()[bI].midPointParameters();
     //         // scalarField t = spline.midPointParameters();
-    //         // Info << "First beam length: "
+    //         // Info<< "First beam length: "
     //         //      << sum(spline.segLengths()) << endl;
 
     //         if (false)
     //         {
-    //             Info << "\nTotal forces for beam " << bI << endl;
+    //             Info<< "\nTotal forces for beam " << bI << endl;
     //             for (label i=0; i<nBeams; i++)
     //             {
     //                 if (i != bI)
     //                 {
-    //                     Info << ' ' << sum(contact().contactForces()[bI][i]);
+    //                     Info<< ' ' << sum(contact().contactForces()[bI][i]);
     //                 }
     //                 else
     //                 {
-    //                     Info << ' ' << 0;
+    //                     Info<< ' ' << 0;
     //                 }
     //             }
-    //             Info << endl;
+    //             Info<< endl;
     //         }
 
 
@@ -1087,11 +1180,11 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         forceFile << ' ' <<
-    // 		        mag
-    // 		        (
+    //                  mag
+    //                  (
     //                                 contact().lineContacts()[bI][segI][i]
-    // 		           .normalContactForce()
-    // 			);
+    //                     .normalContactForce()
+    //                  );
     //                     }
     //                     else
     //                     {
@@ -1121,8 +1214,8 @@ void Foam::beamModel::writeFields()
     //                     if (i != bI)
     //                     {
     //                         gapFile << ' ' <<
-    // 		        contact().lineContacts()[bI][segI][i]
-    // 		       .normalGap();
+    //                  contact().lineContacts()[bI][segI][i]
+    //                 .normalGap();
 
     //                         // gapFile << ' '
     //                         //     << contact().contactGaps()[bI][i][segI];
@@ -1226,7 +1319,7 @@ void Foam::beamModel::writeFields()
 
     //                             // collectionFile.getLine(line);
     //                             // newCollectionFile << line << '\n';
-    //                             // Info << line << endl;
+    //                             // Info<< line << endl;
 
     //                             if
     //                             (
@@ -1391,7 +1484,7 @@ void Foam::beamModel::writeFields()
 
     //                             // collectionFile.getLine(line);
     //                             // newCollectionFile << line << '\n';
-    //                             // Info << line << endl;
+    //                             // Info<< line << endl;
 
     //                             if
     //                             (

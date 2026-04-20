@@ -738,10 +738,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
     // ground contact related parameters and switches
     groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
-    cNormal_ (readDouble(beamProperties().lookup("cNormal"))),
-    kNormal_ (readDouble(beamProperties().lookup("kNormal"))),
-    kTangential_ (readDouble(beamProperties().lookup("kTangential"))),
-    groundZ_ (readDouble(beamProperties().lookup("groundZ"))),
+    cNormal_ (beamProperties().lookupOrDefault<scalar>("forceRelaxation", 0.0)),
+    kNormal_ (beamProperties().lookupOrDefault<scalar>("forceRelaxation", 0.0)),
+    kTangential_ (beamProperties().lookupOrDefault<scalar>("forceRelaxation", 0.0)),
+    groundZ_ (beamProperties().lookupOrDefault<scalar>("forceRelaxation", 0.0)),
 
     searchEngine_(runTime.db().parent().lookupObject<fvMesh>("region0")),
 
@@ -1159,8 +1159,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     // scalar initialResidual = 1;
     // scalar currentResidual = 1;
     // scalar currentMaterialResidual = 0;
-
-
     //- Adding convergence check based on Seevani's implementation in main branch
     scalar initialResidualNorm = 1;
     scalar currentResidualNorm = GREAT;

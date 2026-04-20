@@ -46,10 +46,9 @@ autoPtr<crossSectionModel> crossSectionModel::New
 {
     Info<< "    Cross-section model: " << name << endl;
 
-    dictionaryConstructorTable::iterator cstrIter =
-        dictionaryConstructorTablePtr_->find(name);
+    auto* cstrIter = dictionaryConstructorTable(name);
 
-    if (cstrIter == dictionaryConstructorTablePtr_->end())
+    if (!cstrIter)
     {
         FatalIOErrorIn
         (
@@ -67,7 +66,7 @@ autoPtr<crossSectionModel> crossSectionModel::New
 
     return autoPtr<crossSectionModel>
     (
-        cstrIter()
+        cstrIter
         (
             name,
             dict

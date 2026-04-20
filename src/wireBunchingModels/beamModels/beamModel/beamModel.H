@@ -29,6 +29,7 @@ Description
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
+    Seevani Bali, UCD.
 
 SourceFiles
     beamModel.C
@@ -40,7 +41,6 @@ SourceFiles
 #define beamModel_H
 
 #include "fvMesh.H"
-//#include "fvMeshCsrAddressing.H"
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
@@ -50,13 +50,7 @@ SourceFiles
 #include "labelScalarVector.H"
 #include "labelScalarTimeVaryingVector.H"
 #include "interpolationTable.H"
-
-//#include "crossSectionModel.H"
-
-// #include "conicalPulley.H"
-// #include "toroidalPulley.H"
-
-// #include "beamContactModel.H"
+#include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
 
@@ -126,22 +120,26 @@ class beamModel
         labelList nBeamCells_;
 
         //- Beam cross-section model
-        //mutable PtrList<crossSectionModel> crossSections_;
+        mutable PtrList<crossSectionModel> crossSections_;
 
         //- Beam cross-section radius
         scalarField R_;
 
         //- Beam convection velocity
-        scalarField U_;
+        // scalarField U_;
 
         //- Young modulus
-        dimensionedScalar E_;
+        // dimensionedScalar E_;
+        scalarList E_;
 
         //- Shear modulus
-        dimensionedScalar G_;
+        // dimensionedScalar G_;
+        scalarList G_;
 
         //- Beam Density
-        dimensionedScalar rho_;
+        // dimensionedScalar rho_;
+        scalarList rho_;
+
         //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
 
@@ -187,8 +185,11 @@ class beamModel
         //- Steady state calculation
         bool steadyState_;
 
-        //- Use objective interpolation for rotation
-        bool objectiveInterpolation_;
+        // //- Use objective interpolation for rotation
+        // bool objectiveInterpolation_;
+
+        //- Artificial scaling factor for changing the inertia
+        //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
 
         //- Conical pullys
@@ -399,10 +400,10 @@ public:
             label globalCellIndex(const label localCellIndex) const;
 
             //- Beam cross-section model
-            //  const PtrList<crossSectionModel>& crossSections() const
-            //  {
-            //      return crossSections_;
-            //  }
+             const PtrList<crossSectionModel>& crossSections() const
+             {
+                 return crossSections_;
+             }
 
             //- Return beam cross-section radius
             const scalar& R(label bI = 0) const
@@ -411,74 +412,92 @@ public:
             }
 
             //- Return beam convection velocity
-            const scalar& U(label bI = 0) const
-            {
-                return U_[bI];
-            }
+            // const scalar& U(label bI = 0) const
+            // {
+            //     return U_
+            //     [bI];
+            // }
 
             inline dimensionedScalar A(label bI = 0) const
             {
-            //    if (crossSections_.size())
-            //    {
-            //        return dimensionedScalar("A", dimArea, crossSections_[bI].A());
-            //    }
+                if (crossSections_.size())
+                {
+                    return
+                        dimensionedScalar
+                        (
+                            "A", dimArea, crossSections_[bI].A()
+                        );
+                }
 
                 return dimensionedScalar("A", dimArea, M_PI*sqr(R(bI)));
-                // return A_;
             }
 
             inline dimensionedScalar I(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "I", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("I", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Iyy(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Iyy", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Iyy", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("Iyy", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Izz(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Izz", dimArea*dimArea, crossSections_[bI].Ixx()
+                       );
+                }
 
                 return dimensionedScalar("Izz", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar J(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "J", dimArea*dimArea, crossSections_[bI].IT()
+                       );
+                }
 
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
-                // return J_;
             }
 
-            const dimensionedScalar& rho() const
+            const dimensionedScalar rho(label bI = 0) const
             {
-                return rho_;
+                return dimensionedScalar("rhoBeam" + Foam::name(bI), dimDensity, rho_[bI]);
             }
+
             const dimensionedScalar& rhoFluid() const
             {
                 return rhof_;
             }
+
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {
@@ -491,65 +510,74 @@ public:
                 return gPtr_();
             }
 
-            const dimensionedScalar& E() const
+            // const dimensionedScalar& E() const
+            // {
+            //     return E_;
+            // }
+            const dimensionedScalar E(label bI = 0) const
             {
-                return E_;
+                return dimensionedScalar("EBeam" + Foam::name(bI), dimPressure, E_[bI]);
             }
 
-            const dimensionedScalar& G() const
+            // const dimensionedScalar& G() const
+            // {
+            //     return G_;
+            // }
+
+            const dimensionedScalar G(label bI = 0) const
             {
-                return G_;
+                return dimensionedScalar("GBeam" + Foam::name(bI), dimPressure, G_[bI]);
             }
 
             inline dimensionedScalar GA(label bI = 0) const
             {
-                return G_*A(bI);
+                return G(bI)*A(bI);
             }
 
             inline dimensionedScalar GJ(label bI = 0) const
             {
-                return G_*J(bI);
+                return G(bI)*J(bI);
             }
 
             inline dimensionedScalar EA(label bI = 0) const
             {
-                return E_*A(bI);
+                return E(bI)*A(bI);
             }
 
             inline dimensionedScalar EI(label bI = 0) const
             {
-                return E_*I(bI);
+                return E(bI)*I(bI);
             }
 
             inline dimensionedScalar EIyy(label bI = 0) const
             {
-                return E_*Iyy(bI);
+                return E(bI)*Iyy(bI);
             }
 
             inline dimensionedScalar EIzz(label bI = 0) const
             {
-                return E_*Izz(bI);
+                return E(bI)*Izz(bI);
             }
             // Additional member functions added fo mass and rotation
  	          // inertia tensors for dynamics calculation
             inline dimensionedScalar ARho(label bI = 0) const
             {
-                return A(bI)*rho();
+                return A(bI)*rho(bI);
             }
 
             inline dimensionedScalar IyyRho(label bI = 0) const
             {
-                return rho()*Iyy(bI);
+                return rho(bI)*Iyy(bI);
             }
 
  	        inline dimensionedScalar IzzRho(label bI = 0) const
             {
-                return rho()*Izz(bI);
+                return rho(bI)*Izz(bI);
             }
 
  	        inline dimensionedScalar JRho(label bI = 0) const
             {
-                return rho()*J(bI);
+                return rho(bI)*J(bI);
             }
 
             //- Return segment length
@@ -683,12 +711,6 @@ public:
                 vectorField& tangents
             ) const = 0;
 
-            //- Return current mean line displacement increment
-            virtual tmp<vectorField> currentDisplacementIncrement() const = 0;
-
-            //- Return current cross-section rotation matrix increment
-            virtual tmp<tensorField> currentRotationIncrement() const = 0;
-
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
 
@@ -786,16 +808,12 @@ public:
                 return steadyState_;
             }
 
-            //- Steady state
-            bool objectiveInterpolation() const
+            //- Artificial scaling factor for changing the inertia
+            //- tensor I_rho in the angular momentum tensor 
+            scalar kCI() const
             {
-                return objectiveInterpolation_;
+                return kCI_;
             }
-            //- Rotation inertia tensor scaling
- 	          scalar kCI() const
- 	          {
- 		            return kCI_;
- 	          }
 
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;

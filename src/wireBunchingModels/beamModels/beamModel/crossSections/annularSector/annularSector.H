@@ -171,12 +171,12 @@ public:
             return Ixx() + Iyy();
         }
 
-        //- Return cross-section coefficient of proportionality
-        //  between fully plastic axial force and fully plastic moment
-        virtual scalar CNM() const
-        {
-            return 4.0/innerRadius_;  //Not sure what this is!
-        }
+        // //- Return cross-section coefficient of proportionality
+        // //  between fully plastic axial force and fully plastic moment
+        // virtual scalar CNM() const
+        // {
+        //     return 4.0/innerRadius_;  //Not sure what this is!
+        // }
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
@@ -193,44 +193,44 @@ public:
             return points_;
         }
 
-        //- Return Green-Lagrangian strain at structured mesh points
-        //  for provided average tranlational and rotational strains
-        virtual tmp<vectorField> greenLagrangianStrain
-        (
-            const vector& Gamma,
-            const vector& K
-        ) const;
+        // //- Return Green-Lagrangian strain at structured mesh points
+        // //  for provided average tranlational and rotational strains
+        // virtual tmp<vectorField> greenLagrangianStrain
+        // (
+        //     const vector& Gamma,
+        //     const vector& K
+        // ) const;
 
-        //- Return cross-section resultant force
-        virtual tmp<scalarField> resultantTotalForce
-        (
-            const vectorField& S
-        ) const;
+        // //- Return cross-section resultant force
+        // virtual tmp<scalarField> resultantTotalForce
+        // (
+        //     const vectorField& S
+        // ) const;
 
-        //- Return cross-section resultant force
-        virtual vector resultantForce(const vectorField& S) const;
+        // //- Return cross-section resultant force
+        // virtual vector resultantForce(const vectorField& S) const;
 
-        //- Return cross-section resultant moment
-        virtual vector resultantMoment(const vectorField& S) const;
+        // //- Return cross-section resultant moment
+        // virtual vector resultantMoment(const vectorField& S) const;
 
-        //- Return cross-section resultant tangent matrices
-        virtual void resultantTangentMatrices
-        (
-            const diagTensorField& dSdE,
-            tensor& DQDGamma,
-            tensor& DQDK,
-            tensor& DMDGamma,
-            tensor& DMDK
-        ) const;
+        // //- Return cross-section resultant tangent matrices
+        // virtual void resultantTangentMatrices
+        // (
+        //     const diagTensorField& dSdE,
+        //     tensor& DQDGamma,
+        //     tensor& DQDK,
+        //     tensor& DMDGamma,
+        //     tensor& DMDK
+        // ) const;
     
-        //- Write cross-section scalar field in VTK format
-        virtual void writeVTK
-        (
-            const fileName& fn,
-            const scalarField& sf0,
-            const scalarField& sf1,
-            const vectorField& vf
-        ) const;
+        // //- Write cross-section scalar field in VTK format
+        // virtual void writeVTK
+        // (
+        //     const fileName& fn,
+        //     const scalarField& sf0,
+        //     const scalarField& sf1,
+        //     const vectorField& vf
+        // ) const;
         
 
 };
