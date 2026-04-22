@@ -74,6 +74,16 @@ circle::circle
         crossSectionModelDict_
         .lookupOrDefault<scalar>("scalingSecondMomentArea", 1.0)
     ),
+    scalingIxx_
+    (
+        crossSectionModelDict_
+        .lookupOrDefault<scalar>("scalingIxx", scalingSecondMomentArea_)
+    ),
+    scalingIyy_
+    (
+        crossSectionModelDict_
+        .lookupOrDefault<scalar>("scalingIyy", scalingSecondMomentArea_)
+    ),
     points_(0, vector::zero)
 {}
 

@@ -69,9 +69,15 @@ class circle
         //- properties of the beams
         scalar scalingArea_;
 
-        //- Artificial second moment of area scaling factor which affects
-        //- the mechanical properties of the beams
+        //- Artificial second moment of area scaling factor. This is used as
+        //- the default when axis-specific factors are not specified.
         scalar scalingSecondMomentArea_;
+
+        //- Artificial second moment of area scaling factor about local x-axis
+        scalar scalingIxx_;
+
+        //- Artificial second moment of area scaling factor about local y-axis
+        scalar scalingIyy_;
 
         //- Local mesh points
         vectorField points_;
@@ -128,19 +134,19 @@ public:
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
-            return scalingSecondMomentArea_*M_PI*pow(radius_, 4)/4;
+            return scalingIxx_*M_PI*pow(radius_, 4)/4;
         }
 
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const
         {
-            return scalingSecondMomentArea_*M_PI*pow(radius_, 4)/4;
+            return scalingIyy_*M_PI*pow(radius_, 4)/4;
         }
 
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
-            return scalingSecondMomentArea_*M_PI*pow(radius_, 4)/2;
+            return Ixx() + Iyy();
         }
 
         // //- Return cross-section coefficient of proportionality
