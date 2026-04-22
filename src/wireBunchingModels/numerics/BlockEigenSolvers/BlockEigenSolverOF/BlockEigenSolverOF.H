@@ -85,6 +85,10 @@ class BlockEigenSolverOF
         // point-to-point beam contact contirbutions
         const std::vector<Eigen::Triplet<scalar>>* pcTripletsPtr_;
 
+        //- Const reference to the Eigen triplets list containing
+        // line-to-line beam contact contirbutions
+        const std::vector<Eigen::Triplet<scalar>>* lcTripletsPtr_;
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -132,7 +136,8 @@ public:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei,
-            const std::vector<Eigen::Triplet<scalar>>& pcTriplets
+            const std::vector<Eigen::Triplet<scalar>>& pcTriplets,
+            const std::vector<Eigen::Triplet<scalar>>& lcTriplets
         );
 
     // Destructor
@@ -155,7 +160,8 @@ public:
         (
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b,
-            const Field<scalarRectangularMatrix>& pcB
+            const Field<scalarRectangularMatrix>& pcB,
+            const Field<scalarRectangularMatrix>& lcB
         );
 
         // //- Re-initialise solver after matrix coefficient update

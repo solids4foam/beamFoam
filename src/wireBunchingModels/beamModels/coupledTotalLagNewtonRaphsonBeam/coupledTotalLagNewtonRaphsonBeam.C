@@ -641,9 +641,11 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     momentumContribPtr_(0),
     totalContactTime_(0),
     totalSolutionTime_(),
-    lcInterBeamCoeffs_(),
+    // lcInterBeamCoeffs_(),
     pcSource_(),
+    lcSource_(),
     pointContactTriplets_(),
+    lineContactTriplets_(),
     proc_
     (
         IOobject

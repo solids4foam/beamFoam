@@ -89,7 +89,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     std::vector< Eigen::Triplet<scalar> > coefficients;
 
     // coefficients.reserve(36*(d.size() + l.size() + u.size()));
-    
+
     coefficients.reserve
     (
         36*(d.size() + l.size() + u.size())
@@ -183,6 +183,30 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
         );
     }
 
+    // Adding the contact triplets
+    if (pcTripletsPtr_)
+    {
+        Info<< "Adding pointContact triplets " << endl;
+        coefficients.insert
+        (
+            coefficients.end(),
+            pcTripletsPtr_->begin(),
+            pcTripletsPtr_->end()
+        );
+    }
+
+    // Adding the line contact triplets
+    if (lcTripletsPtr_)
+    {
+        Info<< "Adding lineContact triplets " << endl;
+        coefficients.insert
+        (
+            coefficients.end(),
+            lcTripletsPtr_->begin(),
+            lcTripletsPtr_->end()
+        );
+    }
+
        // Insert triplets into the matrix
         //label bnRows = rowPointers.size()-1;
         //nRows = blockSize*bnRows;
@@ -210,7 +234,8 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     u_(u),
     own_(own),
     nei_(nei),
-    pcTripletsPtr_(nullptr)
+    pcTripletsPtr_(nullptr),
+    lcTripletsPtr_(nullptr)
 {}
 
 //- Construct from matrix (with contact contributions)
@@ -221,7 +246,8 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     const Field<scalarSquareMatrix>& u,
     const labelList& own,
     const labelList& nei,
-    const std::vector<Eigen::Triplet<scalar>>& pcTriplets
+    const std::vector<Eigen::Triplet<scalar>>& pcTriplets,
+    const std::vector<Eigen::Triplet<scalar>>& lcTriplets
 )
 :
     d_(d),
@@ -229,7 +255,8 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     u_(u),
     own_(own),
     nei_(nei),
-    pcTripletsPtr_(&pcTriplets)
+    pcTripletsPtr_(&pcTriplets),
+    lcTripletsPtr_(&lcTriplets)
 {}
 
 // ************************************************************************* //
@@ -239,7 +266,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 (
     Foam::Field<Foam::scalarRectangularMatrix>& foamX,
     const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
-    const Foam::Field<Foam::scalarRectangularMatrix>& pcB
+    const Foam::Field<Foam::scalarRectangularMatrix>& pcB,
+    const Foam::Field<Foam::scalarRectangularMatrix>& lcB
 )
 {
     Field<scalarRectangularMatrix> totalB(foamB);
@@ -248,7 +276,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     {
         for (label i = 0; i < 6; ++i)
         {
-            totalB[cellI](i,0) += pcB[cellI](i,0);
+            totalB[cellI](i,0) += pcB[cellI](i,0) + lcB[cellI](i,0);
         }
     }
 
@@ -469,5 +497,3 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 
     return initialResidual;
 }
-
-

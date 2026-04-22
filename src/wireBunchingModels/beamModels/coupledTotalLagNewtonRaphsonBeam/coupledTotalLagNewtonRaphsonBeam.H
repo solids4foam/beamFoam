@@ -68,13 +68,13 @@ namespace Foam
 namespace beamModels
 {
 
-typedef Pair<scalarSquareMatrix> lcCoeffPair;
-typedef List<lcCoeffPair> lcCoeffPairList;
-typedef List<lcCoeffPairList> lcCoeffPairListList;
+// typedef Pair<scalarSquareMatrix> lcCoeffPair;
+// typedef List<lcCoeffPair> lcCoeffPairList;
+// typedef List<lcCoeffPairList> lcCoeffPairListList;
 
-typedef Pair<scalarSquareMatrix> pcCoeffPair;
-typedef List<pcCoeffPair> pcCoeffPairList;
-typedef List<pcCoeffPairList> pcCoeffPairListList;
+// typedef Pair<scalarSquareMatrix> pcCoeffPair;
+// typedef List<pcCoeffPair> pcCoeffPairList;
+// typedef List<pcCoeffPairList> pcCoeffPairListList;
 
 /*---------------------------------------------------------------------------*\
               Class coupledTotalLagNewtonRaphsonBeam Declaration
@@ -248,15 +248,22 @@ class coupledTotalLagNewtonRaphsonBeam
         scalar totalSolutionTime_;
 
         //- Line contact coeffs between multiple beams
-        mutable PtrList<lcCoeffPairListList> lcInterBeamCoeffs_;
+        // mutable PtrList<lcCoeffPairListList> lcInterBeamCoeffs_;
 
         //- Source contribution to block matrix due to point contact
         Field<scalarRectangularMatrix> pcSource_;
+
+        //- Source contribution to block matrix due to line contact
+        Field<scalarRectangularMatrix> lcSource_;
 
         //- Eigen triplet list that stores all point-to-point
         //- contact contributions between multiple beams
         // mutable pcCoeffPairListList pcInterBeamCoeffs_;
         std::vector<Eigen::Triplet<scalar>> pointContactTriplets_;
+
+        //- Eigen triplet list that stores all line-to-line
+        //- contact contributions between multiple beams
+        std::vector<Eigen::Triplet<scalar>> lineContactTriplets_;
 
     // Parallel performance data
 
@@ -355,20 +362,33 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Apply line contact force (ESI version)
         void lineContactContribution
         (
-            Field<scalarSquareMatrix>& lcDiag,
-            Field<scalarRectangularMatrix>& lcSource,
-            PtrList<lcCoeffPairListList>& lcInterBeamCoeffs
+            std::vector<Eigen::Triplet<scalar>>& lineContactTriplets,
+            Field<scalarRectangularMatrix>& lcSource
         );
 
+        // void lineContactContribution
+        // (
+        //     std::vector<Eigen::Triplet<scalar>>& lineContactTriplets,
+        //     Field<scalarSquareMatrix>& lcDiag,
+        //     Field<scalarRectangularMatrix>& lcSource,
+        //     PtrList<lcCoeffPairListList>& lcInterBeamCoeffs
+        // );
+
         //- Apply point contact force (ESI version)
+        // void pointContactContribution
+        // (
+        //     std::vector<Eigen::Triplet<scalar>>& pointContactTriplets,
+        //     Field<scalarSquareMatrix>& pcDiag,
+        //     Field<scalarRectangularMatrix>& pcSource,
+        //     Field<scalarSquareMatrix>& pcNeiUpperCoeffs,
+        //     Field<scalarSquareMatrix>& pcNeiLowerCoeffs,
+        //     pcCoeffPairListList& pcInterBeamCoeffs
+        // );
+
         void pointContactContribution
         (
             std::vector<Eigen::Triplet<scalar>>& pointContactTriplets,
-            Field<scalarSquareMatrix>& pcDiag,
-            Field<scalarRectangularMatrix>& pcSource,
-            Field<scalarSquareMatrix>& pcNeiUpperCoeffs,
-            Field<scalarSquareMatrix>& pcNeiLowerCoeffs,
-            pcCoeffPairListList& pcInterBeamCoeffs
+            Field<scalarRectangularMatrix>& pcSource
         );
 
         void appendBlockTriplets

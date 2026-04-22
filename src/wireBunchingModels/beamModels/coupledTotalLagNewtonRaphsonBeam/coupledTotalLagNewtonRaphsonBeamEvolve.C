@@ -570,25 +570,22 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
 
-            // Field<scalarRectangularMatrix> pcSource
-            // (
-            //     mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
-            // );
-
             if (contactActive())
             {
                 // SB (2026 - ESI):  New defn for off-diag coupling coeffs of beam contact
 
-                // // Initialise the line contact diag and source contributions
+                // Initialise the line contact diag and source contributions
                 // Field<scalarSquareMatrix> lcDiag
                 // (
                 //     mesh().nCells(), scalarSquareMatrix(6, 0.0)
                 // );
 
-                // Field<scalarRectangularMatrix> lcSource
-                // (
-                //     mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
-                // );
+                if (lcSource_.size() != mesh().nCells())
+                {
+                    lcSource_.setSize(mesh().nCells());
+                }
+                // Ensure contact source is reset every outer iteration.
+                lcSource_ = scalarRectangularMatrix(6, 1, 0.0);
 
                 // Initialise the line contact diag and source contributions
                 Field<scalarSquareMatrix> pcDiag
@@ -608,36 +605,40 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 // Ensure contact source is reset every outer iteration.
                 pcSource_ = scalarRectangularMatrix(6, 1, 0.0);
 
-                Field<scalarSquareMatrix> pcNeiUpperCoeffs
-                (
-                    mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
-                );
+               //  Field<scalarSquareMatrix> pcNeiUpperCoeffs
+               //  (
+               //      mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+               //  );
 
-                Field<scalarSquareMatrix> pcNeiLowerCoeffs
-                (
-                    mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
-                );
+               //  Field<scalarSquareMatrix> pcNeiLowerCoeffs
+               //  (
+               //      mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+               //  );
 
-               // InterBeam coeffs for point contact
-               pcCoeffPairListList pcInterBeamCoeffs;
+               // // InterBeam coeffs for point contact
+               // pcCoeffPairListList pcInterBeamCoeffs;
 
-               pcInterBeamCoeffs.setSize(contact().pointContacts().size());
+               // pcInterBeamCoeffs.setSize(contact().pointContacts().size());
 
-                const pcCoeffPair pcZero
-                (
-                    scalarSquareMatrix(6, Zero),
-                    scalarSquareMatrix(6, Zero)
-                );
+               //  const pcCoeffPair pcZero
+               //  (
+               //      scalarSquareMatrix(6, Zero),
+               //      scalarSquareMatrix(6, Zero)
+               //  );
 
-                forAll(pcInterBeamCoeffs, pcI)
-                {
-                    pcInterBeamCoeffs[pcI].setSize(2, pcZero);
-                }
+               //  forAll(pcInterBeamCoeffs, pcI)
+               //  {
+               //      pcInterBeamCoeffs[pcI].setSize(2, pcZero);
+               //  }
 
-                // std::vector<Eigen::Triplet<scalar>> pointContactTriplets;
+
                 // Point contact - Eight 6x6 implicit contact blocks for a contact pair
                 pointContactTriplets_.clear();
                 pointContactTriplets_.reserve(36*8*contact().pointContacts().size());
+
+                // Line contact - 6x6 implicit contact blocks for a contact pair
+                lineContactTriplets_.clear();
+                lineContactTriplets_.reserve(36);
 
             // // Storage container for line contact coeffcients
             //    lcInterBeamCoeffs_.setSize(nBeams());
@@ -648,55 +649,64 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //        scalarSquareMatrix(6, Zero)
             //    );
 
-            //    for (label bI = 0; bI < nBeams(); ++bI)
-            //    {
-            //        const label nSeg = contact().splines()[bI].nSegments();
+               // for (label bI = 0; bI < nBeams(); ++bI)
+               // {
+               //     const label nSeg = contact().splines()[bI].nSegments();
 
-            //        lcInterBeamCoeffs_.set
-            //        (
-            //            bI,
-            //            new lcCoeffPairListList(nSeg)
-            //        );
+               //     lcInterBeamCoeffs_.set
+               //     (
+               //         bI,
+               //         new lcCoeffPairListList(nSeg)
+               //     );
 
-            //        for (label segI = 0; segI < nSeg; ++segI)
-            //        {
-            //            lcInterBeamCoeffs_[bI][segI].setSize(nBeams(), lcZero);
-            //        }
-            //    }
+               //     for (label segI = 0; segI < nSeg; ++segI)
+               //     {
+               //         lcInterBeamCoeffs_[bI][segI].setSize(nBeams(), lcZero);
+               //     }
+               // }
 
-                // // Apply the contact forces to diag and source
-                // // and collect the off-diag contributions in
-                // // lcCoeffs and pcCoeffs
-                // applyPointContact(d, l, u, source, pcInterBeamCoeffs_);
+               // lineContactContribution
+               // (
+               //     lineContactTriplets_,
+               //     lcDiag,
+               //     lcSource_,
+               //     lcInterBeamCoeffs_
+               // );
 
-                // applyLineContact(d, l, u, source, lcInterBeamCoeffs_);
-                // lineContactContribution(lcDiag, lcSource, lcInterBeamCoeffs_);
+                // pointContactContribution
+                // (
+                //     pointContactTriplets_,
+                //     pcDiag,
+                //     pcSource_,
+                //     pcNeiUpperCoeffs,
+                //     pcNeiLowerCoeffs,
+                //     pcInterBeamCoeffs
+                // );
+
+               lineContactContribution
+               (
+                   lineContactTriplets_,
+                   lcSource_
+               );
 
                 pointContactContribution
                 (
                     pointContactTriplets_,
-                    pcDiag,
-                    pcSource_,
-                    pcNeiUpperCoeffs,
-                    pcNeiLowerCoeffs,
-                    pcInterBeamCoeffs
+                    pcSource_
                 );
 
             }
-
-            // //Temporarily clear the triplet to check whether pcSOurce is causing issue
-            // pointContactTriplets_.clear();
 
             // Block coupled solver call
             if (contactActive())
             {
                 eigenSolverPtr.reset
                 (
-                    new BlockEigenSolverOF(d, l, u, own, nei, pointContactTriplets_)
+                 new BlockEigenSolverOF(d, l, u, own, nei, pointContactTriplets_, lineContactTriplets_)
                 );
 
                 currentResidualNorm =
-                    eigenSolverPtr->solve(solVec, source, pcSource_);
+                    eigenSolverPtr->solve(solVec, source, pcSource_, lcSource_);
             }
             else
             {
@@ -713,9 +723,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // // currentResidualNorm is the imbalance vector
             // currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
 
+            const label nPointContacts =
+                contactActive() ? contact().pointContacts().size() : 0;
+
             Info<< "iOuterCorr = " << iOuterCorr()
-                << ", nPointContacts = " << contact().pointContacts().size()
+                << ", nPointContacts = " << nPointContacts
                 << ", nPointTriplets = " << pointContactTriplets_.size()
+                << ", nLineTriplets = " << lineContactTriplets_.size()
                 << endl;
 
             Info<< "\n*-------------*\n" << endl;
