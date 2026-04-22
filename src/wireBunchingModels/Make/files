@@ -43,6 +43,8 @@ functionObjects/beamConvergenceData/beamConvergenceData.C
 functionObjects/beamDisplacements/beamDisplacements.C
 functionObjects/beamForcesMoments/beamForcesMoments.C
 functionObjects/beamContactData/beamContactData.C
+functionObjects/beamPointContactData/beamPointContactData.C
+functionObjects/beamLineContactData/beamLineContactData.C
 
 beamMomentumContribution/beamMomentumContribution.C
 beamMomentumContribution/morisonDragContribution/morisonDragContribution.C
