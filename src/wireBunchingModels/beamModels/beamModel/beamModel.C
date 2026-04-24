@@ -372,7 +372,10 @@ Foam::beamModel::beamModel
                 << " calculating the gravity body force"
                 << abort(FatalError);
         }
-        else if (mag(rho().value()) < SMALL)
+        else if
+        (
+            mag(dimensionedScalar("rho", beamProperties()).value()) < SMALL
+        )
         {
             WarningInFunction
                 << "rho field in constant/beamProperties = "
