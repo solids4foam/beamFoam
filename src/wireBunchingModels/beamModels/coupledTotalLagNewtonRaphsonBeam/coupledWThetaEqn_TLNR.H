@@ -1232,87 +1232,56 @@
     // relaxing
     U_.relax();
 
+    //Info<< "Rotations are not interpolated objectively \n" << endl;
+    surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
-    if (objectiveInterpolation())
+    surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
+    surfaceTensorField DThetaHat(spinTensor(DThetaf));
+
+    dimensionedTensor I("I", dimless, tensor::I);
+
+    // Tangent operator
+    surfaceTensorField DT
+    (
+        (Foam::sin(magDThetaf)/magDThetaf)*I
+        + ((1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf))
+        *(DThetaf*DThetaf)
+        + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
+    );
+
+    // Update bending strain vector
+    K_ +=
+    (
+        (refLambdaf_.T() & Lambdaf_.T())
+        // & fvc::snGrad(DTheta_)
+        & (DT.T() & fvc::snGrad(DTheta_))
+    );
+
+    // Rodrigues formula
+    surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
+
+    // Update rotation matrix
+    Lambdaf_ = (DLambdaf & Lambdaf_);
+
+    // Update cell-centre rotation matrix
+    volTensorField DLambda(rotationMatrix(DTheta_));
+
+    Lambda_ = (DLambda & Lambda_);
+    // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
+
+    if (newmark_)
     {
-        // Info<< "Using objective interpolation for rotation" << endl;
+        // Update angular velocity
+        // without tangent space
+        Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(Lambda_.T() &  DTheta_);
 
-        // Calculate rotation matrix correction from
-        // cell-centre rotation vector correction
-        volTensorField DLambda(rotationMatrix(DTheta_));
-
-        // Update cell-centre rotation matrix
-        Lambda_ = (DLambda & Lambda_);
-
-        // Calculate mean line curvature at cell-faces
-        K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
-        //K_ +=
-        //    (
-        //          (refLambdaf_.T() & Lambdaf_.T()) &
-        //        meanLineCurvature(DLambda)
-        //    );
-
-        // Objective cell-to-face interpolation of rotation matrix correction
-        //surfaceTensorField DLambdaf =
-        //   interpolateRotationMatrix(DLambda);
-
-        // Update cell-face rotation matrix
-        //Lambdaf_ = (DLambdaf & Lambdaf_);
-        Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
+        // Update angular acceleration
+        dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(Lambda_.T() &  DTheta_);
     }
-    else
+    else // First order Euler scheme
     {
-        //Info<< "Rotations are not interpolated objectively \n" << endl;
-        surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
+        Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
 
-        surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-        surfaceTensorField DThetaHat(spinTensor(DThetaf));
-
-        dimensionedTensor I("I", dimless, tensor::I);
-
-        // Tangent operator
-        surfaceTensorField DT
-        (
-            (Foam::sin(magDThetaf)/magDThetaf)*I
-            + ((1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf))
-            *(DThetaf*DThetaf)
-            + ((1.0-Foam::cos(magDThetaf))/sqr(magDThetaf))*DThetaHat
-        );
-
-        // Update bending strain vector
-        K_ +=
-        (
-            (refLambdaf_.T() & Lambdaf_.T())
-            // & fvc::snGrad(DTheta_)
-            & (DT.T() & fvc::snGrad(DTheta_))
-        );
-
-        // Rodrigues formula
-        surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
-
-        // Update rotation matrix
-        Lambdaf_ = (DLambdaf & Lambdaf_);
-
-        // Update cell-centre rotation matrix
-        volTensorField DLambda(rotationMatrix(DTheta_));
-
-        Lambda_ = (DLambda & Lambda_);
-        // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
-
-        if (newmark_)
-        {
-            // Update angular velocity
-            // without tangent space
-            Omega_ += (gammaN_/(betaN_*runTime().deltaT()))*(Lambda_.T() &  DTheta_);
-
-            // Update angular acceleration
-            dotOmega_ += (1/(betaN_*sqr(runTime().deltaT())))*(Lambda_.T() &  DTheta_);
-        }
-        else // First order Euler scheme
-        {
-            Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
-
-        }
     }
 
     // Update axial and shear strain vector

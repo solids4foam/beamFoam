@@ -372,7 +372,10 @@ Foam::beamModel::beamModel
                 << " calculating the gravity body force"
                 << abort(FatalError);
         }
-        else if (mag(rho().value()) < SMALL)
+        else if
+        (
+            mag(dimensionedScalar("rho", beamProperties()).value()) < SMALL
+        )
         {
             WarningInFunction
                 << "rho field in constant/beamProperties = "
@@ -473,7 +476,7 @@ Foam::beamModel::beamModel
     //     R_ = scalarField(this->lookup("R"));
     //     U_ = scalarField(this->lookup("U"));
     // }
-    
+
     Info<< "Attempting to read global mechanical variables "
         << "from constant/beamProperties "
         << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
@@ -481,7 +484,7 @@ Foam::beamModel::beamModel
 
     dimensionedScalar globalE("E", dimPressure, 0.0);
     dimensionedScalar globalG("G", dimPressure, 0.0);
-    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);
 
     bool foundGlobalE = false;
     bool foundGlobalG = false;
@@ -504,7 +507,7 @@ Foam::beamModel::beamModel
         globalRho = dimensionedScalar("rho", beamProperties());
         foundGlobalRho = true;
     }
-    
+
     E_.setSize(nBeams, 0.0);
     G_.setSize(nBeams, 0.0);
     rho_.setSize(nBeams, 0.0);

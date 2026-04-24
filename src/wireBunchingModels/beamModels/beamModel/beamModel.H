@@ -439,7 +439,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "I", dimArea*dimArea, crossSections_[bI].Iyy()
+                           "I", dimArea*dimArea, crossSections_[bI].Ixx()
                        );
                 }
 
@@ -453,7 +453,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "Iyy", dimArea*dimArea, crossSections_[bI].Iyy()
+                           "Iyy", dimArea*dimArea, crossSections_[bI].Ixx()
                        );
                 }
 
@@ -467,7 +467,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "Izz", dimArea*dimArea, crossSections_[bI].Ixx()
+                           "Izz", dimArea*dimArea, crossSections_[bI].Iyy()
                        );
                 }
 
