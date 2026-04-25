@@ -1,0 +1,123 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation; either version 2 of the License, or (at your
+    option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM; if not, write to the Free Software Foundation,
+    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+    Description
+    Helper function for Actuator line model's upstream sampling
+Author
+    Amirhossein Taran, UCD
+
+\*---------------------------------------------------------------------------*/
+#ifndef upstreamSampling_H
+#define upstreamSampling_H
+
+#include "fvMesh.H"
+#include "vector.H"
+#include "pointField.H"
+#include "volFields.H"
+#include "IOmanip.H"
+
+namespace Foam
+{
+//     inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
+// {
+//     vector t = beamTangent/(mag(beamTangent) + VSMALL);
+
+//     // 1. Force the direction to be based on the true global freestream (-X)
+//     vector globalUpstream(-1.0, 0.0, 0.0);
+
+//     // 2. Make it perpendicular to the local beam tangent
+//     vector samplingDir = globalUpstream - (globalUpstream & t)*t;
+
+//     // 3. Prevent Z-escape for the 3D thin mesh
+//     samplingDir.z() = 0.0;
+
+//     scalar m = mag(samplingDir);
+//     // 4. Fallback in case the beam ever bends to be completely horizontal
+//     if (m < VSMALL)
+//     {
+//         samplingDir = vector(0.0, 1.0, 0.0);
+//         m = 1.0;
+//     }
+
+//     return samplingDir / m;
+// }
+inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
+{
+
+    vector t = beamTangent/(mag(beamTangent) + VSMALL);
+    vector vPerp = vf - (vf & t)*t;
+
+    // extra checks to enforce upstream always to be in -X direction
+    vector samplingDir = -vPerp;
+    if (samplingDir.x() > 0)
+    {
+        vector globalUpstream(-1, 0, 0);
+        samplingDir = globalUpstream - (globalUpstream & t)*t;
+    }
+
+    scalar m = mag(samplingDir);
+    if (m < VSMALL)
+    {
+        WarningInFunction
+            << "Sampling direction magnitude is below VSMALL." << nl
+            << "The relative flow is nearly parallel to the beam tangent, "
+            << "so the fallback upstream direction is being used." << nl
+            << "vf = " << vf << nl
+            << "beamTangent = " << beamTangent << nl
+            << "Fallback direction = (0 1 0)" << nl
+            << endl;
+        return vector(0.0, 1.0, 0.0);
+    };
+    return samplingDir/(m + VSMALL);
+}
+
+// Compute sampling points Ps (step 1 of ALM)
+inline void computeUpstreamSamplingPoints(
+    const pointField& beamCoords,
+    const vectorField& vfAtBeam,
+    const vectorField& beamTangents,
+    const scalar sampleDist,
+    pointField& Ps,
+    vectorField& upstreamDir
+)
+{
+    Ps.setSize(beamCoords.size(), vector::zero);
+    upstreamDir.setSize(beamCoords.size(), vector::zero);
+
+    forAll(beamCoords, i)
+    {
+        vector vf = vfAtBeam[i];
+
+        vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
+        upstreamDir[i] = dir;
+        Ps[i] = beamCoords[i] + sampleDist * dir;
+        // todo : we have to change this for every problem?
+        Ps[i].z() = 0.03;
+        //        Ps[i].z() = 0.0;
+    }
+}
+
+} // End namespace Foam
+
+#endif

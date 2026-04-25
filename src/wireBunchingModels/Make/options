@@ -7,6 +7,7 @@ endif
 EXE_INC = \
     $(DISABLE_WARNING_FLAGS) \
     -I./numerics/BlockEigenSolvers/BlockEigenSolverOF \
+    -I./numerics/FieldSumOp \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
     -I$(FOAM_SRC)/finiteVolume/lnInclude  \

@@ -37,6 +37,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "samplingFluid.H"
 #include "IOmanip.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -273,6 +274,114 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](4,0) -= m()[cellI].y()*L()[cellI];
                 source[cellI](5,0) -= m()[cellI].z()*L()[cellI];
             }
+
+            if (almSamplingActive_)
+            {
+                Info << "inside the IF" << endl;
+                const fvMesh& fluidMesh =
+                    mesh().time().db().parent().lookupObject<fvMesh>("region0");
+
+                const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_;
+
+                HermiteSpline spline
+                (
+                    currentBeamPoints(),
+                    currentBeamTangents()
+                );
+
+                const vectorField& dRdScell = spline.midPointDerivatives();
+                const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
+
+                labelList seedCellIDs(mesh().nCells(), -1);
+
+                std::tuple
+                <
+                    tmp<volVectorField>,
+                    tmp<volScalarField>,
+                    tmp<volVectorField>,
+                    labelList
+                > fluidInfo =
+                    getFluidVelocity
+                    (
+                        fluidMesh,
+                        mesh(),
+                        beamCellCenterCoord,
+                        seedCellIDs,
+                        groundZ_,
+                        groundContactActive_,
+                        dRdScell,
+                        R(),
+                        samplingRadius_,
+                        searchEngine_
+                    );
+
+                fluidU_ = std::get<0>(fluidInfo).ref();
+                cellMarker_ = std::get<1>(fluidInfo).ref();
+                beamVelocity_ = std::get<2>(fluidInfo).ref();
+                fluidCellIDs_ = std::get<3>(fluidInfo);
+
+                if (mesh().time().writeTime())
+                {
+                    cellMarker_.write();
+                }
+
+                const vectorField Urel(fluidU_.internalField() - U_.internalField());
+
+                vectorField Ut
+                (
+                    (
+                        (Urel & dRdScellHat)
+                        *dRdScellHat
+                    )
+                );
+
+                vectorField Un
+                (
+                    (
+                        Urel
+                      - (
+                            (Urel & dRdScellHat)
+                            *dRdScellHat
+                        )
+                    )
+                );
+
+                const scalar rhoF = rhoFluid().value();
+                const scalar D = 2.0*R();
+                const scalar coeffN = 0.5*rhoF*Cdn_*D;
+                const scalar coeffT = 0.5*rhoF*Cdt_*D;
+
+                forAll(source, cellI)
+                {
+                    const vector un = Un[cellI];
+                    const vector ut = Ut[cellI];
+                    const vector vs = un + ut;
+                    const scalar vsMag = mag(vs);
+
+                    const vector fnLineTarget = -coeffN*vsMag*un;
+                    const vector ftLineTarget = -coeffT*vsMag*ut;
+                    const vector FLineTarget = fnLineTarget + ftLineTarget;
+
+                    const vector FLineRelaxed =
+                        almForceRelaxation_*FLineTarget
+                      + (1.0 - almForceRelaxation_)*almForce_[cellI];
+
+                    almForce_[cellI] = FLineRelaxed;
+
+                    const vector FCell = FLineRelaxed*L()[cellI];
+
+                    source[cellI](0,0) += FCell.x();
+                    source[cellI](1,0) += FCell.y();
+                    source[cellI](2,0) += FCell.z();
+                }
+
+                const vector Fsum(sum(almForce_ * L()).value());
+                Info<< "sum F on the beam (relaxed) = "
+                    << "(" << Fsum.x() << ", "
+                    << Fsum.y() << ", "
+                    << Fsum.z() << ") N" << nl;
+            }
+
             // Add body force due to gravity and buoyancy if fluid is present
             // Note that for buoyant force calculation it is assumed
             // that the entire beam is submerged in the fluid
@@ -532,7 +641,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
-                    d += diagCoeff;   
+                    d += diagCoeff;
                 }
             }
 
