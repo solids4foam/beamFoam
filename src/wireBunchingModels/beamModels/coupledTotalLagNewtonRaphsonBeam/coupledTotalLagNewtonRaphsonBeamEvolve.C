@@ -198,12 +198,22 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](2,0) -= q()[cellI].z()*L()[cellI];
             }
 
+            // forAll(source, cellI)
+            // {
+            //     source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
+            //     source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
+            //     source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
+            // }
+            // instead of applying gravity, I'll add a buoyancy + gravity weight
             forAll(source, cellI)
             {
-                source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
-                source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
-                source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
+                const scalar rhoEff = rho().value() - rhoFluid().value();
+
+                source[cellI](0,0) -= rhoEff*L()[cellI]*A().value()*g().component(0).value();
+                source[cellI](1,0) -= rhoEff*L()[cellI]*A().value()*g().component(1).value();
+                source[cellI](2,0) -= rhoEff*L()[cellI]*A().value()*g().component(2).value();
             }
+
             // Add point forces
             forAll(pointForces(), pfI)
             {
@@ -847,6 +857,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
 
     // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
+    // AT-added
+    U_.storePrevIter();
 
     // Update mean line linear velocity and acceleration fields
     if (d2dt2SchemeName_ == "steadyState")
@@ -874,6 +886,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
             << "Valid choices are steadyState, Euler, Newmark"
             << abort(FatalError);
     }
+    // AT-added
+    U_.relax();
 
     const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
