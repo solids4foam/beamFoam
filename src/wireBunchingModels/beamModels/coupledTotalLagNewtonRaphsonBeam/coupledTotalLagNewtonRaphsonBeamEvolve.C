@@ -284,10 +284,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](4,0) -= m()[cellI].y()*L()[cellI];
                 source[cellI](5,0) -= m()[cellI].z()*L()[cellI];
             }
-
             if (almSamplingActive_)
             {
-                Info << "inside the IF" << endl;
                 const fvMesh& fluidMesh =
                     mesh().time().db().parent().lookupObject<fvMesh>("region0");
 
@@ -654,8 +652,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     d += diagCoeff;
                 }
             }
-
-
             // Block coupled solver call
 
             // Create Eigen linear solver
@@ -670,6 +666,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Solve the linear system
             // currentResidualNorm is the imbalance vector
             currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+            reduce(currentResidualNorm, sumOp<scalar>());
 
             if (iOuterCorr() == 0)
             {
@@ -708,6 +705,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     sum(magSqr(W_.primitiveFieldRef()))
                   + sum(magSqr(Theta_.primitiveFieldRef()))
                 );
+            reduce(deltaXNorm, sumOp<scalar>());
+            reduce(XNorm, sumOp<scalar>());
 
             if (iOuterCorr() == 0)
             {
@@ -1030,7 +1029,6 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     // Precompute tolerances
     const scalar relativeResidualTol = rtol*initialResidualNorm;
     const scalar stepTolerance = stol*xNorm;
-
     // Log residuals if enabled
     if (writeResidualFrequency > 0)
     {
