@@ -290,7 +290,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     mesh().time().db().parent().lookupObject<fvMesh>("region0");
 
                 const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_;
-
+                /**
                 HermiteSpline spline
                 (
                     currentBeamPoints(),
@@ -298,6 +298,31 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 );
 
                 const vectorField& dRdScell = spline.midPointDerivatives();
+                const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
+                **/
+                vectorField dRdScell;
+
+                if (Pstream::master())
+                {
+                    HermiteSpline spline
+                        (
+                            currentBeamPoints(),
+                            currentBeamTangents()
+                        );
+
+                    dRdScell = spline.midPointDerivatives();
+                }
+
+                label nDRdS = dRdScell.size();
+                Pstream::broadcast(nDRdS);
+
+                if (!Pstream::master())
+                {
+                    dRdScell.setSize(nDRdS, vector::zero);
+                }
+
+                Pstream::broadcast(dRdScell);
+
                 const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
 
                 labelList seedCellIDs(mesh().nCells(), -1);
