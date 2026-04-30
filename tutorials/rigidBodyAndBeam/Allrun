@@ -1,0 +1,10 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+runApplication blockMesh
+runApplication snappyHexMesh -overwrite
+
+echo
+echo "Mesh generation finished."
+echo "Run the case with your usual coupled solver workflow once the mesh looks right."

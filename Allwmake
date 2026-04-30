@@ -31,7 +31,11 @@ echo "Compiling applications/solvers/beamFoam"
 
 # Compile utilities
 echo "Compiling applications/utilities"
-(cd applications/utilities && wmake $* all 2>&1 | tee log.Allwmake)
+(
+    cd applications/utilities || exit
+    wmake $* createBeamMesh
+    wmake $* setInitialPositionBeam
+) 2>&1 | tee applications/utilities/log.Allwmake
 
 # Install scripts
 echo "Installing applications/scripts"

@@ -1,0 +1,61 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh      dynamicMotionSolverFvMesh;
+motionSolverLibs   ("libfiniteVolumeBeamMooring");
+motionSolver       sixDoFRigidBodyMotionFvBeam;
+
+sixDoFRigidBodyMotionFvBeamCoeffs
+{
+    patches          (floatingObject);
+    mass             15.0;
+    centreOfMass     (2.6565 0 0);
+    orientation      (1 0 0 0 1 0 0 0 1);
+    innerDistance    0.0;
+    outerDistance    0.5;
+
+    containOuterDistance 1;
+    xDistance        0.8;
+    yDistance        0.8;
+
+    momentOfInertia  (0.4 0.4 0.4);
+
+    solver
+    {
+        type FvBeamNewmark;
+    }
+
+    accelerationRelaxation 0.5;
+
+    constraints
+    {
+    }
+
+    restraints
+    {
+        beam
+        {
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+
+            attachmentPatch  right;
+            anchorPatch      left;
+            beamRegion       "beam";
+            refAttachmentPt  (2.6565 0 0);
+        }
+    }
+}
+
+// ************************************************************************* //

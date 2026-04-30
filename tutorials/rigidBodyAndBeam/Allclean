@@ -1,0 +1,19 @@
+#!/bin/sh
+
+cd "${0%/*}" || exit 1
+
+# Clean generated run products without touching the 0 directory.
+find . -maxdepth 1 -type d \
+    \( -name '0.*' -o -name '[1-9]*' \) \
+    -exec rm -rf {} +
+
+rm -rf constant/polyMesh
+rm -rf postProcessing
+rm -rf processor*
+rm -rf .beamOnlyDebug
+
+rm -f log.*
+rm -f *.OpenFOAM
+rm -f *~
+rm -f system/*~
+rm -f system/beam/*~

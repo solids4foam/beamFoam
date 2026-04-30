@@ -56,6 +56,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
     beamModel::evolve();
 
+    Info<< "CTLNRB debug evolve entered, time = "
+        << runTime().timeName()
+        << ", start patch W = " << W_.boundaryField()[startPatchIndex()][0]
+        << ", end patch W = " << W_.boundaryField()[endPatchIndex()][0]
+        << ", first internal W = " << W_[0]
+        << ", last internal W = " << W_[W_.size() - 1]
+        << endl;
+
     const int nCorr
     (
         beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
@@ -597,12 +605,30 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 DThetaI[cellI][vector::Z] = solVec[cellI](5, 0);
             }
 
+            Info<< "CTLNRB debug after Eigen solve: first DW = " << DW_[0]
+                << ", last DW = " << DW_[DW_.size() - 1]
+                << ", first DTheta = " << DTheta_[0]
+                << ", last DTheta = " << DTheta_[DTheta_.size() - 1]
+                << endl;
+
             DW_.correctBoundaryConditions();
             DTheta_.correctBoundaryConditions();
+
+            Info<< "CTLNRB debug after correction BCs: start DW = "
+                << DW_.boundaryField()[startPatchIndex()][0]
+                << ", end DW = " << DW_.boundaryField()[endPatchIndex()][0]
+                << endl;
 
             // Update all the solution and output variables for
             // the current (Newton) iteration loop
             updateSolutionVariables();
+
+            Info<< "CTLNRB debug after updateSolutionVariables: first W = "
+                << W_[0]
+                << ", last W = " << W_[W_.size() - 1]
+                << ", end patch W = "
+                << W_.boundaryField()[endPatchIndex()][0]
+                << endl;
 
             // Calculating norm of primary correction variables DW_ & DTheta_
             deltaXNorm = sqrt(sum(magSqr(solVec)));
