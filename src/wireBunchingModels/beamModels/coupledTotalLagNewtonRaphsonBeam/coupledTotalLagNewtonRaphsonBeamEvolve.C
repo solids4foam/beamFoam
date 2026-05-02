@@ -107,6 +107,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar deltaXNorm = GREAT;
     scalar XNorm = GREAT;
 
+    const vectorField almForceStart(almForce_.internalField());
+
     iOuterCorr() = 0;
     do
     {
@@ -397,7 +399,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                     const vector FLineRelaxed =
                         almForceRelaxation_*FLineTarget
-                      + (1.0 - almForceRelaxation_)*almForce_[cellI];
+                      + (1.0 - almForceRelaxation_)*almForceStart[cellI];
 
                     almForce_[cellI] = FLineRelaxed;
 
