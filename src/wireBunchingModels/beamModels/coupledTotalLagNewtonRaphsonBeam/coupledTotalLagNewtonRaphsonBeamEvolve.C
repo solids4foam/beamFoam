@@ -56,38 +56,49 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
     beamModel::evolve();
 
+    const dictionary& beamDict = beamProperties();
+
     const int nCorr
     (
-        beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
+        beamDict.lookupOrDefault<int>("nCorrectors", 1000)
     );
 
     // Tolerance for equation (force) residuals (R = Ax - B)
-    const scalar residualTol
-    (
-        beamProperties().lookupOrDefault<scalar>("residualTol", 1e-8)
-    );
+    scalar residualTol = beamDict.lookupOrDefault<scalar>("residualTol", -1);
+
+    if (residualTol < 0)
+    {
+        if (beamDict.found("convergenceTol"))
+        {
+            residualTol = readScalar(beamDict.lookup("convergenceTol"));
+        }
+        else
+        {
+            residualTol = 1e-8;
+        }
+    }
 
     // Tolerance - displacement (DW) & rotation (DTheta_) correction variables
     const scalar solutionTol
     (
-        beamProperties().lookupOrDefault<scalar>("solutionTol", 1e-10)
+        beamDict.lookupOrDefault<scalar>("solutionTol", 1e-10)
     );
 
     // Absolute tolerance
     const scalar absoluteTol
     (
-        beamProperties().lookupOrDefault<scalar>("absoluteTol", 1e-30)
+        beamDict.lookupOrDefault<scalar>("absoluteTol", 1e-30)
     );
 
     // Tolerance to check of the solver has diverged
     const scalar divTol
     (
-        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e6)
+        beamDict.lookupOrDefault<scalar>("divergenceTol", 1e6)
     );
 
     const label writeResidualFrequency
     (
-        beamProperties().lookupOrDefault<scalar>("infoFrequency", 1)
+        beamDict.lookupOrDefault<scalar>("infoFrequency", 1)
     );
 
     scalar initialResidualNorm = 1;
