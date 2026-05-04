@@ -333,7 +333,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 // The EXPLICIT inertial contributions to source
                 // 1. Initialise explicit inertial force contribution to zero
-                vectorField QRho(W_.size(), vector(0,0,0));
+                // vectorField QRho(W_.size(), vector(0,0,0));
+                volVectorField QRho
+                (
+                    IOobject
+                    (
+                        "QRho",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedVector("zero", dimForce, vector::zero)
+                );
 
                 // 2. Initialise explicit inertial moment contribution to zero
                 volVectorField MRho
@@ -404,7 +417,25 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 // The IMPLICIT inertial contributions to source
                 // 1. Initialise implicit inertial force contribution to zero
-                scalarField QRhoCoeff(W_.size(), 0.0);
+                // scalarField QRhoCoeff(W_.size(), 0.0);
+                volScalarField QRhoCoeff
+                (
+                    IOobject
+                    (
+                        "QRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedScalar
+                    (
+                        "zero",
+                        L().dimensions()*ARho_.dimensions(),
+                        0
+                    )
+                );
 
                 // 2. Initialise implicit inertial moment contribution to zero
                 volTensorField MRhoCoeff
@@ -533,7 +564,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
-                    d += diagCoeff;   
+                    d += diagCoeff;
                 }
             }
 

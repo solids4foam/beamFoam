@@ -567,6 +567,7 @@ Foam::beamModel::beamModel
         Info<< "\n\n Writing mechanical properties of beam no: " << bI << endl;
         Info<< "E " << E(bI) << endl;
         Info<< "G " << G(bI) << endl;
+        Info<< "rho " << rho(bI) << endl;
 
         Info<< "A: " << A(bI) << endl;
 

@@ -601,21 +601,68 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             tensor::zero
         )
     ),
+    // ARho_
+    // (
+    //         "ARho",
+    //         A().dimensions()*rho().dimensions(),
+    //         scalar(ARho().value())
+    // ),
+    // CIRho_
+    // (
+    //     "CIRho",
+    //     I().dimensions()*rho().dimensions(),
+    //     tensor
+    //     (
+    //         kCI()*JRho().value(),  0,           0,
+    //         0,            kCI()*IyyRho().value(), 0,
+    //         0,            0,           kCI()*IzzRho().value()
+    //     )
+    // ),
     ARho_
     (
+        IOobject
+        (
             "ARho",
-            A().dimensions()*rho().dimensions(),
-            scalar(ARho().value())
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        fvc::average
+        (
+            indicator(0)
+           *dimensionedScalar
+            (
+                "ARho",
+                ARho(0).dimensions(),
+                scalar(ARho(0).value())
+            )
+        )
     ),
     CIRho_
     (
-        "CIRho",
-        I().dimensions()*rho().dimensions(),
-        tensor
+        IOobject
         (
-            kCI()*JRho().value(),  0,           0,
-            0,            kCI()*IyyRho().value(), 0,
-            0,            0,           kCI()*IzzRho().value()
+            "CIRho",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        fvc::average
+        (
+            indicator(0)
+           *dimensionedTensor
+            (
+                "CIRho",
+                I().dimensions()*rho().dimensions(),
+                tensor
+                (
+                    kCI()*JRho(0).value(),  0,                      0,
+                    0,                       kCI()*IyyRho(0).value(), 0,
+                    0,                       0,                      kCI()*IzzRho(0).value()
+                )
+            )
         )
     ),
     ddtSchemeName_
@@ -763,6 +810,35 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                         GJ(i).value(), 0, 0,
                         0, EIyy(i).value(), 0,
                         0, 0, EIzz(i).value()
+                    )
+                );
+
+            ARho_ +=
+                fvc::average
+                (
+                    indicator(i)
+                   *dimensionedScalar
+                    (
+                        "ARho",
+                        ARho(i).dimensions(),
+                        scalar(ARho(i).value())
+                    )
+                );
+
+            CIRho_ +=
+                fvc::average
+                (
+                    indicator(i)
+                   *dimensionedTensor
+                    (
+                        "CIRho",
+                        I().dimensions()*rho().dimensions(),
+                        tensor
+                        (
+                            kCI()*JRho(i).value(),    0,                      0,
+                            0,                        kCI()*IyyRho(i).value(), 0,
+                            0,                        0,                      kCI()*IzzRho(i).value()
+                        )
                     )
                 );
         }
