@@ -9,34 +9,38 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    object      fvSolution;
+    class       volVectorField;
+    object      q;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-solvers
-{
-    // "DWDTheta|WTheta"
-    // {
-    //     solver Eigen;
-    //     // writeMatlabFiles true;
-        
-    //     // solver BlockTDM; //BiCGStab;
-    //     // preconditioner ParCholesky;
-    //     // {
-    //     //     preconditioner ILUCp;
-    //     //     fillInLevel    1;
-    //     // }
-    //     tolerance       1e-13; //1e-13
-    //     relTol          1e-3;
-    //     minIter         1;
-    //     maxIter         1000;
-    // };
-}
+dimensions      [1 0 -2 0 0 0 0];
 
-relaxationFactors
-{
+// Two options to add self weight of beam:
+// 1. Use q field  below - a uniform distributed load representing self-weight
+// or 2. Use density and gravity - can be set in constant/
 
+internalField   uniform (0 0 0); // (0 0 -0.758);
+
+
+boundaryField
+{
+    right
+    {
+        type    calculated;
+        value    uniform (0 0 0);
+    }
+
+    left
+    {
+        type    calculated;
+        value    uniform (0 0 0);        
+    }
+
+    beam
+    {
+        type    empty;
+    }
 }
 
 

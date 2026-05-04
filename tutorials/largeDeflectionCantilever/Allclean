@@ -5,4 +5,4 @@
 
 cleanCase
 rm -f constant/polyMesh/boundary
-rm -rf 0/ref* 0/pointW  0/beamone 
+rm -rf 0/ref* 0/pointW

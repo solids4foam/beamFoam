@@ -22,35 +22,24 @@ boundaryField
 {
     right
     {
-        // type    fixedValue;
-        // value   uniform (0 0 0);
         type    forceBeamDisplacementNR;
-        force   uniform (0 0 0);
+        // force   uniform (0 0 0);
         value   uniform (0 0 0);
+
+        // For non-zero concentrated force at right end,
+        // use the force series
+        forceSeries
+        {
+            "fileName|file"        "$FOAM_CASE/constant/timeVsForce";
+            outOfBounds     clamp;
+        }
+
     }
-
-    // right
-    // {
-    //     type followerForceBeamDisplacementNR;
-
-    //     followerForceSeries
-    //     {
-    //         "fileName|file"  "$FOAM_CASE/constant/timeVsFollowerForce";
-    //         outOfBounds clamp;
-    //     }
-    // }
 
     left
     {
         type    fixedValue;
         value   uniform (0 0 0);
-        // type    fixedDisplacement;
-        // displacementSeries
-        // {
-        //     file        "$FOAM_CASE/constant/timeVsDisplacement";
-        //     outOfBounds     clamp;
-        // }
-        // value   uniform (0 0 0);
     }
 
     beam

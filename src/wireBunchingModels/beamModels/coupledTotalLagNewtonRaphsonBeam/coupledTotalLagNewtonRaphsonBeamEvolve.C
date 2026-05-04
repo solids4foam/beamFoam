@@ -82,7 +82,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     // Tolerance to check of the solver has diverged
     const scalar divTol
     (
-        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e4)
+        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e6)
     );
 
     const label writeResidualFrequency
@@ -186,6 +186,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](2,0) -= q()[cellI].z()*L()[cellI];
             }
 
+            // Add self-weight of the beam
             forAll(source, cellI)
             {
                 source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
@@ -603,7 +604,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             initialResidualNorm,
             deltaXNorm,
             XNorm,
-            ++iOuterCorr(),
+            iOuterCorr()++,
             nCorr,
             residualTol,
             absoluteTol,
@@ -900,7 +901,7 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     // Log residuals if enabled
     if (writeResidualFrequency > 0)
     {
-        if (iteration == 1)
+        if (iteration == 0)
         {
             // Print the header with fixed widths
             Info<< setw(10) << "Iteration"
@@ -954,11 +955,13 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     }
 
     // 4. Check Divergence
-    if (currentResidualNorm >= divtol*initialResidualNorm)
+    if (currentResidualNorm >= divtol*initialResidualNorm && iteration > 1)
     {
         FatalErrorInFunction
             << "Iteration " << iteration
             << setw(20) << ": Diverged - Residual grew excessively."
+            << "\nYou can try setting the `divergenceTol` in `constant/beamProperties` "
+            << "to a different value. The default value is: " << divtol
             << abort(FatalError);
         return false;
     }

@@ -22,11 +22,11 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         20;
+endTime         1;
 
-deltaT          0.001;
+deltaT          1;
 
-writeControl    runTime;
+writeControl    timeStep;
 
 writeInterval   1;
 
@@ -46,20 +46,16 @@ runTimeModifiable yes;
 
 functions
 {
-//   patchForceMomentHistory
-//   {
-//       type patchForceMomentHistory;
-//       functionObjectLibs ("libpatchForceMomentHistory.so");
-//       patchName right;
-//   }
-//
-   // writeBeamData
-   // {
-   //     type writeBeamData;
-   //     functionObjectLibs ("libwriteBeamData.so");
-   //     startPatchName left;
-   //     endPatchName right;
-   // }
+   beamDisplacements1
+   {
+       type    beamDisplacements;
+       historyPatch    right;
+   }
+
+   beamEnergyData
+   {
+       type    beamEnergyData;
+   }
 }
 
 // ************************************************************************* //
