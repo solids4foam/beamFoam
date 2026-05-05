@@ -49,6 +49,7 @@ SourceFiles
 #include "Switch.H"
 #include "scalarMatrices.H"
 #include "vector.H"
+#include "Time.H"
 #include <Eigen/Sparse>
 #include "RigidBodyCouplingData.H"
 
@@ -138,7 +139,8 @@ public:
             Field<scalarRectangularMatrix>& x,
             const Field<scalarRectangularMatrix>& b,
             RigidBodySolution& rigidBodySolution,
-            const RigidBodyStepData& rigidBodyData
+            const RigidBodyStepData& rigidBodyData,
+            const Time& runTime
         );
 
         // //- Re-initialise solver after matrix coefficient update

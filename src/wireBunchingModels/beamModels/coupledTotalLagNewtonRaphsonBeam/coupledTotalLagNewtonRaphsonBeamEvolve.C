@@ -574,7 +574,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     solVec,
                     source,
                     rigidBodySolution,
-                    localRigidBodyData
+                    localRigidBodyData,
+                    runTime()
                 );
 
 

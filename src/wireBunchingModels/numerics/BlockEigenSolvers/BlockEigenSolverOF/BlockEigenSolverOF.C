@@ -25,6 +25,9 @@ License
 
 #include "BlockEigenSolverOF.H"
 #include "denseMatrixHelperFunctions.H"
+#include "OFstream.H"
+#include "OSspecific.H"
+#include "Pstream.H"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -78,6 +81,122 @@ namespace
 	       << "    " << value.yx() << " " << value.yy() << " " << value.yz() << Foam::nl
 	       << "    " << value.zx() << " " << value.zy() << " " << value.zz() << Foam::nl;
    }  
+
+
+    void writeBlockEigenRigidBodyMotion
+    (
+        const Foam::Time& runTime,
+        const Foam::RigidBodySolution& rigidBodySolution,
+        const Foam::vector& velocity,
+        const Foam::vector& angularMomentum,
+        const Foam::vector& acceleration,
+        const Foam::vector& torque
+    )
+    {
+        if (!Foam::Pstream::master())
+        {
+            return;
+        }
+
+        static bool headerWritten = false;
+        static Foam::label solveIndex = 0;
+
+        const Foam::word startTimeName =
+            runTime.timeName(runTime.startTime().value());
+
+        Foam::fileName historyDir;
+
+        if (Foam::Pstream::parRun())
+        {
+            historyDir =
+                runTime.path()
+               /".."
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyMotion"
+               /startTimeName;
+        }
+        else
+        {
+            historyDir =
+                runTime.path()
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyMotion"
+               /startTimeName;
+        }
+
+        Foam::mkDir(historyDir);
+
+        const Foam::fileName historyFile
+        (
+            historyDir/"BlockEigenSolve_rigidBodyMotion.dat"
+        );
+
+        Foam::OFstream os
+        (
+            historyFile,
+            Foam::IOstreamOption(),
+            Foam::IOstreamOption::APPEND
+        );
+
+        if (!headerWritten)
+        {
+            os  << "Time" << " "
+                << "timeIndex" << " "
+                << "solveIndex" << " "
+                << "disp_x" << " "
+                << "disp_y" << " "
+                << "disp_z" << " "
+                << "rotCorr_x" << " "
+                << "rotCorr_y" << " "
+                << "rotCorr_z" << " "
+                << "velocity_x" << " "
+                << "velocity_y" << " "
+                << "velocity_z" << " "
+                << "angularMomentum_x" << " "
+                << "angularMomentum_y" << " "
+                << "angularMomentum_z" << " "
+                << "acceleration_x" << " "
+                << "acceleration_y" << " "
+                << "acceleration_z" << " "
+                << "torque_x" << " "
+                << "torque_y" << " "
+                << "torque_z"
+                << Foam::endl;
+
+            headerWritten = true;
+        }
+
+        const Foam::vector& displacement = rigidBodySolution.displacement;
+        const Foam::vector& rotationCorrection =
+            rigidBodySolution.rotationCorrection;
+
+        os  << runTime.value() << " "
+            << runTime.timeIndex() << " "
+            << solveIndex++ << " "
+            << displacement.x() << " "
+            << displacement.y() << " "
+            << displacement.z() << " "
+            << rotationCorrection.x() << " "
+            << rotationCorrection.y() << " "
+            << rotationCorrection.z() << " "
+            << velocity.x() << " "
+            << velocity.y() << " "
+            << velocity.z() << " "
+            << angularMomentum.x() << " "
+            << angularMomentum.y() << " "
+            << angularMomentum.z() << " "
+            << acceleration.x() << " "
+            << acceleration.y() << " "
+            << acceleration.z() << " "
+            << torque.x() << " "
+            << torque.y() << " "
+            << torque.z()
+            << Foam::endl;
+
+        Foam::Info
+            << "BlockEigen rigid-body motion written to "
+            << historyFile << Foam::endl;
+    }
 }
 
 
@@ -235,7 +354,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     Foam::Field<Foam::scalarRectangularMatrix>& foamX,
     const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
     RigidBodySolution& rigidBodySolution,
-    const RigidBodyStepData& rigidBodyData
+    const RigidBodyStepData& rigidBodyData,
+    const Time& runTime
 )
 {
     Eigen::SparseMatrix<scalar> A;
@@ -266,7 +386,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     // Colm: defining variables for rigid body RHS
     const scalar rbNewmarkGamma = 0.5;
     const scalar rbNewmarkBeta = 0.25;
-    const scalar deltaT = 1.0;
+    const scalar deltaT = runTime.deltaTValue();
 
     // Colm: Read in variables
     const RigidBodyState& prev = rigidBodyData.previous;
@@ -519,7 +639,21 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     Info << "___________________________" << endl;
     printVector("Displacement", rigidBodySolution.displacement);
     printVector("Rotation correction", rigidBodySolution.rotationCorrection);
+    printVector("Velocity", rbVelocity);
+    printVector("Angular momentum", rbAngularMomentum);
+    printVector("Acceleration", curr.acceleration);
+    printVector("Torque", curr.torque);
     Info << "___________________________" << endl;
+
+    writeBlockEigenRigidBodyMotion
+    (
+        runTime,
+        rigidBodySolution,
+        rbVelocity,
+        rbAngularMomentum,
+        curr.acceleration,
+        curr.torque
+    );
 
     return initialResidual;
 }
