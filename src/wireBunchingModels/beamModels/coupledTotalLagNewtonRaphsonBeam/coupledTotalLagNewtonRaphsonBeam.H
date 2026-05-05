@@ -210,7 +210,7 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant (supports multi-beam)
         volTensorField CIRho_;
 
-    //- FIELDS related to time integration schemes
+    //- Fields related to time integration schemes
 
         //- ddtScheme name from fvSchemes dictionary
         //- Used to check whether steadyState or not
