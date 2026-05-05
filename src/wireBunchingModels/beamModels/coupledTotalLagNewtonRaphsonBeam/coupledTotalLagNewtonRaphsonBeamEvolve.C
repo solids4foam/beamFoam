@@ -93,7 +93,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     // Tolerance to check of the solver has diverged
     const scalar divTol
     (
-        beamDict.lookupOrDefault<scalar>("divergenceTol", 1e4)
+        beamDict.lookupOrDefault<scalar>("divergenceTol", 1e6)
     );
 
     const label writeResidualFrequency
@@ -197,6 +197,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](2,0) -= q()[cellI].z()*L()[cellI];
             }
 
+            // Add self-weight of the beam
             forAll(source, cellI)
             {
                 source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
@@ -332,7 +333,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 // The EXPLICIT inertial contributions to source
                 // 1. Initialise explicit inertial force contribution to zero
-                vectorField QRho(W_.size(), vector(0,0,0));
+                // vectorField QRho(W_.size(), vector(0,0,0));
+                volVectorField QRho
+                (
+                    IOobject
+                    (
+                        "QRho",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedVector("zero", dimForce, vector::zero)
+                );
 
                 // 2. Initialise explicit inertial moment contribution to zero
                 volVectorField MRho
@@ -403,7 +417,25 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 // The IMPLICIT inertial contributions to source
                 // 1. Initialise implicit inertial force contribution to zero
-                scalarField QRhoCoeff(W_.size(), 0.0);
+                // scalarField QRhoCoeff(W_.size(), 0.0);
+                volScalarField QRhoCoeff
+                (
+                    IOobject
+                    (
+                        "QRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedScalar
+                    (
+                        "zero",
+                        L().dimensions()*ARho_.dimensions(),
+                        0
+                    )
+                );
 
                 // 2. Initialise implicit inertial moment contribution to zero
                 volTensorField MRhoCoeff
@@ -532,7 +564,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
-                    d += diagCoeff;   
+                    d += diagCoeff;
                 }
             }
 
@@ -614,7 +646,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             initialResidualNorm,
             deltaXNorm,
             XNorm,
-            ++iOuterCorr(),
+            iOuterCorr()++,
             nCorr,
             residualTol,
             absoluteTol,
@@ -911,7 +943,7 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     // Log residuals if enabled
     if (writeResidualFrequency > 0)
     {
-        if (iteration == 1)
+        if (iteration == 0)
         {
             // Print the header with fixed widths
             Info<< setw(10) << "Iteration"
@@ -965,11 +997,13 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     }
 
     // 4. Check Divergence
-    if (currentResidualNorm >= divtol*initialResidualNorm)
+    if (currentResidualNorm >= divtol*initialResidualNorm && iteration > 1)
     {
         FatalErrorInFunction
             << "Iteration " << iteration
             << setw(20) << ": Diverged - Residual grew excessively."
+            << "\nYou can try setting the `divergenceTol` in `constant/beamProperties` "
+            << "to a different value. The default value is: " << divtol
             << abort(FatalError);
         return false;
     }

@@ -198,11 +198,17 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant
         surfaceTensorField CDQDK_;
 
-        //- Beam momentum inertial term constant
-        dimensionedScalar ARho_;
+        // //- Beam momentum inertial term constant (single-beam)
+        // dimensionedScalar ARho_;
 
-        //- Beam cross-section constant
-        dimensionedTensor CIRho_;
+        // //- Beam cross-section constant (single-beam)
+        // dimensionedTensor CIRho_;
+
+        //- Beam momentum inertial term constant (supports multi-beam)
+        volScalarField ARho_;
+
+        //- Beam cross-section constant (supports multi-beam)
+        volTensorField CIRho_;
 
     //- Fields related to time integration schemes
 
