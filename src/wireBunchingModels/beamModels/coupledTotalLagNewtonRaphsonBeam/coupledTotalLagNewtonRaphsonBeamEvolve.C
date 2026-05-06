@@ -206,7 +206,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             //     source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
             //     source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
             // }
-            // instead of applying gravity, I'll add a buoyancy + gravity weight
+
+            // Instead of applying gravity, I'll add a buoyancy + gravity weight
+            // Assumption => beam is fully submerged
+            // Currently it just return the rho for 0th beam
             forAll(source, cellI)
             {
                 const scalar rhoEff = rho().value() - rhoFluid().value();
@@ -306,11 +309,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 if (Pstream::master())
                 {
+                    // If nothing specified inside currentBeamPoints() and,
+                    // it return for 0th beam currentBeamTangents()
                     HermiteSpline spline
-                        (
-                            currentBeamPoints(),
-                            currentBeamTangents()
-                        );
+                    (
+                        currentBeamPoints(),
+                        currentBeamTangents()
+                    );
 
                     dRdScell = spline.midPointDerivatives();
                 }
@@ -329,6 +334,34 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
                 labelList seedCellIDs(mesh().nCells(), -1);
 
+                const scalar almSamplingReferenceLength =
+                    beamDict.lookupOrDefault<scalar>
+                    (
+                        "almSamplingReferenceLength",
+                        R()
+                    );
+
+                if (almSamplingReferenceLength <= SMALL)
+                {
+                    FatalErrorInFunction
+                        << "almSamplingReferenceLength must be positive. "
+                        << "Current value: " << almSamplingReferenceLength
+                        << abort(FatalError);
+                }
+
+                const vector almSamplingPlaneNormal
+                (
+                    beamDict.lookup("almSamplingPlaneNormal")
+                );
+
+                if (mag(almSamplingPlaneNormal) <= SMALL)
+                {
+                    FatalErrorInFunction
+                        << "almSamplingPlaneNormal magnitude must be positive. "
+                        << "Current value: " << almSamplingPlaneNormal
+                        << abort(FatalError);
+                }
+
                 std::tuple
                 <
                     tmp<volVectorField>,
@@ -345,8 +378,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         groundZ_,
                         groundContactActive_,
                         dRdScell,
-                        R(),
+                        almSamplingReferenceLength,
                         samplingRadius_,
+                        almSamplingPlaneNormal,
                         searchEngine_
                     );
 
@@ -382,7 +416,21 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 );
 
                 const scalar rhoF = rhoFluid().value();
-                const scalar D = 2.0*R();
+                const scalar D =
+                    beamDict.lookupOrDefault<scalar>
+                    (
+                        "almDragReferenceLength",
+                        2.0*R()
+                    );
+
+                if (D <= SMALL)
+                {
+                    FatalErrorInFunction
+                        << "almDragReferenceLength must be positive. "
+                        << "Current value: " << D
+                        << abort(FatalError);
+                }
+
                 const scalar coeffN = 0.5*rhoF*Cdn_*D;
                 const scalar coeffT = 0.5*rhoF*Cdt_*D;
 

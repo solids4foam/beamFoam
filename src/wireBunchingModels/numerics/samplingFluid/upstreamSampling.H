@@ -98,12 +98,15 @@ inline void computeUpstreamSamplingPoints(
     const vectorField& vfAtBeam,
     const vectorField& beamTangents,
     const scalar sampleDist,
+    const vector& samplingPlaneNormal,
     pointField& Ps,
     vectorField& upstreamDir
 )
 {
     Ps.setSize(beamCoords.size(), vector::zero);
     upstreamDir.setSize(beamCoords.size(), vector::zero);
+
+    const vector nHat = samplingPlaneNormal/(mag(samplingPlaneNormal) + VSMALL);
 
     forAll(beamCoords, i)
     {
@@ -112,9 +115,7 @@ inline void computeUpstreamSamplingPoints(
         vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
         upstreamDir[i] = dir;
         Ps[i] = beamCoords[i] + sampleDist * dir;
-        // todo : we have to change this for every problem?
-        Ps[i].z() = 0.03;
-        //        Ps[i].z() = 0.0;
+        Ps[i] -= ((Ps[i] - beamCoords[i]) & nHat)*nHat;
     }
 }
 

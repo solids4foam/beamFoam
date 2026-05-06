@@ -52,8 +52,9 @@ namespace Foam
         const scalar groundZ,
         const bool groundContactActive,
         const vectorField& dRdScell,
-        const scalar radius,
+        const scalar samplingReferenceLength,
         const scalar samplingRadius,
+        const vector& samplingPlaneNormal,
         const meshSearch& searchEngine // flag for using octree or not
     )
     {
@@ -140,7 +141,6 @@ namespace Foam
     // resultVect is the fluid velocity on the beam mesh
     vectorField resultVect(beamCoords.size(), vector::zero);
 
-
     labelList fluidCellIDs(beamCoords.size(), -1);
     labelList sampleCellIDs(beamCoords.size(), -1);
     boundBox bb = fluidMesh.bounds();
@@ -156,7 +156,7 @@ namespace Foam
             fluidCellIDs[beamCellI] = -1;
             continue;
         }
-        // this part only should activate when we have a mooring case!
+        // This part only should activate when we have a mooring case!
         if (beamCoords[beamCellI].z() <= groundZ && groundContactActive)
         {
             seedCellIDs[beamCellI] = -1;
@@ -167,22 +167,24 @@ namespace Foam
         {
             if (beamCellI == 0)
             {
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI+1] ; // look for the seed in the next cell
+                // Look for the seed in the next cell
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI + 1] ;
             }
             else
             {
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI-1] ; // look for the seed in the previous cell
+                // Look for the seed in the previous cell
+                seedCellIDs[beamCellI] = seedCellIDs[beamCellI - 1] ;
             }
         }
         label fluidCellID = -1;
         if (seedCellIDs[beamCellI] != -1)
         {
-            fluidCellID = searchEngine.findCell(beamCoords[beamCellI],seedCellIDs[beamCellI]);
+            fluidCellID = searchEngine.findCell(beamCoords[beamCellI], seedCellIDs[beamCellI]);
         }
 
         if (fluidCellID == -1)
         {
-            fluidCellID = searchEngine.findCell(beamCoords[beamCellI],-1,true);
+            fluidCellID = searchEngine.findCell(beamCoords[beamCellI], -1, true);
         }
         // commented out since we are not getting the velocity here!
         if (fluidCellID != -1)
@@ -204,7 +206,7 @@ namespace Foam
     pointField Ps;
     vectorField upstreamDir;
 
-    const scalar sampleDist = samplingRadius*radius;
+    const scalar sampleDist = samplingRadius*samplingReferenceLength;
 
     vectorField vfAtBeam(beamCoords.size(), vector::zero);
     forAll(beamCoords, i)
@@ -232,6 +234,7 @@ namespace Foam
             vfAtBeam,      // fluid velocity at beam points, reduced across ranks
             beamTangents,  // broadcast earlier
             sampleDist,
+            samplingPlaneNormal,
             Ps,
             upstreamDir
         );

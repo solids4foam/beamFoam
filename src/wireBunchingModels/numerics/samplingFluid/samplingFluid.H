@@ -57,8 +57,9 @@ namespace Foam
             const scalar groundZ,
             const bool groundContactActive,
             const vectorField& dRdScell,
-            const scalar radius,
+            const scalar samplingReferenceLength,
             const scalar samplingRadius,
+            const vector& samplingPlaneNormal,
             const meshSearch& searchEngine // flag for using octree
         );
 } // End namespace Foam
