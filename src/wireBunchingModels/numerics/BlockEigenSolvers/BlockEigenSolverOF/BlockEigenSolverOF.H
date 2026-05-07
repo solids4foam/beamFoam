@@ -81,6 +81,21 @@ class BlockEigenSolverOF
         //- Const-reference to neighbour list
         const labelList& nei_;
 
+        //- Attach the beam end displacement equation to rigid-body DOFs
+        const bool rigidBodyKinematicCoupling_;
+
+        //- Beam cell adjacent to the rigid-body attachment patch
+        const label rigidBodyAttachmentCell_;
+
+        //- Coefficients multiplying rigid-body translation in the beam rows
+        const tensor rigidBodyTranslationCoeff_;
+
+        //- Coefficients multiplying rigid-body rotation in the beam rows
+        const tensor rigidBodyRotationCoeff_;
+
+        //- Optional explicit beam reaction contribution to rigid-body RHS
+        const RigidBodyForceCoupling rigidBodyForceCoupling_;
+
 
     // Private Member Functions
 
@@ -121,6 +136,21 @@ public:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei
+        );
+
+        //- Construct from matrix and one-way rigid-body kinematic coupling
+        BlockEigenSolverOF
+        (
+            const Field<scalarSquareMatrix>& d,
+            const Field<scalarSquareMatrix>& l,
+            const Field<scalarSquareMatrix>& u,
+            const labelList& own,
+            const labelList& nei,
+            const label rigidBodyAttachmentCell,
+            const tensor& rigidBodyTranslationCoeff,
+            const tensor& rigidBodyRotationCoeff,
+            const RigidBodyForceCoupling& rigidBodyForceCoupling =
+                RigidBodyForceCoupling()
         );
 
 

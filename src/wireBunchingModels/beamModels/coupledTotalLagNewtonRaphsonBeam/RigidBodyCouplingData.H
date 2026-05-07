@@ -50,6 +50,7 @@ SourceFiles
 
 #include "vector.H"
 #include "tensor.H"
+#include "diagTensor.H"
 
 namespace Foam
 {
@@ -78,17 +79,63 @@ struct RigidBodyStepData
 {
     RigidBodyState previous;
     RigidBodyState current;
+    scalar mass;
+    diagTensor momentOfInertia;
+    vector initialCentreOfRotation;
+    vector centreOfRotation;
+    vector attachmentPoint;
+
+    RigidBodyStepData()
+    :
+        previous(),
+        current(),
+        mass(0),
+        momentOfInertia(diagTensor::zero),
+        initialCentreOfRotation(0, 0, 0),
+        centreOfRotation(0, 0, 0),
+        attachmentPoint(0, 0, 0)
+    {}
 };
 
 struct RigidBodySolution
 {
     vector displacement;
     vector rotationCorrection;
+    vector velocity;
+    vector angularMomentum;
+    vector acceleration;
+    vector torque;
 
     RigidBodySolution()
     :
         displacement(0, 0, 0),
-        rotationCorrection(0, 0, 0)
+        rotationCorrection(0, 0, 0),
+        velocity(0, 0, 0),
+        angularMomentum(0, 0, 0),
+        acceleration(0, 0, 0),
+        torque(0, 0, 0)
+    {}
+};
+
+struct RigidBodyForceCoupling
+{
+    bool active;
+    vector force;
+    vector moment;
+    vector position;
+    vector centreOfRotation;
+    tensor orientation;
+    scalar mass;
+
+    RigidBodyForceCoupling()
+    :
+        active(false),
+        force(0, 0, 0),
+        moment(0, 0, 0),
+        position(0, 0, 0),
+        centreOfRotation(0, 0, 0),
+        orientation(tensor::I),
+        mass(0)
     {}
 };
 

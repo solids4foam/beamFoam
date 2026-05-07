@@ -52,37 +52,6 @@ namespace
     }
 
 
-    void writeVectorToEigen
-    (
-        Eigen::Matrix<Foam::scalar, Eigen::Dynamic, 1>& vec,
-        const Foam::label start,
-        const Foam::vector& value
-    )
-    {
-        for (Foam::label i = 0; i < 3; ++i)
-        {
-            vec(start + i) = value[i];
-        }
-    }
-
-
-    void printVector(const Foam::word& name, const Foam::vector& value)
-    {
-        Foam::Info << name << Foam::nl;
-        for (Foam::label i = 0; i < 3; ++i)
-        {
-            Foam::Info << "    " << value[i] << Foam::nl;
-        }
-    }
-   void printTensor(const Foam::word& name, const Foam::tensor& value)
-   {
-       Foam::Info << name << Foam::nl
-	       << "    " << value.xx() << " " << value.xy() << " " << value.xz() << Foam::nl
-	       << "    " << value.yx() << " " << value.yy() << " " << value.yz() << Foam::nl
-	       << "    " << value.zx() << " " << value.zy() << " " << value.zz() << Foam::nl;
-   }  
-
-
     void writeBlockEigenRigidBodyMotion
     (
         const Foam::Time& runTime,
@@ -193,9 +162,105 @@ namespace
             << torque.z()
             << Foam::endl;
 
-        Foam::Info
-            << "BlockEigen rigid-body motion written to "
-            << historyFile << Foam::endl;
+    }
+
+
+    void writeBlockEigenRigidBodyForceCoupling
+    (
+        const Foam::Time& runTime,
+        const Foam::RigidBodyForceCoupling& coupling,
+        const Foam::vector& accelerationContribution,
+        const Foam::vector& torqueContribution
+    )
+    {
+        if (!Foam::Pstream::master())
+        {
+            return;
+        }
+
+        static bool headerWritten = false;
+        static Foam::label solveIndex = 0;
+
+        const Foam::word startTimeName =
+            runTime.timeName(runTime.startTime().value());
+
+        Foam::fileName historyDir;
+
+        if (Foam::Pstream::parRun())
+        {
+            historyDir =
+                runTime.path()
+               /".."
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyForceCoupling"
+               /startTimeName;
+        }
+        else
+        {
+            historyDir =
+                runTime.path()
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyForceCoupling"
+               /startTimeName;
+        }
+
+        Foam::mkDir(historyDir);
+
+        const Foam::fileName historyFile
+        (
+            historyDir/"BlockEigenSolve_rigidBodyForceCoupling.dat"
+        );
+
+        Foam::OFstream os
+        (
+            historyFile,
+            Foam::IOstreamOption(),
+            Foam::IOstreamOption::APPEND
+        );
+
+        if (!headerWritten)
+        {
+            os  << "Time" << " "
+                << "timeIndex" << " "
+                << "solveIndex" << " "
+                << "force_x force_y force_z "
+                << "moment_x moment_y moment_z "
+                << "position_x position_y position_z "
+                << "centreOfRotation_x centreOfRotation_y centreOfRotation_z "
+                << "accelerationContribution_x "
+                << "accelerationContribution_y "
+                << "accelerationContribution_z "
+                << "torqueContribution_x "
+                << "torqueContribution_y "
+                << "torqueContribution_z"
+                << Foam::endl;
+
+            headerWritten = true;
+        }
+
+        os  << runTime.value() << " "
+            << runTime.timeIndex() << " "
+            << solveIndex++ << " "
+            << coupling.force.x() << " "
+            << coupling.force.y() << " "
+            << coupling.force.z() << " "
+            << coupling.moment.x() << " "
+            << coupling.moment.y() << " "
+            << coupling.moment.z() << " "
+            << coupling.position.x() << " "
+            << coupling.position.y() << " "
+            << coupling.position.z() << " "
+            << coupling.centreOfRotation.x() << " "
+            << coupling.centreOfRotation.y() << " "
+            << coupling.centreOfRotation.z() << " "
+            << accelerationContribution.x() << " "
+            << accelerationContribution.y() << " "
+            << accelerationContribution.z() << " "
+            << torqueContribution.x() << " "
+            << torqueContribution.y() << " "
+            << torqueContribution.z()
+            << Foam::endl;
+
     }
 }
 
@@ -213,11 +278,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 )
 {
     // Colm- making number of rows larger by 6 rows
-    const label nRowsOrig = 6*d.size();
     const label nRows = 6*(d.size() + 1);
-
-    Info << "Number of rows in the original matrix = " << nRowsOrig << endl;
-    Info << "Number of rows in matrix = " << nRows << endl;
 
     // Colm- reserving 6*6 = 36 more spaces for coefficients   
     std::vector<Eigen::Triplet<scalar> > coefficients;
@@ -269,6 +330,49 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
                 1.0
             )
         );
+    }
+
+    if
+    (
+        rigidBodyKinematicCoupling_
+     && rigidBodyAttachmentCell_ >= 0
+     && rigidBodyAttachmentCell_ < d.size()
+    )
+    {
+        const label beamRow = 6*rigidBodyAttachmentCell_;
+
+        for (label rowI = 0; rowI < 3; ++rowI)
+        {
+            for (label colI = 0; colI < 3; ++colI)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + colI,
+                        rigidBodyTranslationCoeff_(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + 3 + colI,
+                        rigidBodyRotationCoeff_(rowI, colI)
+                    )
+                );
+            }
+        }
+
+        Info<< "BlockEigen kinematic coupling terms added: beamRows="
+            << beamRow << ".." << beamRow + 2
+            << ", rigid translation rows/cols=" << rbRow << ".." << rbRow + 2
+            << ", rigid rotation rows/cols=" << rbRow + 3
+            << ".." << rbRow + 5
+            << endl;
     }
 
     // -------------------------------------------------------------------------
@@ -343,7 +447,38 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     l_(l),
     u_(u),
     own_(own),
-    nei_(nei)
+    nei_(nei),
+    rigidBodyKinematicCoupling_(false),
+    rigidBodyAttachmentCell_(-1),
+    rigidBodyTranslationCoeff_(tensor::zero),
+    rigidBodyRotationCoeff_(tensor::zero),
+    rigidBodyForceCoupling_()
+{}
+
+
+Foam::BlockEigenSolverOF::BlockEigenSolverOF
+(
+    const Field<scalarSquareMatrix>& d,
+    const Field<scalarSquareMatrix>& l,
+    const Field<scalarSquareMatrix>& u,
+    const labelList& own,
+    const labelList& nei,
+    const label rigidBodyAttachmentCell,
+    const tensor& rigidBodyTranslationCoeff,
+    const tensor& rigidBodyRotationCoeff,
+    const RigidBodyForceCoupling& rigidBodyForceCoupling
+)
+:
+    d_(d),
+    l_(l),
+    u_(u),
+    own_(own),
+    nei_(nei),
+    rigidBodyKinematicCoupling_(true),
+    rigidBodyAttachmentCell_(rigidBodyAttachmentCell),
+    rigidBodyTranslationCoeff_(rigidBodyTranslationCoeff),
+    rigidBodyRotationCoeff_(rigidBodyRotationCoeff),
+    rigidBodyForceCoupling_(rigidBodyForceCoupling)
 {}
 
 
@@ -363,8 +498,6 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 
     const label nRows = A.rows();
     const label rigidStart = nRows - 6; //Colm- counter for rigidBody
-
-    Info << "Number of rows in matrix called by solver = " << nRows << endl;
 
     // -------------------------------------------------------------------------
     // Build RHS vector
@@ -392,14 +525,44 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     const RigidBodyState& prev = rigidBodyData.previous;
     const RigidBodyState& curr = rigidBodyData.current;
 
-    printVector("Rigid Body Previous Displacement", prev.displacement);
-    printTensor("Rigid Body Previous Orientation", prev.orientation);
-    printVector("Rigid Body Previous Linear Velocity", prev.velocity);
-    printVector("Rigid Body Previous Angular Momentum", prev.angularMomentum);
-    printVector("Rigid Body Previous Linear Acceleration", prev.acceleration);
-    printVector("Rigid Body Previous Torque", prev.torque);
-    printVector("Rigid Body Updated Linear Acceleration", curr.acceleration);
-    printVector("Rigid Body Updated Torque", curr.torque);
+    vector currAcceleration = curr.acceleration;
+    vector currTorque = curr.torque;
+
+    if (rigidBodyForceCoupling_.active)
+    {
+        if (mag(rigidBodyForceCoupling_.mass) < SMALL)
+        {
+            FatalErrorInFunction
+                << "blockEigenForceCoupling requested with zero rigid-body mass"
+                << abort(FatalError);
+        }
+
+        const vector accelerationContribution =
+            rigidBodyForceCoupling_.force/rigidBodyForceCoupling_.mass;
+
+        const vector momentArm =
+            rigidBodyForceCoupling_.position
+          - rigidBodyForceCoupling_.centreOfRotation;
+
+        const vector globalMomentContribution =
+            rigidBodyForceCoupling_.moment
+          + (momentArm ^ rigidBodyForceCoupling_.force);
+
+        const vector torqueContribution =
+            rigidBodyForceCoupling_.orientation.T()
+          & globalMomentContribution;
+
+        currAcceleration += accelerationContribution;
+        currTorque += torqueContribution;
+
+        writeBlockEigenRigidBodyForceCoupling
+        (
+            runTime,
+            rigidBodyForceCoupling_,
+            accelerationContribution,
+            torqueContribution
+        );
+    }
 
     Foam::vector rbVelocity = zeroVector();
     Foam::vector rbAngularMomentum = zeroVector();
@@ -413,7 +576,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             prev.velocity[i]
           + deltaT
            *(
-                rbNewmarkGamma*curr.acceleration[i]
+                rbNewmarkGamma*currAcceleration[i]
               + (1.0 - rbNewmarkGamma)*prev.acceleration[i]
             );
 
@@ -421,13 +584,10 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             prev.angularMomentum[i]
           + deltaT
            *(
-                rbNewmarkGamma*curr.torque[i]
+                rbNewmarkGamma*currTorque[i]
               + (1.0 - rbNewmarkGamma)*prev.torque[i]
             );
     }
-
-    printVector("Rigid Body Updated Velocity", rbVelocity);
-    printVector("Rigid Body Updated Angular Momentum", rbAngularMomentum);
 
     // translational part of rigid-body RHS
     for (label i = 0; i < 3; ++i)
@@ -437,7 +597,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
           + deltaT*prev.velocity[i]
           + deltaT*deltaT
            *(
-                rbNewmarkBeta*curr.acceleration[i]
+                rbNewmarkBeta*currAcceleration[i]
               + (0.5 - rbNewmarkBeta)*prev.acceleration[i]
             );
     }
@@ -449,7 +609,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
             deltaT*prev.angularMomentum[i]
           + deltaT*deltaT
            *(
-                rbNewmarkBeta*curr.torque[i]
+                rbNewmarkBeta*currTorque[i]
               + (0.5 - rbNewmarkBeta)*prev.torque[i]
             );
     }
@@ -628,6 +788,10 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     
     rigidBodySolution.displacement = zeroVector();
     rigidBodySolution.rotationCorrection = zeroVector();
+    rigidBodySolution.velocity = rbVelocity;
+    rigidBodySolution.angularMomentum = rbAngularMomentum;
+    rigidBodySolution.acceleration = currAcceleration;
+    rigidBodySolution.torque = currTorque;
 
     for (label i = 0; i < 3; ++i)
     {
@@ -635,24 +799,14 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         rigidBodySolution.rotationCorrection[i] = x(rigidStart + 3 + i);
     }
 
-    Info << "Output rigid-body solution:" << endl;
-    Info << "___________________________" << endl;
-    printVector("Displacement", rigidBodySolution.displacement);
-    printVector("Rotation correction", rigidBodySolution.rotationCorrection);
-    printVector("Velocity", rbVelocity);
-    printVector("Angular momentum", rbAngularMomentum);
-    printVector("Acceleration", curr.acceleration);
-    printVector("Torque", curr.torque);
-    Info << "___________________________" << endl;
-
     writeBlockEigenRigidBodyMotion
     (
         runTime,
         rigidBodySolution,
         rbVelocity,
         rbAngularMomentum,
-        curr.acceleration,
-        curr.torque
+        currAcceleration,
+        currTorque
     );
 
     return initialResidual;

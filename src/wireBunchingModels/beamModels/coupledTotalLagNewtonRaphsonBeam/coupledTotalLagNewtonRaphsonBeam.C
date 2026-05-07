@@ -659,6 +659,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 {
   //  rigidBodyDataValid_(false);
   rigidBodyDataValid_ = false;
+  rigidBodySolutionValid_ = false;
 
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations

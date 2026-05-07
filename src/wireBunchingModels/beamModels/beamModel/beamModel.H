@@ -715,6 +715,11 @@ public:
             virtual void setRigidBodyStepData(const RigidBodyStepData&)
             {}
 
+            virtual bool getRigidBodySolution(RigidBodySolution&) const
+            {
+                return false;
+            }
+
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
 

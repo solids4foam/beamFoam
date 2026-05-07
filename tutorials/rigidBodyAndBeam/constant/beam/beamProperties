@@ -58,6 +58,9 @@ beams
 
     debug yes;
 
+    blockEigenForceCoupling true;
+    blockEigenKinematicCoupling false;
+
     updatedLagrangian no;
     objectiveInterpolation false;
     steadyState false;

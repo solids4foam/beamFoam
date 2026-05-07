@@ -54,6 +54,7 @@ sixDoFRigidBodyMotionFvBeamCoeffs
             anchorPatch      left;
             beamRegion       "beam";
             refAttachmentPt  (2.6565 0 0);
+            blockEigenAuthoritativeMotion true;
         }
     }
 }

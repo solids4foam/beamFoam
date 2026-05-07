@@ -217,6 +217,12 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Flag indicating whether rigid-body data has been supplied
         bool rigidBodyDataValid_;
 
+        //- Last rigid-body solution returned by the block Eigen solve
+        RigidBodySolution rigidBodySolution_;
+
+        //- Flag indicating whether the last rigid-body solution is valid
+        bool rigidBodySolutionValid_;
+
     //- Fields related to time integration schemes
 
         //- ddtScheme name from fvSchemes dictionary
@@ -384,6 +390,18 @@ public:
             {
                 rigidBodyData_ = data;
                 rigidBodyDataValid_ = true;
+                rigidBodySolutionValid_ = false;
+            }
+
+            virtual bool getRigidBodySolution(RigidBodySolution& solution) const
+            {
+                if (!rigidBodySolutionValid_)
+                {
+                    return false;
+                }
+
+                solution = rigidBodySolution_;
+                return true;
             }
   
         // Access
