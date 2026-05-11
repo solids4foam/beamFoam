@@ -70,7 +70,7 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
 
     // extra checks to enforce upstream always to be in -X direction
     vector samplingDir = -vPerp;
-    if (samplingDir.x() > 0)
+    if (samplingDir.x() >= 0)
     {
         vector globalUpstream(-1, 0, 0);
         samplingDir = globalUpstream - (globalUpstream & t)*t;
@@ -85,9 +85,9 @@ inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTange
             << "so the fallback upstream direction is being used." << nl
             << "vf = " << vf << nl
             << "beamTangent = " << beamTangent << nl
-            << "Fallback direction = (0 1 0)" << nl
+            << "Fallback direction = (-1 0 0)" << nl
             << endl;
-        return vector(0.0, 1.0, 0.0);
+        return vector(-1.0, 0.0, 0.0);
     };
     return samplingDir/(m + VSMALL);
 }
