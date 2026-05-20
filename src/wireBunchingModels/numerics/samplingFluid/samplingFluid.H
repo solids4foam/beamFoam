@@ -60,7 +60,8 @@ namespace Foam
             const scalar samplingReferenceLength,
             const scalar samplingRadius,
             const vector& samplingPlaneNormal,
-            const meshSearch& searchEngine // flag for using octree
+            const vector& globalUpstreamDir,
+            const meshSearch& searchEngine
         );
 } // End namespace Foam
 

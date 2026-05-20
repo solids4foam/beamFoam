@@ -109,6 +109,192 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
     const vectorField almForceStart(almForce_.internalField());
 
+    // Sample the ALM fluid force ONCE before the NR loop and freeze it.
+    // Previously, getFluidVelocity was called inside the NR loop and the
+    // sampling point shifted slightly with each W_ update.  At certain wave
+    // phases the shift crossed a fluid cell boundary, returning two slightly
+    // different velocities on alternate iterations → perfect 2-cycle that
+    // never converged.  Freezing the force here eliminates that artefact
+    // while leaving forceRelaxation free to serve its intended role: damping
+    // the force update between successive PIMPLE outer iterations.
+    if (almSamplingActive_)
+    {
+        const fvMesh& fluidMesh =
+            mesh().time().db().parent().lookupObject<fvMesh>("region0");
+
+        const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_;
+
+        vectorField dRdScell;
+
+        if (Pstream::master())
+        {
+            HermiteSpline spline
+            (
+                currentBeamPoints(),
+                currentBeamTangents()
+            );
+
+            dRdScell = spline.midPointDerivatives();
+        }
+
+        label nDRdS = dRdScell.size();
+        Pstream::broadcast(nDRdS);
+
+        if (!Pstream::master())
+        {
+            dRdScell.setSize(nDRdS, vector::zero);
+        }
+
+        Pstream::broadcast(dRdScell);
+
+        const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
+
+        labelList seedCellIDs(mesh().nCells(), -1);
+
+        const scalar almSamplingReferenceLength =
+            beamDict.lookupOrDefault<scalar>
+            (
+                "almSamplingReferenceLength",
+                R()
+            );
+
+        if (almSamplingReferenceLength <= SMALL)
+        {
+            FatalErrorInFunction
+                << "almSamplingReferenceLength must be positive. "
+                << "Current value: " << almSamplingReferenceLength
+                << abort(FatalError);
+        }
+
+        const vector almSamplingPlaneNormal
+        (
+            beamDict.lookup("almSamplingPlaneNormal")
+        );
+
+        if (mag(almSamplingPlaneNormal) <= SMALL)
+        {
+            FatalErrorInFunction
+                << "almSamplingPlaneNormal magnitude must be positive. "
+                << "Current value: " << almSamplingPlaneNormal
+                << abort(FatalError);
+        }
+
+        if (!beamDict.found("almUpstreamDir"))
+        {
+            FatalErrorInFunction
+                << "almUpstreamDir not specified in beamProperties." << nl
+                << "Please add the global upstream direction, e.g.:" << nl
+                << "    almUpstreamDir (-1 0 0);" << nl
+                << "This is required when almSamplingActive is true."
+                << abort(FatalError);
+        }
+
+        const vector almUpstreamDir(beamDict.lookup("almUpstreamDir"));
+
+        if (mag(almUpstreamDir) <= SMALL)
+        {
+            FatalErrorInFunction
+                << "almUpstreamDir magnitude must be positive. "
+                << "Current value: " << almUpstreamDir
+                << abort(FatalError);
+        }
+
+        std::tuple
+        <
+            tmp<volVectorField>,
+            tmp<volScalarField>,
+            tmp<volVectorField>,
+            labelList
+        > fluidInfo =
+            getFluidVelocity
+            (
+                fluidMesh,
+                mesh(),
+                beamCellCenterCoord,
+                seedCellIDs,
+                groundZ_,
+                groundContactActive_,
+                dRdScell,
+                almSamplingReferenceLength,
+                samplingRadius_,
+                almSamplingPlaneNormal,
+                almUpstreamDir,
+                searchEngine_
+            );
+
+        fluidU_ = std::get<0>(fluidInfo).ref();
+        cellMarker_ = std::get<1>(fluidInfo).ref();
+        beamVelocity_ = std::get<2>(fluidInfo).ref();
+        fluidCellIDs_ = std::get<3>(fluidInfo);
+
+        if (mesh().time().writeTime())
+        {
+            cellMarker_.write();
+        }
+
+        const vectorField Urel(fluidU_.internalField() - U_.internalField());
+
+        vectorField Ut
+        (
+            (
+                (Urel & dRdScellHat)
+                *dRdScellHat
+            )
+        );
+
+        vectorField Un
+        (
+            (
+                Urel
+              - (
+                    (Urel & dRdScellHat)
+                    *dRdScellHat
+                )
+            )
+        );
+
+        const scalar rhoF = rhoFluid().value();
+        const scalar D =
+            beamDict.lookupOrDefault<scalar>
+            (
+                "almDragReferenceLength",
+                2.0*R()
+            );
+
+        if (D <= SMALL)
+        {
+            FatalErrorInFunction
+                << "almDragReferenceLength must be positive. "
+                << "Current value: " << D
+                << abort(FatalError);
+        }
+
+        const scalar coeffN = 0.5*rhoF*Cdn_*D;
+        const scalar coeffT = 0.5*rhoF*Cdt_*D;
+
+        forAll(almForce_, cellI)
+        {
+            const vector un = Un[cellI];
+            const vector ut = Ut[cellI];
+            const vector vs = un + ut;
+            const scalar vsMag = mag(vs);
+
+            const vector fnLineTarget = -coeffN*vsMag*un;
+            const vector ftLineTarget = -coeffT*vsMag*ut;
+            const vector FLineTarget = fnLineTarget + ftLineTarget;
+
+            almForce_[cellI] =
+                almForceRelaxation_*FLineTarget
+              + (1.0 - almForceRelaxation_)*almForceStart[cellI];
+        }
+
+        const vector Fsum(sum(almForce_ * L()).value());
+        Info<< "sum F on the beam (relaxed) = "
+            << "(" << Fsum.x() << ", "
+            << Fsum.y() << ", "
+            << Fsum.z() << ") N" << nl;
+    }
+
     iOuterCorr() = 0;
     do
     {
@@ -289,180 +475,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 source[cellI](4,0) -= m()[cellI].y()*L()[cellI];
                 source[cellI](5,0) -= m()[cellI].z()*L()[cellI];
             }
+            // ALM force was pre-sampled before the NR loop (frozen).
+            // Add it to source here unchanged every iteration.
             if (almSamplingActive_)
             {
-                const fvMesh& fluidMesh =
-                    mesh().time().db().parent().lookupObject<fvMesh>("region0");
-
-                const vectorField beamCellCenterCoord = mesh().C() + refW_ + W_;
-                /**
-                HermiteSpline spline
-                (
-                    currentBeamPoints(),
-                    currentBeamTangents()
-                );
-
-                const vectorField& dRdScell = spline.midPointDerivatives();
-                const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
-                **/
-                vectorField dRdScell;
-
-                if (Pstream::master())
-                {
-                    // If nothing specified inside currentBeamPoints() and,
-                    // it return for 0th beam currentBeamTangents()
-                    HermiteSpline spline
-                    (
-                        currentBeamPoints(),
-                        currentBeamTangents()
-                    );
-
-                    dRdScell = spline.midPointDerivatives();
-                }
-
-                label nDRdS = dRdScell.size();
-                Pstream::broadcast(nDRdS);
-
-                if (!Pstream::master())
-                {
-                    dRdScell.setSize(nDRdS, vector::zero);
-                }
-
-                Pstream::broadcast(dRdScell);
-
-                const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
-
-                labelList seedCellIDs(mesh().nCells(), -1);
-
-                const scalar almSamplingReferenceLength =
-                    beamDict.lookupOrDefault<scalar>
-                    (
-                        "almSamplingReferenceLength",
-                        R()
-                    );
-
-                if (almSamplingReferenceLength <= SMALL)
-                {
-                    FatalErrorInFunction
-                        << "almSamplingReferenceLength must be positive. "
-                        << "Current value: " << almSamplingReferenceLength
-                        << abort(FatalError);
-                }
-
-                const vector almSamplingPlaneNormal
-                (
-                    beamDict.lookup("almSamplingPlaneNormal")
-                );
-
-                if (mag(almSamplingPlaneNormal) <= SMALL)
-                {
-                    FatalErrorInFunction
-                        << "almSamplingPlaneNormal magnitude must be positive. "
-                        << "Current value: " << almSamplingPlaneNormal
-                        << abort(FatalError);
-                }
-
-                std::tuple
-                <
-                    tmp<volVectorField>,
-                    tmp<volScalarField>,
-                    tmp<volVectorField>,
-                    labelList
-                > fluidInfo =
-                    getFluidVelocity
-                    (
-                        fluidMesh,
-                        mesh(),
-                        beamCellCenterCoord,
-                        seedCellIDs,
-                        groundZ_,
-                        groundContactActive_,
-                        dRdScell,
-                        almSamplingReferenceLength,
-                        samplingRadius_,
-                        almSamplingPlaneNormal,
-                        searchEngine_
-                    );
-
-                fluidU_ = std::get<0>(fluidInfo).ref();
-                cellMarker_ = std::get<1>(fluidInfo).ref();
-                beamVelocity_ = std::get<2>(fluidInfo).ref();
-                fluidCellIDs_ = std::get<3>(fluidInfo);
-
-                if (mesh().time().writeTime())
-                {
-                    cellMarker_.write();
-                }
-
-                const vectorField Urel(fluidU_.internalField() - U_.internalField());
-
-                vectorField Ut
-                (
-                    (
-                        (Urel & dRdScellHat)
-                        *dRdScellHat
-                    )
-                );
-
-                vectorField Un
-                (
-                    (
-                        Urel
-                      - (
-                            (Urel & dRdScellHat)
-                            *dRdScellHat
-                        )
-                    )
-                );
-
-                const scalar rhoF = rhoFluid().value();
-                const scalar D =
-                    beamDict.lookupOrDefault<scalar>
-                    (
-                        "almDragReferenceLength",
-                        2.0*R()
-                    );
-
-                if (D <= SMALL)
-                {
-                    FatalErrorInFunction
-                        << "almDragReferenceLength must be positive. "
-                        << "Current value: " << D
-                        << abort(FatalError);
-                }
-
-                const scalar coeffN = 0.5*rhoF*Cdn_*D;
-                const scalar coeffT = 0.5*rhoF*Cdt_*D;
-
                 forAll(source, cellI)
                 {
-                    const vector un = Un[cellI];
-                    const vector ut = Ut[cellI];
-                    const vector vs = un + ut;
-                    const scalar vsMag = mag(vs);
-
-                    const vector fnLineTarget = -coeffN*vsMag*un;
-                    const vector ftLineTarget = -coeffT*vsMag*ut;
-                    const vector FLineTarget = fnLineTarget + ftLineTarget;
-
-                    const vector FLineRelaxed =
-                        almForceRelaxation_*FLineTarget
-                      + (1.0 - almForceRelaxation_)*almForceStart[cellI];
-
-                    almForce_[cellI] = FLineRelaxed;
-
-                    const vector FCell = FLineRelaxed*L()[cellI];
-
+                    const vector FCell = almForce_[cellI]*L()[cellI];
                     source[cellI](0,0) += FCell.x();
                     source[cellI](1,0) += FCell.y();
                     source[cellI](2,0) += FCell.z();
                 }
-
-                const vector Fsum(sum(almForce_ * L()).value());
-                Info<< "sum F on the beam (relaxed) = "
-                    << "(" << Fsum.x() << ", "
-                    << Fsum.y() << ", "
-                    << Fsum.z() << ") N" << nl;
             }
 
             // Add body force due to gravity and buoyancy if fluid is present

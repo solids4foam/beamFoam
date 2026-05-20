@@ -62,43 +62,53 @@ namespace Foam
 
 //     return samplingDir / m;
 // }
-inline vector upstreamDirPerpToTangent(const vector& vf, const vector& beamTangent)
+inline vector upstreamDirPerpToTangent
+(
+    const vector& vf,
+    const vector& beamTangent,
+    const vector& globalUpstreamDir
+)
 {
+    const vector upHat = globalUpstreamDir/(mag(globalUpstreamDir) + VSMALL);
+    const vector t = beamTangent/(mag(beamTangent) + VSMALL);
+    const vector vPerp = vf - (vf & t)*t;
 
-    vector t = beamTangent/(mag(beamTangent) + VSMALL);
-    vector vPerp = vf - (vf & t)*t;
-
-    // extra checks to enforce upstream always to be in -X direction
     vector samplingDir = -vPerp;
-    if (samplingDir.x() >= 0)
+
+    // If samplingDir is not in the upstream half-space, project globalUpstreamDir
+    // perpendicular to the beam tangent and use that instead.
+    if ((samplingDir & upHat) <= 0)
     {
-        vector globalUpstream(-1, 0, 0);
-        samplingDir = globalUpstream - (globalUpstream & t)*t;
+        samplingDir = upHat - (upHat & t)*t;
     }
 
     scalar m = mag(samplingDir);
     if (m < VSMALL)
     {
+        // Beam nearly parallel to globalUpstreamDir: cannot form a meaningful
+        // perpendicular direction. Fall back to globalUpstreamDir directly.
         WarningInFunction
             << "Sampling direction magnitude is below VSMALL." << nl
-            << "The relative flow is nearly parallel to the beam tangent, "
-            << "so the fallback upstream direction is being used." << nl
+            << "The beam tangent is nearly parallel to almUpstreamDir." << nl
+            << "Using almUpstreamDir = " << globalUpstreamDir
+            << " directly as the sampling direction." << nl
             << "vf = " << vf << nl
             << "beamTangent = " << beamTangent << nl
-            << "Fallback direction = (-1 0 0)" << nl
             << endl;
-        return vector(-1.0, 0.0, 0.0);
-    };
+        return upHat;
+    }
     return samplingDir/(m + VSMALL);
 }
 
 // Compute sampling points Ps (step 1 of ALM)
-inline void computeUpstreamSamplingPoints(
+inline void computeUpstreamSamplingPoints
+(
     const pointField& beamCoords,
     const vectorField& vfAtBeam,
     const vectorField& beamTangents,
     const scalar sampleDist,
     const vector& samplingPlaneNormal,
+    const vector& globalUpstreamDir,
     pointField& Ps,
     vectorField& upstreamDir
 )
@@ -110,11 +120,11 @@ inline void computeUpstreamSamplingPoints(
 
     forAll(beamCoords, i)
     {
-        vector vf = vfAtBeam[i];
-
-        vector dir = upstreamDirPerpToTangent(vf, beamTangents[i]);
+        const vector vf = vfAtBeam[i];
+        const vector dir =
+            upstreamDirPerpToTangent(vf, beamTangents[i], globalUpstreamDir);
         upstreamDir[i] = dir;
-        Ps[i] = beamCoords[i] + sampleDist * dir;
+        Ps[i] = beamCoords[i] + sampleDist*dir;
         Ps[i] -= ((Ps[i] - beamCoords[i]) & nHat)*nHat;
     }
 }

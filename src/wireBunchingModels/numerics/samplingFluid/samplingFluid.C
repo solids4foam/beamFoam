@@ -55,7 +55,8 @@ namespace Foam
         const scalar samplingReferenceLength,
         const scalar samplingRadius,
         const vector& samplingPlaneNormal,
-        const meshSearch& searchEngine // flag for using octree or not
+        const vector& globalUpstreamDir,
+        const meshSearch& searchEngine
     )
     {
     tmp<volVectorField> tresult // this is the fluid velocity stored on beam mesh
@@ -229,12 +230,14 @@ namespace Foam
     //---- parallel code up until here
     if (Pstream::master())
     {
-        computeUpstreamSamplingPoints(
-            beamCoords,    // broadcast earlier
-            vfAtBeam,      // fluid velocity at beam points, reduced across ranks
-            beamTangents,  // broadcast earlier
+        computeUpstreamSamplingPoints
+        (
+            beamCoords,
+            vfAtBeam,
+            beamTangents,
             sampleDist,
             samplingPlaneNormal,
+            globalUpstreamDir,
             Ps,
             upstreamDir
         );
