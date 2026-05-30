@@ -53,7 +53,6 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
-#include "meshSearch.H"
 #include "IOList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -85,19 +84,10 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line velocity field
         mutable volVectorField U_;
 
-        //- Fluid velocity sampled at the beam cells
-        mutable volVectorField fluidU_;
-
-        //- Fluid cell IDs corresponding to each beam cell
-        mutable labelIOList fluidCellIDs_;
-
-        //- Cell marker field stored on the fluid mesh
-        mutable volScalarField cellMarker_;
-
-        //- Beam velocity field stored on the fluid mesh
-        mutable volVectorField beamVelocity_;
-
-        //- ALM line force acting on each beam cell
+        //- ALM line force acting on each beam cell (populated by an
+        //  almDrag beamMomentumContribution if one is configured; otherwise
+        //  remains zero).  Kept on the beam model so that external consumers
+        //  (e.g. moorFV's beamActuatorLine fvOption) can look it up by name.
         mutable volVectorField almForce_;
 
         //- Mean line acceleration field
@@ -240,30 +230,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Newmark gamma coefficient
         scalar gammaN_;
-
-        //- Boolean to enable ALM-style sampling of the fluid velocity
-        bool almSamplingActive_;
-
-        //- Force relaxation factor for ALM
-        scalar almForceRelaxation_;
-
-        //- Sampling radius multiplier for ALM
-        scalar samplingRadius_;
-
-        //- Normal drag coefficient
-        scalar Cdn_;
-
-        //- Tangential drag coefficient
-        scalar Cdt_;
-
-        //- Whether ground contact is active
-        bool groundContactActive_;
-
-        //- Ground height used by the sampling routine
-        scalar groundZ_;
-
-        //- Search engine for locating fluid cells
-        meshSearch searchEngine_;
 
         //- Run-time selectable beam momentum contributions
         PtrList<beamMomentumContribution> momentumContribPtr_;
