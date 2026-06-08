@@ -19,6 +19,3 @@ gnuplot allPlots.gnuplot
 
 echo "Plotting displacement vs time and energy vs time finished"
 echo "The plot names are displacementPlot.pdf and energyPlot.pdf"
-
-open displacementPlot.pdf
-open energyPlot.pdf

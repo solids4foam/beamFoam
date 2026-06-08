@@ -64,6 +64,3 @@ NR==1 { print "load"; next }   # header
 gnuplot dispPlot.gnuplot
 
 echo "Finished Plotting Load Vs Displacement Graph"
-
-open dispComparison_Wx_MeshSizes.pdf
-open dispComparison_Wz_MeshSizes.pdf
