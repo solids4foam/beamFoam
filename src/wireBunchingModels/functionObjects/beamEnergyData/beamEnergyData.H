@@ -73,6 +73,9 @@ class beamEnergyData
         //- Forces/moment file ptr
         autoPtr<OFstream> historyFilePtr_;
 
+        //- Per-beam energy file ptrs
+        PtrList<OFstream> beamHistoryFilePtrs_;
+
     // Private Member Functions
 
         //- Write data

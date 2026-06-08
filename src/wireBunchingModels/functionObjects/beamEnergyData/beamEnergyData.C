@@ -43,6 +43,42 @@ namespace functionObjects
 }
 }
 
+namespace
+{
+    static const Foam::label energyWidth = 16;
+
+    void writeEnergyHeader(Foam::OFstream& os)
+    {
+        os  << Foam::setw(energyWidth) << "Time"
+            << Foam::setw(energyWidth) << "E_{int}"
+            << Foam::setw(energyWidth) << "E_{kin}"
+            << Foam::setw(energyWidth) << "E_{kin-lin}"
+            << Foam::setw(energyWidth) << "E_{kin-ang}"
+            << Foam::setw(energyWidth) << "E_{tot}"
+            << Foam::endl;
+    }
+
+    void writeEnergyRow
+    (
+        Foam::OFstream& os,
+        const Foam::scalar time,
+        const Foam::scalar intE,
+        const Foam::scalar kinE,
+        const Foam::scalar kinE_lin,
+        const Foam::scalar kinE_ang,
+        const Foam::scalar totE
+    )
+    {
+        os  << Foam::setw(energyWidth) << time
+            << Foam::setw(energyWidth) << intE
+            << Foam::setw(energyWidth) << kinE
+            << Foam::setw(energyWidth) << kinE_lin
+            << Foam::setw(energyWidth) << kinE_ang
+            << Foam::setw(energyWidth) << totE
+            << Foam::endl;
+    }
+}
+
 // * * * * * * * * * * * Private Members Functions * * * * * * * * * * * * * //
 
 bool Foam::functionObjects::beamEnergyData::writeData()
@@ -62,23 +98,6 @@ bool Foam::functionObjects::beamEnergyData::writeData()
 
     // Properties of the beam like length, area, second moment of area, density
     const volScalarField& L = beam.L();
-    const dimensionedScalar& rho = beam.rho();
-    const dimensionedScalar& A = beam.A();
-    const dimensionedScalar& Iyy = beam.Iyy();
-    const dimensionedScalar& Izz = beam.Izz();
-    const dimensionedScalar& J = beam.J();
-
-    // Second moment of area scaling factor-if not specified in beamProperties
-    // then the value is equal to 1.0
-    const scalar kCI = beam.kCI();
-
-    // Inertia tensor
-    tensor CI
-    (
-        kCI*J.value(), 0, 0,
-        0, kCI*Iyy.value(), 0,
-        0, 0, kCI*Izz.value()
-    );
 
     // Beam linear and angular velocity for calculation of kinetic energy
     const volVectorField& U = mesh.lookupObject<volVectorField>("U");
@@ -91,18 +110,24 @@ bool Foam::functionObjects::beamEnergyData::writeData()
     const tensorField& CMI = CM.internalField();
     const vectorField& UI = U.internalField();
     const vectorField& OmegaI = Omega.internalField();
+    const labelList& own = mesh.owner();
+
+    // Second moment of area scaling factor-if not specified in beamProperties
+    // then the value is equal to 1.0
+    const scalar kCI = beam.kCI();
 
     // Energy parameters initialised
-    scalar intE(0);
-    scalar kinE_lin(0);
-    scalar kinE_ang(0);
-    scalar kinE(0);
-    scalar tot_E(0);
+    scalarField intE(beam.nBeams(), 0);
+    scalarField kinE_lin(beam.nBeams(), 0);
+    scalarField kinE_ang(beam.nBeams(), 0);
 
     // Calculation of internal energy at internal faces
     forAll(GammaI, faceI)
     {
-        intE += 0.5*L[0]*
+        const label cellI = own[faceI];
+        const label bI = beam.whichBeam(beam.globalCellIndex(cellI));
+
+        intE[bI] += 0.5*L[cellI]*
         (
             (GammaI[faceI] & (CQI[faceI] & GammaI[faceI]))
           + (KI[faceI] & (CMI[faceI] & KI[faceI]))
@@ -113,11 +138,23 @@ bool Foam::functionObjects::beamEnergyData::writeData()
     // using cell-centre velocity fields
     forAll(UI, cellI)
     {
-        kinE_lin += 0.5*rho.value()*L[0]*
+        const label bI = beam.whichBeam(beam.globalCellIndex(cellI));
+
+        const scalar rho = beam.rho(bI).value();
+        const scalar A = beam.A(bI).value();
+
+        const tensor CI
         (
-            A.value()*(UI[cellI] & UI[cellI])
+            kCI*beam.J(bI).value(), 0, 0,
+            0, kCI*beam.Iyy(bI).value(), 0,
+            0, 0, kCI*beam.Izz(bI).value()
         );
-        kinE_ang += 0.5*rho.value()*L[0]*
+
+        kinE_lin[bI] += 0.5*rho*L[cellI]*
+        (
+            A*(UI[cellI] & UI[cellI])
+        );
+        kinE_ang[bI] += 0.5*rho*L[cellI]*
         (
             (OmegaI[cellI] & (CI & OmegaI[cellI]))
         );
@@ -130,10 +167,14 @@ bool Foam::functionObjects::beamEnergyData::writeData()
         const tensorField& pCQ = CQ.boundaryField()[patchI];
         const vectorField& pK = K.boundaryField()[patchI];
         const tensorField& pCM = CM.boundaryField()[patchI];
+        const labelList& faceCells = mesh.boundary()[patchI].faceCells();
 
         forAll(pGamma,faceI)
         {
-            intE += 0.25*L[0]*
+            const label cellI = faceCells[faceI];
+            const label bI = beam.whichBeam(beam.globalCellIndex(cellI));
+
+            intE[bI] += 0.25*L[cellI]*
             (
                 (pGamma[faceI] & (pCQ[faceI] & pGamma[faceI]))
                 + (pK[faceI] & (pCM[faceI] & pK[faceI]))
@@ -141,22 +182,50 @@ bool Foam::functionObjects::beamEnergyData::writeData()
         }
     }
 
-    // Total kinetic energy
-    kinE = kinE_lin + kinE_ang;
-
-    // Total energy
-    tot_E = intE + kinE;
-
     if (Pstream::master())
     {
-        historyFilePtr_()
-        << time_.time().value() << " "
-        << intE << " "
-        << kinE << " "
-        << kinE_lin << " "
-        << kinE_ang << " "
-        << tot_E
-        << endl;
+        scalar totalIntE(0);
+        scalar totalKinE(0);
+        scalar totalKinE_lin(0);
+        scalar totalKinE_ang(0);
+        scalar totalE(0);
+
+        forAll(intE, beamI)
+        {
+            const scalar beamKinE = kinE_lin[beamI] + kinE_ang[beamI];
+            const scalar beamTotE = intE[beamI] + beamKinE;
+
+            totalIntE += intE[beamI];
+            totalKinE += beamKinE;
+            totalKinE_lin += kinE_lin[beamI];
+            totalKinE_ang += kinE_ang[beamI];
+            totalE += beamTotE;
+
+            if (beamHistoryFilePtrs_.set(beamI))
+            {
+                writeEnergyRow
+                (
+                    beamHistoryFilePtrs_[beamI],
+                    time_.time().value(),
+                    intE[beamI],
+                    beamKinE,
+                    kinE_lin[beamI],
+                    kinE_ang[beamI],
+                    beamTotE
+                );
+            }
+        }
+
+        writeEnergyRow
+        (
+            historyFilePtr_(),
+            time_.time().value(),
+            totalIntE,
+            totalKinE,
+            totalKinE_lin,
+            totalKinE_ang,
+            totalE
+        );
     }
 
     return true;
@@ -177,7 +246,8 @@ Foam::functionObjects::beamEnergyData::beamEnergyData
     name_(name),
     time_(runTime),
     regionName_(polyMesh::defaultRegion),
-    historyFilePtr_()
+    historyFilePtr_(),
+    beamHistoryFilePtrs_()
 {
     Info<< "Creating " << this->name() << " function object!" << endl;
 
@@ -188,6 +258,9 @@ Foam::functionObjects::beamEnergyData::beamEnergyData
 
     const fvMesh& mesh =
         time_.lookupObject<fvMesh>(regionName_);
+
+    const beamModel& beam =
+        mesh.objectRegistry::parent().lookupObject<beamModel>("beamProperties");
 
     // Create history file if not already created
     if (!historyFilePtr_.valid())
@@ -227,14 +300,26 @@ Foam::functionObjects::beamEnergyData::beamEnergyData
             // Add headers to output data
             if (historyFilePtr_.valid())
             {
-                historyFilePtr_()
-                << "Time" << " "
-                << "E_{int}" << " "
-                << "E_{kin}" << " "
-                << "E_{kin-lin}" << " "
-                << "E_{kin-ang}" << " "
-                << "E_{tot}"
-                << endl;
+                writeEnergyHeader(historyFilePtr_());
+            }
+
+            beamHistoryFilePtrs_.setSize(beam.nBeams());
+
+            for (label beamI = 0; beamI < beam.nBeams(); ++beamI)
+            {
+                OStringStream beamFileName;
+                beamFileName() << "beamEnergyData_beam" << beamI << ".dat";
+
+                beamHistoryFilePtrs_.set
+                (
+                    beamI,
+                    new OFstream(historyDir/word(beamFileName.str()))
+                );
+
+                if (beamHistoryFilePtrs_.set(beamI))
+                {
+                    writeEnergyHeader(beamHistoryFilePtrs_[beamI]);
+                }
             }
         }
     }

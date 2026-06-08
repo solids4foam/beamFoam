@@ -200,9 +200,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Add self-weight of the beam
             forAll(source, cellI)
             {
-                source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
-                source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
-                source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
+                const label bI = whichBeam(globalCellIndex(cellI));
+                const scalar beamWeight = rho(bI).value()*L()[cellI]*A(bI).value();
+
+                source[cellI](0,0) -= beamWeight*g().component(0).value();
+                source[cellI](1,0) -= beamWeight*g().component(1).value();
+                source[cellI](2,0) -= beamWeight*g().component(2).value();
             }
             // Add point forces
             forAll(pointForces(), pfI)
