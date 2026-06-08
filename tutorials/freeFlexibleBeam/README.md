@@ -1,3 +1,7 @@
+---
+sort: 3
+---
+
 # Free Flexible Beam: Kayak-Rowing Motion
 
 ## Tutorial Aims

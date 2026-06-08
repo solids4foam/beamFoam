@@ -1,3 +1,7 @@
+---
+sort: 2
+---
+
 # In-Plane Cantilever Subjected to an End Follower Load
 
 ## Tutorial Aims

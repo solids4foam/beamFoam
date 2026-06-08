@@ -29,7 +29,7 @@ beams
 	}
 	
 	length 10;
-	nSegments 20;	
+	nSegments 10;
     }
 
 );

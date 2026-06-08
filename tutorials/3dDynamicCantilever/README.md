@@ -1,3 +1,7 @@
+---
+sort: 1
+---
+
 # 3-D Dynamic Cantilever
 
 ## Tutorial Aims
