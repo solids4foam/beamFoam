@@ -66,6 +66,3 @@ echo "All cases completed. See dt_timing_summary.txt for performance."
 
 # Plotting displacement vs time for varying dt values
 gnuplot dispPlotDT.gnuplot
-
-# Displacement Plot name
-open dispPlotVaryingDT.pdf

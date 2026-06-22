@@ -32,7 +32,7 @@ beams
         }
 
         length 2;
-        nSegments 40;
+        nSegments 20;
         E  15.293e6;
         G    5.882e6;
         rho    1000;

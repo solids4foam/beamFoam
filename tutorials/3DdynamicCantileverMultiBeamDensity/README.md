@@ -1,6 +1,6 @@
 # 3D Dynamic Cantilever Multibeam Density Test
 
-This tutorial is a multibeam variant of `tutorials/3DdynamicCantilever`.
+This tutorial is a multibeam variant of `tutorials/3dDynamicCantilever`.
 
 It creates three independent cantilever beams with identical geometry, stiffness,
 time integration, and tip loading, but different densities:

@@ -13,6 +13,3 @@ runApplication $application
 
 # Plotting displacement vs load graphs
 gnuplot allPlots.gnuplot
-
-open displacementPlot.pdf
-open energyPlot.pdf
