@@ -1,5 +1,9 @@
 # Case 4: In-Plane Bending of a Cantilever Beam Subjected to Concentrated Moment
 
+## Video Demonstration
+
+[![Cantilever beam video demonstration](https://img.youtube.com/vi/77_MZXnoDrM/maxresdefault.jpg)](https://youtu.be/77_MZXnoDrM)
+
 ## Overview
 This benchmark test investigates the **in-plane pure flexural bending** of a cantilever beam subjected to a concentrated moment at its free end.  
 The problem has been widely studied in the literature [Simo & Vu-Quoc (1986), Ibrahimbegovic (1995)] and serves to validate beam formulations for large in-plane rotations.

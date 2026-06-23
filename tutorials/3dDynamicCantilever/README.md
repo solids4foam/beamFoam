@@ -4,6 +4,10 @@ sort: 1
 
 # 3-D Dynamic Cantilever
 
+## Video Demonstration
+
+[![3-D Dynamic Cantilever video demonstration](https://img.youtube.com/vi/Ujd_9cJjilk/maxresdefault.jpg)](https://youtu.be/Ujd_9cJjilk)
+
 ## Tutorial Aims
 
 This tutorial demonstrates how to:
