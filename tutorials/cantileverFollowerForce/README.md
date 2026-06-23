@@ -4,6 +4,10 @@ sort: 2
 
 # In-Plane Cantilever Subjected to an End Follower Load
 
+## Video Demonstration
+
+[![In-plane cantilever follower force video demonstration](https://img.youtube.com/vi/cPaWSjgdrjw/maxresdefault.jpg)](https://youtu.be/cPaWSjgdrjw)
+
 ## Tutorial Aims
 
 This tutorial demonstrates how to:

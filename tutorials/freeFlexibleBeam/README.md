@@ -4,6 +4,10 @@ sort: 3
 
 # Free Flexible Beam: Kayak-Rowing Motion
 
+## Video Demonstration
+
+[![Free flexible beam video demonstration](https://img.youtube.com/vi/A-Cg-AX44xA/maxresdefault.jpg)](https://youtu.be/A-Cg-AX44xA)
+
 ## Tutorial Aims
 
 This tutorial demonstrates how to:
