@@ -4,10 +4,6 @@ sort: 2
 
 # In-Plane Cantilever Subjected to an End Follower Load
 
-## Video Demonstration
-
-[![In-plane cantilever follower force video demonstration](https://img.youtube.com/vi/cPaWSjgdrjw/maxresdefault.jpg)](https://youtu.be/cPaWSjgdrjw)
-
 ## Tutorial Aims
 
 This tutorial demonstrates how to:
@@ -177,6 +173,10 @@ The important validation quantities are the in-plane free-end displacement
 components `w_x` and `w_z` as the load increases to `134 kN`.
 
 ![Free-end displacement components against the applied follower load](images/load-displacement.png)
+
+### Video Demonstration
+
+{% include youtube.html id="cPaWSjgdrjw" %}
 
 ## Mesh Sensitivity Study
 

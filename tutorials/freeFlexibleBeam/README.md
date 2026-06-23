@@ -4,10 +4,6 @@ sort: 3
 
 # Free Flexible Beam: Kayak-Rowing Motion
 
-## Video Demonstration
-
-[![Free flexible beam video demonstration](https://img.youtube.com/vi/A-Cg-AX44xA/maxresdefault.jpg)](https://youtu.be/A-Cg-AX44xA)
-
 ## Tutorial Aims
 
 This tutorial demonstrates how to:
@@ -195,6 +191,10 @@ The paper reports:
 The total energy may change while the external loads perform work during the
 first `2.5 s`. The energy-conservation assessment should therefore focus on the
 free-vibration interval after load removal.
+
+### Video Demonstration
+
+{% include youtube.html id="A-Cg-AX44xA" %}
 
 ## Comparing Time-Integration Schemes
 

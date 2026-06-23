@@ -4,10 +4,6 @@ sort: 1
 
 # 3-D Dynamic Cantilever
 
-## Video Demonstration
-
-[![3-D Dynamic Cantilever video demonstration](https://img.youtube.com/vi/Ujd_9cJjilk/maxresdefault.jpg)](https://youtu.be/Ujd_9cJjilk)
-
 ## Tutorial Aims
 
 This tutorial demonstrates how to:
@@ -193,6 +189,10 @@ The paper reports that:
 Reference displacement histories from solids4Foam and ABAQUS are supplied in
 `solidPointDisplacement_pointDisp.dat` and
 `cantilever_abaqus_50percent.txt`.
+
+### Video Demonstration
+
+{% include youtube.html id="Ujd_9cJjilk" %}
 
 The execution times reported in the paper were obtained on an Apple M1 Pro and
 should be treated as comparative reference values rather than acceptance
