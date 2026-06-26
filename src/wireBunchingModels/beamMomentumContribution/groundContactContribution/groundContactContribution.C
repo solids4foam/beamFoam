@@ -202,8 +202,15 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
+            // Restoring (seabed) force must push the penetrating cell UP.
+            // With the solver's source convention (positive source(2,0) is
+            // downward, same as gravity), the normal force is negative when
+            // coord.z < groundZ_. The (groundZ_ - coord.z()) ordering used
+            // previously had the wrong sign and pushed the line through the
+            // seabed (positive-feedback divergence). Matches the working
+            // openfoam-v2306-cloner-dev inlined implementation.
             const scalar f_gc_normal =
-                (2*R*kNormal_*(groundZ_ - coord.z()))
+                (2*R*kNormal_*(coord.z() - groundZ_))
               - (2*R*cNormal_*max(U[cellI].component(2), 0));
 
             vector f_gc_tangential(vector::zero);
