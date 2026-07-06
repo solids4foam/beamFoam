@@ -25,30 +25,21 @@ d2dt2Schemes
 gradSchemes
 {
     default         Gauss linear;
-    grad(p)         Gauss linear;
 }
 
 divSchemes
 {
     default         none;
-    div(phi,U)      Gauss linear;
 }
 
 laplacianSchemes
 {
     default         none;
-    laplacian(Theta) Gauss linear orthogonal;
-    laplacian(W) Gauss linear orthogonal;
-    
-    laplacian(DTheta,Theta) Gauss linear orthogonal;
-
-    laplacian(CQ,W) Gauss linear orthogonal;
 }
 
 interpolationSchemes
 {
     default         linear;
-    interpolate(HbyA) linear;
 }
 
 snGradSchemes
