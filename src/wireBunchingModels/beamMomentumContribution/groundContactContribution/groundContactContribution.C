@@ -202,9 +202,13 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
+            // Restoring (seabed) force must push the penetrating cell UP.
+            // With the solver's source convention (positive source(2,0) is
+            // downward, same as gravity), the normal force is negative when
+            // coord.z < groundZ_.
             const scalar f_gc_normal =
-                (2*R*kNormal_*(groundZ_ - coord.z()))
-              - (2*R*cNormal_*max(U[cellI].component(2), 0));
+                (2*R*kNormal_*(coord.z() - groundZ_))
+              - (2*R*cNormal_*max(U[cellI].z(), 0));
 
             vector f_gc_tangential(vector::zero);
 
