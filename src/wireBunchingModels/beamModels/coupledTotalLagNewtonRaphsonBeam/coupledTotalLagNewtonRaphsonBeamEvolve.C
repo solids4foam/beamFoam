@@ -211,7 +211,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Add self-weight of the beam
             forAll(source, cellI)
             {
-                const label bI = whichBeam(globalCellIndex(cellI));
+                // Beam index from the local cellZone: parallel-safe, unlike
+                // globalCellIndex() whose localToGlobalCellAddressing_ is
+                // never populated (segfaults in parallel runs)
+                label bI = mesh().cellZones().whichZone(cellI);
+                if (bI < 0)
+                {
+                    bI = 0;
+                }
                 // Effective density accounts for buoyancy when beam is submerged.
                 // TODO: use rhoFluid(bI) if beams can be in different fluids.
                 const scalar rhoEff = rho(bI).value() - rhoFluid().value();
