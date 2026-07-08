@@ -125,6 +125,13 @@ public:
 
     // Member Functions
 
+        //- Hook called once per beam evolve() before the NR loop.
+        //  Default no-op.  Contributions that need to perform work that
+        //  must remain frozen across the inner NR iterations (e.g. external
+        //  fluid sampling) should do it here.
+        virtual void preEvolve(const beamModel& bm)
+        {}
+
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
         //  U     : the current cell-centred velocity field

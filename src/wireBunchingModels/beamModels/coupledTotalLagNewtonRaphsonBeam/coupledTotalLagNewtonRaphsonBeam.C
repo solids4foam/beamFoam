@@ -118,57 +118,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         // fvc::ddt(W_)
         dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
     ),
-    fluidU_
-    (
-        IOobject
-        (
-            "fluidU",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimVelocity, vector::zero)
-    ),
-    fluidCellIDs_
-    (
-        IOobject
-        (
-            "fluidCellIDs",
-            mesh().time().timeName(),
-            mesh(),
-            IOobject::NO_READ,
-            IOobject::AUTO_WRITE
-        ),
-        mesh().nCells()
-    ),
-    cellMarker_
-    (
-        IOobject
-        (
-            "cellMarker",
-            mesh().time().db().parent().lookupObject<fvMesh>("region0").time().timeName(),
-            mesh().time().db().parent().lookupObject<fvMesh>("region0"),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh().time().db().parent().lookupObject<fvMesh>("region0"),
-        dimensionedScalar(dimless, 0)
-    ),
-    beamVelocity_
-    (
-        IOobject
-        (
-            "beamVelocity",
-            mesh().time().db().parent().lookupObject<fvMesh>("region0").time().timeName(),
-            mesh().time().db().parent().lookupObject<fvMesh>("region0"),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh().time().db().parent().lookupObject<fvMesh>("region0"),
-        dimensionedVector("0", dimVelocity, vector::zero)
-    ),
     almForce_
     (
         IOobject
@@ -702,14 +651,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
-    almSamplingActive_(beamProperties().lookupOrDefault<bool>("almSamplingActive", false)),
-    almForceRelaxation_(beamProperties().lookupOrDefault<scalar>("forceRelaxation", 1.0)),
-    samplingRadius_(beamProperties().lookupOrDefault<scalar>("samplingRadius", 5.0)),
-    Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
-    Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
-    groundContactActive_(beamProperties().lookupOrDefault<bool>("groundContactActive", false)),
-    groundZ_(beamProperties().lookupOrDefault<scalar>("groundZ", 0.0)),
-    searchEngine_(runTime.db().parent().lookupObject<fvMesh>("region0")),
     // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
     totalContactTime_(0),
@@ -1132,10 +1073,17 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     M_.setOriented(true);
 
     // Create momentumContributions
+    // In beam-fluid interaction cases, beams are separate regions within the
+    // fluid domain (e.g. constant/beam_0/). We use runTime.caseConstant()/regionName
+    // to read from the main case's constant directory, not the processor's.
+    // This mirrors the pattern used for beamProperties in newBeamModel.C.
+    const word& regionName = mesh().name();
     IOobject momentumContribHeader
     (
         "beamMomentumContributionProperties",
-        runTime.constant(),
+        (regionName == polyMesh::defaultRegion)
+          ? fileName(runTime.caseConstant())
+          : fileName(runTime.caseConstant()/regionName),
         runTime,
         IOobject::MUST_READ
     );

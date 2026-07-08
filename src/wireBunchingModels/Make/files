@@ -30,6 +30,7 @@ functionObjects/beamForcesMoments/beamForcesMoments.C
 beamMomentumContribution/beamMomentumContribution.C
 beamMomentumContribution/morisonDragContribution/morisonDragContribution.C
 beamMomentumContribution/groundContactContribution/groundContactContribution.C
+beamMomentumContribution/almDragContribution/almDragContribution.C
 
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C
