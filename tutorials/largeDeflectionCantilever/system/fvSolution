@@ -1,4 +1,4 @@
-/*--------------------------------*- C++ -*----------------------------------* \
+/*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | foam-extend: Open Source CFD                    |
 |  \\    /   O peration     | Version:     4.0                                |
@@ -10,44 +10,34 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    location    "constant";
-    object      beamProperties;
+    object      fvSolution;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-beamModel coupledTotalLagNewtonRaphsonBeam;
-
-beams
-(
-    beam_0
-    {
-	    crossSectionModel rectangle;
-	
-	    rectangleCrossSectionModelDict
-        {
-            b 0.2;
-            h 0.2;
-            nx 1;
-            ny 1;
-        }
-
-        length 2;
-        nSegments 40;
-        E  15.293e6;
-        G    5.882e6;
-        rho    1000;
-    }
-);
-
-"coupledTotalLagNewtonRaphsonBeamCoeffs"
+solvers
 {
-    // rho rho [1 -3 0 0 0 0 0] 1000;
-    // E E [1 -1 -2 0 0 0 0] 1;
-    // G G [1 -1 -2 0 0 0 0] 5.882e6;
-    
-    nCorrectors 200;
-    solutionTol 1e-10;
-
-    debug no;
+    // "DWDTheta|WTheta"
+    // {
+    //     solver Eigen;
+    //     // writeMatlabFiles true;
+        
+    //     // solver BlockTDM; //BiCGStab;
+    //     // preconditioner ParCholesky;
+    //     // {
+    //     //     preconditioner ILUCp;
+    //     //     fillInLevel    1;
+    //     // }
+    //     tolerance       1e-13; //1e-13
+    //     relTol          1e-3;
+    //     minIter         1;
+    //     maxIter         1000;
+    // };
 }
+
+relaxationFactors
+{
+
+}
+
+
 // ************************************************************************* //

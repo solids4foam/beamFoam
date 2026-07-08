@@ -1,0 +1,84 @@
+/*--------------------------------*- C++ -*----------------------------------* \
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      DTheta;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Beam 0 clamped end
+    left_0
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+
+    // Beam 1 clamped end
+    left_1
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+
+    // Beam 2 clamped end
+    left_2
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+
+    // Beam 0 free end
+    right_0
+    {
+        type momentBeamRotationNR;
+        momentSeries
+        {
+            "fileName|file"        "$FOAM_CASE/constant/timeVsMoment";
+            outOfBounds     clamp;
+        }        
+    }
+
+    // Beam 1 free end
+    right_1
+    {
+        type momentBeamRotationNR;
+        momentSeries
+        {
+            "fileName|file"        "$FOAM_CASE/constant/timeVsMoment";
+            outOfBounds     clamp;
+        }
+    }
+
+    // Beam 2 free end
+    right_2
+    {
+        type momentBeamRotationNR;
+        momentSeries
+        {
+            "fileName|file"        "$FOAM_CASE/constant/timeVsMoment";
+            outOfBounds     clamp;
+        }
+    }
+
+    beam
+    {
+        type empty;
+    }
+}
+
+
+// ************************************************************************* //

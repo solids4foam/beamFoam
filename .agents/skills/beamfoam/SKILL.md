@@ -168,7 +168,7 @@ Relevant validation surfaces usually include tutorials under `tutorials/`,
 especially:
 
 - `tutorials/cantilever`
-- `tutorials/3DdynamicCantilever`
+- `tutorials/3dDynamicCantilever`
 - `tutorials/cantileverFollowerForce`
 - `tutorials/freeFlexibleBeam`
 - `tutorials/beamAndSpringInSeries`

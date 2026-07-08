@@ -45,6 +45,10 @@ The problem has been widely studied in the literature [Simo & Vu-Quoc (1986), Ib
 ### Deformation Pattern
 - For `M_z = 20π Nm (ψ_z = 2π)`, the beam bends into a full circle.
 
+### Video Demonstration
+
+{% include youtube.html id="77_MZXnoDrM" %}
+
 ---
 
 ## How to Run

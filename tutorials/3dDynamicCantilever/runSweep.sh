@@ -61,5 +61,3 @@ echo "All cases completed. See timing_summary.txt for performance."
 gnuplot dispPlotMesh.gnuplot
 
 echo "Finished plotting displacements vs time for varying mesh sizes."
-
-open dispPlotVaryingMesh.pdf

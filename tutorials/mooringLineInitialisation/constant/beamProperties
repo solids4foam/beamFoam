@@ -1,0 +1,61 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+beams
+(
+    beam_0
+    {
+        crossSectionModel circle;
+
+        circleCrossSectionModelDict
+        {
+            radius 1.828e-03;
+        }
+
+        length 1.45;
+        nSegments 60;
+    }
+);
+
+coupledTotalLagNewtonRaphsonBeamCoeffs
+{
+    // Equivalent-cylinder properties of a 1:80 model-scale studless mooring
+    // chain (see Taran et al., 2025, Applied Ocean Research 165:104845)
+    E E [1 -1 -2 0 0 0 0] 1825834.598604678;
+    G G [1 -1 -2 0 0 0 0] 912917.299302339;
+    rho rho [1 -3 0 0 0 0 0] 5782.1088027129;
+
+    // Water density: used for the buoyancy (effective self-weight) term
+    rhoFluid rhoFluid [1 -3 0 0 0 0 0] 1000;
+
+    //- Newton-Raphson convergence parameters
+    nCorrectors 200;
+    residualTol 1e-05;
+    solutionTol 1e-05;
+    absoluteTol 1e-07;
+    convergenceTol 1e-05;
+    divergenceTol  1e6;
+}
+
+// NOTE: the seabed contact and hydrodynamic drag models are configured in
+// constant/beamMomentumContributionProperties (runtime-selectable
+// beamMomentumContributions), not in this file.
+
+
+// ************************************************************************* //

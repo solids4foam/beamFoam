@@ -1,0 +1,58 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamMomentumContributionProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Runtime-selectable beam momentum contributions. The beam model reads this
+// file and, for each entry, builds a beamMomentumContribution of the requested
+// type. The contributions' linear/angular momentum sources are added inside
+// the Newton-Raphson loop.
+
+beamMomentumContributions
+(
+    // Seabed contact: penalty spring/damper acting on beam cells that
+    // penetrate below z = groundZ
+    groundContact
+    {
+        beamMomentumContributionType groundContact;
+
+        groundContactCoeffs
+        {
+            groundZ        -0.5;    // seabed z-coordinate [m]
+            kNormal        1e3;     // normal spring stiffness
+            cNormal        1.0;     // normal damping
+            kTangential    0.0;     // tangential (stick) stiffness
+            muFriction     0.0;     // Coulomb friction coefficient
+        }
+    }
+
+    // Morison drag through still water: uses the beam's own velocity, so it
+    // acts as pure hydrodynamic damping here (no fluid sampling). This is
+    // what lets the line settle into a static catenary by the end time
+    morisonDrag
+    {
+        beamMomentumContributionType morisonDrag;
+
+        morisonDragCoeffs
+        {
+            Cdn       1.6;      // normal drag coefficient
+            Cdt       0.05;     // tangential drag coefficient
+            rhoFluid  1000;     // fluid density [kg/m^3]
+        }
+    }
+);
+
+
+// ************************************************************************* //
