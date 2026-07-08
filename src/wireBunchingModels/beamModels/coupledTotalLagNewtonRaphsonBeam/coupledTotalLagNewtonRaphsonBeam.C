@@ -1073,10 +1073,17 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     M_.setOriented(true);
 
     // Create momentumContributions
+    // In beam-fluid interaction cases, beams are separate regions within the
+    // fluid domain (e.g. constant/beam_0/). We use runTime.caseConstant()/regionName
+    // to read from the main case's constant directory, not the processor's.
+    // This mirrors the pattern used for beamProperties in newBeamModel.C.
+    const word& regionName = mesh().name();
     IOobject momentumContribHeader
     (
         "beamMomentumContributionProperties",
-        runTime.constant(),
+        (regionName == polyMesh::defaultRegion)
+          ? fileName(runTime.caseConstant())
+          : fileName(runTime.caseConstant()/regionName),
         runTime,
         IOobject::MUST_READ
     );
