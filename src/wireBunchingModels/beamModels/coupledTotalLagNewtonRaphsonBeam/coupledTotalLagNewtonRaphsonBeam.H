@@ -53,7 +53,6 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
-#include "IOList.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

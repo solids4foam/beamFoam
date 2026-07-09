@@ -33,6 +33,34 @@ Description
     tangential drag coefficients, and assembles it into the beam linear
     momentum source.
 
+    Full form (per beam cell, force per unit length):
+
+        Urel = Uf - Ub                          relative velocity
+        Ut   = (Urel . that) that               tangential component
+        Un   = Urel - Ut                        normal component
+
+        fn   = -1/2 rho Cdn D |Urel| Un         normal drag line force
+        ft   = -1/2 rho Cdt D |Urel| Ut         tangential drag line force
+
+        f    = fn + ft                          total drag line force
+
+    where:
+        Uf   = sampled fluid velocity at the upstream point
+        Ub   = beam cell velocity
+        that = unit beam tangent (dR/ds normalised)
+        rho  = fluid density (bm.rhoFluid())
+        Cdn  = normal drag coefficient (Cdn_)
+        Cdt  = tangential drag coefficient (Cdt_)
+        D    = drag reference length (dragReferenceLength_, default 2*bm.R())
+
+    The stored line force is under-relaxed against the previous estimate:
+
+        almForce = w f + (1 - w) almForce_prev
+
+    with w = forceRelaxation_.  Multiplying almForce by the cell length L
+    (in linearMomentumSource) gives the nodal force assembled into the beam
+    linear momentum source.
+
     The sampling is performed once per beam evolve() call (in preEvolve)
     and the per-cell line force is then frozen for the duration of the
     inner NR loop.  Sampling at each NR iteration would cause the upstream
