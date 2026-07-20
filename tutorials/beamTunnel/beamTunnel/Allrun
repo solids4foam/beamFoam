@@ -1,0 +1,55 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1                               # Run from this directory
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"       # Tutorial run functions
+
+# This script runs the coupled fluid + beam (FSI) case only. It assumes the
+# beam has already been initialised and staged into this case, i.e.
+#   constant/beam_0   : beam mesh + dictionaries        (from beamInitialisation)
+#   0_orig/beam_0     : beam initial/reference fields   (from beamInitialisation)
+# The top-level ../Allrun performs that initialisation and staging before
+# calling this script; run ../Allrun to drive the whole case from scratch.
+
+# Background fluid mesh
+runApplication blockMesh
+
+# Restore the initial-field directory: fluid templates in 0_orig plus the
+# staged beam fields in 0_orig/beam_0. This replaces restore0Dir, which only
+# recognises the name "0.orig" (matched by this repo's *.orig gitignore rule).
+rm -rf 0
+cp -r 0_orig 0
+touch case.foam
+
+# --- Parallel run (2 subdomains) --------------------------------------------
+# The fluid is decomposed with scotch (system/decomposeParDict). Each beam
+# region uses a manual decomposition (system/beam_0/decomposeParDict) that pins
+# the whole beam to processor 0, read from constant/cellDecomposition.beams.
+# Keep numberOfSubdomains consistent (2) across both decomposeParDicts.
+runApplication decomposePar -latestTime
+
+for beamI in constant/beam*; do
+    beamNameI=$(basename "$beamI")
+    cp constant/cellDecomposition.beams "$beamI/cellDecomposition"
+    runApplication -s "$beamNameI" decomposePar -region "$beamNameI" -latestTime
+done
+
+runParallel "$(getApplication)"
+
+runApplication reconstructPar
+for beamI in constant/beam*; do
+    beamNameI=$(basename "$beamI")
+    runApplication -s "$beamNameI" reconstructPar -region "$beamNameI"
+done
+
+# --- Serial alternative -----------------------------------------------------
+# For a serial run, comment out the parallel block above and use instead:
+#   runApplication "$(getApplication)"
+
+# --- Post-processing: extract the tip displacement history and plot it -------
+./extractTipDisplacement.sh
+if command -v gnuplot >/dev/null 2>&1; then
+    gnuplot tipDisplacement.gnuplot && echo "Wrote tipDisplacement.pdf"
+else
+    echo "gnuplot not found; skipping plot (data is in tipDisplacement.dat)"
+fi
+
+#------------------------------------------------------------------------------

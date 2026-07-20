@@ -1,0 +1,54 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamMomentumContributionProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamMomentumContributions
+(
+    almDrag
+    {
+        beamMomentumContributionType  almDrag;
+        almDragCoeffs
+        {
+            // Drag coefficients
+            Cdn                         26;
+            Cdt                         0.01;
+
+            // Relaxation for outer-corrector force update
+            forceRelaxation             1;
+
+            // Sampling distance = samplingRadius * almSamplingReferenceLength
+            samplingRadius              30;
+
+            // Base length for upstream sampling distance (default: R())
+            almSamplingReferenceLength  0.000106;
+
+            // Projected length for drag force calculation (default: 2*R())
+            almDragReferenceLength      0.0004;
+
+            // Normal to the sampling plane
+            almSamplingPlaneNormal      (0 0 1);
+
+            // Global upstream direction (opposite to mean flow)
+            almUpstreamDir              (-1 0 0);
+
+            // Ground contact (optional)
+            groundContactActive         false;
+            groundZ                     0.0;
+        }
+    }
+);
+
+// ************************************************************************* //

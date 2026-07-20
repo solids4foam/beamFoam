@@ -1,0 +1,15 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1                               # Run from this directory
+. "${WM_PROJECT_DIR:?}/bin/tools/CleanFunctions"     # Tutorial clean functions
+
+cleanCase0                       # time dirs, processor*, postProcessing, logs, 0/
+
+# Generated content staged in from beamInitialisation
+# (constant/cellDecomposition.beams is a tracked input and is kept)
+rm -rf constant/beam_0
+rm -rf 0_orig/beam_0
+
+# Post-processing output
+rm -f case.foam tipDisplacement.dat tipDisplacement.pdf
+
+#------------------------------------------------------------------------------
