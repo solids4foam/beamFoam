@@ -10,6 +10,12 @@ cd "${0%/*}" || exit 1                               # Run from this directory
 #      the beam mesh/fields produced in stage 1.
 
 #------------------------------------------------------------------------------
+# Prerequisite: this case needs the moorFV library (not beamFoam alone). Fail
+# early with install instructions if it is not present. See ./checkMoorFV.
+#------------------------------------------------------------------------------
+./checkMoorFV || exit 1
+
+#------------------------------------------------------------------------------
 # Stage 1: initialise the beam
 #------------------------------------------------------------------------------
 echo "Stage 1: initialising the beam (beamInitialisation/beam_0)"

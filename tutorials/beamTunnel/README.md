@@ -22,23 +22,62 @@ validation cases.
 
 ---
 
+## What this tutorial demonstrates
+- Two-way fluid–structure coupling of a finite-volume Simo–Reissner beam with an
+  OpenFOAM fluid solver through an **actuator-line (ALM)** momentum exchange
+  (no body-conforming mesh, no mesh morphing around the structure).
+- The moorFV workflow of **initialising a beam in a standalone step** and then
+  staging it into a coupled CFD case.
+- Reproducing a published **large-deflection FSI benchmark** and comparing the
+  steady tip displacement against the literature.
+
+---
+
 ## Requirements
+
+### Software prerequisites
+| Component | Notes |
+|---|---|
+| **OpenFOAM** | OpenFOAM.com (ESI), sourced into your shell (`$WM_PROJECT_DIR` set). Developed and tested with **v2306**. |
+| **moorFV** (with `beamFoam`) | Provides the beam↔fluid coupling used here. Must be compiled so its library is in `$FOAM_USER_LIBBIN` — see below. |
+| **gnuplot** *(optional)* | Only for the tip-displacement plot. If absent, the run still writes `tipDisplacement.dat`; the plot step is skipped. |
+
+### Why moorFV is needed
 This case is **not runnable with `beamFoam` on its own**. `beamFoam` provides the
 finite-volume beam solver, but the fluid–beam (ALM) coupling used here — the
 `sixDoFRigidBodyBeamMotion` motion solver with the `finiteVolumeBeam` restraint
 and the `beamActuatorLine` fvOption — is provided by **moorFV**, which builds on
-`beamFoam`. Obtain and compile moorFV (which pulls in `beamFoam`) and run this
-tutorial from there:
+`beamFoam`:
 
 > **moorFV:** https://github.com/solids4foam/moorFV
+
+### Automatic check
+Before doing any work, `Allrun` runs the bundled **`checkMoorFV`** script, which
+verifies that the moorFV library `libsixDoFRigidBodyBeamMotion` (`.so` on Linux,
+`.dylib` on macOS) can be loaded from `$FOAM_USER_LIBBIN`. If it is missing, the
+run **stops immediately** with a message telling you to install moorFV — nothing
+is meshed or solved. (The check uses OpenFOAM's `foamHasLibrary` when available,
+which searches every library path and actually attempts to load the library, and
+falls back to a direct file test in `$FOAM_USER_LIBBIN` on older OpenFOAM.)
+
+To satisfy the check, install and compile moorFV once:
+```
+git clone https://github.com/solids4foam/moorFV
+cd moorFV
+git submodule update --init --recursive   # pulls in beamFoam
+source $WM_PROJECT_DIR/etc/bashrc          # if OpenFOAM is not already sourced
+./Allwmake                                 # writes libs into $FOAM_USER_LIBBIN
+```
+Then run this tutorial (which ships inside moorFV's bundled `beamFoam`).
 
 ---
 
 ## Case Layout
 ```
 beamTunnel/
-├── Allrun                     # top-level driver: initialise beam, then run FSI
+├── Allrun                     # top-level driver: check moorFV, init beam, run FSI
 ├── Allclean                   # cleans both sub-cases
+├── checkMoorFV                # prerequisite check for the moorFV library
 ├── beamInitialisation/
 │   └── beam_0/                # stage 1: build the beam mesh + reference config
 └── beamTunnel/                # stage 2: the coupled fluid + beam case
@@ -192,6 +231,24 @@ present ALM setup lands within about 10% of that band. The result is sensitive
 (≈ 20%) to the ALM kernel width `ε` and the upstream sampling distance, which
 together act as an effective calibration of the quasi-steady drag closure — the
 independently calibrated quantity is `Cdn`.
+
+---
+
+## Troubleshooting
+- **`ERROR: moorFV is not installed`** — the `checkMoorFV` prerequisite failed:
+  the library `libsixDoFRigidBodyBeamMotion` was not found. Compile moorFV so its
+  library lands in `$FOAM_USER_LIBBIN` (see *Requirements → Automatic check*),
+  and make sure the same OpenFOAM environment is sourced for both the build and
+  the run.
+- **`FOAM_USER_LIBBIN = <unset>` in the error** — the OpenFOAM environment is not
+  sourced in this shell. Run `source $WM_PROJECT_DIR/etc/bashrc` (or your usual
+  OpenFOAM alias) first.
+- **`gnuplot not found; skipping plot`** — harmless; the tip-displacement data is
+  still written to `beamTunnel/beamTunnel/tipDisplacement.dat`. Install gnuplot,
+  or plot the `.dat` file with any tool.
+- **Steady tip displacement looks off** — it is sensitive (≈ 20%) to the ALM
+  kernel width `ε` (`system/fvOptions`) and the upstream sampling distance
+  (`beamMomentumContributionProperties`); see *Expected Results*.
 
 ---
 

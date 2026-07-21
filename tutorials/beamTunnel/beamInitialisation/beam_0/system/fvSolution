@@ -19,14 +19,6 @@ solvers
     "DWDTheta|WTheta"
     {
         solver Eigen;
-        // writeMatlabFiles true;
-        
-        // solver BlockTDM; //BiCGStab;
-        // preconditioner ParCholesky;
-        // {
-        //     preconditioner ILUCp;
-        //     fillInLevel    1;
-        // }
         tolerance       1e-13; //1e-13
         relTol          1e-3;
         minIter         1;
@@ -36,23 +28,6 @@ solvers
 
 relaxationFactors
 {
-    euqations
-    {
-        // U 0.99;
-    }
-    fields
-    {
-        // DW 0.5;
-      
-        DTheta 0.1;
-        DLambda 0.1;
-        
-        Theta 0.1;
-        Lambda 0.1;
-        // T 0.1;
-        
-        stretchRatio 0.1;
-    }
 }
 
 

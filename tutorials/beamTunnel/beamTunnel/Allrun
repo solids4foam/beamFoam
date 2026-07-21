@@ -9,6 +9,15 @@ cd "${0%/*}" || exit 1                               # Run from this directory
 # The top-level ../Allrun performs that initialisation and staging before
 # calling this script; run ../Allrun to drive the whole case from scratch.
 
+# Prerequisite: this case needs the moorFV library (not beamFoam alone). Fail
+# early with install instructions if it is not present. The check lives in the
+# tutorial root (../checkMoorFV); guard against it being absent if this case
+# directory has been relocated on its own.
+if [ -x ../checkMoorFV ]
+then
+    ../checkMoorFV || exit 1
+fi
+
 # Background fluid mesh
 runApplication blockMesh
 

@@ -1,0 +1,81 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# checkMoorFV
+#
+# Verify that the moorFV library required by the beamTunnel tutorial is present
+# and loadable before the case is run.
+#
+# This tutorial ships inside beamFoam but is NOT runnable with beamFoam alone.
+# beamFoam provides the finite-volume beam solver; the fluid<->beam coupling
+# this case uses -- the sixDoFRigidBodyBeamMotion motion solver, the
+# finiteVolumeBeam restraint and the beamActuatorLine fvOption -- is provided by
+# moorFV, which builds on beamFoam:
+#
+#     moorFV: https://github.com/solids4foam/moorFV
+#
+# Exit status:
+#   0  the moorFV library was found (case can run)
+#   1  the moorFV library was not found (prints install instructions)
+#------------------------------------------------------------------------------
+
+lib=libsixDoFRigidBodyBeamMotion
+
+fail()
+{
+    cat 1>&2 <<EOF
+
+=============================================================================
+ ERROR: moorFV is not installed  (required by the beamTunnel tutorial)
+=============================================================================
+ The moorFV library "$lib" could not be found.
+
+ beamFoam provides the finite-volume beam solver, but the fluid-beam coupling
+ used by this case -- the sixDoFRigidBodyBeamMotion motion solver, the
+ finiteVolumeBeam restraint and the beamActuatorLine fvOption -- lives in
+ moorFV. beamFoam on its own cannot run this tutorial.
+
+ Expected to find one of:
+     \$FOAM_USER_LIBBIN/$lib.so       (Linux)
+     \$FOAM_USER_LIBBIN/$lib.dylib    (macOS)
+ with
+     FOAM_USER_LIBBIN = ${FOAM_USER_LIBBIN:-<unset: is the OpenFOAM environment sourced?>}
+
+ To install moorFV:
+     git clone https://github.com/solids4foam/moorFV
+     cd moorFV
+     git submodule update --init --recursive   # pulls in beamFoam
+     source \$WM_PROJECT_DIR/etc/bashrc         # if not already sourced
+     ./Allwmake
+
+ Then re-run this case.
+=============================================================================
+
+EOF
+    exit 1
+}
+
+# Preferred check: ask OpenFOAM whether the library can actually be loaded.
+# foamHasLibrary (OpenFOAM-com v1912+) searches every library path
+# (FOAM_USER_LIBBIN, FOAM_SITE_LIBBIN, FOAM_LIBBIN and the runtime paths) and
+# attempts to dlopen the library, so it is more reliable than a bare file test
+# and it works regardless of the .so / .dylib naming on the platform.
+if command -v foamHasLibrary >/dev/null 2>&1
+then
+    if foamHasLibrary "$lib" >/dev/null 2>&1
+    then
+        exit 0
+    fi
+    fail
+fi
+
+# Fallback for OpenFOAM versions without foamHasLibrary: look for the compiled
+# library file directly in FOAM_USER_LIBBIN (.so on Linux, .dylib on macOS).
+if [ -n "$FOAM_USER_LIBBIN" ] \
+&& { [ -f "$FOAM_USER_LIBBIN/$lib.so" ] || [ -f "$FOAM_USER_LIBBIN/$lib.dylib" ]; }
+then
+    exit 0
+fi
+
+fail
+
+#------------------------------------------------------------------------------

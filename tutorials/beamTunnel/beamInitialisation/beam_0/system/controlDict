@@ -46,20 +46,6 @@ runTimeModifiable yes;
 
 functions
 {
-//   patchForceMomentHistory
-//   {
-//       type patchForceMomentHistory;
-//       functionObjectLibs ("libpatchForceMomentHistory.so");
-//       patchName right;
-//   }
-//
-   // writeBeamData
-   // {
-   //     type writeBeamData;
-   //     functionObjectLibs ("libwriteBeamData.so");
-   //     startPatchName left;
-   //     endPatchName right;
-   // }
 }
 
 // ************************************************************************* //
