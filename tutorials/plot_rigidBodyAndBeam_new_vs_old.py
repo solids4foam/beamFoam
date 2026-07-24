@@ -53,7 +53,7 @@ NEW_BEAM_FORCE_FILE = os.path.join(
     NEW_CASE,
     "postProcessing",
     "0",
-    "forcebeam.dat",
+    "attachmentForcebeam.dat",
 )
 
 OLD_MOTION_FILE = sorted(
@@ -359,7 +359,7 @@ def plot_displacement_component(label, component):
     new_displacement = new_position - REFERENCE_CENTRE_OF_ROTATION
     old_displacement = old_position - REFERENCE_CENTRE_OF_ROTATION
 
-    plt.figure(figsize=(8, 4))
+    plt.figure(figsize=(5, 5))
     ax = plt.gca()
 
     ax.plot(
@@ -367,14 +367,14 @@ def plot_displacement_component(label, component):
         old_displacement[:, component],
         "b-",
         linewidth=1.8,
-        label="old coupled solver",
+        label="Original Solver",
     )
     ax.plot(
         new_motion_time,
         new_displacement[:, component],
         "r--",
         linewidth=1.5,
-        label="new BlockEigen force coupling",
+        label="New Solver",
     )
 
     ax.set_xlabel("Time (s)")
@@ -388,23 +388,23 @@ def plot_displacement_component(label, component):
     save_or_show(f"rigid_body_{label.lower()}_displacement_new_vs_old.png")
 
 
-def plot_force_component(label, component):
+def plot_force_component_abs(label, component):
     plt.figure(figsize=(8, 4))
     ax = plt.gca()
 
     ax.plot(
         old_force_time,
-        old_force[:, component],
+        abs(old_force[:, component]),
         "b-",
         linewidth=1.8,
-        label="old coupled solver",
+        label="Original Solver",
     )
     ax.plot(
         new_force_time,
-        new_force[:, component],
+        abs(new_force[:, component]),
         "r--",
         linewidth=1.5,
-        label="new BlockEigen force coupling",
+        label="New Solver",
     )
 
     ax.set_xlabel("Time (s)")
@@ -415,9 +415,38 @@ def plot_force_component(label, component):
     finish_plot(ax, combined_values)
     save_or_show(f"{force_ylabel_prefix.replace(' ', '_')}_{label.lower()}_new_vs_old.png")
 
+def plot_force_component(label, component):
+    plt.figure(figsize=(8, 4))
+    ax = plt.gca()
 
-for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
+    ax.plot(
+        old_force_time,
+        old_force[:, component],
+        "b-",
+        linewidth=1.8,
+        label="Original Solver",
+    )
+    ax.plot(
+        new_force_time,
+        new_force[:, component],
+        "r--",
+        linewidth=1.5,
+        label="New Solver",
+    )
+
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(f"{label} {force_ylabel_prefix} (N)")
+    ax.set_title(f"{force_ylabel_prefix}: {label} component")
+
+    combined_values = np.concatenate((old_force[:, component], new_force[:, component]))
+    finish_plot(ax, combined_values)
+    save_or_show(f"{force_ylabel_prefix.replace(' ', '_')}_{label.lower()}_new_vs_old.png")
+
+for component_label, component_index in (("X", 0), ("Y", 1), ("Height", 2)):
     plot_displacement_component(component_label, component_index)
 
 for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
-    plot_force_component(component_label, component_index)
+    plot_force_component_abs(component_label, component_index)
+    
+#for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
+ #   plot_force_component(component_label, component_index)

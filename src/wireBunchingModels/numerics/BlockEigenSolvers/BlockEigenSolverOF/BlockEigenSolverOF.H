@@ -93,6 +93,15 @@ class BlockEigenSolverOF
         //- Coefficients multiplying rigid-body rotation in the beam rows
         const tensor rigidBodyRotationCoeff_;
 
+        //- Coefficients multiplying beam displacement in rigid-body force rows
+        const tensor rigidBodyBeamForceWCoeff_;
+
+        //- Coefficients multiplying beam rotation in rigid-body force rows
+        const tensor rigidBodyBeamForceThetaCoeff_;
+
+        //- Rigid-body moment arm from centre of rotation to attachment point
+        const vector rigidBodyMomentArm_;
+
         //- Optional explicit beam reaction contribution to rigid-body RHS
         const RigidBodyForceCoupling rigidBodyForceCoupling_;
 
@@ -138,7 +147,7 @@ public:
             const labelList& nei
         );
 
-        //- Construct from matrix and one-way rigid-body kinematic coupling
+        //- Construct from matrix and rigid-body coupling
         BlockEigenSolverOF
         (
             const Field<scalarSquareMatrix>& d,
@@ -149,6 +158,9 @@ public:
             const label rigidBodyAttachmentCell,
             const tensor& rigidBodyTranslationCoeff,
             const tensor& rigidBodyRotationCoeff,
+            const tensor& rigidBodyBeamForceWCoeff,
+            const tensor& rigidBodyBeamForceThetaCoeff,
+            const vector& rigidBodyMomentArm,
             const RigidBodyForceCoupling& rigidBodyForceCoupling =
                 RigidBodyForceCoupling()
         );

@@ -46,12 +46,6 @@ namespace Foam
 
 namespace
 {
-    Foam::vector zeroVector()
-    {
-        return Foam::vector(0, 0, 0);
-    }
-
-
     void writeBlockEigenRigidBodyMotion
     (
         const Foam::Time& runTime,
@@ -262,6 +256,23 @@ namespace
             << Foam::endl;
 
     }
+
+
+    Foam::tensor localSpinTensor(const Foam::vector& v)
+    {
+        Foam::tensor result = Foam::tensor::zero;
+
+        result.xy() = -v.z();
+        result.xz() = v.y();
+
+        result.yx() = v.z();
+        result.yz() = -v.x();
+
+        result.zx() = -v.y();
+        result.zy() = v.x();
+
+        return result;
+    }
 }
 
 
@@ -314,7 +325,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     }
 
     // -------------------------------------------------------------------------
-    // rigid-body block: 6x6 identity- Colm
+    // rigid-body block: displacement/rotation update equations
     // -------------------------------------------------------------------------
 
     const label rbRow = 6*d.size();
@@ -340,6 +351,13 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     )
     {
         const label beamRow = 6*rigidBodyAttachmentCell_;
+        const tensor torqueWCoeff =
+            rigidBodyForceCoupling_.orientation.T()
+          & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceWCoeff_);
+
+        const tensor torqueThetaCoeff =
+            rigidBodyForceCoupling_.orientation.T()
+          & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceThetaCoeff_);
 
         for (label rowI = 0; rowI < 3; ++rowI)
         {
@@ -364,6 +382,46 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
                         rigidBodyRotationCoeff_(rowI, colI)
                     )
                 );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + colI,
+                       -rigidBodyBeamForceWCoeff_(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + 3 + colI,
+                       -rigidBodyBeamForceThetaCoeff_(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI,
+                        beamRow + colI,
+                       -torqueWCoeff(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI,
+                        beamRow + 3 + colI,
+                       -torqueThetaCoeff(rowI, colI)
+                    )
+                );
             }
         }
 
@@ -372,6 +430,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
             << ", rigid translation rows/cols=" << rbRow << ".." << rbRow + 2
             << ", rigid rotation rows/cols=" << rbRow + 3
             << ".." << rbRow + 5
+            << ", reciprocal rigid-body rows added"
             << endl;
     }
 
@@ -452,6 +511,9 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     rigidBodyAttachmentCell_(-1),
     rigidBodyTranslationCoeff_(tensor::zero),
     rigidBodyRotationCoeff_(tensor::zero),
+    rigidBodyBeamForceWCoeff_(tensor::zero),
+    rigidBodyBeamForceThetaCoeff_(tensor::zero),
+    rigidBodyMomentArm_(vector::zero),
     rigidBodyForceCoupling_()
 {}
 
@@ -466,6 +528,9 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     const label rigidBodyAttachmentCell,
     const tensor& rigidBodyTranslationCoeff,
     const tensor& rigidBodyRotationCoeff,
+    const tensor& rigidBodyBeamForceWCoeff,
+    const tensor& rigidBodyBeamForceThetaCoeff,
+    const vector& rigidBodyMomentArm,
     const RigidBodyForceCoupling& rigidBodyForceCoupling
 )
 :
@@ -478,6 +543,9 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     rigidBodyAttachmentCell_(rigidBodyAttachmentCell),
     rigidBodyTranslationCoeff_(rigidBodyTranslationCoeff),
     rigidBodyRotationCoeff_(rigidBodyRotationCoeff),
+    rigidBodyBeamForceWCoeff_(rigidBodyBeamForceWCoeff),
+    rigidBodyBeamForceThetaCoeff_(rigidBodyBeamForceThetaCoeff),
+    rigidBodyMomentArm_(rigidBodyMomentArm),
     rigidBodyForceCoupling_(rigidBodyForceCoupling)
 {}
 
@@ -493,8 +561,21 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     const Time& runTime
 )
 {
+    // Colm: defining variables for rigid body RHS
+    const scalar rbNewmarkGamma = 0.5;
+    const scalar rbNewmarkBeta = 0.25;
+    const scalar deltaT = runTime.deltaTValue();
+
     Eigen::SparseMatrix<scalar> A;
-    convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A);
+    convertFoamMatrixToEigenMatrix
+    (
+        d_,
+        l_,
+        u_,
+        own_,
+        nei_,
+        A
+    );
 
     const label nRows = A.rows();
     const label rigidStart = nRows - 6; //Colm- counter for rigidBody
@@ -515,11 +596,6 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         b(index++) = foamB[cellI](4,0);
         b(index++) = foamB[cellI](5,0);
     }
-
-    // Colm: defining variables for rigid body RHS
-    const scalar rbNewmarkGamma = 0.5;
-    const scalar rbNewmarkBeta = 0.25;
-    const scalar deltaT = runTime.deltaTValue();
 
     // Colm: Read in variables
     const RigidBodyState& prev = rigidBodyData.previous;
@@ -564,8 +640,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         );
     }
 
-    Foam::vector rbVelocity = zeroVector();
-    Foam::vector rbAngularMomentum = zeroVector();
+    Foam::vector rbVelocity = Foam::vector::zero;
+    Foam::vector rbAngularMomentum = Foam::vector::zero;
 
     // Colm: Newmark-Beta equations
      // Colm: Solve for v and pi here
@@ -786,8 +862,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     // -------------------------------------------------------------------------
     // Colm- Codex idea
     
-    rigidBodySolution.displacement = zeroVector();
-    rigidBodySolution.rotationCorrection = zeroVector();
+    rigidBodySolution.displacement = Foam::vector::zero;
+    rigidBodySolution.rotationCorrection = Foam::vector::zero;
     rigidBodySolution.velocity = rbVelocity;
     rigidBodySolution.angularMomentum = rbAngularMomentum;
     rigidBodySolution.acceleration = currAcceleration;

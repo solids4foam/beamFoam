@@ -214,6 +214,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             label rigidBodyAttachmentCell = -1;
             tensor rigidBodyTranslationCoeff = tensor::zero;
             tensor rigidBodyRotationCoeff = tensor::zero;
+            tensor rigidBodyBeamForceWCoeff = tensor::zero;
+            tensor rigidBodyBeamForceThetaCoeff = tensor::zero;
+            vector rigidBodyMomentArm = vector::zero;
             RigidBodyForceCoupling rigidBodyForceCoupling;
 
             if
@@ -265,11 +268,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     source[rigidBodyAttachmentCell](2,0) +=
                         WSourceReplacement.z();
 
-                    const vector momentArm = vector::zero;
+                    const vector momentArm =
+                        localRigidBodyData.attachmentPoint
+                      - localRigidBodyData.centreOfRotation;
 
+                    rigidBodyMomentArm = momentArm;
                     rigidBodyTranslationCoeff = Cw/pDelta;
                     rigidBodyRotationCoeff =
                         (Cw & -spinTensor(momentArm))/pDelta;
+                    rigidBodyBeamForceWCoeff = Cw/pDelta;
+                    rigidBodyBeamForceThetaCoeff =
+                        CQTheta_.boundaryField()[patchI][faceI];
 
                     Info<< "BlockEigen kinematic coupling prepared: patch="
                         << patch.name()
@@ -769,6 +778,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                         rigidBodyAttachmentCell,
                         rigidBodyTranslationCoeff,
                         rigidBodyRotationCoeff,
+                        rigidBodyBeamForceWCoeff,
+                        rigidBodyBeamForceThetaCoeff,
+                        rigidBodyMomentArm,
                         rigidBodyForceCoupling
                     )
                 );
