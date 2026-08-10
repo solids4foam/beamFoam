@@ -796,7 +796,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
 
     // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
-    // AT-added
+
+    // Store U for optional field relaxation after updating it below
     U_.storePrevIter();
 
     // Update mean line linear velocity and acceleration fields
@@ -825,7 +826,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
             << "Valid choices are steadyState, Euler, Newmark"
             << abort(FatalError);
     }
-    // AT-added
+
+    // Apply U relaxation if configured in fvSolution
     U_.relax();
 
     const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
