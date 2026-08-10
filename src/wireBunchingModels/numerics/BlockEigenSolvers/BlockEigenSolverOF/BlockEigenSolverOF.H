@@ -102,6 +102,9 @@ class BlockEigenSolverOF
         //- Rigid-body moment arm from centre of rotation to attachment point
         const vector rigidBodyMomentArm_;
 
+        //- Previous total attachment displacement used for increment solve
+        const vector rigidBodyAttachmentDisplacementPrevious_;
+
         //- Optional explicit beam reaction contribution to rigid-body RHS
         const RigidBodyForceCoupling rigidBodyForceCoupling_;
 
@@ -155,12 +158,14 @@ public:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei,
+            const bool rigidBodyKinematicCoupling,
             const label rigidBodyAttachmentCell,
             const tensor& rigidBodyTranslationCoeff,
             const tensor& rigidBodyRotationCoeff,
             const tensor& rigidBodyBeamForceWCoeff,
             const tensor& rigidBodyBeamForceThetaCoeff,
             const vector& rigidBodyMomentArm,
+            const vector& rigidBodyAttachmentDisplacementPrevious,
             const RigidBodyForceCoupling& rigidBodyForceCoupling =
                 RigidBodyForceCoupling()
         );

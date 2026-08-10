@@ -22,32 +22,40 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam")
-OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_coupledSolver")
+NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_fullTime")
+OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_ForceCoupledSolver")
 
-NEW_MOTION_FILE = sorted(
-    glob.glob(
-        os.path.join(
-            NEW_CASE,
-            "postProcessing",
-            "BlockEigenSolve_rigidBodyMotion",
-            "*",
-            "BlockEigenSolve_rigidBodyMotion.dat",
-        )
-    )
-)[0]
 
-NEW_FORCE_COUPLING_FILE = sorted(
-    glob.glob(
-        os.path.join(
-            NEW_CASE,
-            "postProcessing",
-            "BlockEigenSolve_rigidBodyForceCoupling",
-            "*",
-            "BlockEigenSolve_rigidBodyForceCoupling.dat",
-        )
-    )
-)[0]
+def find_one(pattern, description):
+    matches = sorted(glob.glob(pattern))
+
+    if not matches:
+        raise FileNotFoundError(f"No {description} file found for {pattern}")
+
+    return matches[0]
+
+
+NEW_MOTION_FILE = find_one(
+    os.path.join(
+        NEW_CASE,
+        "postProcessing",
+        "BlockEigenSolve_rigidBodyMotion",
+        "*",
+        "BlockEigenSolve_rigidBodyMotion.dat",
+    ),
+    "new BlockEigen motion",
+)
+
+NEW_FORCE_COUPLING_FILE = find_one(
+    os.path.join(
+        NEW_CASE,
+        "postProcessing",
+        "BlockEigenSolve_rigidBodyForceCoupling",
+        "*",
+        "BlockEigenSolve_rigidBodyForceCoupling.dat",
+    ),
+    "new BlockEigen force coupling",
+)
 
 NEW_BEAM_FORCE_FILE = os.path.join(
     NEW_CASE,
@@ -56,17 +64,16 @@ NEW_BEAM_FORCE_FILE = os.path.join(
     "attachmentForcebeam.dat",
 )
 
-OLD_MOTION_FILE = sorted(
-    glob.glob(
-        os.path.join(
-            OLD_CASE,
-            "postProcessing",
-            "sixDoF*",
-            "*",
-            "sixDoFRigidBodyStateFvBeam.dat",
-        )
-    )
-)[0]
+OLD_MOTION_FILE = find_one(
+    os.path.join(
+        OLD_CASE,
+        "postProcessing",
+        "sixDoF*",
+        "*",
+        "sixDoFRigidBodyStateFvBeam.dat",
+    ),
+    "old sixDoF motion",
+)
 
 OLD_BEAM_FORCE_FILE = os.path.join(
     OLD_CASE,
@@ -182,8 +189,19 @@ def read_sixdof_centre_of_rotation(filename):
 def read_beam_force(filename):
     data = np.genfromtxt(filename, comments="#")
 
+    if data.size == 0:
+        raise ValueError(
+            f"No force rows found in {filename}. "
+            "Re-run that case or select a case with populated postProcessing."
+        )
+
     if data.ndim == 1:
         data = data.reshape(1, -1)
+
+    if data.shape[1] < 4:
+        raise ValueError(
+            f"Expected at least four columns in {filename}; got {data.shape[1]}"
+        )
 
     time = data[:, 0]
     force = data[:, 1:4]
@@ -332,7 +350,7 @@ def set_informative_y_ticks(ax, values):
     else:
         padding = 0.08*(y_max - y_min)
 
-    ax.set_ylim(y_min - padding, y_max + padding)
+    #ax.set_ylim(y_min - padding, y_max + padding)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=7))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
 
@@ -379,7 +397,8 @@ def plot_displacement_component(label, component):
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(f"{label} displacement (m)")
-    ax.set_title(f"Centre-of-rotation {label} displacement")
+    #ax.set_title(f"Centre-of-rotation {label} displacement")
+    #ax.set_title(f"Centre-of-rotation {label} displacement")
 
     combined_values = np.concatenate(
         (old_displacement[:, component], new_displacement[:, component])
@@ -409,7 +428,8 @@ def plot_force_component_abs(label, component):
 
     ax.set_xlabel("Time (s)")
     ax.set_ylabel(f"{label} {force_ylabel_prefix} (N)")
-    ax.set_title(f"{force_ylabel_prefix}: {label} component")
+    ax.set_ylim(bottom=0)
+    ax.set_title("Magnitude of "+f"{force_ylabel_prefix}: {label} component")
 
     combined_values = np.concatenate((old_force[:, component], new_force[:, component]))
     finish_plot(ax, combined_values)
@@ -448,5 +468,5 @@ for component_label, component_index in (("X", 0), ("Y", 1), ("Height", 2)):
 for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
     plot_force_component_abs(component_label, component_index)
     
-#for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
- #   plot_force_component(component_label, component_index)
+for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
+    plot_force_component(component_label, component_index)

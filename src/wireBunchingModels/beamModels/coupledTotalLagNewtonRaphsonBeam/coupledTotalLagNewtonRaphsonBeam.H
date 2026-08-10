@@ -217,6 +217,15 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Flag indicating whether rigid-body data has been supplied
         bool rigidBodyDataValid_;
 
+        //- True when BlockEigen owns attachment displacement kinematics
+        bool blockEigenKinematicCouplingActive_;
+
+        //- True when attachment kinematics use staged rigid-body target
+        bool blockEigenKinematicCouplingStaged_;
+
+        //- Fixed attachment displacement target for staged Newton solve
+        vector blockEigenStagedAttachmentDisplacement_;
+
         //- Last rigid-body solution returned by the block Eigen solve
         RigidBodySolution rigidBodySolution_;
 

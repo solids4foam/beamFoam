@@ -343,6 +343,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
         );
     }
 
+    // Off-diagonal coupling blocks between beam-end and rigid-body DOFs.
     if
     (
         rigidBodyKinematicCoupling_
@@ -351,14 +352,6 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     )
     {
         const label beamRow = 6*rigidBodyAttachmentCell_;
-        const tensor torqueWCoeff =
-            rigidBodyForceCoupling_.orientation.T()
-          & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceWCoeff_);
-
-        const tensor torqueThetaCoeff =
-            rigidBodyForceCoupling_.orientation.T()
-          & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceThetaCoeff_);
-
         for (label rowI = 0; rowI < 3; ++rowI)
         {
             for (label colI = 0; colI < 3; ++colI)
@@ -382,46 +375,66 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
                         rigidBodyRotationCoeff_(rowI, colI)
                     )
                 );
+            }
+        }
 
-                coefficients.push_back
-                (
-                    Eigen::Triplet<scalar>
-                    (
-                        rbRow + rowI,
-                        beamRow + colI,
-                       -rigidBodyBeamForceWCoeff_(rowI, colI)
-                    )
-                );
+        const bool addReciprocalRigidBodyForceRows =
+            rigidBodyForceCoupling_.active;
 
-                coefficients.push_back
-                (
-                    Eigen::Triplet<scalar>
-                    (
-                        rbRow + rowI,
-                        beamRow + 3 + colI,
-                       -rigidBodyBeamForceThetaCoeff_(rowI, colI)
-                    )
-                );
+        if (addReciprocalRigidBodyForceRows && rigidBodyForceCoupling_.active)
+        {
+            const tensor torqueWCoeff =
+                rigidBodyForceCoupling_.orientation.T()
+              & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceWCoeff_);
 
-                coefficients.push_back
-                (
-                    Eigen::Triplet<scalar>
-                    (
-                        rbRow + 3 + rowI,
-                        beamRow + colI,
-                       -torqueWCoeff(rowI, colI)
-                    )
-                );
+            const tensor torqueThetaCoeff =
+                rigidBodyForceCoupling_.orientation.T()
+              & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceThetaCoeff_);
 
-                coefficients.push_back
-                (
-                    Eigen::Triplet<scalar>
+            for (label rowI = 0; rowI < 3; ++rowI)
+            {
+                for (label colI = 0; colI < 3; ++colI)
+                {
+                    coefficients.push_back
                     (
-                        rbRow + 3 + rowI,
-                        beamRow + 3 + colI,
-                       -torqueThetaCoeff(rowI, colI)
-                    )
-                );
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            beamRow + colI,
+                           -rigidBodyBeamForceWCoeff_(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            beamRow + 3 + colI,
+                           -rigidBodyBeamForceThetaCoeff_(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + 3 + rowI,
+                            beamRow + colI,
+                           -torqueWCoeff(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + 3 + rowI,
+                            beamRow + 3 + colI,
+                           -torqueThetaCoeff(rowI, colI)
+                        )
+                    );
+                }
             }
         }
 
@@ -430,7 +443,8 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
             << ", rigid translation rows/cols=" << rbRow << ".." << rbRow + 2
             << ", rigid rotation rows/cols=" << rbRow + 3
             << ".." << rbRow + 5
-            << ", reciprocal rigid-body rows added"
+            << ", reciprocal rigid-body rows "
+            << (addReciprocalRigidBodyForceRows ? "added" : "inactive")
             << endl;
     }
 
@@ -514,6 +528,7 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     rigidBodyBeamForceWCoeff_(tensor::zero),
     rigidBodyBeamForceThetaCoeff_(tensor::zero),
     rigidBodyMomentArm_(vector::zero),
+    rigidBodyAttachmentDisplacementPrevious_(vector::zero),
     rigidBodyForceCoupling_()
 {}
 
@@ -525,12 +540,14 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     const Field<scalarSquareMatrix>& u,
     const labelList& own,
     const labelList& nei,
+    const bool rigidBodyKinematicCoupling,
     const label rigidBodyAttachmentCell,
     const tensor& rigidBodyTranslationCoeff,
     const tensor& rigidBodyRotationCoeff,
     const tensor& rigidBodyBeamForceWCoeff,
     const tensor& rigidBodyBeamForceThetaCoeff,
     const vector& rigidBodyMomentArm,
+    const vector& rigidBodyAttachmentDisplacementPrevious,
     const RigidBodyForceCoupling& rigidBodyForceCoupling
 )
 :
@@ -539,13 +556,17 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     u_(u),
     own_(own),
     nei_(nei),
-    rigidBodyKinematicCoupling_(true),
+    rigidBodyKinematicCoupling_(rigidBodyKinematicCoupling),
     rigidBodyAttachmentCell_(rigidBodyAttachmentCell),
     rigidBodyTranslationCoeff_(rigidBodyTranslationCoeff),
     rigidBodyRotationCoeff_(rigidBodyRotationCoeff),
     rigidBodyBeamForceWCoeff_(rigidBodyBeamForceWCoeff),
     rigidBodyBeamForceThetaCoeff_(rigidBodyBeamForceThetaCoeff),
     rigidBodyMomentArm_(rigidBodyMomentArm),
+    rigidBodyAttachmentDisplacementPrevious_
+    (
+        rigidBodyAttachmentDisplacementPrevious
+    ),
     rigidBodyForceCoupling_(rigidBodyForceCoupling)
 {}
 
@@ -675,7 +696,8 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
            *(
                 rbNewmarkBeta*currAcceleration[i]
               + (0.5 - rbNewmarkBeta)*prev.acceleration[i]
-            );
+            )
+          - rigidBodyAttachmentDisplacementPrevious_[i];
     }
 
     // rotational correction part of rigid-body RHS
@@ -871,7 +893,9 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
 
     for (label i = 0; i < 3; ++i)
     {
-        rigidBodySolution.displacement[i] = x(rigidStart + i);
+        rigidBodySolution.displacement[i] =
+            rigidBodyAttachmentDisplacementPrevious_[i]
+          + x(rigidStart + i);
         rigidBodySolution.rotationCorrection[i] = x(rigidStart + 3 + i);
     }
 

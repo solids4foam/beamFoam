@@ -1,0 +1,541 @@
+RigidBodyAndBeam coupled solver development log
+===============================================
+
+Date: 2026-07-28
+Repository: beamFoam, with related moorFV finiteVolumeBeam changes
+
+
+Purpose
+-------
+
+This note records the recent rigidBodyAndBeam coupling work. The main goal was
+to develop the coupled rigid-body/beam BlockEigen path without breaking the
+existing prescribed-by-rigid-body behaviour.
+
+The development focused on three related areas:
+
+1. diagnostics for forces and rigid-body motion,
+2. explicit ownership of beam attachment kinematics,
+3. staged rigid-body attachment displacement during beam Newton solves.
+
+
+Initial observations
+--------------------
+
+The tutorial case writes several force histories:
+
+  postProcessing/0/forcebeam.dat
+  postProcessing/0/anchorForcebeam.dat
+  postProcessing/0/attachmentForcebeam.dat
+  postProcessing/BlockEigenSolve_rigidBodyForceCoupling/0/BlockEigenSolve_rigidBodyForceCoupling.dat
+
+The original forcebeam.dat was zero because that file records the force at the
+beam end/load path that is not active in this case. The anchor force is non-zero
+because the beam is restrained at the anchor and the reaction is developed
+there. An attachment-force output was added so the force at the rigid-body
+attachment end can be inspected directly.
+
+The signs differ between attachmentForcebeam.dat and
+BlockEigenSolve_rigidBodyForceCoupling.dat because they use opposite action and
+reaction conventions. The beam attachment force is the force carried by the beam
+at the attachment. The rigid-body force coupling stores the force applied to the
+rigid body, so it is the negative of the corresponding beam-side reaction.
+
+
+Diagnostics added
+-----------------
+
+1. Added an attachment force history from the moorFV finiteVolumeBeam restraint.
+
+   Related files:
+     ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.H
+     ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+
+   Output:
+     postProcessing/0/attachmentForce<restraintName>.dat
+
+   For the rigidBodyAndBeam case:
+     postProcessing/0/attachmentForcebeam.dat
+
+2. BlockEigen rigid-body motion history is written to:
+
+     postProcessing/BlockEigenSolve_rigidBodyMotion/0/BlockEigenSolve_rigidBodyMotion.dat
+
+   This file records one row per nonlinear solve. For comparisons, the last row
+   per time step is the converged BlockEigen rigid-body state.
+
+3. BlockEigen force-coupling history is written to:
+
+     postProcessing/BlockEigenSolve_rigidBodyForceCoupling/0/BlockEigenSolve_rigidBodyForceCoupling.dat
+
+   This records the force/moment contribution sent into the rigid-body equation
+   and the acceleration/torque contribution derived from it.
+
+4. The plotting script was updated:
+
+     tutorials/plot_rigidBodyAndBeam_new_vs_old.py
+
+   Current default comparison:
+
+     NEW_CASE = tutorials/rigidBodyAndBeam_fullTime
+     OLD_CASE = tutorials/rigidBodyAndBeam_newSolver
+
+   The script now reports a clear error if a selected force file has only a
+   header and no data rows.
+
+
+Kinematic ownership changes
+---------------------------
+
+Problem:
+
+The old finiteVolumeBeam path prescribed the beam attachment displacement
+directly from the rigid-body state before beam.evolve(). The new BlockEigen path
+can also try to solve/own the same attachment kinematics. Enabling both at once
+over-constrains or inconsistently constrains the beam end.
+
+Solution:
+
+An explicit ownership switch was added to the moorFV finiteVolumeBeam restraint:
+
+  beamAttachmentKinematics prescribedByRigidBody;
+  beamAttachmentKinematics solvedByBlockEigen;
+
+Default:
+
+  prescribedByRigidBody
+
+Behaviour:
+
+  prescribedByRigidBody
+    finiteVolumeBeam directly sets the beam W attachment boundary from the
+    rigid-body attachment displacement. This preserves existing behaviour.
+
+  solvedByBlockEigen
+    finiteVolumeBeam does not prescribe the W boundary directly. Instead it
+    passes ownership information into beamFoam through RigidBodyStepData.
+
+Related files:
+
+  ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.H
+  ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+  src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/RigidBodyCouplingData.H
+
+RigidBodyStepData now includes:
+
+  bool solveAttachmentKinematicsInBlockEigen;
+
+
+Beam-side ownership checks
+--------------------------
+
+The beam evolve loop now computes an effective active switch:
+
+  blockEigenKinematicCouplingActive =
+      blockEigenKinematicCoupling
+   && rigidBodyDataValid_
+   && localRigidBodyData.solveAttachmentKinematicsInBlockEigen;
+
+This active flag gates:
+
+  kinematic coupling coefficient preparation,
+  the BlockEigen constructor's kinematic coupling mode,
+  the attachment DW boundary overwrite.
+
+Runtime checks were added:
+
+1. Fatal error if:
+
+     beamAttachmentKinematics solvedByBlockEigen
+     blockEigenKinematicCoupling false
+
+   This prevents a case where neither finiteVolumeBeam nor BlockEigen owns the
+   attachment kinematics.
+
+2. Warning if:
+
+     blockEigenKinematicCoupling true
+     no rigid-body data has been supplied
+
+3. Warning if:
+
+     blockEigenKinematicCoupling true
+     beamAttachmentKinematics is not solvedByBlockEigen
+
+
+BlockEigen matrix coupling notes
+--------------------------------
+
+The standard beam matrix entries come from the OpenFOAM-style diagonal, lower,
+and upper coefficient fields:
+
+  d
+  l
+  u
+
+Those fields are converted to Eigen sparse triplets in BlockEigenSolverOF.C.
+
+The rigid-body rows/columns are appended manually. The beam-to-rigid-body and
+rigid-body-to-beam coupling entries are not read from l/u.
+
+Kinematic off-diagonal blocks:
+
+  beam W rows -> rigid-body translation columns:
+    rigidBodyTranslationCoeff_
+
+  beam W rows -> rigid-body rotation columns:
+    rigidBodyRotationCoeff_
+
+Reciprocal force blocks:
+
+  rigid-body force rows -> beam W columns:
+    -rigidBodyBeamForceWCoeff_
+
+  rigid-body force rows -> beam Theta columns:
+    -rigidBodyBeamForceThetaCoeff_
+
+  rigid-body torque rows -> beam W columns:
+    -torqueWCoeff
+
+  rigid-body torque rows -> beam Theta columns:
+    -torqueThetaCoeff
+
+A source-code comment was added in BlockEigenSolverOF.C noting that these are
+off-diagonal coupling blocks between beam-end and rigid-body DOFs.
+
+
+Staged kinematic coupling mode
+------------------------------
+
+Problem found:
+
+The fully implicit kinematic coupling idea introduced a mismatch in the beam
+Newton solve. The beam rows solve increments DW, while the appended rigid-body
+translation unknown originally represented total rigid-body displacement. This
+mixed increment and total variables in the same equation.
+
+The next hypothesis was that the attachment displacement target should be
+staged. During a beam Newton solve, the rigid-body attachment displacement
+target should remain fixed to the latest accepted rigid-body state. The
+candidate rigid-body state from the current BlockEigen solve should not feed
+back into the same beam Newton loop unless the fully implicit formulation is
+made consistently incremental.
+
+Implemented mode switch:
+
+  blockEigenKinematicCouplingMode staged;
+  blockEigenKinematicCouplingMode fullyImplicit;
+
+Default:
+
+  staged
+
+Files:
+
+  src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.H
+  src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
+  src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+  src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.H
+  src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+
+New beam members:
+
+  bool blockEigenKinematicCouplingStaged_;
+  vector blockEigenStagedAttachmentDisplacement_;
+
+Staged behaviour:
+
+  blockEigenStagedAttachmentDisplacement_ =
+      localRigidBodyData.current.displacement;
+
+This target is kept fixed during the beam Newton loop.
+
+In staged mode:
+
+  - the attachment W boundary is assigned to the staged target before
+    W_.boundaryFieldRef().updateCoeffs(),
+    fvc::snGrad(W_),
+    updateEqnCoefficients(),
+    assembleMatrixCoefficients().
+
+  - the owned attachment fixedValue source branch uses the staged target.
+
+  - the post-solve boundary overwrite uses the staged target:
+
+      DW_boundary = stagedTarget - W_.prevIter().boundaryField()[patchI][0]
+      W_boundary  = stagedTarget
+
+  - BlockEigen still computes and returns the candidate rigid-body state from
+    the force-coupled rigid-body equation.
+
+  - The candidate rigid-body solution is accepted by finiteVolumeBeam after
+    beam.evolve() when blockEigenAuthoritativeMotion is true.
+
+Fully implicit behaviour:
+
+  fullyImplicit remains available as an experimental mode. It keeps the
+  beam-to-rigid-body kinematic columns active and uses the solved rigid-body
+  displacement in the attachment boundary overwrite.
+
+Increment-consistency preparation:
+
+BlockEigenSolverOF now stores:
+
+  rigidBodyAttachmentDisplacementPrevious_
+
+The rigid-body translation RHS subtracts this previous displacement, and the
+reported rigidBodySolution.displacement is reconstructed as:
+
+  rigidBodyAttachmentDisplacementPrevious_ + x(rigidStart + i)
+
+This keeps the fully implicit path closer to an increment formulation, although
+the staged mode is the stable/default path for current testing.
+
+
+Key bug fixed after full-time test
+----------------------------------
+
+Case:
+
+  tutorials/rigidBodyAndBeam_fullTime
+
+This was copied from rigidBodyAndBeam_shortTime and changed to:
+
+  endTime 0.25
+
+Initial result:
+
+  The case crashed at Time = 0.02 with:
+
+    Iteration 5: Diverged - Residual grew excessively.
+
+Observed log pattern before the fix:
+
+  Time = 0.02
+  Iteration 1 residual was close to the old reference, but the step norm was
+  very large:
+
+    residual ~= 1.663
+    step norm ~= 9.56
+
+Reference old solver at the same time:
+
+    residual ~= 1.663
+    step norm ~= 0.00204
+
+Cause:
+
+The staged target was being applied too late. The matrix coefficients were
+assembled while the right-end W boundary still held stale fixedValue data.
+Only after the solve did the code overwrite the attachment DW/W boundary with
+the staged rigid-body target.
+
+Fix:
+
+In coupledTotalLagNewtonRaphsonBeamEvolve.C, staged mode now assigns:
+
+  W_.boundaryFieldRef()[endPatchIndex()][0] =
+      blockEigenStagedAttachmentDisplacement_;
+
+before:
+
+  W_.boundaryFieldRef().updateCoeffs();
+  Theta_.boundaryFieldRef().updateCoeffs();
+  fvc::snGrad(W_);
+  updateEqnCoefficients();
+  assembleMatrixCoefficients(...);
+
+Result after fix:
+
+At Time = 0.02:
+
+  Iteration 1 residual = 1.663683865
+  Iteration 1 step norm = 0.002043423937
+  Iteration 4 converged
+
+This matches the old reference path closely and removes the excessive residual
+growth.
+
+
+Tutorial cases used
+-------------------
+
+1. tutorials/rigidBodyAndBeam
+
+   Main development case. It has been configured for:
+
+     beamAttachmentKinematics solvedByBlockEigen;
+     blockEigenAuthoritativeMotion true;
+     blockEigenForceCoupling true;
+     blockEigenKinematicCoupling true;
+     blockEigenKinematicCouplingMode staged;
+
+   Note:
+
+     Some current postProcessing files in this directory came from older failed
+     runs. In particular, postProcessing/0/attachmentForcebeam.dat may contain
+     only a header if the case was not rerun cleanly after the latest fixes.
+
+2. tutorials/rigidBodyAndBeam_shortTime
+
+   Short debug case.
+
+   Purpose:
+
+     Exercise the first time step quickly.
+
+   Configuration:
+
+     endTime 0.01
+     beamAttachmentKinematics solvedByBlockEigen
+     blockEigenKinematicCoupling true
+     blockEigenKinematicCouplingMode staged
+
+   Result:
+
+     Completed successfully. The first time-step Newton trace matched the old
+     prescribed-by-rigid-body reference.
+
+3. tutorials/rigidBodyAndBeam_fullTime
+
+   Full-time staged-coupling test case.
+
+   Configuration:
+
+     endTime 0.25
+     beamAttachmentKinematics solvedByBlockEigen
+     blockEigenAuthoritativeMotion true
+     blockEigenKinematicCoupling true
+     blockEigenKinematicCouplingMode staged
+
+   Result after latest fix:
+
+     interFoam was rerun and passed the previous crash point at Time = 0.02.
+     The run continued converging through Time = 0.07 and was then interrupted
+     manually. This means the specific 0.02 divergence was fixed, but a complete
+     0.25 rerun still remains to be done.
+
+4. tutorials/rigidBodyAndBeam_newSolver
+
+   Reference case from before the current kinematic coupling changes.
+
+   Purpose:
+
+     Compare against the stable prescribed-by-rigid-body path.
+
+   It completed to 0.25 in the earlier run and provides reference motion/force
+   histories.
+
+
+Validation completed
+--------------------
+
+1. beamFoam rebuild:
+
+     ./Allwmake
+
+   Result:
+
+     Passed. Only existing Eigen/OpenFOAM warnings were observed.
+
+2. short-time staged case:
+
+     tutorials/rigidBodyAndBeam_shortTime/Allrun
+
+   Result:
+
+     Passed to End at 0.01.
+
+3. full-time staged case:
+
+     interFoam -case tutorials/rigidBodyAndBeam_fullTime
+
+   Result:
+
+     Passed the previous failure at 0.02 and continued converging through 0.07.
+     The run was manually interrupted before 0.25.
+
+4. plot script syntax:
+
+     python3 -m py_compile tutorials/plot_rigidBodyAndBeam_new_vs_old.py
+
+   Result:
+
+     Passed.
+
+   The full plotting script was not executed in the shell because that python3
+   environment does not have matplotlib. It should run in the Spyder environment
+   that produced the original traceback.
+
+
+Current caveats
+---------------
+
+1. The full 0.25 staged case has not yet been rerun to completion after the
+   latest staged-boundary assembly fix.
+
+2. There are verbose Info messages in the logs:
+
+     BlockEigen kinematic coupling prepared: ...
+     BlockEigen attachment DW boundary set from staged rigid-body target: ...
+     BlockEigen interface DOF map ...
+
+   These are useful during development, but should probably be moved behind a
+   debug switch or reduced before a final commit.
+
+3. fullyImplicit mode is still experimental. The stable path is staged mode.
+
+4. Existing postProcessing files may be stale if a case was not cleaned and
+   rerun after the latest code changes.
+
+5. The moorFV finiteVolumeBeam changes live outside the beamFoam submodule:
+
+     ../sDoFRGBFvBeam/...
+
+   A final commit may need changes in both repositories, depending on how the
+   superproject/submodule workflow is handled.
+
+
+Recommended next steps
+----------------------
+
+1. Clean and rerun the main staged case to completion:
+
+     cd tutorials/rigidBodyAndBeam_fullTime
+     ./Allclean
+     ./Allrun
+
+   Expected result:
+
+     The case should pass 0.02 and ideally complete to 0.25.
+
+2. Compare against the old reference:
+
+     run tutorials/plot_rigidBodyAndBeam_new_vs_old.py from Spyder
+
+   Current script defaults:
+
+     new = rigidBodyAndBeam_fullTime
+     old = rigidBodyAndBeam_newSolver
+
+3. Inspect the final motion and force comparisons:
+
+     BlockEigen rigid-body motion vs old sixDoF centre of rotation
+     attachmentForcebeam.dat vs old forcebeam.dat
+     BlockEigen force coupling vs negative old beam force, if using
+       FORCE_COMPARISON = "rigid_body_reaction"
+
+4. If full-time staged mode completes and matches the old reference, reduce the
+   verbose Info output.
+
+5. Decide whether fullyImplicit mode should remain as an experimental option or
+   be deferred behind an even clearer switch/documented warning.
+
+6. Before committing, separate source changes from generated tutorial outputs:
+
+     git status --short
+
+   Avoid staging generated postProcessing data, logs, time directories, and
+   other tutorial run products unless they are intentionally part of the commit.
+

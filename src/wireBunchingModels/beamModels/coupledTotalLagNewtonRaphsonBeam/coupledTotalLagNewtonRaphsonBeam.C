@@ -659,6 +659,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 {
   //  rigidBodyDataValid_(false);
   rigidBodyDataValid_ = false;
+  blockEigenKinematicCouplingActive_ = false;
+  blockEigenKinematicCouplingStaged_ = false;
+  blockEigenStagedAttachmentDisplacement_ = vector::zero;
   rigidBodySolutionValid_ = false;
 
     // Check to enforce user to specify the d2dt2Schemes

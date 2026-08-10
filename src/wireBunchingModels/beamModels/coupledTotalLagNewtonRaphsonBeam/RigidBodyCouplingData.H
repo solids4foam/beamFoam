@@ -84,6 +84,7 @@ struct RigidBodyStepData
     vector initialCentreOfRotation;
     vector centreOfRotation;
     vector attachmentPoint;
+    bool solveAttachmentKinematicsInBlockEigen;
 
     RigidBodyStepData()
     :
@@ -93,7 +94,8 @@ struct RigidBodyStepData
         momentOfInertia(diagTensor::zero),
         initialCentreOfRotation(0, 0, 0),
         centreOfRotation(0, 0, 0),
-        attachmentPoint(0, 0, 0)
+        attachmentPoint(0, 0, 0),
+        solveAttachmentKinematicsInBlockEigen(false)
     {}
 };
 
