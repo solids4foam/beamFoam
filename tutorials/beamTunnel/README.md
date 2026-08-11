@@ -1,8 +1,9 @@
 # Beam in a Fluid Tunnel — Large-Deflection FSI Validation
 
 ## Overview
-This tutorial reproduces **Case 1 of section 6.4 of Zhang, Liu & Khoo (2012)**: a
-soft, slender cantilever beam clamped to the bottom wall of a channel and bent
+
+This tutorial reproduces **Case 1 of section 6.4 of Zhang, Liu & Khoo (2012)**:
+a soft, slender cantilever beam clamped to the bottom wall of a channel and bent
 over by a viscous, low-Reynolds-number channel flow. It is a standard
 fluid–structure interaction (FSI) benchmark for large elastic deflection.
 
@@ -23,6 +24,7 @@ validation cases.
 ---
 
 ## What this tutorial demonstrates
+
 - Two-way fluid–structure coupling of a finite-volume Simo–Reissner beam with an
   OpenFOAM fluid solver through an **actuator-line (ALM)** momentum exchange
   (no body-conforming mesh, no mesh morphing around the structure).
@@ -36,22 +38,26 @@ validation cases.
 ## Requirements
 
 ### Software prerequisites
-| Component | Notes |
-|---|---|
-| **OpenFOAM** | OpenFOAM.com (ESI), sourced into your shell (`$WM_PROJECT_DIR` set). Developed and tested with **v2306**. |
-| **moorFV** (with `beamFoam`) | Provides the beam↔fluid coupling used here. Must be compiled so its library is in `$FOAM_USER_LIBBIN` — see below. |
-| **gnuplot** *(optional)* | Only for the tip-displacement plot. If absent, the run still writes `tipDisplacement.dat`; the plot step is skipped. |
+
+- **OpenFOAM** — OpenFOAM.com (ESI), sourced into your shell, i.e. with
+  `$WM_PROJECT_DIR` set. Developed and tested with **v2306**.
+- **moorFV** (with `beamFoam`) — provides the beam-fluid coupling used here.
+  Must be compiled so that its library is in `$FOAM_USER_LIBBIN`; see below.
+- **gnuplot** *(optional)* — only for the tip-displacement plot. If absent, the
+  run still writes `tipDisplacement.dat` and the plot step is skipped.
 
 ### Why moorFV is needed
+
 This case is **not runnable with `beamFoam` on its own**. `beamFoam` provides the
 finite-volume beam solver, but the fluid–beam (ALM) coupling used here — the
 `sixDoFRigidBodyBeamMotion` motion solver with the `finiteVolumeBeam` restraint
 and the `beamActuatorLine` fvOption — is provided by **moorFV**, which builds on
 `beamFoam`:
 
-> **moorFV:** https://github.com/solids4foam/moorFV
+> **moorFV:** <https://github.com/solids4foam/moorFV>
 
 ### Automatic check
+
 Before doing any work, `Allrun` runs the bundled **`checkMoorFV`** script, which
 verifies that the moorFV library `libsixDoFRigidBodyBeamMotion` (`.so` on Linux,
 `.dylib` on macOS) can be loaded from `$FOAM_USER_LIBBIN`. If it is missing, the
@@ -61,21 +67,24 @@ which searches every library path and actually attempts to load the library, and
 falls back to a direct file test in `$FOAM_USER_LIBBIN` on older OpenFOAM.)
 
 To satisfy the check, install and compile moorFV once:
-```
+
+```bash
 git clone https://github.com/solids4foam/moorFV
 cd moorFV
 git submodule update --init --recursive   # pulls in beamFoam
 source $WM_PROJECT_DIR/etc/bashrc          # if OpenFOAM is not already sourced
 ./Allwmake                                 # writes libs into $FOAM_USER_LIBBIN
 ```
+
 Then run this tutorial (which ships inside moorFV's bundled `beamFoam`).
 
 ---
 
 ## Case Layout
-```
+
+```text
 beamTunnel/
-├── Allrun                     # top-level driver: check moorFV, init beam, run FSI
+├── Allrun                     # driver: check moorFV, init beam, run FSI
 ├── Allclean                   # cleans both sub-cases
 ├── checkMoorFV                # prerequisite check for the moorFV library
 ├── beamInitialisation/
@@ -100,8 +109,9 @@ beam. The top-level `Allrun` runs it, copies the resulting beam mesh into
 ---
 
 ## Geometry
+
 | Quantity | Value |
-|---|---|
+| --- | --- |
 | Tunnel length `L` | `0.04 m` (`x ∈ [0, 0.04]`) |
 | Tunnel height `H` | `0.01 m` (`y ∈ [0, 0.01]`) |
 | Beam cross-section `b × h` | `0.0004 × 0.0004 m` (square) |
@@ -113,7 +123,7 @@ beam. The top-level `Allrun` runs it, copies the resulting beam mesh into
 `setInitialPositionBeam` translates it to `(0.01, 0, 0)` and rotates it `90°`
 about `z` so it stands upright, rooted on the lower wall.
 
-```
+```text
  y = H = 0.01   ────────────────────────────────────── upperWall (symmetry)
                                     ┊
    parabolic  →                     ┊ beam (0.008 m, 80 CVs)
@@ -126,14 +136,17 @@ about `z` so it stands upright, rooted on the lower wall.
 ---
 
 ## Fluid and Beam Properties
+
 **Fluid** (`constant/transportProperties`) — note this is *not* water; the
 viscosity is paper-specified:
+
 - Kinematic viscosity `ν = 1e-5 m²/s`, density `ρ_f = 1000 kg/m³`
   (dynamic viscosity `μ = 0.01 Pa·s`)
 - Peak inlet velocity `U_max = 0.015 m/s`, so `Re_h = U_max·h/ν ≈ 0.6`
   (viscous-dominated, Stokes-like)
 
 **Beam** (`beamInitialisation/beam_0/constant/beamProperties`):
+
 - Young's modulus `E = 1e4 Pa`, shear modulus `G = 3846 Pa` (`ν ≈ 0.3`)
 - Density `ρ_s = 7800 kg/m³`, fluid density for buoyancy `1000 kg/m³`
 - Model `coupledTotalLagNewtonRaphsonBeam`, rectangular cross-section
@@ -141,6 +154,7 @@ viscosity is paper-specified:
 ---
 
 ## Boundary Conditions (fluid)
+
 - **`inlet`:** `codedFixedValue` parabolic profile, applied as a step at
   `t = 0`. In SI form `Uₓ(y) = -150 y² + 3 y  [m/s]` (Zhang 2012 in CGS:
   `1.5(-y² + 2y) cm/s`), giving `U_max = 0.015 m/s` at the top.
@@ -152,6 +166,7 @@ viscosity is paper-specified:
 ---
 
 ## Coupling
+
 **Motion solver** (`constant/dynamicMeshDict`): `dynamicMotionSolverFvMesh` with
 `sixDoFRigidBodyBeamMotion`. The body carries a `finiteVolumeBeam` restraint that
 fires `beam.evolve()` once per time step to advance the structure. `fixedPoint`
@@ -159,6 +174,7 @@ and `fixedOrientation` constraints hold the mesh still — the motion solver exi
 only to drive the beam.
 
 **ALM drag** (`beamInitialisation/beam_0/constant/beamMomentumContributionProperties`):
+
 - Drag coefficients `Cdn = 26`, `Cdt = 0.01`
 - Upstream sampling at `samplingRadius × almSamplingReferenceLength =
   30 × 0.000106 ≈ 3.18 mm` upstream of each beam node, along `(-1 0 0)`
@@ -173,6 +189,7 @@ Newton loop and the PIMPLE loop): this is explicit partitioned FSI.
 ---
 
 ## Numerical Setup
+
 - **Fluid:** `pimpleFoam`, `Δt = 1e-4 s`, `t_end = 2.5 s`, `maxCo = 0.1`
   (fixed `Δt`), write every `0.1 s`.
 - **Beam Newton–Raphson:** `residualTol = 1e-9`, `solutionTol = 1e-10`,
@@ -183,10 +200,12 @@ Newton loop and the PIMPLE loop): this is explicit partitioned FSI.
 ---
 
 ## Running the Case
-```
+
+```bash
 ./Allclean
 ./Allrun
 ```
+
 `Allrun` initialises the beam and then runs the coupled case in **parallel on 2
 cores**. Progress for the initialisation stage is logged to
 `log.beamInitialisation`, and the coupled run to
@@ -227,16 +246,19 @@ end of `beamTunnel/beamTunnel/Allrun`.
 ---
 
 ## Post-processing
+
 `Allrun` finishes by extracting the beam tip streamwise displacement into
 `beamTunnel/beamTunnel/tipDisplacement.dat` (via `extractTipDisplacement.sh`,
 which reads the `x`-component of `W` on the beam's `right` patch at each written
 time) and plotting it to `tipDisplacement.pdf` with `tipDisplacement.gnuplot`.
 Both can also be run by hand after a run:
-```
+
+```bash
 cd beamTunnel/beamTunnel
 ./extractTipDisplacement.sh        # writes tipDisplacement.dat (time, W_x)
 gnuplot tipDisplacement.gnuplot    # writes tipDisplacement.pdf
 ```
+
 - Open `case.foam` in **ParaView** and use **WarpByVector** on `pointW` to
   visualise the deformed beam (the beam mesh carries its displacement in
   `pointW`; the cells themselves stay put).
@@ -244,6 +266,7 @@ gnuplot tipDisplacement.gnuplot    # writes tipDisplacement.pdf
 ---
 
 ## Expected Results
+
 The beam bends downstream and reaches a steady tip `x`-displacement after
 `t ≈ 1.5 s`. Reference steady-state values span roughly **4.5–5.2 mm** across
 the literature (Zhang 2012 IS-FEM ≈ 5.2 mm; Han 2020/2021 ≈ 4.5–4.6 mm), and the
@@ -255,6 +278,7 @@ independently calibrated quantity is `Cdn`.
 ---
 
 ## Troubleshooting
+
 - **`ERROR: moorFV is not installed`** — the `checkMoorFV` prerequisite failed:
   the library `libsixDoFRigidBodyBeamMotion` was not found. Compile moorFV so its
   library lands in `$FOAM_USER_LIBBIN` (see *Requirements → Automatic check*),
@@ -273,12 +297,13 @@ independently calibrated quantity is `Cdn`.
 ---
 
 ## References
+
 - **moorFV** — finite-volume beam / fluid coupling library built on `beamFoam`
-  (required to run this case): https://github.com/solids4foam/moorFV
+  (required to run this case): <https://github.com/solids4foam/moorFV>
 - Zhang, Z.-Q., Liu, G. R., & Khoo, B. C. (2012). *Immersed smoothed finite
   element method for two dimensional fluid–structure interaction problems.*
   International Journal for Numerical Methods in Engineering, 90(10), 1292–1320.
-  https://doi.org/10.1002/nme.4299
+  <https://doi.org/10.1002/nme.4299>
 - Taran, A., Bali, S., Tuković, Ž., Pakrashi, V., & Cardiff, P. (2025). *A finite
   volume Simo–Reissner beam method for moored floating body dynamics.* Applied
-  Ocean Research, 165, 104845. https://doi.org/10.1016/j.apor.2025.104845
+  Ocean Research, 165, 104845. <https://doi.org/10.1016/j.apor.2025.104845>
