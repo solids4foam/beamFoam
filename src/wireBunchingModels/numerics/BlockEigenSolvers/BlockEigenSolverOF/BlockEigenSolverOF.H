@@ -128,6 +128,7 @@ protected:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei,
+            const scalar rigidBodyNewmarkDisplacementScale,
             Eigen::SparseMatrix<scalar>& A
         );
 

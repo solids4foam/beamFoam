@@ -1,0 +1,181 @@
+Rigid-body implicit attachment coefficient implementation
+=========================================================
+
+Date: 2026-08-11
+
+Summary
+-------
+
+The BlockEigen rigid-body matrix coupling has been changed so the reciprocal
+rigid-body translational rows use the intended Newmark/mass-scaled attachment
+stiffness coefficient:
+
+    deltaT^2 * beta * EA * (1/m) * (1/L)
+
+The coefficient multiplies the incremental attachment stretch:
+
+    deltaL =
+        (w_rb_attachmentPoint^new - w_beamCell^new)
+      - (w_rb_attachmentPoint^previous - w_beamCell^previous)
+
+In the BlockEigen solve this is represented by increments:
+
+    deltaL = dW_rb_attachmentPoint - dW_beamCell
+
+where:
+
+    dW_rb_attachmentPoint = dW_rb_translation + dTheta_rb x momentArm
+
+The matrix contribution added to the rigid-body translational rows is:
+
+    alphaK * (dW_rb_attachmentPoint - dW_beamCell)
+
+where:
+
+    alphaK = deltaT^2 * beta * (1/m) * (CQW/L)
+
+In code, the tensor form of alphaK is:
+
+    rigidBodyNewmarkDisplacementScale * rigidBodyBeamForceWCoeff_
+
+with:
+
+    rigidBodyNewmarkDisplacementScale = sqr(deltaT)*rbNewmarkBeta/mass
+    rigidBodyBeamForceWCoeff_         = Cw/pDelta
+
+
+Files changed
+-------------
+
+1. src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.H
+
+   The private convertFoamMatrixToEigenMatrix(...) helper now accepts:
+
+       const scalar rigidBodyNewmarkDisplacementScale
+
+   This lets matrix assembly use the rigid-body Newmark displacement scale
+   computed in solve(), where runTime.deltaTValue(), rbNewmarkBeta, and the
+   rigid-body mass are available.
+
+2. src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+
+   In solve():
+
+       rigidBodyNewmarkDisplacementScale =
+           sqr(deltaT)*rbNewmarkBeta/rigidBodyForceCoupling_.mass;
+
+   In convertFoamMatrixToEigenMatrix(), the previous unscaled reciprocal
+   rigid-body force rows were replaced by scaled incremental attachment terms:
+
+       +alphaK on rigid-body translation columns
+       +alphaK * (-spin(momentArm)) on rigid-body rotation columns
+       -alphaK on attached beam-cell displacement columns
+
+   This gives:
+
+       alphaK * (dW_rb_translation + dTheta_rb x momentArm - dW_beamCell)
+
+   The old reciprocal translational entries used -rigidBodyBeamForceWCoeff_
+   directly in the rigid-body rows. That was dimensionally inconsistent with
+   the Newmark displacement equation because it omitted deltaT^2*beta/m.
+
+   The old implicit torque-row entries were removed. Torque/moment coupling is
+   still included explicitly through currTorque in solve(). An implicit
+   rotational version would need a separate Newmark coefficient using the
+   rigid-body moment of inertia, not 1/m.
+
+
+Meaning of key code terms
+-------------------------
+
+E
+    Young's modulus for the beam. Returned by beamModel::E(label bI).
+
+A
+    Cross-sectional area. Returned by beamModel::A(label bI).
+
+EA
+    Axial stiffness E*A. Returned by beamModel::EA(label bI).
+
+CQ_
+    Local cross-section force stiffness tensor. It is initialized as:
+
+        diag(EA, GA, GA)
+
+    The axial entry is EA. The two transverse/shear entries are GA.
+
+CQW_
+    Current/global-frame force-equilibrium tangent tensor for displacement W.
+    It is updated as:
+
+        CQW_ = Lambdaf & (CQ_ & Lambdaf.T())
+
+    For a straight, unrotated axial beam, the axial part of CQW_ is EA.
+
+Cw
+    Local const reference to the attachment boundary-face value of CQW_:
+
+        const tensor& Cw = CQW_.boundaryField()[patchI][faceI];
+
+pDelta
+    Boundary face-to-cell-centre distance:
+
+        pDelta = 1.0/mesh().deltaCoeffs().boundaryField()[patchI][faceI];
+
+    For the rigid-body attachment end, this is the L in EA/L. If the beam cell
+    length is Lcell and the attachment point is at the boundary face, then
+    pDelta is usually Lcell/2.
+
+rigidBodyBeamForceWCoeff_
+    Stored tensor coefficient passed into BlockEigenSolverOF:
+
+        rigidBodyBeamForceWCoeff = Cw/pDelta;
+
+    This is the tensor form of the beam attachment stiffness CQW/L. For a
+    straight axial case it is approximately EA/L in the beam axial direction.
+
+rigidBodyTranslationCoeff_
+    Existing beam-row kinematic coupling coefficient. It is also Cw/pDelta,
+    but it is inserted into beam equilibrium rows, not rigid-body rows.
+
+rigidBodyRotationCoeff_
+    Existing beam-row coefficient for rigid-body rotation contribution to the
+    attachment-point displacement:
+
+        rigidBodyRotationCoeff = (Cw & -spinTensor(momentArm))/pDelta;
+
+    This represents the stiffness contribution from dTheta_rb x momentArm.
+
+rigidBodyNewmarkDisplacementScale
+    New scalar multiplier:
+
+        sqr(deltaT)*rbNewmarkBeta/mass
+
+    Multiplying this by rigidBodyBeamForceWCoeff_ gives the desired implicit
+    rigid-body displacement coefficient.
+
+momentArm
+    Vector from rigid-body centre of rotation to attachment point:
+
+        attachmentPoint - centreOfRotation
+
+    It is used to convert rigid-body rotation increments into attachment-point
+    displacement increments.
+
+
+Sign convention
+---------------
+
+The implemented translational row contribution is:
+
+    +alphaK*dW_rb_translation
+    +alphaK*(dTheta_rb x momentArm)
+    -alphaK*dW_beamCell
+
+Together these represent:
+
+    alphaK * (dW_rb_attachmentPoint - dW_beamCell)
+
+If a later force-sign audit shows the rigid-body acceleration convention should
+use the opposite action/reaction sign, all three signs in this rigid-body row
+block should be flipped together.

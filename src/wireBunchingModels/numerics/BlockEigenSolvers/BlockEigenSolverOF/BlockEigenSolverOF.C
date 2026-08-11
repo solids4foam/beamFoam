@@ -257,22 +257,6 @@ namespace
 
     }
 
-
-    Foam::tensor localSpinTensor(const Foam::vector& v)
-    {
-        Foam::tensor result = Foam::tensor::zero;
-
-        result.xy() = -v.z();
-        result.xz() = v.y();
-
-        result.yx() = v.z();
-        result.yz() = -v.x();
-
-        result.zx() = -v.y();
-        result.zy() = v.x();
-
-        return result;
-    }
 }
 
 
@@ -285,6 +269,7 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     const Field<scalarSquareMatrix>& u,
     const labelList& own,
     const labelList& nei,
+    const scalar rigidBodyNewmarkDisplacementScale,
     Eigen::SparseMatrix<scalar>& A
 )
 {
@@ -383,55 +368,53 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 
         if (addReciprocalRigidBodyForceRows && rigidBodyForceCoupling_.active)
         {
-            const tensor torqueWCoeff =
-                rigidBodyForceCoupling_.orientation.T()
-              & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceWCoeff_);
+            const tensor rbTranslationForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyBeamForceWCoeff_;
 
-            const tensor torqueThetaCoeff =
-                rigidBodyForceCoupling_.orientation.T()
-              & (localSpinTensor(rigidBodyMomentArm_) & rigidBodyBeamForceThetaCoeff_);
+            const tensor rbRotationForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyRotationCoeff_;
+
+            const tensor beamDisplacementForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyBeamForceWCoeff_;
 
             for (label rowI = 0; rowI < 3; ++rowI)
             {
                 for (label colI = 0; colI < 3; ++colI)
                 {
+                    // Newmark displacement response to incremental beam
+                    // attachment stretch:
+                    //   dt^2*beta/m * K * (dWrbAttach - dWbeamCell)
+                    // where K is rigidBodyBeamForceWCoeff_ ~= CQW/L.
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            rbRow + colI,
+                            rbTranslationForceCoeff(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            rbRow + 3 + colI,
+                            rbRotationForceCoeff(rowI, colI)
+                        )
+                    );
+
                     coefficients.push_back
                     (
                         Eigen::Triplet<scalar>
                         (
                             rbRow + rowI,
                             beamRow + colI,
-                           -rigidBodyBeamForceWCoeff_(rowI, colI)
-                        )
-                    );
-
-                    coefficients.push_back
-                    (
-                        Eigen::Triplet<scalar>
-                        (
-                            rbRow + rowI,
-                            beamRow + 3 + colI,
-                           -rigidBodyBeamForceThetaCoeff_(rowI, colI)
-                        )
-                    );
-
-                    coefficients.push_back
-                    (
-                        Eigen::Triplet<scalar>
-                        (
-                            rbRow + 3 + rowI,
-                            beamRow + colI,
-                           -torqueWCoeff(rowI, colI)
-                        )
-                    );
-
-                    coefficients.push_back
-                    (
-                        Eigen::Triplet<scalar>
-                        (
-                            rbRow + 3 + rowI,
-                            beamRow + 3 + colI,
-                           -torqueThetaCoeff(rowI, colI)
+                           -beamDisplacementForceCoeff(rowI, colI)
                         )
                     );
                 }
@@ -587,6 +570,21 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     const scalar rbNewmarkBeta = 0.25;
     const scalar deltaT = runTime.deltaTValue();
 
+    scalar rigidBodyNewmarkDisplacementScale = 0.0;
+
+    if (rigidBodyForceCoupling_.active)
+    {
+        if (mag(rigidBodyForceCoupling_.mass) < SMALL)
+        {
+            FatalErrorInFunction
+                << "blockEigenForceCoupling requested with zero rigid-body mass"
+                << abort(FatalError);
+        }
+
+        rigidBodyNewmarkDisplacementScale =
+            sqr(deltaT)*rbNewmarkBeta/rigidBodyForceCoupling_.mass;
+    }
+
     Eigen::SparseMatrix<scalar> A;
     convertFoamMatrixToEigenMatrix
     (
@@ -595,6 +593,7 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         u_,
         own_,
         nei_,
+        rigidBodyNewmarkDisplacementScale,
         A
     );
 

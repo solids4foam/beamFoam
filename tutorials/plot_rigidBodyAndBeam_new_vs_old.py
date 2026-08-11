@@ -23,7 +23,7 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_fullTime")
-OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_ForceCoupledSolver")
+OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_compareSixDoF_Eigen")
 
 
 def find_one(pattern, description):
@@ -103,7 +103,7 @@ BLOCKEIGEN_TIME_REDUCTION = "last"  # "last" or "all"
 # Use "beam" to compare forcebeam.dat from both cases.
 # Use "rigid_body_reaction" to compare the new force applied to the rigid body
 # against the old restraint force, which is the negative of forcebeam.dat.
-FORCE_COMPARISON = "beam"  # "beam" or "rigid_body_reaction"
+FORCE_COMPARISON = "rigid_body_reaction"  # "beam" or "rigid_body_reaction"
 
 T_START = None
 T_END = None

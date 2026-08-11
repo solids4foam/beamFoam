@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1806                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      decomposeParDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+numberOfSubdomains 4;
+
+
+method          scotch;
+
+coeffs
+{
+    n           (2 2 1);
+}
+
+
+// method manual;
+
+// manualCoeffs
+// {
+//     processor0
+//     {
+//       regions (beamone beamtwo);
+//     }
+//     processor1 {};
+//     processor2 {};
+//     processor3 {};
+// }
+
+// numberOfSubdomains 4;
+
+// method manual;
+
+// manualCoeffs
+// {
+//     dataFile "cellDecomposition.beams";  // Path to your decomposition data file
+// }
+
+// ************************************************************************* //
