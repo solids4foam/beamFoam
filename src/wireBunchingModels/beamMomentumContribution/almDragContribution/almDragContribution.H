@@ -142,6 +142,10 @@ private:
     //- Lazily constructed fluid mesh search engine
     mutable autoPtr<meshSearch> searchEnginePtr_;
 
+    //- Has the beam-region decomposition been checked? The check is run once,
+    //  on the first preEvolve, where the beam mesh is available
+    bool decompositionChecked_;
+
     //- Disallow default bitwise copy construct
     almDragContribution(const almDragContribution&);
 

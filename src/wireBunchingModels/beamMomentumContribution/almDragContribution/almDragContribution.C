@@ -28,6 +28,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "HermiteSpline.H"
 #include "samplingFluid.H"
+#include "beamParallelChecks.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -81,7 +82,8 @@ almDragContribution::almDragContribution
     (
         coeffs_.lookupOrDefault<scalar>("groundZ", 0.0)
     ),
-    searchEnginePtr_()
+    searchEnginePtr_(),
+    decompositionChecked_(false)
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
 
@@ -108,6 +110,20 @@ almDragContribution::almDragContribution
 void almDragContribution::preEvolve(const beamModel& bm)
 {
     const fvMesh& beamMesh = bm.solutionW().mesh();
+
+    // The sampling below builds one spline through the whole beam on the
+    // master and broadcasts it, so the beam region must not be split across
+    // processors. Collective, hence outside any master guard.
+    if (!decompositionChecked_)
+    {
+        checkBeamOnMasterProcessor
+        (
+            beamMesh,
+            "The " + typeName + " beam momentum contribution"
+        );
+
+        decompositionChecked_ = true;
+    }
 
     const fvMesh& fluidMesh =
         beamMesh.time().db().parent().lookupObject<fvMesh>("region0");

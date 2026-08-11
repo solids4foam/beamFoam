@@ -204,6 +204,26 @@ both `system/decomposeParDict` (fluid) and `system/beam_0/decomposeParDict`
 (beam) — keep them equal. To run serially instead, see the commented note at the
 end of `beamTunnel/beamTunnel/Allrun`.
 
+> **Keeping the beam on processor 0 is a requirement, not a convenience.**
+> The fluid region may be decomposed freely, but every cell of a beam region
+> that is coupled to a fluid must be on processor 0.
+>
+> The actuator-line coupling is not distributed over the beam. The beam
+> geometry, the centreline tangents (one spline through the whole line, needed
+> to place the upstream sampling points) and `almForce` are all gathered on the
+> master and broadcast to every rank. A beam split across processors would
+> therefore be sampled and forced using the master's slice alone, and the
+> remainder of the line would contribute nothing — the beam's *structural*
+> solve is collective and would happily run distributed, which is exactly what
+> makes the failure quiet.
+>
+> Both coupling entry points (the `almDrag` beam momentum contribution and the
+> `beamActuatorLine` fvOption) now check this at run time and exit with a
+> `FatalError` naming the region and the cell counts, so a bad decomposition
+> stops the run instead of silently producing wrong forces. The same applies to
+> mooring cases, where the `finiteVolumeBeam` restraint reads both end forces
+> from the rank owning the attachment patch.
+
 ---
 
 ## Post-processing
