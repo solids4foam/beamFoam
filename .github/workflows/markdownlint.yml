@@ -1,0 +1,29 @@
+# Check formatting of markdown files
+#
+# beamFoam READMEs are published on www.solids4foam.com, where they are
+# consumed as a git submodule and linted by that site's own CI. This workflow
+# catches the same problems here, at the point they are introduced.
+#
+# Note: deliberately no .markdownlint.json in this repository. markdownlint-cli2
+# discovers a repository-level config from the linted file's directory upwards,
+# so a config here would be picked up when the website lints its submodules and
+# would silently override the website's own configuration.
+name: Markdown Lint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  markdown-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run MarkdownLint
+        run: npx markdownlint-cli2 "**/*.md"
