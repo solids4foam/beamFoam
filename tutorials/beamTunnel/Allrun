@@ -2,6 +2,13 @@
 cd "${0%/*}" || exit 1                               # Run from this directory
 . "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"       # Tutorial run functions
 
+# On macOS, make user-built OpenFOAM libraries visible to the dynamic loader.
+case "$WM_OPTIONS" in
+darwin*)
+    export DYLD_LIBRARY_PATH="$FOAM_USER_LIBBIN${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+    ;;
+esac
+
 # Beam-in-a-tunnel FSI tutorial (Zhang, Liu & Khoo 2012, sec. 6.4, case 1).
 # Two stages:
 #   1. beamInitialisation/beam_0  builds the beam finite-volume mesh and its

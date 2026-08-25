@@ -61,7 +61,8 @@ EOF
 # and it works regardless of the .so / .dylib naming on the platform.
 if command -v foamHasLibrary >/dev/null 2>&1
 then
-    if foamHasLibrary "$lib" >/dev/null 2>&1
+    if foamHasLibrary "$FOAM_USER_LIBBIN/$lib.dylib" >/dev/null 2>&1 \
+    || foamHasLibrary "$FOAM_USER_LIBBIN/$lib.so" >/dev/null 2>&1
     then
         exit 0
     fi
