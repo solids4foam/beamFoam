@@ -1,0 +1,4 @@
+# Beam initial/reference fields are staged in here at run time by ../../Allrun
+# (copied from beamInitialisation). Only the fluid templates U, p and
+# pointDisplacement are version controlled.
+beam_0/

@@ -1,0 +1,49 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1                               # Run from this directory
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"       # Tutorial run functions
+
+# On macOS, make user-built OpenFOAM libraries visible to the dynamic loader.
+case "$WM_OPTIONS" in
+darwin*)
+    export DYLD_LIBRARY_PATH="$FOAM_USER_LIBBIN${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+    ;;
+esac
+
+# Beam-in-a-tunnel FSI tutorial (Zhang, Liu & Khoo 2012, sec. 6.4, case 1).
+# Two stages:
+#   1. beamInitialisation/beam_0  builds the beam finite-volume mesh and its
+#      reference configuration (a standalone, fluid-free step).
+#   2. beamTunnel/beamTunnel      solves the coupled fluid + beam problem, using
+#      the beam mesh/fields produced in stage 1.
+
+#------------------------------------------------------------------------------
+# Prerequisite: this case needs the moorFV library (not beamFoam alone). Fail
+# early with install instructions if it is not present. See ./checkMoorFV.
+#------------------------------------------------------------------------------
+./checkMoorFV || exit 1
+
+#------------------------------------------------------------------------------
+# Stage 1: initialise the beam
+#------------------------------------------------------------------------------
+echo "Stage 1: initialising the beam (beamInitialisation/beam_0)"
+( cd beamInitialisation/beam_0 && ./Allrun ) > log.beamInitialisation 2>&1
+
+#------------------------------------------------------------------------------
+# Stage 2: assemble the beam into the coupled case, then run it
+#------------------------------------------------------------------------------
+echo "Stage 2a: staging the beam mesh and fields into beamTunnel/beamTunnel"
+
+# Beam mesh + dictionaries -> constant/beam_0
+rm -rf beamTunnel/constant/beam_0
+cp -r  beamInitialisation/beam_0/constant beamTunnel/constant/beam_0
+
+# Beam initial/reference fields -> 0_orig/beam_0 (restored to 0/beam_0 at run
+# time). 0_orig/beam_0 is git-ignored; only the fluid templates in 0_orig are
+# version controlled.
+rm -rf beamTunnel/0_orig/beam_0
+cp -r  beamInitialisation/beam_0/0 beamTunnel/0_orig/beam_0
+
+echo "Stage 2b: running the coupled FSI case (beamTunnel/beamTunnel)"
+( cd beamTunnel && ./Allrun )
+
+#------------------------------------------------------------------------------

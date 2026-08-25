@@ -218,6 +218,11 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
     // Create Eigen sparse matrix and set coeffs
     Eigen::SparseMatrix<scalar> A; // initialized in convertFoamMatrixToEigenMatrix funtion
     convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A);
+    if (A.rows() == 0)
+    {
+        //    Pout << "No cells on this rank (" << Pstream::myProcNo() << "), skipping solver." << endl;
+        return 0.0;
+    }
     // Create Eigen source and solution vector from foam vectors
     //Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
     //Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;

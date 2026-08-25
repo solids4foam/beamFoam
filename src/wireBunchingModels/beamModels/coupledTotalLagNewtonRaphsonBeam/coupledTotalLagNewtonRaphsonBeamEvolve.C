@@ -37,6 +37,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "samplingFluid.H"
 #include "IOmanip.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -105,6 +106,16 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     scalar currentResidualNorm = GREAT;
     scalar deltaXNorm = GREAT;
     scalar XNorm = GREAT;
+
+    // Let momentum contributions (e.g. almDrag) do any once-per-evolve work
+    // such as external fluid sampling.  The result is frozen for the
+    // duration of the inner NR loop below to avoid the 2-cycle that arose
+    // when sampling was repeated each NR iteration and the sample point
+    // drifted across fluid cell boundaries.
+    forAll(momentumContribPtr_, i)
+    {
+        momentumContribPtr_[i].preEvolve(*this);
+    }
 
     iOuterCorr() = 0;
     do
@@ -200,13 +211,24 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Add self-weight of the beam
             forAll(source, cellI)
             {
-                const label bI = whichBeam(globalCellIndex(cellI));
-                const scalar beamWeight = rho(bI).value()*L()[cellI]*A(bI).value();
+                // Beam index from the local cellZone: parallel-safe, unlike
+                // globalCellIndex() whose localToGlobalCellAddressing_ is
+                // never populated (segfaults in parallel runs)
+                label bI = mesh().cellZones().whichZone(cellI);
+                if (bI < 0)
+                {
+                    bI = 0;
+                }
+                // Effective density accounts for buoyancy when beam is submerged.
+                // TODO: use rhoFluid(bI) if beams can be in different fluids.
+                const scalar rhoEff = rho(bI).value() - rhoFluid().value();
+                const scalar beamWeight = rhoEff*L()[cellI]*A(bI).value();
 
                 source[cellI](0,0) -= beamWeight*g().component(0).value();
                 source[cellI](1,0) -= beamWeight*g().component(1).value();
                 source[cellI](2,0) -= beamWeight*g().component(2).value();
             }
+
             // Add point forces
             forAll(pointForces(), pfI)
             {
@@ -570,8 +592,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     d += diagCoeff;
                 }
             }
-
-
             // Block coupled solver call
 
             // Create Eigen linear solver
@@ -586,6 +606,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Solve the linear system
             // currentResidualNorm is the imbalance vector
             currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+            reduce(currentResidualNorm, sumOp<scalar>());
 
             if (iOuterCorr() == 0)
             {
@@ -624,6 +645,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                     sum(magSqr(W_.primitiveFieldRef()))
                   + sum(magSqr(Theta_.primitiveFieldRef()))
                 );
+            reduce(deltaXNorm, sumOp<scalar>());
+            reduce(XNorm, sumOp<scalar>());
 
             if (iOuterCorr() == 0)
             {
@@ -774,6 +797,9 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
     // Update displacement increment (for contact calculation of pulleys)
     WIncrement_ = W_ - W_.oldTime();
 
+    // Store U for optional field relaxation after updating it below
+    U_.storePrevIter();
+
     // Update mean line linear velocity and acceleration fields
     if (d2dt2SchemeName_ == "steadyState")
     {
@@ -800,6 +826,9 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
             << "Valid choices are steadyState, Euler, Newmark"
             << abort(FatalError);
     }
+
+    // Apply U relaxation if configured in fvSolution
+    U_.relax();
 
     const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
@@ -942,7 +971,6 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     // Precompute tolerances
     const scalar relativeResidualTol = rtol*initialResidualNorm;
     const scalar stepTolerance = stol*xNorm;
-
     // Log residuals if enabled
     if (writeResidualFrequency > 0)
     {

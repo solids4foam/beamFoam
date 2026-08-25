@@ -1,0 +1,92 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  dev
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      motionProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh       dynamicMotionSolverFvMesh;
+
+motionSolverLibs    ("libsixDoFRigidBodyBeamMotion");
+
+motionSolver        sixDoFRigidBodyBeamMotion;
+
+sixDoFRigidBodyBeamMotionCoeffs
+{
+    patches         (lowerWall);
+    innerDistance   0.01;
+    outerDistance   0.05;//0.5 worked up to 5.2s//0.35;
+    mass 1;
+    centreOfMass    (0.0618 0.0094 -0.006);
+    rho rhoInf;
+    rhoInf 1000;
+
+
+    // Cuboid moment of inertia about the centre of mass
+    momentOfInertia (0 0 0);
+    report          on;
+
+    accelerationRelaxation 0.7; // this
+    //accelerationDamping 0.9;
+
+    solver
+    {
+        type FvBeamNewmark;
+    }
+
+    constraints
+    {
+      fixedOrientation
+        {
+          sixDoFRigidBodyBeamMotionConstraint   orientation;
+          //axis                              (0.0618 0.0094 -0.006);
+        }
+      fixedPoint
+        {
+          sixDoFRigidBodyBeamMotionConstraint point;
+          centreOfRotation (0 0 0);
+        }
+	//      //translation contrained on a plane around CoR
+    //     fixedPlane
+    //     {
+    //         sixDoFRigidBodyBeamMotionConstraint plane;
+    //         normal (0 1 0);
+    //     }
+
+	// // rotation constraint
+    //     fixedAxis
+    //     {
+    //         sixDoFRigidBodyBeamMotionConstraint axis;
+    //         axis (0 1 0);
+    //     }
+    }
+
+	restraints
+	{
+		beam1
+	{
+		sixDoFRigidBodyBeamMotionRestraint finiteVolumeBeam;
+
+		attachmentPatch	left;
+
+		anchorPatch right;
+
+		beamRegion 	"beam_0";
+
+		refAttachmentPt (0.01 0 0.0);
+	}
+
+//
+}
+}
+
+// ************************************************************************* //

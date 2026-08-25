@@ -172,10 +172,11 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     // user specified direction
 
     // Create spline using current beam points and tangents data
+    // The 0 argument selects the 0th beam (beam index bI = 0).
     HermiteSpline spline
     (
-        bm.currentBeamPoints(),
-        bm.currentBeamTangents()
+        bm.currentBeamPoints(0),
+        bm.currentBeamTangents(0)
     );
 
     // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
