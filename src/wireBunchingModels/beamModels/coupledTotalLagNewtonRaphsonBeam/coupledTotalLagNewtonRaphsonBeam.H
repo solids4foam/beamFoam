@@ -42,6 +42,7 @@ SourceFiles
     coupledTotalLagNewtonRaphsonBeamEvolve.C
     coupledTotalLagNewtonRaphsonBeamMatrix.C
     coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+    coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -54,6 +55,7 @@ SourceFiles
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
 #include "BlockEigenSolverOF.H"
+#include "rigidBodyEnd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -232,6 +234,19 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Flag indicating whether the last rigid-body solution is valid
         bool rigidBodySolutionValid_;
 
+        //- Rigid body owned by beamFoam, attached to the end patch
+        autoPtr<rigidBodyEnd> rigidBodyEndPtr_;
+
+        //- Coupling between the beam and rigidBodyEnd:
+        //  none, partitioned or monolithic
+        word rigidBodyCoupling_;
+
+        //- Time index at which the Newmark predictor was last applied.
+        //  The predictor must run once per time step: U and Accl are then
+        //  updated incrementally with DW, so re-applying it on a repeated
+        //  solve would make them inconsistent with W
+        label newmarkPredictorTimeIndex_;
+
     //- Fields related to time integration schemes
 
         //- ddtScheme name from fvSchemes dictionary
@@ -348,6 +363,18 @@ class coupledTotalLagNewtonRaphsonBeam
             const label writeResidualFrequency,
             const bool writeConvergedReason = true
         );
+
+        //- Beam Newton solve for the current time step
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
+        scalar evolveBeam();
+
+        //- Read rigidBodyCoupling and construct rigidBodyEnd if present
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        void readRigidBodyEnd();
+
+        //- Evolve the beam and rigidBodyEnd with partitioned coupling
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        scalar evolvePartitionedRigidBodyEnd();
 
         //- Apply line contact force
         // void applyLineContact(multibeamFvBlockMatrix& eqn);

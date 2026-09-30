@@ -663,6 +663,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
   blockEigenKinematicCouplingStaged_ = false;
   blockEigenStagedAttachmentDisplacement_ = vector::zero;
   rigidBodySolutionValid_ = false;
+  newmarkPredictorTimeIndex_ = -1;
 
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations
@@ -1112,6 +1113,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         Info<< "beamMomentumContributionProperties file not found: skipping"
             << endl;
     }
+
+    readRigidBodyEnd();
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

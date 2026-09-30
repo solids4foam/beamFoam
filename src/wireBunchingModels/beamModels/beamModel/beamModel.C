@@ -365,20 +365,8 @@ Foam::beamModel::beamModel
             << g()
             << endl;
 
-        if (!beamProperties().found("rho"))
-        {
-            FatalErrorInFunction
-                << "rho field not set in beamProperties for"
-                << " calculating the gravity body force"
-                << abort(FatalError);
-        }
-        else if (mag(rho().value()) < SMALL)
-        {
-            WarningInFunction
-                << "rho field in constant/beamProperties = "
-                << "zero --> gravitational body force = 0"
-                << nl << endl;
-        }
+        // The beam density is checked after the per-beam properties are
+        // read below: rho_ is not filled yet at this point
 
         // To check whether density of fluid is specified to calculate
         // buoyant body force
@@ -556,6 +544,14 @@ Foam::beamModel::beamModel
                 << endl;
         }
 
+    }
+
+    if (mag(g().value()) > SMALL && max(rho_) < SMALL)
+    {
+        WarningInFunction
+            << "g is set but rho = 0 for all beams "
+            << "--> gravitational body force = 0"
+            << nl << endl;
     }
 
     // Write beam cross-section properties

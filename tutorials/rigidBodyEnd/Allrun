@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run the rigidBodyEnd test cases and compare them with analytic results
+cd "${0%/*}" || exit 1
+
+for case in hangingMass axialOscillation pendulum
+do
+    echo "Running $case"
+    (cd "$case" && ./Allclean > /dev/null 2>&1 && ./Allrun > Allrun.out 2>&1)
+done
+
+python3 checkRigidBodyEnd.py

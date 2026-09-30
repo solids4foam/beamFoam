@@ -53,7 +53,7 @@ namespace beamModels
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-scalar coupledTotalLagNewtonRaphsonBeam::evolve()
+scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 {
     beamModel::evolve();
 
@@ -145,8 +145,15 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
             // SB: Initial accleration and velocity values at 0th iteration
             // Valid for Newmark-beta integration scheme
-            if (d2dt2SchemeName_ == "Newmark" && iOuterCorr() == 0)
+            if
+            (
+                d2dt2SchemeName_ == "Newmark"
+             && iOuterCorr() == 0
+             && runTime().timeIndex() != newmarkPredictorTimeIndex_
+            )
             {
+                newmarkPredictorTimeIndex_ = runTime().timeIndex();
+
                 // if (iOuterCorr() == 0)
                 // {
                 Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
