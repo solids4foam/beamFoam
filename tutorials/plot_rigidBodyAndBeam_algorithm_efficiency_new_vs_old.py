@@ -55,6 +55,8 @@ print("Original framework log:", OLD_LOG_FILE)
 T_START = None
 T_END = None
 
+NEWTON_INTERVAL_WIDTH = 0.01
+
 SAVE_FIGURES = False
 FIGURE_DIR = os.path.join(SCRIPT_DIR, "algorithm_efficiency_plots")
 
@@ -519,6 +521,56 @@ def combined_values(key):
     return np.concatenate((old_data[key], new_data[key]))
 
 
+def interval_width_filename_tag():
+    return f"{NEWTON_INTERVAL_WIDTH:g}".replace(".", "p")
+
+
+def newton_interval_bin_edges():
+    time_max = max(np.max(old_data["time"]), np.max(new_data["time"]))
+
+    if T_START is None:
+        start = 0.0
+    else:
+        start = T_START
+
+    if T_END is None:
+        end = time_max
+    else:
+        end = T_END
+
+    n_bins = max(
+        1,
+        int(np.ceil((end - start)/NEWTON_INTERVAL_WIDTH - 1.0e-12)),
+    )
+
+    return start + NEWTON_INTERVAL_WIDTH*np.arange(n_bins + 1)
+
+
+def sum_newton_iterations_by_interval(case_data, bin_edges):
+    values = case_data["newton_iterations"]
+    finite = np.isfinite(case_data["time"]) & np.isfinite(values)
+    totals = np.zeros(bin_edges.size - 1, dtype=float)
+
+    if not np.any(finite):
+        return totals
+
+    # Each Newton count is the cost of reaching its logged Time value, so
+    # intervals are left-open and right-closed: (0.00, 0.01], (0.01, 0.02].
+    bin_numbers = (
+        np.ceil(
+            (case_data["time"][finite] - bin_edges[0])
+            / NEWTON_INTERVAL_WIDTH
+            - 1.0e-10
+        ).astype(int)
+        - 1
+    )
+    in_range = (bin_numbers >= 0) & (bin_numbers < totals.size)
+
+    np.add.at(totals, bin_numbers[in_range], values[finite][in_range])
+
+    return totals
+
+
 def plot_line_comparison(
     key,
     ylabel,
@@ -584,6 +636,7 @@ def plot_newton_iterations():
 
     ax.set_xlabel("Simulation time (s)")
     ax.set_ylabel("Newton iterations per time step")
+    ax.set_ylim(0,6)
     finish_plot(
         ax,
         combined_values("newton_iterations"),
@@ -592,6 +645,115 @@ def plot_newton_iterations():
     )
     plt.tight_layout()
     save_current_figure("newton_iterations_per_time_step_new_vs_old.png")
+
+
+def plot_newton_iterations_by_time_step_number():
+    old_step_numbers = np.arange(1, old_data["time"].size + 1)
+    new_step_numbers = np.arange(1, new_data["time"].size + 1)
+
+    plt.figure(figsize=(8, 4))
+    ax = plt.gca()
+
+    ax.plot(
+        old_step_numbers,
+        old_data["newton_iterations"],
+        "bo-",
+        linewidth=1.3,
+        markersize=3.0,
+        label=OLD_LABEL,
+    )
+    ax.plot(
+        new_step_numbers,
+        new_data["newton_iterations"],
+        "rs--",
+        linewidth=1.2,
+        markersize=3.0,
+        label=NEW_LABEL,
+    )
+
+    ax.set_xlabel("Time-step number")
+    ax.set_ylabel("Newton iterations per time step")
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+    finish_plot(
+        ax,
+        combined_values("newton_iterations"),
+        integer_y=True,
+        bottom=0,
+    )
+    plt.tight_layout()
+    save_current_figure(
+        "newton_iterations_per_time_step_number_new_vs_old.png"
+    )
+
+
+def plot_newton_iterations_by_fixed_interval():
+    bin_edges = newton_interval_bin_edges()
+    interval_end_times = bin_edges[1:]
+    old_totals = sum_newton_iterations_by_interval(old_data, bin_edges)
+    new_totals = sum_newton_iterations_by_interval(new_data, bin_edges)
+
+    plt.figure(figsize=(8, 4))
+    ax = plt.gca()
+
+    ax.plot(
+        interval_end_times,
+        old_totals,
+        "bo-",
+        linewidth=1.3,
+        markersize=3.0,
+        label=OLD_LABEL,
+    )
+    ax.plot(
+        interval_end_times,
+        new_totals,
+        "rs--",
+        linewidth=1.2,
+        markersize=3.0,
+        label=NEW_LABEL,
+    )
+
+    ax.set_xlabel("Simulation time at interval end (s)")
+    ax.set_ylabel(
+        f"Newton iterations to advance {NEWTON_INTERVAL_WIDTH:g} s"
+    )
+    finish_plot(
+        ax,
+        np.concatenate((old_totals, new_totals)),
+        integer_y=True,
+        bottom=0,
+    )
+    plt.tight_layout()
+    save_current_figure(
+        "newton_iterations_per_"
+        f"{interval_width_filename_tag()}s_advancement_new_vs_old.png"
+    )
+
+
+def print_cumulative_newton_plot_points():
+    print("")
+    print("Cumulative Newton iteration plot points")
+    print("case,time,cumulative_newton_iterations")
+
+    for label, case_data in (
+        (OLD_LABEL, old_data),
+        (NEW_LABEL, new_data),
+    ):
+        for time_value, value in zip(
+            case_data["time"],
+            case_data["cumulative_newton_iterations"],
+        ):
+            print(f"{label},{time_value:.12g},{value:.12g}")
+
+
+def plot_cumulative_newton_iterations():
+   # print_cumulative_newton_plot_points()
+    plot_line_comparison(
+        "cumulative_newton_iterations",
+        "Cumulative Newton iterations",
+        "cumulative_newton_iterations_new_vs_old.png",
+        integer_y=True,
+        bottom=0,
+    )
 
 
 def plot_total_time_bars():
@@ -709,13 +871,9 @@ def plot_linear_solver_field_breakdown(case_data, label, filename):
 
 
 plot_newton_iterations()
-plot_line_comparison(
-    "cumulative_newton_iterations",
-    "Cumulative Newton iterations",
-    "cumulative_newton_iterations_new_vs_old.png",
-    integer_y=True,
-    bottom=0,
-)
+plot_newton_iterations_by_time_step_number()
+plot_newton_iterations_by_fixed_interval()
+plot_cumulative_newton_iterations()
 plot_runtime_subplots()
 plot_cumulative_runtime_subplots()
 plot_line_comparison(
