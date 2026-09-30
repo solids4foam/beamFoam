@@ -22,8 +22,8 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_fullTime")
-OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_compareSixDoF_Eigen")
+NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_monolithic")
+OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_loop")
 
 
 def find_one(pattern, description):
