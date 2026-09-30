@@ -244,6 +244,11 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Index of the patch rigidBodyEnd is attached to
         label rigidBodyEndPatchIndex_;
 
+        //- Monolithic rigidBodyEnd Newton iterate: displacement and step
+        //  rotation vector
+        vector rigidBodyEndX_;
+        vector rigidBodyEndTheta_;
+
         //- Time index at which the Newmark predictor was last applied.
         //  The predictor must run once per time step: U and Accl are then
         //  updated incrementally with DW, so re-applying it on a repeated
@@ -391,13 +396,17 @@ class coupledTotalLagNewtonRaphsonBeam
              && rigidBodyCoupling_ == "monolithic";
         }
 
-        //- Current body displacement: attachment W minus its offset
-        vector rigidBodyEndDisplacement() const;
+        //- Attachment W for a body displacement and step rotation
+        vector rigidBodyEndAttachmentW
+        (
+            const vector& x,
+            const vector& theta
+        ) const;
 
-        //- Set the attachment W, and its previous iterate, from a body
-        //  displacement, so the boundary increment in the beam equations
-        //  is zero and the body column carries it instead
-        void setRigidBodyEndDisplacement(const vector& x);
+        //- Set the body iterate, and the attachment W and its previous
+        //  iterate from it, so the boundary increment in the beam equations
+        //  is zero and the body columns carry it instead
+        void setRigidBodyEndIterate(const vector& x, const vector& theta);
 
         //- Monolithic coupling blocks at the current iterate. Needs the
         //  equation coefficients to be up to date

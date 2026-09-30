@@ -665,6 +665,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
   rigidBodySolutionValid_ = false;
   newmarkPredictorTimeIndex_ = -1;
   rigidBodyEndPatchIndex_ = -1;
+  rigidBodyEndX_ = vector::zero;
+  rigidBodyEndTheta_ = vector::zero;
 
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations

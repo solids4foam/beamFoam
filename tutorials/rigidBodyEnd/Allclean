@@ -1,7 +1,7 @@
 #!/bin/sh
 cd "${0%/*}" || exit 1
 
-for case in hangingMass axialOscillation pendulum
+for case in hangingMass axialOscillation pendulum hangingBody freeRotation compoundPendulum
 do
     (cd "$case" && ./Allclean > /dev/null 2>&1 && rm -f Allrun.out)
 done

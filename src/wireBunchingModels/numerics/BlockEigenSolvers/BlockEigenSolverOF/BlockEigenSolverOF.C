@@ -392,6 +392,76 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
                         monolithicCoupling_.bodyThetaCoeff(rowI, colI)
                     )
                 );
+
+                if (!monolithicCoupling_.rotationActive)
+                {
+                    continue;
+                }
+
+                const RigidBodyMonolithicCoupling& c = monolithicCoupling_;
+
+                // Body rotation columns of the beam rows and the body
+                // translation rows
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI, rbRow + 3 + colI,
+                        c.beamWRowRotCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + 3 + rowI, rbRow + 3 + colI,
+                        c.beamThetaRowRotCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI, rbRow + 3 + colI,
+                        c.bodyTransRotCoeff(rowI, colI)
+                    )
+                );
+
+                // Body rotation rows; the identity entered above is
+                // subtracted on the diagonal
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, rbRow + colI,
+                        c.bodyRotTransCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, rbRow + 3 + colI,
+                        c.bodyRotCoeff(rowI, colI)
+                      - (rowI == colI ? 1.0 : 0.0)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, beamRow + colI,
+                        c.bodyRotWCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, beamRow + 3 + colI,
+                        c.bodyRotThetaCoeff(rowI, colI)
+                    )
+                );
             }
         }
     }
@@ -784,7 +854,10 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         for (label i = 0; i < 3; ++i)
         {
             b(rigidStart + i) = monolithicCoupling_.bodySource[i];
-            b(rigidStart + 3 + i) = 0;
+            b(rigidStart + 3 + i) =
+                monolithicCoupling_.rotationActive
+              ? monolithicCoupling_.bodyRotSource[i]
+              : 0;
         }
     }
 

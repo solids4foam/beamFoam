@@ -168,6 +168,10 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
 
     rigidBodyEndPatchIndex_ = patchI;
     rigidBodyEndPtr_().setAttachmentOffset(W_.boundaryField()[patchI][0]);
+    rigidBodyEndPtr_().setAttachmentPoint
+    (
+        mesh().Cf().boundaryField()[patchI][0] + W_.boundaryField()[patchI][0]
+    );
 
     Info<< "rigidBodyCoupling " << rigidBodyCoupling_ << endl;
 }
@@ -204,9 +208,13 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
 
     const label patchI = rigidBodyEndPatchIndex_;
 
+    // Length that converts a rotation change to a displacement change
+    const scalar armLength = mag(body.arm(vector::zero));
+
     // Coupling starts from the beam force of the last accepted state
     vector beamForce = body.beamForce();
     vector x = body.displacement();
+    vector theta = vector::zero;
 
     scalar initialResidual = 0;
     label nBeamSolves = 0;
@@ -214,21 +222,27 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
     for (label iter = 1; iter <= body.nCouplingIterations(); ++iter)
     {
         const vector xNewmark = body.newmarkDisplacement(beamForce);
+        const vector thetaNewmark = body.newmarkRotation(beamForce, theta);
 
-        // Change relative to the larger of the step and total displacement,
-        // so the test still works when the body is at rest
+        // Change relative to the larger of the step and total motion, so the
+        // test still works when the body is at rest
         const scalar change =
-            mag(xNewmark - x)
+            (mag(xNewmark - x) + armLength*mag(thetaNewmark - theta))
            /max
             (
-                max(mag(xNewmark - body.oldDisplacement()), mag(xNewmark)),
+                max
+                (
+                    mag(xNewmark - body.oldDisplacement())
+                  + armLength*mag(thetaNewmark),
+                    mag(xNewmark)
+                ),
                 VSMALL
             );
 
         if (iter > 1)
         {
             Info<< "rigidBodyEnd coupling iteration " << iter - 1
-                << ": relative displacement change " << change << endl;
+                << ": relative change " << change << endl;
 
             if (change < body.couplingTolerance())
             {
@@ -236,13 +250,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
             }
         }
 
-        x =
-            iter > 1
-          ? body.couplingRelaxation()*xNewmark
-          + (1 - body.couplingRelaxation())*x
-          : xNewmark;
+        const scalar w = iter > 1 ? body.couplingRelaxation() : 1;
+        x = w*xNewmark + (1 - w)*x;
+        theta = w*thetaNewmark + (1 - w)*theta;
 
-        W_.boundaryFieldRef()[patchI][0] = x + body.attachmentOffset();
+        W_.boundaryFieldRef()[patchI][0] = rigidBodyEndAttachmentW(x, theta);
 
         const scalar residual = evolveBeam();
 
@@ -257,11 +269,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
         beamForce = -Q_.boundaryField()[patchI][0];
     }
 
-    body.accept(x, beamForce, nBeamSolves);
+    body.accept(x, theta, beamForce, nBeamSolves);
     body.write();
 
     Info<< "rigidBodyEnd: displacement " << body.displacement()
         << ", velocity " << body.velocity()
+        << ", angular velocity " << body.angularVelocity()
         << ", beam force " << body.beamForce()
         << ", beam solves " << nBeamSolves << endl;
 
@@ -275,15 +288,16 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
 
     body.newTimeStep();
 
-    // Start from the last accepted displacement; the Newton iterations of
+    // Start from the last accepted state; the Newton iterations of
     // evolveBeam() then update the body and the beam together
-    setRigidBodyEndDisplacement(body.displacement());
+    setRigidBodyEndIterate(body.displacement(), vector::zero);
 
     const scalar residual = evolveBeam();
 
     body.accept
     (
-        rigidBodyEndDisplacement(),
+        rigidBodyEndX_,
+        rigidBodyEndTheta_,
         -Q_.boundaryField()[rigidBodyEndPatchIndex_][0],
         iOuterCorr()
     );
@@ -291,6 +305,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
 
     Info<< "rigidBodyEnd: displacement " << body.displacement()
         << ", velocity " << body.velocity()
+        << ", angular velocity " << body.angularVelocity()
         << ", beam force " << body.beamForce()
         << ", Newton iterations " << iOuterCorr() << endl;
 
@@ -298,23 +313,29 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
 }
 
 
-vector coupledTotalLagNewtonRaphsonBeam::rigidBodyEndDisplacement() const
+vector coupledTotalLagNewtonRaphsonBeam::rigidBodyEndAttachmentW
+(
+    const vector& x,
+    const vector& theta
+) const
 {
-    return
-        W_.boundaryField()[rigidBodyEndPatchIndex_][0]
-      - rigidBodyEndPtr_().attachmentOffset();
+    const rigidBodyEnd& body = rigidBodyEndPtr_();
+
+    return body.attachmentDisplacement(x, theta) + body.attachmentOffset();
 }
 
 
-void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndDisplacement
+void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndIterate
 (
-    const vector& x
+    const vector& x,
+    const vector& theta
 )
 {
-    const label patchI = rigidBodyEndPatchIndex_;
-    const vector Wb = x + rigidBodyEndPtr_().attachmentOffset();
+    rigidBodyEndX_ = x;
+    rigidBodyEndTheta_ = theta;
 
-    W_.boundaryFieldRef()[patchI][0] = Wb;
+    W_.boundaryFieldRef()[rigidBodyEndPatchIndex_][0] =
+        rigidBodyEndAttachmentW(x, theta);
 
     // W_ is otherwise unchanged since its last storePrevIter(), so only the
     // attachment value of the previous iterate needs to follow
@@ -362,7 +383,27 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
     assembleBoundaryConditions(dB, lB, uB, sB);
 
     const scalarSquareMatrix& dc = dB[cellI];
-    const vector attachmentForce(-sB[cellI](0, 0), -sB[cellI](1, 0), -sB[cellI](2, 0));
+    const vector Qb(-sB[cellI](0, 0), -sB[cellI](1, 0), -sB[cellI](2, 0));
+
+    const tensor dcW
+    (
+        dc(0, 0), dc(0, 1), dc(0, 2),
+        dc(1, 0), dc(1, 1), dc(1, 2),
+        dc(2, 0), dc(2, 1), dc(2, 2)
+    );
+    const tensor dcTheta
+    (
+        dc(0, 3), dc(0, 4), dc(0, 5),
+        dc(1, 3), dc(1, 4), dc(1, 5),
+        dc(2, 3), dc(2, 4), dc(2, 5)
+    );
+
+    // Arm from the centre of mass to the attachment point; a change dTheta
+    // of the step rotation vector turns the body by T dTheta and moves the
+    // attachment point by (T dTheta) x r = -Sr T dTheta
+    const vector r = body.arm(rigidBodyEndTheta_);
+    const tensor Sr = *r;
+    const tensor SrT = (Sr & body.rotationJacobian(rigidBodyEndTheta_));
 
     RigidBodyMonolithicCoupling coupling;
 
@@ -371,30 +412,37 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
     coupling.beamWRowCoeff = Kb;
     coupling.beamThetaRowCoeff = KbM;
 
-    // Body force balance, with the force from the beam on the body equal to
-    // minus the attachment face force:
-    //     R = m*(x - xPredictor)/(beta*deltaT^2) - externalForce + Qb
-    coupling.bodyCoeff = body.inertiaCoefficient()*tensor::I + Kb;
-    coupling.bodyWCoeff = tensor
-    (
-        dc(0, 0), dc(0, 1), dc(0, 2),
-        dc(1, 0), dc(1, 1), dc(1, 2),
-        dc(2, 0), dc(2, 1), dc(2, 2)
-    );
-    coupling.bodyThetaCoeff = tensor
-    (
-        dc(0, 3), dc(0, 4), dc(0, 5),
-        dc(1, 3), dc(1, 4), dc(1, 5),
-        dc(2, 3), dc(2, 4), dc(2, 5)
-    );
+    // Force balance, with the force from the beam on the body equal to minus
+    // the attachment face force:
+    //     R = m a + c v - externalForce - m g + Qb
+    coupling.bodyCoeff = body.translationalJacobian()*tensor::I + Kb;
+    coupling.bodyWCoeff = dcW;
+    coupling.bodyThetaCoeff = dcTheta;
 
-    const vector residual =
-        body.inertiaCoefficient()
-       *(rigidBodyEndDisplacement() - body.predictor())
-      - body.totalForce(vector::zero)
-      + attachmentForce;
+    coupling.bodySource = -body.translationalResidual(rigidBodyEndX_, -Qb);
 
-    coupling.bodySource = -residual;
+    if (body.rotation())
+    {
+        coupling.rotationActive = true;
+
+        coupling.beamWRowRotCoeff = -(Kb & SrT);
+        coupling.beamThetaRowRotCoeff = -(KbM & SrT);
+        coupling.bodyTransRotCoeff = -(Kb & SrT);
+
+        // Moment balance about the centre of mass:
+        //     J alpha + omega x (J omega) + cr omega - externalMoment
+        //   + r x Qb
+        coupling.bodyRotTransCoeff = (Sr & Kb);
+        coupling.bodyRotCoeff =
+            body.rotationalInertiaJacobian(rigidBodyEndTheta_)
+          + ((*Qb) & SrT)
+          - (Sr & Kb & SrT);
+        coupling.bodyRotWCoeff = (Sr & dcW);
+        coupling.bodyRotThetaCoeff = (Sr & dcTheta);
+
+        coupling.bodyRotSource =
+            -body.rotationalResidual(rigidBodyEndTheta_, -Qb);
+    }
 
     return coupling;
 }
@@ -402,13 +450,12 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
 
 void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
 {
+    const rigidBodyEnd& body = rigidBodyEndPtr_();
     const label patchI = rigidBodyEndPatchIndex_;
     const label cellI = mesh().boundary()[patchI].faceCells()[0];
-    const vector x0 = rigidBodyEndDisplacement();
+    const vector x0 = rigidBodyEndX_;
+    const vector theta0 = rigidBodyEndTheta_;
 
-    // Residual of the full system at a body displacement, with the beam
-    // unknowns fixed: beam rows from the complete assembly, body rows from
-    // the coupling blocks
     // Strain at the current W; normally updated in updateSolutionVariables()
     auto updateStrain = [&]()
     {
@@ -416,9 +463,18 @@ void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
         Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
     };
 
-    auto evaluate = [&](const vector& x, vector& beamW, vector& beamTheta)
+    // Residual of the full system at a body state, with the beam unknowns
+    // fixed: beam rows from the complete assembly, body rows from the
+    // coupling blocks
+    auto evaluate = [&]
+    (
+        const vector& x,
+        const vector& theta,
+        vector& beamW,
+        vector& beamTheta
+    )
     {
-        setRigidBodyEndDisplacement(x);
+        setRigidBodyEndIterate(x, theta);
         updateStrain();
         W_.boundaryFieldRef().updateCoeffs();
         Theta_.boundaryFieldRef().updateCoeffs();
@@ -450,55 +506,95 @@ void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
     };
 
     vector beamW0, beamTheta0;
-    const RigidBodyMonolithicCoupling c0 = evaluate(x0, beamW0, beamTheta0);
+    const RigidBodyMonolithicCoupling c0 =
+        evaluate(x0, theta0, beamW0, beamTheta0);
 
-    const scalar eps =
+    const scalar epsX =
         1e-6*max(mag(x0), 1e-3*mag(mesh().bounds().span()));
+    const scalar epsTheta = 1e-7;
 
-    Info<< "rigidBodyEnd Jacobian check (eps " << eps << "): relative "
-        << "difference between assembled and finite-difference columns "
-        << "(columns below 1e-7 of the body column count as zero)"
-        << endl;
+    Info<< "rigidBodyEnd Jacobian check (eps " << epsX << " m, " << epsTheta
+        << " rad): relative difference between assembled and "
+        << "finite-difference columns (entries below 1e-5 of the largest "
+        << "body entry in the column count as zero)" << endl;
 
-    for (direction i = 0; i < 3; ++i)
+    const label nColumns = body.rotation() ? 6 : 3;
+
+    for (label col = 0; col < nColumns; ++col)
     {
+        const bool rotationColumn = col >= 3;
+        const direction i = col % 3;
+        const scalar eps = rotationColumn ? epsTheta : epsX;
+
         vector dx = vector::zero;
-        dx[i] = eps;
+        vector dTheta = vector::zero;
+        (rotationColumn ? dTheta : dx)[i] = eps;
 
         vector beamW1, beamTheta1;
         const RigidBodyMonolithicCoupling c1 =
-            evaluate(x0 + dx, beamW1, beamTheta1);
+            evaluate(x0 + dx, theta0 + dTheta, beamW1, beamTheta1);
 
         // Rows are A*dU = source = -residual, so a column of A is
-        // -d(source)/dx
+        // -d(source)/d(unknown)
         const vector fdBeamW = -(beamW1 - beamW0)/eps;
         const vector fdBeamTheta = -(beamTheta1 - beamTheta0)/eps;
         const vector fdBody = -(c1.bodySource - c0.bodySource)/eps;
+        const vector fdBodyRot = -(c1.bodyRotSource - c0.bodyRotSource)/eps;
 
-        const vector aBeamW(c0.beamWRowCoeff.col(i));
-        const vector aBeamTheta(c0.beamThetaRowCoeff.col(i));
-        const vector aBody(c0.bodyCoeff.col(i));
+        const vector aBeamW
+        (
+            rotationColumn
+          ? c0.beamWRowRotCoeff.col(i)
+          : c0.beamWRowCoeff.col(i)
+        );
+        const vector aBeamTheta
+        (
+            rotationColumn
+          ? c0.beamThetaRowRotCoeff.col(i)
+          : c0.beamThetaRowCoeff.col(i)
+        );
+        const vector aBody
+        (
+            rotationColumn
+          ? c0.bodyTransRotCoeff.col(i)
+          : c0.bodyCoeff.col(i)
+        );
+        const vector aBodyRot
+        (
+            rotationColumn
+          ? c0.bodyRotCoeff.col(i)
+          : c0.bodyRotTransCoeff.col(i)
+        );
 
-        // Columns much smaller than the body column count as zero
-        const scalar floor = 1e-7*mag(aBody);
+        // Entries much smaller than the body entries count as zero
+        const scalar floor = 1e-5*max(mag(aBody), mag(aBodyRot));
 
         auto relDiff = [floor](const vector& a, const vector& b)
         {
             return mag(a - b)/max(max(mag(a), mag(b)), max(floor, VSMALL));
         };
 
-        Info<< "    column " << label(i)
+        Info<< "    column " << col
+            << (rotationColumn ? " (rotation)" : " (translation)")
             << ": beam force rows " << relDiff(aBeamW, fdBeamW)
             << " (|col| " << mag(aBeamW) << ")"
             << ", beam moment rows " << relDiff(aBeamTheta, fdBeamTheta)
             << " (|col| " << mag(aBeamTheta) << ")"
-            << ", body rows " << relDiff(aBody, fdBody)
-            << " (|col| " << mag(aBody) << ")" << endl;
+            << ", body force rows " << relDiff(aBody, fdBody)
+            << " (|col| " << mag(aBody) << ")";
+
+        if (body.rotation())
+        {
+            Info<< ", body moment rows " << relDiff(aBodyRot, fdBodyRot)
+                << " (|col| " << mag(aBodyRot) << ")";
+        }
+
+        Info<< endl;
     }
 
     // Restore the unperturbed state; evolveBeam() recomputes the
     // coefficients before assembling
-    setRigidBodyEndDisplacement(x0);
+    setRigidBodyEndIterate(x0, theta0);
     updateStrain();
 }
 

@@ -119,13 +119,15 @@ struct RigidBodySolution
     {}
 };
 
-//- Monolithic coupling of a body's translation to the attachment cell of the
-//  beam. Rows and columns are Newton increments; the body rows are in force
-//  units. The body's rotation rows are left as identity with zero right-hand
-//  side.
+//- Monolithic coupling of a body to the attachment cell of the beam. Rows
+//  and columns are Newton increments: body translation (force rows) and,
+//  when rotation is active, body rotation (moment rows). Without rotation the
+//  body's rotation rows are identity with zero right-hand side.
 struct RigidBodyMonolithicCoupling
 {
     bool active;
+
+    bool rotationActive;
 
     //- Beam cell next to the attachment face
     label attachmentCell;
@@ -148,16 +150,43 @@ struct RigidBodyMonolithicCoupling
     //- Body translation right-hand side (minus the body residual)
     vector bodySource;
 
+    //- Beam force and moment rows of the attachment cell, body rotation
+    //  columns
+    tensor beamWRowRotCoeff;
+    tensor beamThetaRowRotCoeff;
+
+    //- Body translation rows, body rotation columns
+    tensor bodyTransRotCoeff;
+
+    //- Body rotation rows: translation, rotation, attachment cell
+    //  displacement and rotation columns
+    tensor bodyRotTransCoeff;
+    tensor bodyRotCoeff;
+    tensor bodyRotWCoeff;
+    tensor bodyRotThetaCoeff;
+
+    //- Body rotation right-hand side (minus the rotational residual)
+    vector bodyRotSource;
+
     RigidBodyMonolithicCoupling()
     :
         active(false),
+        rotationActive(false),
         attachmentCell(-1),
         beamWRowCoeff(tensor::zero),
         beamThetaRowCoeff(tensor::zero),
         bodyCoeff(tensor::zero),
         bodyWCoeff(tensor::zero),
         bodyThetaCoeff(tensor::zero),
-        bodySource(vector::zero)
+        bodySource(vector::zero),
+        beamWRowRotCoeff(tensor::zero),
+        beamThetaRowRotCoeff(tensor::zero),
+        bodyTransRotCoeff(tensor::zero),
+        bodyRotTransCoeff(tensor::zero),
+        bodyRotCoeff(tensor::zero),
+        bodyRotWCoeff(tensor::zero),
+        bodyRotThetaCoeff(tensor::zero),
+        bodyRotSource(vector::zero)
     {}
 };
 

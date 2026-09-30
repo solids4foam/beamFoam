@@ -274,7 +274,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                     checkRigidBodyEndJacobian();
                 }
 
-                setRigidBodyEndDisplacement(rigidBodyEndDisplacement());
+                setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_);
             }
 
             W_.boundaryFieldRef().updateCoeffs();
@@ -989,16 +989,30 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             }
 
             // Monolithic rigidBodyEnd: the solve returns the body
-            // displacement increment, which is also the attachment increment
-            vector rigidBodyEndIncrement = vector::zero;
+            // displacement and rotation increments; the attachment W
+            // follows from the updated body state
+            scalar rigidBodyEndIncrementSqr = 0;
 
             if (rigidBodyEndMonolithic())
             {
-                rigidBodyEndIncrement = rigidBodySolution.displacement;
+                const vector dx = rigidBodySolution.displacement;
+                const vector dTheta =
+                    rigidBodyEndPtr_().rotation()
+                  ? rigidBodySolution.rotationCorrection
+                  : vector::zero;
+
+                rigidBodyEndIncrementSqr = magSqr(dx) + magSqr(dTheta);
+
+                rigidBodyEndX_ += dx;
+                rigidBodyEndTheta_ += dTheta;
 
                 const label patchI = rigidBodyEndPatchIndex_;
-                DW_.boundaryFieldRef()[patchI][0] = rigidBodyEndIncrement;
-                W_.boundaryFieldRef()[patchI][0] += rigidBodyEndIncrement;
+                const vector WbNew =
+                    rigidBodyEndAttachmentW(rigidBodyEndX_, rigidBodyEndTheta_);
+
+                DW_.boundaryFieldRef()[patchI][0] =
+                    WbNew - W_.boundaryField()[patchI][0];
+                W_.boundaryFieldRef()[patchI][0] = WbNew;
             }
 
             // Update all the solution and output variables for
@@ -1007,7 +1021,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
             // Calculating norm of primary correction variables DW_ & DTheta_
             deltaXNorm =
-                sqrt(sum(magSqr(solVec)) + magSqr(rigidBodyEndIncrement));
+                sqrt(sum(magSqr(solVec)) + rigidBodyEndIncrementSqr);
 
             // Calculating the norm of W_ and Theta_
             XNorm =

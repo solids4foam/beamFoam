@@ -3,7 +3,7 @@
 # coupling, and compare them with analytic results and with each other
 cd "${0%/*}" || exit 1
 
-for case in hangingMass axialOscillation pendulum
+for case in hangingMass axialOscillation pendulum hangingBody freeRotation compoundPendulum
 do
     echo "Running $case (partitioned)"
     (cd "$case" && ./Allclean > /dev/null 2>&1 && ./Allrun > Allrun.out 2>&1)

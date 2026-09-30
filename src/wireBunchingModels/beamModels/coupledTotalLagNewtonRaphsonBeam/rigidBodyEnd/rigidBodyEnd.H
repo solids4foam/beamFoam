@@ -27,10 +27,16 @@ Class
 Description
     Rigid body pinned to the end patch of a beam, owned by beamFoam.
 
-    Holds the body mass, inertia and translational state, and advances the
-    state with the Newmark-beta method. The attachment point is the body's
-    centre of mass (point mass), so the body carries no torque; rotation is
-    added in a later phase.
+    Holds the body mass, inertia and state, and advances it with the
+    Newmark-beta method. The beam end is attached to the body at a pin, so
+    the beam passes a force, and a torque through the arm from the centre of
+    mass to the attachment point.
+
+    Rotation is modelled when a moment of inertia is given. The orientation
+    at the new time is exp(theta) & Q0, with theta the rotation vector of the
+    time step, integrated with the same Newmark parameters as translation:
+        J alpha + omega x (J omega) + cr omega = externalMoment + r x beamForce
+    Without a moment of inertia the body is a point mass at the attachment.
 
     The body is read from the "rigidBodyEnd" sub-dictionary of the beam model
     coefficients:
@@ -39,19 +45,27 @@ Description
         {
             patch               right;   // default: endPatchName
             mass                10;
-            momentOfInertia     (0 0 0); // stored, not used yet
+            momentOfInertia     (0 0 0); // principal, initial global axes;
+                                         // zero: no rotation
+            centreOfMass        (2 0 0); // default: attachment point
+            velocity            (0 0 0); // initial
+            angularVelocity     (0 0 0); // initial, global axes
             externalForce       (0 0 0); // constant applied force [N]
+            externalMoment      (0 0 0); // constant applied moment [N m]
+            linearDamping       0;       // viscous force -c v [N s/m]
+            angularDamping      0;       // viscous moment -c omega [N m s]
             newmarkBeta         0.25;
             newmarkGamma        0.5;
             nCouplingIterations 1;       // partitioned coupling iterations
-            couplingTolerance   1e-8;    // displacement change relative to
-                                         // max(step, total) displacement
+            couplingTolerance   1e-8;    // change relative to
+                                         // max(step, total) motion
             couplingRelaxation  1;       // fixed under-relaxation
             jacobianCheck       0;       // monolithic: finite-difference
                                          // check in the first N time steps
         }
 
-    Gravity acts on the body through the beam model's g.
+    Gravity acts on the body through the beam model's g, at the centre of
+    mass.
 
     Author
     Colm Mc Alister, UCD.
@@ -67,6 +81,7 @@ SourceFiles
 #include "Time.H"
 #include "dictionary.H"
 #include "diagTensor.H"
+#include "point.H"
 #include "OFstream.H"
 #include "autoPtr.H"
 
@@ -92,11 +107,27 @@ class rigidBodyEnd
         //- Body mass
         scalar mass_;
 
-        //- Principal moments of inertia (not used yet)
+        //- Principal moments of inertia, in the initial global axes
         diagTensor momentOfInertia_;
 
-        //- Constant applied force
+        //- True when the body rotates (non-zero moment of inertia)
+        bool rotation_;
+
+        //- Centre of mass, if given; otherwise the attachment point
+        bool centreOfMassGiven_;
+        point centreOfMass_;
+
+        //- Arm from the centre of mass to the attachment point, in the
+        //  initial configuration
+        vector arm0_;
+
+        //- Constant applied force and moment
         vector externalForce_;
+        vector externalMoment_;
+
+        //- Linear viscous damping of translation and rotation
+        scalar linearDamping_;
+        scalar angularDamping_;
 
         //- Gravitational acceleration
         vector gravity_;
@@ -123,8 +154,24 @@ class rigidBodyEnd
         vector v0_;
         vector a0_;
 
+        //- Orientation, angular velocity and acceleration at the new time
+        tensor Q_;
+        vector omega_;
+        vector alpha_;
+
+        //- Orientation, angular velocity and acceleration at the old time
+        tensor Q0_;
+        vector omega0_;
+        vector alpha0_;
+
+        //- Rotation vector of the current time step
+        vector theta_;
+
         //- Force from the beam on the body at the latest beam solution
         vector beamForce_;
+
+        //- Torque about the centre of mass from the beam force
+        vector beamTorque_;
 
         //- Beam end displacement W when the body displacement is zero
         vector attachmentOffset_;
@@ -143,6 +190,18 @@ class rigidBodyEnd
 
         //- Open the history file and write its header
         void makeHistoryFile();
+
+        //- Angular Newmark predictor, acceleration and velocity for a step
+        //  rotation vector
+        vector angularPredictor() const;
+        vector angularAcceleration(const vector& theta) const;
+        vector angularVelocity(const vector& theta) const;
+
+        //- Velocity at the new time for a displacement
+        vector velocityAt(const vector& x) const;
+
+        //- Moment of inertia in global axes at a step rotation
+        tensor inertia(const vector& theta) const;
 
 
 public:
@@ -207,6 +266,22 @@ public:
                 return beamForce_;
             }
 
+            bool rotation() const
+            {
+                return rotation_;
+            }
+
+            //- Rotation vector of the accepted time step
+            const vector& stepRotation() const
+            {
+                return theta_;
+            }
+
+            const vector& angularVelocity() const
+            {
+                return omega_;
+            }
+
             label nCouplingIterations() const
             {
                 return nCouplingIterations_;
@@ -242,6 +317,10 @@ public:
                 attachmentOffset_ = offset;
             }
 
+            //- Set the initial attachment point; gives the arm from the
+            //  centre of mass (which defaults to this point)
+            void setAttachmentPoint(const point& attachmentPoint);
+
 
         // Evolution
 
@@ -263,11 +342,64 @@ public:
             //  beyond the predictor
             scalar inertiaCoefficient() const;
 
-            //- Accept a displacement and the beam force it produced:
-            //  acceleration and velocity follow from the Newmark relations
+            //- Translational residual (force balance)
+            //      m a + c v - externalForce - m g - beamForce
+            vector translationalResidual
+            (
+                const vector& x,
+                const vector& beamForce
+            ) const;
+
+            //- Derivative of the translational residual's inertia and
+            //  damping terms with respect to x
+            scalar translationalJacobian() const;
+
+            //- Orientation at the new time for a step rotation vector
+            tensor orientation(const vector& theta) const;
+
+            //- Arm from the centre of mass to the attachment point
+            vector arm(const vector& theta) const;
+
+            //- Displacement of the attachment point
+            vector attachmentDisplacement
+            (
+                const vector& x,
+                const vector& theta
+            ) const;
+
+            //- Rotational residual (moment balance about the centre of mass)
+            //      J alpha + omega x (J omega) + cr omega - externalMoment
+            //    - arm x beamForce
+            vector rotationalResidual
+            (
+                const vector& theta,
+                const vector& beamForce
+            ) const;
+
+            //- Derivative of the rotational residual's inertia, gyroscopic
+            //  and damping terms with respect to theta
+            tensor rotationalInertiaJacobian(const vector& theta) const;
+
+            //- Left Jacobian of the rotation: a change dtheta of the step
+            //  rotation vector turns the body by the spatial rotation
+            //  vector rotationJacobian(theta) & dtheta
+            tensor rotationJacobian(const vector& theta) const;
+
+            //- Newmark step rotation for a given beam force, with the
+            //  inertia, arm and angular velocity from a previous estimate
+            vector newmarkRotation
+            (
+                const vector& beamForce,
+                const vector& thetaEstimate
+            ) const;
+
+            //- Accept a displacement, step rotation and the beam force they
+            //  produced: accelerations and velocities follow from the
+            //  Newmark relations
             void accept
             (
                 const vector& displacement,
+                const vector& theta,
                 const vector& beamForce,
                 const label nIterations
             );

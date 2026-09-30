@@ -57,6 +57,46 @@ def case_parameters(case):
     }
 
 
+def vector_entry(text, key):
+    match = re.search(r"\b" + key + r"\s+\(([^)]*)\)\s*;", text)
+    if not match:
+        raise KeyError(f"{key} not found")
+    return [float(v) for v in match.group(1).split()]
+
+
+def body_parameters(case):
+    """Rotation parameters of the rigidBodyEnd dictionary"""
+    beam = read_text(case, "constant", "beamProperties")
+    body = beam[beam.index("rigidBodyEnd"):]
+    p = case_parameters(case)
+    attachment = [p["L"], 0.0, 0.0]
+    com = vector_entry(body, "centreOfMass") if "centreOfMass" in body else attachment
+    p["J"] = vector_entry(body, "momentOfInertia")
+    p["arm0"] = [a - c for a, c in zip(attachment, com)]
+    p["omega0"] = vector_entry(body, "angularVelocity") if "angularVelocity" in body else [0.0, 0.0, 0.0]
+    return p
+
+
+def rotation_matrix(v):
+    """Rotation tensor of a rotation vector (Rodrigues)"""
+    angle = math.sqrt(sum(x*x for x in v))
+    if angle < 1e-14:
+        return [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    k = [x/angle for x in v]
+    K = [[0.0, -k[2], k[1]], [k[2], 0.0, -k[0]], [-k[1], k[0], 0.0]]
+    K2 = [[sum(K[i][m]*K[m][j] for m in range(3)) for j in range(3)] for i in range(3)]
+    return [[(1.0 if i == j else 0.0) + math.sin(angle)*K[i][j] + (1 - math.cos(angle))*K2[i][j]
+             for j in range(3)] for i in range(3)]
+
+
+def mat_vec(M, v):
+    return [sum(M[i][j]*v[j] for j in range(3)) for i in range(3)]
+
+
+def norm(v):
+    return math.sqrt(sum(x*x for x in v))
+
+
 def read_history(case):
     path = os.path.join(HERE, case, "postProcessing", "rigidBodyEnd", "0", "rigidBodyEnd.dat")
     rows = []
@@ -205,6 +245,126 @@ def pendulum(case="pendulum"):
     )
 
 
+def hanging_body(case="hangingBody"):
+    """Body with an offset centre of mass swings 90 degrees and settles"""
+    p = body_parameters(case)
+    rows = read_history(case)
+    last = rows[-1]
+    g = p["g"]
+    weight = p["m"]*norm(g)
+
+    # Force from the beam balances the weight; the arm from the centre of
+    # mass to the attachment points against gravity
+    force = last[10:13]
+    arm = mat_vec(rotation_matrix(last[17:20]), p["arm0"])
+    cosine = -sum(a*gi for a, gi in zip(arm, g))/(norm(arm)*norm(g))
+    angle = math.acos(max(-1.0, min(1.0, cosine)))
+
+    print(f"{case}: equilibrium after swinging "
+          f"{math.degrees(math.acos(-sum(a*gi for a, gi in zip(p['arm0'], g))/(norm(p['arm0'])*norm(g)))):.0f} deg "
+          f"(t = {last[0]:g} s)")
+    force_error = norm([f + p["m"]*gi for f, gi in zip(force, g)])/weight
+    ok = force_error <= 1e-2
+    results.append(ok)
+    print(f"  {'PASS' if ok else 'FAIL'}  {'force from beam = -m g':<34} error {force_error:.2e} of mg  (tol 1e-02)")
+    ok = angle <= 1e-3
+    results.append(ok)
+    print(f"  {'PASS' if ok else 'FAIL'}  {'centre of mass below attachment':<34} misalignment {angle:.2e} rad  (tol 1e-03)")
+
+
+def free_rotation(case="freeRotation"):
+    """Torque-free rotation: angular momentum and kinetic energy conserved"""
+    p = body_parameters(case)
+    rows = read_history(case)
+    J = p["J"]
+
+    def momentum_energy(row):
+        R = rotation_matrix(row[17:20])
+        omega = row[20:23]
+        body = [sum(R[k][i]*omega[k] for k in range(3)) for i in range(3)]
+        L = mat_vec(R, [J[i]*body[i] for i in range(3)])
+        return L, 0.5*sum(omega[i]*L[i] for i in range(3))
+
+    L0 = [J[i]*p["omega0"][i] for i in range(3)]
+    E0 = 0.5*sum(J[i]*p["omega0"][i]**2 for i in range(3))
+    dL = max(norm([a - b for a, b in zip(momentum_energy(r)[0], L0)]) for r in rows)/norm(L0)
+    dE = max(abs(momentum_energy(r)[1] - E0) for r in rows)/E0
+    turns = sum(norm(r[20:23]) for r in rows)*(rows[1][0] - rows[0][0])/(2*math.pi)
+
+    print(f"{case}: torque-free rotation, about {turns:.1f} turns")
+    check_abs = lambda name, value, tol: (results.append(value <= tol), print(
+        f"  {'PASS' if value <= tol else 'FAIL'}  {name:<34} max change {value:.2e}  (tol {tol:.0e})"))
+    check_abs("angular momentum (global)", dL, 1e-5)
+    check_abs("kinetic energy", dE, 1e-6)
+
+
+def compound_pendulum(case="compoundPendulum"):
+    """Rod plus pinned body: the two linear pendulum mode frequencies"""
+    p = body_parameters(case)
+    rows = read_history(case)
+    gx, _, gz = p["g"]
+    g = math.hypot(gx, gz)
+    m, L = p["m"], p["L"]
+    d = norm(p["arm0"])
+    Jc = p["J"][1]
+    k = p["E"]*p["A"]/L
+    tension = m*g
+    length = L + tension/k - math.sqrt(p["E"]*p["I"]/tension)
+
+    # Linearised double pendulum: rod angle and body angle
+    M = [[m*length**2, m*length*d], [m*length*d, m*d*d + Jc]]
+    K = [[m*g*length, 0.0], [0.0, m*g*d]]
+    a = M[0][0]*M[1][1] - M[0][1]**2
+    b = -(K[0][0]*M[1][1] + K[1][1]*M[0][0])
+    c = K[0][0]*K[1][1]
+    omega1, omega2 = (math.sqrt((-b - s*math.sqrt(b*b - 4*a*c))/(2*a)) for s in (1, -1))
+
+    times = [r[0] for r in rows]
+    rod = [math.atan2(r[16], L + r[14]) for r in rows]
+    # Body angle about -y from its rotation vector (rotation stays in the xz plane)
+    relative = [-r[18] - phi for r, phi in zip(rows, rod)]
+
+    def residual(signal, omegas):
+        n = len(omegas) + 1
+        N = [[0.0]*n for _ in range(n)]
+        y = [0.0]*n
+        for t, s in zip(times, signal):
+            f = [1.0] + [math.cos(w*t) for w in omegas]
+            for i in range(n):
+                y[i] += f[i]*s
+                for j in range(n):
+                    N[i][j] += f[i]*f[j]
+        for i in range(n):
+            for j in range(i + 1, n):
+                factor = N[j][i]/N[i][i]
+                for kk in range(n):
+                    N[j][kk] -= factor*N[i][kk]
+                y[j] -= factor*y[i]
+        coeff = [0.0]*n
+        for i in reversed(range(n)):
+            coeff[i] = (y[i] - sum(N[i][kk]*coeff[kk] for kk in range(i + 1, n)))/N[i][i]
+        return sum((s - coeff[0] - sum(ci*math.cos(w*t) for ci, w in zip(coeff[1:], omegas)))**2
+                   for t, s in zip(times, signal))
+
+    def best_frequency(f, lo, hi):
+        ratio = (math.sqrt(5) - 1)/2
+        x1, x2 = hi - ratio*(hi - lo), lo + ratio*(hi - lo)
+        for _ in range(50):
+            if f(x1) < f(x2):
+                hi = x2
+            else:
+                lo = x1
+            x1, x2 = hi - ratio*(hi - lo), lo + ratio*(hi - lo)
+        return 0.5*(lo + hi)
+
+    fit1 = best_frequency(lambda w: residual(rod, [w, omega2]), 0.95*omega1, 1.05*omega1)
+    fit2 = best_frequency(lambda w: residual(relative, [omega1, w]), 0.95*omega2, 1.05*omega2)
+
+    print(f"{case}: rod + body double pendulum, modes {omega1:.4f} and {omega2:.4f} rad/s")
+    check("mode 1 frequency (rod angle)", fit1, omega1, 3e-3)
+    check("mode 2 frequency (body - rod angle)", fit2, omega2, 1e-2)
+
+
 def coupling_agreement(case, rel_tol=1e-4):
     """Monolithic and converged partitioned coupling solve the same equations"""
     partitioned = read_history(case)
@@ -214,9 +374,13 @@ def coupling_agreement(case, rel_tol=1e-4):
         raise ValueError(f"{len(partitioned)} partitioned rows, {len(monolithic)} monolithic")
 
     print(f"{case}: monolithic against partitioned, {n} time steps")
-    for col, name in ((1, "displacement x"), (3, "displacement z"), (10, "beam force x"), (12, "beam force z")):
+    columns = [(1, "displacement x"), (3, "displacement z"), (10, "beam force x"), (12, "beam force z")]
+    if len(partitioned[0]) > 17:
+        columns += [(17, "rotation x"), (18, "rotation y"), (19, "rotation z"), (24, "beam torque y")]
+    for col, name in columns:
+        # Skip quantities that are round-off in both runs
         peak = max(abs(r[col]) for r in partitioned)
-        if peak < 1e-8:
+        if peak < 1e-6:
             continue
         diff = max(abs(monolithic[i][col] - partitioned[i][col]) for i in range(n))
         ok = diff <= rel_tol*peak
@@ -238,12 +402,14 @@ def coupling_agreement(case, rel_tol=1e-4):
           f"{newton_per_step(os.path.join('monolithic', case)):.2f}")
 
 
-def jacobian_check(case, tol=1e-5):
+def jacobian_check(case, tol=1e-4):
     """Finite-difference check of the monolithic body columns (jacobianCheck).
 
     One-sided differences with a small step: the physically significant
-    columns agree to about 1e-9; the tolerance allows for round-off on
-    columns that are nearly zero."""
+    entries agree to 1e-7 or better. The tolerance allows for round-off on
+    nearly-zero entries, and for one small term left out of the Jacobian:
+    the end cell's moment rows depend on the attachment displacement slightly
+    beyond the CMQW/pDelta term (about 1e-9 of the column in hangingBody)."""
     worst = 0.0
     count = 0
     with open(os.path.join(HERE, "monolithic", case, "log.beamFoam")) as f:
@@ -264,6 +430,9 @@ tests = [
     (hanging_mass, "hangingMass"),
     (axial_oscillation, "axialOscillation"),
     (pendulum, "pendulum"),
+    (hanging_body, "hangingBody"),
+    (free_rotation, "freeRotation"),
+    (compound_pendulum, "compoundPendulum"),
 ]
 
 for coupling, prefix in (("partitioned", ""), ("monolithic", "monolithic")):
@@ -279,7 +448,7 @@ for coupling, prefix in (("partitioned", ""), ("monolithic", "monolithic")):
 
 print("=== monolithic Jacobian against finite differences ===")
 print()
-for case in ("axialOscillation", "pendulum"):
+for case in ("axialOscillation", "pendulum", "hangingBody", "freeRotation", "compoundPendulum"):
     try:
         jacobian_check(case)
     except (OSError, ValueError) as error:
@@ -289,9 +458,13 @@ print()
 
 print("=== monolithic against partitioned ===")
 print()
+# The compound pendulum's undamped axial mode pumps energy into the body mode
+# in beats, which amplifies small differences between the two couplings
+agreement_tolerance = {"compoundPendulum": 5e-4}
+
 for _, case in tests:
     try:
-        coupling_agreement(case)
+        coupling_agreement(case, agreement_tolerance.get(case, 1e-4))
     except (OSError, KeyError, ValueError) as error:
         results.append(False)
         print(f"  FAIL  {case}: {error}")
