@@ -260,6 +260,23 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                     blockEigenStagedAttachmentDisplacement_;
             }
 
+            // Monolithic rigidBodyEnd: the attachment W holds the current
+            // body iterate with a zero boundary increment, so the body
+            // column carries the increment instead
+            if (rigidBodyEndMonolithic())
+            {
+                if
+                (
+                    runTime().timeIndex() <= rigidBodyEndPtr_().nJacobianChecks()
+                 && iOuterCorr() < 2
+                )
+                {
+                    checkRigidBodyEndJacobian();
+                }
+
+                setRigidBodyEndDisplacement(rigidBodyEndDisplacement());
+            }
+
             W_.boundaryFieldRef().updateCoeffs();
             Theta_.boundaryFieldRef().updateCoeffs();
 
@@ -885,6 +902,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
             BlockEigenSolverOF& eigenSolver = eigenSolverPtr();
 
+            if (rigidBodyEndMonolithic())
+            {
+                eigenSolver.setMonolithicCoupling
+                (
+                    rigidBodyEndMonolithicCoupling()
+                );
+            }
+
             // Create solution vector
             Field<scalarRectangularMatrix> solVec
             (
@@ -963,12 +988,26 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                     << endl;
             }
 
+            // Monolithic rigidBodyEnd: the solve returns the body
+            // displacement increment, which is also the attachment increment
+            vector rigidBodyEndIncrement = vector::zero;
+
+            if (rigidBodyEndMonolithic())
+            {
+                rigidBodyEndIncrement = rigidBodySolution.displacement;
+
+                const label patchI = rigidBodyEndPatchIndex_;
+                DW_.boundaryFieldRef()[patchI][0] = rigidBodyEndIncrement;
+                W_.boundaryFieldRef()[patchI][0] += rigidBodyEndIncrement;
+            }
+
             // Update all the solution and output variables for
             // the current (Newton) iteration loop
             updateSolutionVariables();
 
             // Calculating norm of primary correction variables DW_ & DTheta_
-            deltaXNorm = sqrt(sum(magSqr(solVec)));
+            deltaXNorm =
+                sqrt(sum(magSqr(solVec)) + magSqr(rigidBodyEndIncrement));
 
             // Calculating the norm of W_ and Theta_
             XNorm =

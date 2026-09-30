@@ -28,8 +28,9 @@ Description
         none         no rigid body (default without a rigidBodyEnd dict)
         partitioned  body and beam solved in turn, with optional coupling
                      iterations (default with a rigidBodyEnd dict)
-        monolithic   body solved inside the BlockEigen system (not yet
-                     implemented: Phase 1 of codexLogs/monolithicCouplingPlan)
+        monolithic   body translation solved inside the BlockEigen system,
+                     in the same Newton iteration as the beam (Phase 1 of
+                     codexLogs/monolithicCouplingPlan; rotation not yet)
 
     The legacy blockEigen* switches are used by the moorFV-driven path and
     cannot be combined with rigidBodyEnd.
@@ -116,14 +117,6 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << "is none" << exit(FatalIOError);
     }
 
-    if (rigidBodyCoupling_ == "monolithic")
-    {
-        FatalIOErrorInFunction(coeffs)
-            << "rigidBodyCoupling monolithic is not implemented yet "
-            << "(Phase 1 of codexLogs/monolithicCouplingPlan.pdf). "
-            << "Use partitioned." << exit(FatalIOError);
-    }
-
     if (legacyCouplingOn)
     {
         FatalIOErrorInFunction(coeffs)
@@ -173,6 +166,7 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << abort(FatalError);
     }
 
+    rigidBodyEndPatchIndex_ = patchI;
     rigidBodyEndPtr_().setAttachmentOffset(W_.boundaryField()[patchI][0]);
 
     Info<< "rigidBodyCoupling " << rigidBodyCoupling_ << endl;
@@ -190,6 +184,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 << "supplied by moorFV" << abort(FatalError);
         }
 
+        if (rigidBodyCoupling_ == "monolithic")
+        {
+            return evolveMonolithicRigidBodyEnd();
+        }
+
         return evolvePartitionedRigidBodyEnd();
     }
 
@@ -203,7 +202,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
 
     body.newTimeStep();
 
-    const label patchI = mesh().boundaryMesh().findPatchID(body.patchName());
+    const label patchI = rigidBodyEndPatchIndex_;
 
     // Coupling starts from the beam force of the last accepted state
     vector beamForce = body.beamForce();
@@ -243,7 +242,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
           + (1 - body.couplingRelaxation())*x
           : xNewmark;
 
-        W_.boundaryFieldRef()[patchI] == (x + body.attachmentOffset());
+        W_.boundaryFieldRef()[patchI][0] = x + body.attachmentOffset();
 
         const scalar residual = evolveBeam();
 
@@ -267,6 +266,240 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
         << ", beam solves " << nBeamSolves << endl;
 
     return initialResidual;
+}
+
+
+scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
+{
+    rigidBodyEnd& body = rigidBodyEndPtr_();
+
+    body.newTimeStep();
+
+    // Start from the last accepted displacement; the Newton iterations of
+    // evolveBeam() then update the body and the beam together
+    setRigidBodyEndDisplacement(body.displacement());
+
+    const scalar residual = evolveBeam();
+
+    body.accept
+    (
+        rigidBodyEndDisplacement(),
+        -Q_.boundaryField()[rigidBodyEndPatchIndex_][0],
+        iOuterCorr()
+    );
+    body.write();
+
+    Info<< "rigidBodyEnd: displacement " << body.displacement()
+        << ", velocity " << body.velocity()
+        << ", beam force " << body.beamForce()
+        << ", Newton iterations " << iOuterCorr() << endl;
+
+    return residual;
+}
+
+
+vector coupledTotalLagNewtonRaphsonBeam::rigidBodyEndDisplacement() const
+{
+    return
+        W_.boundaryField()[rigidBodyEndPatchIndex_][0]
+      - rigidBodyEndPtr_().attachmentOffset();
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndDisplacement
+(
+    const vector& x
+)
+{
+    const label patchI = rigidBodyEndPatchIndex_;
+    const vector Wb = x + rigidBodyEndPtr_().attachmentOffset();
+
+    W_.boundaryFieldRef()[patchI][0] = Wb;
+
+    // W_ is otherwise unchanged since its last storePrevIter(), so only the
+    // attachment value of the previous iterate needs to follow
+    W_.storePrevIter();
+}
+
+
+RigidBodyMonolithicCoupling
+coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
+{
+    const rigidBodyEnd& body = rigidBodyEndPtr_();
+    const label patchI = rigidBodyEndPatchIndex_;
+    const label faceI = 0;
+    const label cellI = mesh().boundary()[patchI].faceCells()[faceI];
+
+    const scalar pDelta =
+        1.0/mesh().deltaCoeffs().boundaryField()[patchI][faceI];
+
+    // Attachment face flux per unit boundary displacement: these are the
+    // coefficients of the fixedValue boundary increment in the attachment
+    // cell's force and moment rows
+    const tensor Kb = CQW_.boundaryField()[patchI][faceI]/pDelta;
+    const tensor KbM = CMQW_.boundaryField()[patchI][faceI]/pDelta;
+
+    // Boundary contributions on their own give the attachment face force
+    // as the beam equations see it, and its dependence on the attachment
+    // cell unknowns
+    Field<scalarSquareMatrix> dB
+    (
+        mesh().nCells(), scalarSquareMatrix(6, 0.0)
+    );
+    Field<scalarSquareMatrix> lB
+    (
+        mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+    );
+    Field<scalarSquareMatrix> uB
+    (
+        mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+    );
+    Field<scalarRectangularMatrix> sB
+    (
+        mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+    );
+
+    assembleBoundaryConditions(dB, lB, uB, sB);
+
+    const scalarSquareMatrix& dc = dB[cellI];
+    const vector attachmentForce(-sB[cellI](0, 0), -sB[cellI](1, 0), -sB[cellI](2, 0));
+
+    RigidBodyMonolithicCoupling coupling;
+
+    coupling.active = true;
+    coupling.attachmentCell = cellI;
+    coupling.beamWRowCoeff = Kb;
+    coupling.beamThetaRowCoeff = KbM;
+
+    // Body force balance, with the force from the beam on the body equal to
+    // minus the attachment face force:
+    //     R = m*(x - xPredictor)/(beta*deltaT^2) - externalForce + Qb
+    coupling.bodyCoeff = body.inertiaCoefficient()*tensor::I + Kb;
+    coupling.bodyWCoeff = tensor
+    (
+        dc(0, 0), dc(0, 1), dc(0, 2),
+        dc(1, 0), dc(1, 1), dc(1, 2),
+        dc(2, 0), dc(2, 1), dc(2, 2)
+    );
+    coupling.bodyThetaCoeff = tensor
+    (
+        dc(0, 3), dc(0, 4), dc(0, 5),
+        dc(1, 3), dc(1, 4), dc(1, 5),
+        dc(2, 3), dc(2, 4), dc(2, 5)
+    );
+
+    const vector residual =
+        body.inertiaCoefficient()
+       *(rigidBodyEndDisplacement() - body.predictor())
+      - body.totalForce(vector::zero)
+      + attachmentForce;
+
+    coupling.bodySource = -residual;
+
+    return coupling;
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
+{
+    const label patchI = rigidBodyEndPatchIndex_;
+    const label cellI = mesh().boundary()[patchI].faceCells()[0];
+    const vector x0 = rigidBodyEndDisplacement();
+
+    // Residual of the full system at a body displacement, with the beam
+    // unknowns fixed: beam rows from the complete assembly, body rows from
+    // the coupling blocks
+    // Strain at the current W; normally updated in updateSolutionVariables()
+    auto updateStrain = [&]()
+    {
+        const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+        Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
+    };
+
+    auto evaluate = [&](const vector& x, vector& beamW, vector& beamTheta)
+    {
+        setRigidBodyEndDisplacement(x);
+        updateStrain();
+        W_.boundaryFieldRef().updateCoeffs();
+        Theta_.boundaryFieldRef().updateCoeffs();
+        updateEqnCoefficients();
+
+        Field<scalarSquareMatrix> d
+        (
+            mesh().nCells(), scalarSquareMatrix(6, 0.0)
+        );
+        Field<scalarSquareMatrix> l
+        (
+            mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+        );
+        Field<scalarSquareMatrix> u
+        (
+            mesh().nInternalFaces(), scalarSquareMatrix(6, 0.0)
+        );
+        Field<scalarRectangularMatrix> source
+        (
+            mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
+        );
+
+        assembleMatrixCoefficients(d, l, u, source);
+
+        beamW = vector(source[cellI](0, 0), source[cellI](1, 0), source[cellI](2, 0));
+        beamTheta = vector(source[cellI](3, 0), source[cellI](4, 0), source[cellI](5, 0));
+
+        return rigidBodyEndMonolithicCoupling();
+    };
+
+    vector beamW0, beamTheta0;
+    const RigidBodyMonolithicCoupling c0 = evaluate(x0, beamW0, beamTheta0);
+
+    const scalar eps =
+        1e-6*max(mag(x0), 1e-3*mag(mesh().bounds().span()));
+
+    Info<< "rigidBodyEnd Jacobian check (eps " << eps << "): relative "
+        << "difference between assembled and finite-difference columns "
+        << "(columns below 1e-7 of the body column count as zero)"
+        << endl;
+
+    for (direction i = 0; i < 3; ++i)
+    {
+        vector dx = vector::zero;
+        dx[i] = eps;
+
+        vector beamW1, beamTheta1;
+        const RigidBodyMonolithicCoupling c1 =
+            evaluate(x0 + dx, beamW1, beamTheta1);
+
+        // Rows are A*dU = source = -residual, so a column of A is
+        // -d(source)/dx
+        const vector fdBeamW = -(beamW1 - beamW0)/eps;
+        const vector fdBeamTheta = -(beamTheta1 - beamTheta0)/eps;
+        const vector fdBody = -(c1.bodySource - c0.bodySource)/eps;
+
+        const vector aBeamW(c0.beamWRowCoeff.col(i));
+        const vector aBeamTheta(c0.beamThetaRowCoeff.col(i));
+        const vector aBody(c0.bodyCoeff.col(i));
+
+        // Columns much smaller than the body column count as zero
+        const scalar floor = 1e-7*mag(aBody);
+
+        auto relDiff = [floor](const vector& a, const vector& b)
+        {
+            return mag(a - b)/max(max(mag(a), mag(b)), max(floor, VSMALL));
+        };
+
+        Info<< "    column " << label(i)
+            << ": beam force rows " << relDiff(aBeamW, fdBeamW)
+            << " (|col| " << mag(aBeamW) << ")"
+            << ", beam moment rows " << relDiff(aBeamTheta, fdBeamTheta)
+            << " (|col| " << mag(aBeamTheta) << ")"
+            << ", body rows " << relDiff(aBody, fdBody)
+            << " (|col| " << mag(aBody) << ")" << endl;
+    }
+
+    // Restore the unperturbed state; evolveBeam() recomputes the
+    // coefficients before assembling
+    setRigidBodyEndDisplacement(x0);
+    updateStrain();
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

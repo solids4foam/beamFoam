@@ -328,6 +328,74 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
         );
     }
 
+    // Monolithic body translation coupling: the attachment cell's force and
+    // moment rows depend on the body displacement increment through the
+    // eliminated attachment face, and the body force rows depend on the body
+    // and on the attachment cell
+    if (monolithicCoupling_.active)
+    {
+        const label beamRow = 6*monolithicCoupling_.attachmentCell;
+
+        for (label rowI = 0; rowI < 3; ++rowI)
+        {
+            for (label colI = 0; colI < 3; ++colI)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.beamWRowCoeff(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + 3 + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.beamThetaRowCoeff(rowI, colI)
+                    )
+                );
+
+                // Added to the identity entered above, so subtract it on
+                // the diagonal
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.bodyCoeff(rowI, colI)
+                      - (rowI == colI ? 1.0 : 0.0)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + colI,
+                        monolithicCoupling_.bodyWCoeff(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + 3 + colI,
+                        monolithicCoupling_.bodyThetaCoeff(rowI, colI)
+                    )
+                );
+            }
+        }
+    }
+
     // Off-diagonal coupling blocks between beam-end and rigid-body DOFs.
     if
     (
@@ -709,6 +777,15 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
                 rbNewmarkBeta*currTorque[i]
               + (0.5 - rbNewmarkBeta)*prev.torque[i]
             );
+    }
+
+    if (monolithicCoupling_.active)
+    {
+        for (label i = 0; i < 3; ++i)
+        {
+            b(rigidStart + i) = monolithicCoupling_.bodySource[i];
+            b(rigidStart + 3 + i) = 0;
+        }
     }
 
     // -------------------------------------------------------------------------

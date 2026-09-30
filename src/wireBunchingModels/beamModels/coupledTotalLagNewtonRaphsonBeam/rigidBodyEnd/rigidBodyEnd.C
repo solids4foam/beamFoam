@@ -88,6 +88,7 @@ Foam::rigidBodyEnd::rigidBodyEnd
     nCouplingIterations_(dict.getOrDefault<label>("nCouplingIterations", 1)),
     couplingTolerance_(dict.getOrDefault<scalar>("couplingTolerance", 1e-8)),
     couplingRelaxation_(dict.getOrDefault<scalar>("couplingRelaxation", 1)),
+    nJacobianChecks_(dict.getOrDefault<label>("jacobianCheck", 0)),
     x_(vector::zero),
     v_(vector::zero),
     a_(vector::zero),
@@ -170,6 +171,20 @@ Foam::vector Foam::rigidBodyEnd::newmarkDisplacement
 }
 
 
+Foam::vector Foam::rigidBodyEnd::predictor() const
+{
+    const scalar deltaT = runTime_.deltaTValue();
+
+    return x0_ + deltaT*v0_ + sqr(deltaT)*(0.5 - beta_)*a0_;
+}
+
+
+Foam::scalar Foam::rigidBodyEnd::inertiaCoefficient() const
+{
+    return mass_/(beta_*sqr(runTime_.deltaTValue()));
+}
+
+
 void Foam::rigidBodyEnd::accept
 (
     const vector& displacement,
@@ -179,11 +194,8 @@ void Foam::rigidBodyEnd::accept
 {
     const scalar deltaT = runTime_.deltaTValue();
 
-    const vector xPredictor =
-        x0_ + deltaT*v0_ + sqr(deltaT)*(0.5 - beta_)*a0_;
-
     x_ = displacement;
-    a_ = (x_ - xPredictor)/(beta_*sqr(deltaT));
+    a_ = (x_ - predictor())/(beta_*sqr(deltaT));
     v_ = v0_ + deltaT*((1 - gamma_)*a0_ + gamma_*a_);
 
     beamForce_ = beamForce;

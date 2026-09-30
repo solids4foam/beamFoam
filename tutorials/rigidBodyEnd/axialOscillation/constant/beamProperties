@@ -66,6 +66,10 @@ beams
         // Iterate to convergence: one pass per step is unstable here
         nCouplingIterations 50;
         couplingTolerance   1e-10;
+
+        // Monolithic only: finite-difference check of the body columns in
+        // the first 2 time steps
+        jacobianCheck       2;
     }
 }
 

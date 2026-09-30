@@ -1,17 +1,23 @@
 # rigidBodyEnd test cases
 
 Fast beamFoam-only tests for a rigid body attached to the end of a beam
-(Phase 0 of `codexLogs/monolithicCouplingPlan.pdf`). No fluid; each case runs
-in a few seconds.
+(Phases 0 and 1 of `codexLogs/monolithicCouplingPlan.pdf`). No fluid; the whole
+set runs in about 35 s.
 
 ```sh
-./Allrun      # runs all three cases, then checkRigidBodyEnd.py
+./Allrun      # runs every case partitioned and monolithic, then the checks
 ./Allclean
 ```
 
-`checkRigidBodyEnd.py` reads the parameters from each case and compares the
-body history (`postProcessing/rigidBodyEnd/0/rigidBodyEnd.dat`) with analytic
-results. It exits non-zero if a check fails.
+`Allrun` runs each case as it is (`rigidBodyCoupling partitioned`) and a copy
+in `monolithic/<case>` with `rigidBodyCoupling monolithic`.
+`checkRigidBodyEnd.py` reads the parameters from each case and checks:
+
+- both couplings against analytic results,
+- the monolithic finite-difference Jacobian check (`jacobianCheck`),
+- monolithic against converged partitioned results, time step by time step.
+
+It exits non-zero if a check fails.
 
 ## Cases
 
@@ -30,14 +36,19 @@ It is thin enough that the clamp's bending stiffness hardly changes the period.
 
 ## Coupling settings
 
-The body is coupled to the beam with `rigidBodyCoupling partitioned`: each
-time step the body is moved with the beam force, the beam is solved with the
-body position as its end condition, and this repeats up to
-`nCouplingIterations` times until the displacement change is below
-`couplingTolerance`.
+`rigidBodyCoupling partitioned`: each time step the body is moved with the
+beam force, the beam is solved with the body position as its end condition,
+and this repeats up to `nCouplingIterations` times until the displacement
+change is below `couplingTolerance`.
 
 **One pass per step is not stable for these cases.** With
 `nCouplingIterations 1` the body always uses the beam force from the previous
 solve; in `axialOscillation` the amplitude then grows by about 15% per period.
-The cases therefore iterate to convergence (2–6 iterations per step), which
-gives the reference that the monolithic solve (Phase 1) must reproduce.
+The cases therefore iterate to convergence (2–6 passes per step).
+
+`rigidBodyCoupling monolithic`: the body's translation is solved in the same
+Newton iteration as the beam, inside the BlockEigen system. It matches the
+converged partitioned results to within 3e-5 of peak values, with about a
+third of the beam Newton iterations. `jacobianCheck N` compares the body
+columns with finite differences in the first N time steps. Body rotation is
+not modelled yet (Phase 2).

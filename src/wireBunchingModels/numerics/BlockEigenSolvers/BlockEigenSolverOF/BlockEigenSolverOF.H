@@ -108,6 +108,9 @@ class BlockEigenSolverOF
         //- Optional explicit beam reaction contribution to rigid-body RHS
         const RigidBodyForceCoupling rigidBodyForceCoupling_;
 
+        //- Optional monolithic body translation coupling (rigidBodyEnd)
+        RigidBodyMonolithicCoupling monolithicCoupling_;
+
 
     // Private Member Functions
 
@@ -179,6 +182,14 @@ public:
 
 
     // Member Functions
+
+        //- Couple the body translation rows monolithically. The returned
+        //  RigidBodySolution displacement is then the Newton increment of the
+        //  body displacement
+        void setMonolithicCoupling(const RigidBodyMonolithicCoupling& coupling)
+        {
+            monolithicCoupling_ = coupling;
+        }
 
         //- Solve the matrix with this source and solution vector and return the
         //  initial residual magnitude

@@ -119,6 +119,48 @@ struct RigidBodySolution
     {}
 };
 
+//- Monolithic coupling of a body's translation to the attachment cell of the
+//  beam. Rows and columns are Newton increments; the body rows are in force
+//  units. The body's rotation rows are left as identity with zero right-hand
+//  side.
+struct RigidBodyMonolithicCoupling
+{
+    bool active;
+
+    //- Beam cell next to the attachment face
+    label attachmentCell;
+
+    //- Beam force rows of the attachment cell, body translation columns
+    tensor beamWRowCoeff;
+
+    //- Beam moment rows of the attachment cell, body translation columns
+    tensor beamThetaRowCoeff;
+
+    //- Body translation rows, body translation columns
+    tensor bodyCoeff;
+
+    //- Body translation rows, attachment cell displacement columns
+    tensor bodyWCoeff;
+
+    //- Body translation rows, attachment cell rotation columns
+    tensor bodyThetaCoeff;
+
+    //- Body translation right-hand side (minus the body residual)
+    vector bodySource;
+
+    RigidBodyMonolithicCoupling()
+    :
+        active(false),
+        attachmentCell(-1),
+        beamWRowCoeff(tensor::zero),
+        beamThetaRowCoeff(tensor::zero),
+        bodyCoeff(tensor::zero),
+        bodyWCoeff(tensor::zero),
+        bodyThetaCoeff(tensor::zero),
+        bodySource(vector::zero)
+    {}
+};
+
 struct RigidBodyForceCoupling
 {
     bool active;

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Compare the rigidBodyEnd test cases with analytic results.
+Compare the rigidBodyEnd test cases with analytic results, for partitioned
+coupling (the case directories) and monolithic coupling (monolithic/<case>),
+and compare the two couplings with each other.
 
 Run after the cases have been run with ./Allrun:
 
@@ -117,8 +119,7 @@ def check(name, value, expected, rel_tol):
           f"  (rel. error {error:.2e}, tol {rel_tol:.0e})")
 
 
-def hanging_mass():
-    case = "hangingMass"
+def hanging_mass(case="hangingMass"):
     p = case_parameters(case)
     rows = read_history(case)
     g = p["g"][0]
@@ -134,8 +135,7 @@ def hanging_mass():
     check("body displacement = static stretch", rows[-1][1], stretch, 2e-3)
 
 
-def axial_oscillation():
-    case = "axialOscillation"
+def axial_oscillation(case="axialOscillation"):
     p = case_parameters(case)
     rows = read_history(case)
     g = p["g"][0]
@@ -168,8 +168,7 @@ def axial_oscillation():
     check("peak displacement = 2 x stretch", max(x), 2.0*stretch, 1e-2)
 
 
-def pendulum():
-    case = "pendulum"
+def pendulum(case="pendulum"):
     p = case_parameters(case)
     rows = read_history(case)
     gx, _, gz = p["g"]
@@ -206,12 +205,96 @@ def pendulum():
     )
 
 
-for test in (hanging_mass, axial_oscillation, pendulum):
+def coupling_agreement(case, rel_tol=1e-4):
+    """Monolithic and converged partitioned coupling solve the same equations"""
+    partitioned = read_history(case)
+    monolithic = read_history(os.path.join("monolithic", case))
+    n = min(len(partitioned), len(monolithic))
+    if len(partitioned) != len(monolithic):
+        raise ValueError(f"{len(partitioned)} partitioned rows, {len(monolithic)} monolithic")
+
+    print(f"{case}: monolithic against partitioned, {n} time steps")
+    for col, name in ((1, "displacement x"), (3, "displacement z"), (10, "beam force x"), (12, "beam force z")):
+        peak = max(abs(r[col]) for r in partitioned)
+        if peak < 1e-8:
+            continue
+        diff = max(abs(monolithic[i][col] - partitioned[i][col]) for i in range(n))
+        ok = diff <= rel_tol*peak
+        results.append(ok)
+        print(f"  {'PASS' if ok else 'FAIL'}  {name:<34} max difference {diff/peak:.2e} of peak"
+              f"  (tol {rel_tol:.0e})")
+
+    def newton_per_step(path):
+        total = 0
+        with open(os.path.join(HERE, path, "log.beamFoam")) as f:
+            for line in f:
+                match = re.match(r"\s+(\d+): Converged", line)
+                if match:
+                    total += int(match.group(1))
+        return total/n
+
+    print(f"  info  beam Newton iterations per step: partitioned "
+          f"{newton_per_step(case):.2f}, monolithic "
+          f"{newton_per_step(os.path.join('monolithic', case)):.2f}")
+
+
+def jacobian_check(case, tol=1e-5):
+    """Finite-difference check of the monolithic body columns (jacobianCheck).
+
+    One-sided differences with a small step: the physically significant
+    columns agree to about 1e-9; the tolerance allows for round-off on
+    columns that are nearly zero."""
+    worst = 0.0
+    count = 0
+    with open(os.path.join(HERE, "monolithic", case, "log.beamFoam")) as f:
+        for line in f:
+            if line.strip().startswith("column"):
+                values = re.findall(r"rows ([-+0-9.eE]+)", line)
+                worst = max([worst] + [float(v) for v in values])
+                count += 1
+    if count == 0:
+        raise ValueError("no Jacobian check output (set jacobianCheck)")
+    ok = worst <= tol
+    results.append(ok)
+    print(f"  {'PASS' if ok else 'FAIL'}  {case + ' Jacobian columns':<34} worst relative difference "
+          f"{worst:.2e} over {count} columns  (tol {tol:.0e})")
+
+
+tests = [
+    (hanging_mass, "hangingMass"),
+    (axial_oscillation, "axialOscillation"),
+    (pendulum, "pendulum"),
+]
+
+for coupling, prefix in (("partitioned", ""), ("monolithic", "monolithic")):
+    print(f"=== {coupling} coupling ===")
+    print()
+    for test, case in tests:
+        try:
+            test(os.path.join(prefix, case) if prefix else case)
+        except (OSError, KeyError, ValueError) as error:
+            results.append(False)
+            print(f"  FAIL  {test.__name__} ({coupling}): {error}")
+        print()
+
+print("=== monolithic Jacobian against finite differences ===")
+print()
+for case in ("axialOscillation", "pendulum"):
     try:
-        test()
+        jacobian_check(case)
+    except (OSError, ValueError) as error:
+        results.append(False)
+        print(f"  FAIL  {case} Jacobian check: {error}")
+print()
+
+print("=== monolithic against partitioned ===")
+print()
+for _, case in tests:
+    try:
+        coupling_agreement(case)
     except (OSError, KeyError, ValueError) as error:
         results.append(False)
-        print(f"  FAIL  {test.__name__}: {error}")
+        print(f"  FAIL  {case}: {error}")
     print()
 
 print(f"{sum(results)} of {len(results)} checks passed")

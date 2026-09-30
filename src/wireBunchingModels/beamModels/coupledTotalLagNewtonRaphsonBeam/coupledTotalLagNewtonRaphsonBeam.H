@@ -241,6 +241,9 @@ class coupledTotalLagNewtonRaphsonBeam
         //  none, partitioned or monolithic
         word rigidBodyCoupling_;
 
+        //- Index of the patch rigidBodyEnd is attached to
+        label rigidBodyEndPatchIndex_;
+
         //- Time index at which the Newmark predictor was last applied.
         //  The predictor must run once per time step: U and Accl are then
         //  updated incrementally with DW, so re-applying it on a repeated
@@ -375,6 +378,35 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Evolve the beam and rigidBodyEnd with partitioned coupling
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         scalar evolvePartitionedRigidBodyEnd();
+
+        //- Evolve the beam and rigidBodyEnd in one Newton solve
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        scalar evolveMonolithicRigidBodyEnd();
+
+        //- True when rigidBodyEnd is solved inside the beam Newton solve
+        bool rigidBodyEndMonolithic() const
+        {
+            return
+                rigidBodyEndPtr_.valid()
+             && rigidBodyCoupling_ == "monolithic";
+        }
+
+        //- Current body displacement: attachment W minus its offset
+        vector rigidBodyEndDisplacement() const;
+
+        //- Set the attachment W, and its previous iterate, from a body
+        //  displacement, so the boundary increment in the beam equations
+        //  is zero and the body column carries it instead
+        void setRigidBodyEndDisplacement(const vector& x);
+
+        //- Monolithic coupling blocks at the current iterate. Needs the
+        //  equation coefficients to be up to date
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        RigidBodyMonolithicCoupling rigidBodyEndMonolithicCoupling();
+
+        //- Compare the body columns and body rows with finite differences
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        void checkRigidBodyEndJacobian();
 
         //- Apply line contact force
         // void applyLineContact(multibeamFvBlockMatrix& eqn);

@@ -47,6 +47,8 @@ Description
             couplingTolerance   1e-8;    // displacement change relative to
                                          // max(step, total) displacement
             couplingRelaxation  1;       // fixed under-relaxation
+            jacobianCheck       0;       // monolithic: finite-difference
+                                         // check in the first N time steps
         }
 
     Gravity acts on the body through the beam model's g.
@@ -107,6 +109,9 @@ class rigidBodyEnd
         label nCouplingIterations_;
         scalar couplingTolerance_;
         scalar couplingRelaxation_;
+
+        //- Number of time steps with a finite-difference Jacobian check
+        label nJacobianChecks_;
 
         //- Displacement, velocity and acceleration at the new time
         vector x_;
@@ -222,6 +227,11 @@ public:
                 return x0_;
             }
 
+            label nJacobianChecks() const
+            {
+                return nJacobianChecks_;
+            }
+
             const vector& attachmentOffset() const
             {
                 return attachmentOffset_;
@@ -244,6 +254,14 @@ public:
 
             //- Newmark displacement at the new time for a given beam force
             vector newmarkDisplacement(const vector& beamForce) const;
+
+            //- Newmark predictor: displacement at the new time for zero
+            //  new-time acceleration
+            vector predictor() const;
+
+            //- m/(beta*deltaT^2): inertia force per unit displacement
+            //  beyond the predictor
+            scalar inertiaCoefficient() const;
 
             //- Accept a displacement and the beam force it produced:
             //  acceleration and velocity follow from the Newmark relations

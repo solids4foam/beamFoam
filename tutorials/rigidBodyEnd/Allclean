@@ -5,3 +5,5 @@ for case in hangingMass axialOscillation pendulum
 do
     (cd "$case" && ./Allclean > /dev/null 2>&1 && rm -f Allrun.out)
 done
+
+rm -rf monolithic
