@@ -76,19 +76,7 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << exit(FatalIOError);
     }
 
-    const wordList legacySwitches
-    ({
-        "blockEigenForceCoupling",
-        "blockEigenKinematicCoupling"
-    });
-
-    bool legacyCouplingOn = false;
-    forAll(legacySwitches, i)
-    {
-        legacyCouplingOn =
-            legacyCouplingOn
-         || coeffs.getOrDefault<Switch>(legacySwitches[i], false);
-    }
+    const bool legacyCouplingOn = legacyBlockEigenCouplingOn();
 
     if (!hasRigidBodyEnd)
     {
@@ -121,9 +109,32 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
     {
         FatalIOErrorInFunction(coeffs)
             << "rigidBodyEnd cannot be combined with the legacy "
-            << legacySwitches << " switches" << exit(FatalIOError);
+            << "blockEigenForceCoupling / blockEigenKinematicCoupling "
+            << "switches" << exit(FatalIOError);
     }
 
+    createRigidBodyEnd(coeffs.subDict("rigidBodyEnd"), g().value());
+
+    Info<< "rigidBodyCoupling " << rigidBodyCoupling_ << endl;
+}
+
+
+bool coupledTotalLagNewtonRaphsonBeam::legacyBlockEigenCouplingOn() const
+{
+    const dictionary& coeffs = beamProperties();
+
+    return
+        coeffs.getOrDefault<Switch>("blockEigenForceCoupling", false)
+     || coeffs.getOrDefault<Switch>("blockEigenKinematicCoupling", false);
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::createRigidBodyEnd
+(
+    const dictionary& bodyDict,
+    const vector& gravity
+)
+{
     const word defaultPatchName =
         endPatchIndex() >= 0
       ? mesh().boundaryMesh()[endPatchIndex()].name()
@@ -131,13 +142,7 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
 
     rigidBodyEndPtr_.reset
     (
-        new rigidBodyEnd
-        (
-            runTime(),
-            coeffs.subDict("rigidBodyEnd"),
-            defaultPatchName,
-            g().value()
-        )
+        new rigidBodyEnd(runTime(), bodyDict, defaultPatchName, gravity)
     );
 
     const label patchI =
@@ -172,8 +177,79 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
     (
         mesh().Cf().boundaryField()[patchI][0] + W_.boundaryField()[patchI][0]
     );
+}
 
-    Info<< "rigidBodyCoupling " << rigidBodyCoupling_ << endl;
+
+void coupledTotalLagNewtonRaphsonBeam::initialiseRigidBodyEnd
+(
+    const dictionary& bodyDict,
+    const vector& gravity
+)
+{
+    if (rigidBodyEndPtr_.valid())
+    {
+        FatalErrorInFunction
+            << "A rigidBodyEnd already exists (from beamProperties); remove "
+            << "it when the body is set up by the caller"
+            << abort(FatalError);
+    }
+
+    if (legacyBlockEigenCouplingOn())
+    {
+        FatalErrorInFunction
+            << "rigidBodyEnd cannot be combined with the legacy "
+            << "blockEigenForceCoupling / blockEigenKinematicCoupling "
+            << "switches in beamProperties" << abort(FatalError);
+    }
+
+    rigidBodyCoupling_ = "monolithic";
+    createRigidBodyEnd(bodyDict, gravity);
+
+    Info<< "rigidBodyCoupling " << rigidBodyCoupling_
+        << " (body set up by the caller)" << endl;
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndExternalLoad
+(
+    const vector& force,
+    const vector& moment
+)
+{
+    if (!rigidBodyEndPtr_.valid())
+    {
+        FatalErrorInFunction
+            << "No rigidBodyEnd: call initialiseRigidBodyEnd first"
+            << abort(FatalError);
+    }
+
+    rigidBodyEndPtr_().setExternalLoad(force, moment);
+}
+
+
+bool coupledTotalLagNewtonRaphsonBeam::getRigidBodyEndState
+(
+    RigidBodyEndState& state
+) const
+{
+    if (!rigidBodyEndPtr_.valid())
+    {
+        return false;
+    }
+
+    const rigidBodyEnd& body = rigidBodyEndPtr_();
+
+    state.displacement = body.displacement();
+    state.orientation = body.Q();
+    state.velocity = body.velocity();
+    state.acceleration = body.acceleration();
+    state.angularVelocity = body.angularVelocity();
+    state.angularAcceleration = body.angularAcceleration();
+    state.beamForce = body.beamForce();
+    state.beamTorque = body.beamTorque();
+    state.iterations = iOuterCorr();
+
+    return true;
 }
 
 
@@ -513,7 +589,8 @@ void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
         1e-6*max(mag(x0), 1e-3*mag(mesh().bounds().span()));
     const scalar epsTheta = 1e-7;
 
-    Info<< "rigidBodyEnd Jacobian check (eps " << epsX << " m, " << epsTheta
+    Info<< "rigidBodyEnd Jacobian check (central differences, eps " << epsX
+        << " m, " << epsTheta
         << " rad): relative difference between assembled and "
         << "finite-difference columns (entries below 1e-5 of the largest "
         << "body entry in the column count as zero)" << endl;
@@ -530,16 +607,21 @@ void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndJacobian()
         vector dTheta = vector::zero;
         (rotationColumn ? dTheta : dx)[i] = eps;
 
-        vector beamW1, beamTheta1;
-        const RigidBodyMonolithicCoupling c1 =
-            evaluate(x0 + dx, theta0 + dTheta, beamW1, beamTheta1);
+        // Central differences, so terms that are quadratic in the
+        // perturbation (e.g. at an unloaded state) do not show up
+        vector beamWp, beamThetap, beamWm, beamThetam;
+        const RigidBodyMonolithicCoupling cp =
+            evaluate(x0 + dx, theta0 + dTheta, beamWp, beamThetap);
+        const RigidBodyMonolithicCoupling cm =
+            evaluate(x0 - dx, theta0 - dTheta, beamWm, beamThetam);
 
         // Rows are A*dU = source = -residual, so a column of A is
         // -d(source)/d(unknown)
-        const vector fdBeamW = -(beamW1 - beamW0)/eps;
-        const vector fdBeamTheta = -(beamTheta1 - beamTheta0)/eps;
-        const vector fdBody = -(c1.bodySource - c0.bodySource)/eps;
-        const vector fdBodyRot = -(c1.bodyRotSource - c0.bodyRotSource)/eps;
+        const vector fdBeamW = -(beamWp - beamWm)/(2*eps);
+        const vector fdBeamTheta = -(beamThetap - beamThetam)/(2*eps);
+        const vector fdBody = -(cp.bodySource - cm.bodySource)/(2*eps);
+        const vector fdBodyRot =
+            -(cp.bodyRotSource - cm.bodyRotSource)/(2*eps);
 
         const vector aBeamW
         (

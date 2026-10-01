@@ -110,9 +110,12 @@ void Foam::rigidBodyEnd::makeHistoryFile()
         return;
     }
 
+    // Named after the start time, also when the body is created during the
+    // first time step (e.g. by a caller such as moorFV)
     const fileName historyDir
     (
-        runTime_.path()/"postProcessing"/"rigidBodyEnd"/runTime_.timeName()
+        runTime_.path()/"postProcessing"/"rigidBodyEnd"
+       /runTime_.timeName(runTime_.startTime().value())
     );
 
     mkDir(historyDir);
@@ -199,6 +202,7 @@ Foam::rigidBodyEnd::rigidBodyEnd
     centreOfMassGiven_(dict.found("centreOfMass")),
     centreOfMass_(dict.getOrDefault<point>("centreOfMass", point::zero)),
     arm0_(vector::zero),
+    armBody_(vector::zero),
     externalForce_(dict.getOrDefault<vector>("externalForce", vector::zero)),
     externalMoment_
     (
@@ -219,10 +223,10 @@ Foam::rigidBodyEnd::rigidBodyEnd
     x0_(vector::zero),
     v0_(vector::zero),
     a0_(vector::zero),
-    Q_(tensor::I),
+    Q_(dict.getOrDefault<tensor>("orientation", tensor::I)),
     omega_(dict.getOrDefault<vector>("angularVelocity", vector::zero)),
     alpha_(vector::zero),
-    Q0_(tensor::I),
+    Q0_(Q_),
     omega0_(vector::zero),
     alpha0_(vector::zero),
     theta_(vector::zero),
@@ -266,7 +270,7 @@ Foam::rigidBodyEnd::rigidBodyEnd
 
     if (rotation_)
     {
-        const tensor J = diagonal(momentOfInertia_);
+        const tensor J = inertia(vector::zero);
         alpha_ =
             inv(J)
           & (
@@ -304,6 +308,7 @@ void Foam::rigidBodyEnd::setAttachmentPoint(const point& attachmentPoint)
     }
 
     arm0_ = attachmentPoint - centreOfMass_;
+    armBody_ = (Q_.T() & arm0_);
 
     if (!rotation_ && mag(arm0_) > SMALL)
     {
@@ -411,7 +416,7 @@ Foam::tensor Foam::rigidBodyEnd::orientation(const vector& theta) const
 
 Foam::vector Foam::rigidBodyEnd::arm(const vector& theta) const
 {
-    return (orientation(theta) & arm0_);
+    return (orientation(theta) & armBody_);
 }
 
 

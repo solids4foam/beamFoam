@@ -45,8 +45,10 @@ Description
         {
             patch               right;   // default: endPatchName
             mass                10;
-            momentOfInertia     (0 0 0); // principal, initial global axes;
+            momentOfInertia     (0 0 0); // principal, body axes;
                                          // zero: no rotation
+            orientation         (1 0 0 0 1 0 0 0 1); // initial, body to
+                                         // global axes
             centreOfMass        (2 0 0); // default: attachment point
             velocity            (0 0 0); // initial
             angularVelocity     (0 0 0); // initial, global axes
@@ -118,8 +120,9 @@ class rigidBodyEnd
         point centreOfMass_;
 
         //- Arm from the centre of mass to the attachment point, in the
-        //  initial configuration
+        //  initial configuration (global axes) and in body axes
         vector arm0_;
+        vector armBody_;
 
         //- Constant applied force and moment
         vector externalForce_;
@@ -280,6 +283,30 @@ public:
             const vector& angularVelocity() const
             {
                 return omega_;
+            }
+
+            const vector& angularAcceleration() const
+            {
+                return alpha_;
+            }
+
+            //- Orientation at the new time: body to global axes
+            const tensor& Q() const
+            {
+                return Q_;
+            }
+
+            const vector& beamTorque() const
+            {
+                return beamTorque_;
+            }
+
+            //- Set the applied force and moment (global axes, moment about
+            //  the centre of mass), e.g. from a fluid solver
+            void setExternalLoad(const vector& force, const vector& moment)
+            {
+                externalForce_ = force;
+                externalMoment_ = moment;
             }
 
             label nCouplingIterations() const

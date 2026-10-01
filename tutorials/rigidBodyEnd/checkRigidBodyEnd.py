@@ -402,14 +402,12 @@ def coupling_agreement(case, rel_tol=1e-4):
           f"{newton_per_step(os.path.join('monolithic', case)):.2f}")
 
 
-def jacobian_check(case, tol=1e-4):
+def jacobian_check(case, tol=1e-5):
     """Finite-difference check of the monolithic body columns (jacobianCheck).
 
-    One-sided differences with a small step: the physically significant
-    entries agree to 1e-7 or better. The tolerance allows for round-off on
-    nearly-zero entries, and for one small term left out of the Jacobian:
-    the end cell's moment rows depend on the attachment displacement slightly
-    beyond the CMQW/pDelta term (about 1e-9 of the column in hangingBody)."""
+    Central differences with a small step: the physically significant
+    entries agree to 1e-7 or better; the tolerance allows for round-off on
+    nearly-zero entries."""
     worst = 0.0
     count = 0
     with open(os.path.join(HERE, "monolithic", case, "log.beamFoam")) as f:

@@ -380,6 +380,17 @@ class coupledTotalLagNewtonRaphsonBeam
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         void readRigidBodyEnd();
 
+        //- True if any legacy blockEigen coupling switch is on
+        bool legacyBlockEigenCouplingOn() const;
+
+        //- Construct rigidBodyEnd from a body dictionary and attach it to its
+        //  patch
+        void createRigidBodyEnd
+        (
+            const dictionary& bodyDict,
+            const vector& gravity
+        );
+
         //- Evolve the beam and rigidBodyEnd with partitioned coupling
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         scalar evolvePartitionedRigidBodyEnd();
@@ -469,6 +480,24 @@ public:
                 rigidBodyDataValid_ = true;
                 rigidBodySolutionValid_ = false;
             }
+
+            //- Create a rigidBodyEnd from a caller's body description,
+            //  solved monolithically with the beam
+            virtual void initialiseRigidBodyEnd
+            (
+                const dictionary& bodyDict,
+                const vector& gravity
+            );
+
+            //- Set the rigidBodyEnd's applied force and moment
+            virtual void setRigidBodyEndExternalLoad
+            (
+                const vector& force,
+                const vector& moment
+            );
+
+            //- Accepted rigidBodyEnd state after evolve
+            virtual bool getRigidBodyEndState(RigidBodyEndState& state) const;
 
             virtual bool getRigidBodySolution(RigidBodySolution& solution) const
             {

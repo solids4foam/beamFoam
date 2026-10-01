@@ -190,6 +190,35 @@ struct RigidBodyMonolithicCoupling
     {}
 };
 
+//- Accepted state of a rigidBodyEnd solved by beamFoam, for a caller such as
+//  a sixDoF motion solver. Global axes; the body turns by orientation from
+//  body to global axes
+struct RigidBodyEndState
+{
+    vector displacement;
+    tensor orientation;
+    vector velocity;
+    vector acceleration;
+    vector angularVelocity;
+    vector angularAcceleration;
+    vector beamForce;
+    vector beamTorque;
+    label iterations;
+
+    RigidBodyEndState()
+    :
+        displacement(vector::zero),
+        orientation(tensor::I),
+        velocity(vector::zero),
+        acceleration(vector::zero),
+        angularVelocity(vector::zero),
+        angularAcceleration(vector::zero),
+        beamForce(vector::zero),
+        beamTorque(vector::zero),
+        iterations(0)
+    {}
+};
+
 struct RigidBodyForceCoupling
 {
     bool active;
