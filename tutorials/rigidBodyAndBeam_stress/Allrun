@@ -1,0 +1,38 @@
+#!/bin/sh
+# Generate and run the stress-test cases, several at once.
+# Usage: ./Allrun [variant ...]     NJOBS (default 8) sets how many run at once
+cd "${0%/*}" || exit 1
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+./makeCases "$@" || exit 1
+
+# The fluid mesh is the same for every variant: make it once
+if [ ! -d mesh/constant/polyMesh ]
+then
+    rm -rf mesh
+    mkdir mesh
+    /bin/cp -R ../rigidBodyAndBeam_loop/0 ../rigidBodyAndBeam_loop/constant ../rigidBodyAndBeam_loop/system mesh/
+    rm -rf mesh/constant/polyMesh
+    (cd mesh && runApplication blockMesh && runApplication snappyHexMesh -overwrite) || exit 1
+fi
+
+if [ $# -eq 0 ]
+then
+    set -- stiffLine lightBody stiffLight stiffLargeDt
+fi
+
+# Single-corrector runs first, then the 8-corrector references
+cases=""
+for method in loop_nOuter1 monolithic_nOuter1 monolithic_nOuter8 loop_nOuter8
+do
+    for variant in "$@"
+    do
+        /bin/cp -R mesh/constant/polyMesh "$variant/$method/constant/"
+        cases="$cases $variant/$method"
+    done
+done
+
+echo $cases | tr ' ' '\n' | xargs -P "${NJOBS:-8}" -I{} \
+    sh -c 'cd {} && interFoam > log.interFoam 2>&1; echo "{} finished, exit status $?"'
+
+./summarise.py

@@ -30,7 +30,7 @@ Description
                      iterations (default with a rigidBodyEnd dict)
         monolithic   body translation solved inside the BlockEigen system,
                      in the same Newton iteration as the beam (Phase 1 of
-                     codexLogs/monolithicCouplingPlan; rotation not yet)
+                     documentation/monolithicCouplingPlan; rotation not yet)
 
     The legacy blockEigen* switches are used by the moorFV-driven path and
     cannot be combined with rigidBodyEnd.

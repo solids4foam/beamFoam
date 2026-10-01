@@ -55,13 +55,14 @@ maxDeltaT       0.1;
 
 functions
 {
+    // Body state every time step, for the comparison plots
     sixDoF_History
     {
         type            sixDoFRigidBodyStateFvBeam;
         libs            ( "libsixDoFRigidBodyStateFvBeam.so" );
         angleFormat     radians;
-        writeControl    runTime;
-        writeInterval   0.01;
+        writeControl    timeStep;
+        writeInterval   1;
     }
 }
 

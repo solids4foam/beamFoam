@@ -1,7 +1,7 @@
 # rigidBodyEnd test cases
 
 Fast beamFoam-only tests for a rigid body attached to the end of a beam
-(Phases 0–2 of `codexLogs/monolithicCouplingPlan.pdf`). No fluid; the whole
+(Phases 0–2 of `documentation/monolithicCouplingPlan.pdf`). No fluid; the whole
 set runs in about 90 s.
 
 ```sh

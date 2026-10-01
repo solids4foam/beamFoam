@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compare rigidBodyAndBeam results from the new BlockEigen-coupled path against
-the old coupled-solver case.
+Compare rigidBodyAndBeam results between coupling frameworks:
 
-Run from Spyder or from the beamFoam/tutorials directory.
+- monolithic: rigidBodyAndBeam_beamFoamCoupled (moorFV solver beamFoamCoupled;
+  beamFoam solves the beam and the body together)
+- loop: rigidBodyAndBeam_loop (moorFV solver FvBeamNewmark; the body and beamFoam
+  take turns)
+
+each with 1 PIMPLE outer corrector and with 8 (converged coupling within each
+time step). Differences are plotted against REFERENCE_CASE. Set CASE_SET to
+plot one of the stress-test variants in rigidBodyAndBeam_stress instead.
+
+Run from Spyder or from the beamFoam/tutorials directory after the cases have
+been run with ./Allrun. Cases that have not been run are skipped.
 """
 
-import glob
 import os
 import re
 
@@ -17,216 +25,119 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 
 
 # =============================================================
-# INPUT FILES
+# CASES
 # =============================================================
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_monolithic")
-OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_loop")
+# "base" for the tutorial cases, or one of the Phase 4 stress-test variants in
+# rigidBodyAndBeam_stress: "stiffLine", "lightBody", "stiffLight", "stiffLargeDt"
+CASE_SET = "base"
 
+if CASE_SET == "base":
+    # (case directory, legend label, colour, line style)
+    CASES = [
+        ("rigidBodyAndBeam_loop_nOuter8", "Loop, 8 outer correctors", "k", "-"),
+        ("rigidBodyAndBeam_loop", "Loop, 1 outer corrector", "b", "-"),
+        ("rigidBodyAndBeam_beamFoamCoupled", "Monolithic, 1 outer corrector", "r", "--"),
+        ("rigidBodyAndBeam_beamFoamCoupled_nOuter8", "Monolithic, 8 outer correctors", "m", ":"),
+    ]
 
-def find_one(pattern, description):
-    matches = sorted(glob.glob(pattern))
+    # Differences are taken against this case (the converged loop)
+    REFERENCE_CASE = "rigidBodyAndBeam_loop_nOuter8"
+else:
+    stress = os.path.join("rigidBodyAndBeam_stress", CASE_SET)
+    CASES = [
+        (os.path.join(stress, "monolithic_nOuter8"), "Monolithic, 8 outer correctors", "k", "-"),
+        (os.path.join(stress, "loop_nOuter8"), "Loop, 8 outer correctors", "m", ":"),
+        (os.path.join(stress, "loop_nOuter1"), "Loop, 1 outer corrector", "b", "-"),
+        (os.path.join(stress, "monolithic_nOuter1"), "Monolithic, 1 outer corrector", "r", "--"),
+    ]
 
-    if not matches:
-        raise FileNotFoundError(f"No {description} file found for {pattern}")
-
-    return matches[0]
-
-
-NEW_MOTION_FILE = find_one(
-    os.path.join(
-        NEW_CASE,
-        "postProcessing",
-        "BlockEigenSolve_rigidBodyMotion",
-        "*",
-        "BlockEigenSolve_rigidBodyMotion.dat",
-    ),
-    "new BlockEigen motion",
-)
-
-NEW_FORCE_COUPLING_FILE = find_one(
-    os.path.join(
-        NEW_CASE,
-        "postProcessing",
-        "BlockEigenSolve_rigidBodyForceCoupling",
-        "*",
-        "BlockEigenSolve_rigidBodyForceCoupling.dat",
-    ),
-    "new BlockEigen force coupling",
-)
-
-NEW_BEAM_FORCE_FILE = os.path.join(
-    NEW_CASE,
-    "postProcessing",
-    "0",
-    "attachmentForcebeam.dat",
-)
-
-OLD_MOTION_FILE = find_one(
-    os.path.join(
-        OLD_CASE,
-        "postProcessing",
-        "sixDoF*",
-        "*",
-        "sixDoFRigidBodyStateFvBeam.dat",
-    ),
-    "old sixDoF motion",
-)
-
-OLD_BEAM_FORCE_FILE = os.path.join(
-    OLD_CASE,
-    "postProcessing",
-    "0",
-    "forcebeam.dat",
-)
-
-print("Input files")
-print("New BlockEigen motion:       ", NEW_MOTION_FILE)
-print("New BlockEigen force coupling:", NEW_FORCE_COUPLING_FILE)
-print("New beam force:              ", NEW_BEAM_FORCE_FILE)
-print("Old sixDoF motion:           ", OLD_MOTION_FILE)
-print("Old beam force:              ", OLD_BEAM_FORCE_FILE)
+    # The stress tests are compared against the converged monolithic run
+    REFERENCE_CASE = os.path.join(stress, "monolithic_nOuter8")
 
 
 # =============================================================
 # USER SETTINGS
 # =============================================================
 
-REFERENCE_CENTRE_OF_ROTATION = np.array([2.6565, 0.0, 0.0])
-
-# BlockEigen writes one row for every nonlinear solve. The last row at each
-# time is the converged value.
-BLOCKEIGEN_TIME_REDUCTION = "last"  # "last" or "all"
-
-# Use "beam" to compare forcebeam.dat from both cases.
-# Use "rigid_body_reaction" to compare the new force applied to the rigid body
-# against the old restraint force, which is the negative of forcebeam.dat.
-FORCE_COMPARISON = "rigid_body_reaction"  # "beam" or "rigid_body_reaction"
-
 T_START = None
 T_END = None
 
 SAVE_FIGURES = False
-FIGURE_DIR = os.path.join(SCRIPT_DIR, "comparison_plots")
+FIGURE_DIR = os.path.join(SCRIPT_DIR, "comparison_plots", CASE_SET)
 
 
 # =============================================================
 # READ DATA
 # =============================================================
 
-def reduce_to_last_row_per_time(time, values):
-    keep = []
-
-    for t in np.unique(time):
-        matching_rows = np.where(time == t)[0]
-        keep.append(matching_rows[-1])
-
-    keep = np.asarray(keep, dtype=int)
-    return time[keep], values[keep]
+NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
+VECTOR = rf"\(\s*({NUMBER})\s+({NUMBER})\s+({NUMBER})\s*\)"
 
 
-def read_blockeigen_position(filename):
-    data = np.genfromtxt(filename, names=True)
+def read_initial_centre_of_mass(case_dir):
+    """Initial centre of mass from constant/dynamicMeshDict"""
+    with open(os.path.join(case_dir, "constant", "dynamicMeshDict")) as handle:
+        text = handle.read()
 
-    if data.ndim == 0:
-        data = np.array([data], dtype=data.dtype)
+    match = re.search(rf"centreOfMass\s+{VECTOR}", text)
+    if not match:
+        raise ValueError(f"No centreOfMass in {case_dir}/constant/dynamicMeshDict")
 
-    time = np.asarray(data["Time"], dtype=float)
-    displacement = np.column_stack(
-        (
-            np.asarray(data["disp_x"], dtype=float),
-            np.asarray(data["disp_y"], dtype=float),
-            np.asarray(data["disp_z"], dtype=float),
-        )
-    )
-
-    position = displacement + REFERENCE_CENTRE_OF_ROTATION
-
-    if BLOCKEIGEN_TIME_REDUCTION == "all":
-        return time, position
-
-    if BLOCKEIGEN_TIME_REDUCTION != "last":
-        raise ValueError("BLOCKEIGEN_TIME_REDUCTION must be 'last' or 'all'")
-
-    return reduce_to_last_row_per_time(time, position)
+    return np.array([float(value) for value in match.groups()])
 
 
-def read_sixdof_centre_of_rotation(filename):
-    number = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
-    vector = rf"\(\s*({number})\s+({number})\s+({number})\s*\)"
-
+def read_sixdof_history(filename):
+    """Time, centre of rotation, rotation, velocity and angular velocity"""
     line_pattern = re.compile(
-        rf"^\s*({number})\s+"
-        rf"{vector}\s+"
-        rf"{vector}\s+"
-        rf"{vector}\s+"
-        rf"{vector}\s+"
-        rf"{vector}"
+        rf"^\s*({NUMBER})\s+" + r"\s+".join([VECTOR]*5)
     )
 
-    time = []
-    centre_of_rotation = []
-
+    rows = []
     with open(filename, "r", encoding="utf-8") as handle:
         for line in handle:
             match = line_pattern.search(line)
+            if match:
+                rows.append([float(value) for value in match.groups()])
 
-            if not match:
-                continue
-
-            values = [float(value) for value in match.groups()]
-            time.append(values[0])
-            centre_of_rotation.append(values[1:4])
-
-    if not time:
+    if not rows:
         raise ValueError(f"No motion rows found in {filename}")
 
-    return np.asarray(time), np.asarray(centre_of_rotation)
+    data = np.asarray(rows)
+
+    # A time can appear more than once (restarts); keep the last row
+    _, last = np.unique(data[::-1, 0], return_index=True)
+    data = data[::-1][last]
+
+    return {
+        "time": data[:, 0],
+        "centre_of_rotation": data[:, 1:4],
+        "rotation": data[:, 7:10],
+        "velocity": data[:, 10:13],
+        "omega": data[:, 13:16],
+    }
 
 
 def read_beam_force(filename):
+    """Force from the beam on the body (forcebeam.dat)"""
     data = np.genfromtxt(filename, comments="#")
 
     if data.size == 0:
-        raise ValueError(
-            f"No force rows found in {filename}. "
-            "Re-run that case or select a case with populated postProcessing."
-        )
+        raise ValueError(f"No force rows found in {filename}")
 
     if data.ndim == 1:
         data = data.reshape(1, -1)
 
-    if data.shape[1] < 4:
-        raise ValueError(
-            f"Expected at least four columns in {filename}; got {data.shape[1]}"
-        )
+    # The restraint writes once per update; keep the last row per time
+    _, last = np.unique(data[::-1, 0], return_index=True)
+    data = data[::-1][last]
 
-    time = data[:, 0]
-    force = data[:, 1:4]
-    return time, force
+    return data[:, 0], data[:, 1:4]
 
 
-def read_blockeigen_force_coupling(filename):
-    data = np.genfromtxt(filename, names=True)
-
-    if data.ndim == 0:
-        data = np.array([data], dtype=data.dtype)
-
-    time = np.asarray(data["Time"], dtype=float)
-    force = np.column_stack(
-        (
-            np.asarray(data["force_x"], dtype=float),
-            np.asarray(data["force_y"], dtype=float),
-            np.asarray(data["force_z"], dtype=float),
-        )
-    )
-
-    return reduce_to_last_row_per_time(time, force)
-
-
-def apply_time_window(time, values):
+def apply_time_window(time, *arrays):
     mask = np.ones_like(time, dtype=bool)
 
     if T_START is not None:
@@ -235,128 +146,111 @@ def apply_time_window(time, values):
     if T_END is not None:
         mask &= time <= T_END
 
-    return time[mask], values[mask]
+    return (time[mask],) + tuple(array[mask] for array in arrays)
 
 
-new_motion_time, new_position = read_blockeigen_position(NEW_MOTION_FILE)
-old_motion_time, old_position = read_sixdof_centre_of_rotation(OLD_MOTION_FILE)
-
-if FORCE_COMPARISON == "beam":
-    new_force_time, new_force = read_beam_force(NEW_BEAM_FORCE_FILE)
-    old_force_time, old_force = read_beam_force(OLD_BEAM_FORCE_FILE)
-    force_ylabel_prefix = "beam attachment force"
-elif FORCE_COMPARISON == "rigid_body_reaction":
-    new_force_time, new_force = read_blockeigen_force_coupling(
-        NEW_FORCE_COUPLING_FILE
+def load_case(case_dir, label, colour, style):
+    path = os.path.join(SCRIPT_DIR, case_dir)
+    motion_file = os.path.join(
+        path, "postProcessing", "sixDoF_History", "0", "sixDoFRigidBodyStateFvBeam.dat"
     )
-    old_force_time, old_beam_force = read_beam_force(OLD_BEAM_FORCE_FILE)
-    old_force = -old_beam_force
-    force_ylabel_prefix = "rigid-body reaction force"
-else:
-    raise ValueError("FORCE_COMPARISON must be 'beam' or 'rigid_body_reaction'")
+    force_file = os.path.join(path, "postProcessing", "0", "forcebeam.dat")
 
-new_motion_time, new_position = apply_time_window(
-    new_motion_time,
-    new_position,
-)
-old_motion_time, old_position = apply_time_window(
-    old_motion_time,
-    old_position,
-)
-new_force_time, new_force = apply_time_window(new_force_time, new_force)
-old_force_time, old_force = apply_time_window(old_force_time, old_force)
+    for filename in (motion_file, force_file):
+        if not os.path.isfile(filename):
+            print(f"Skipping {case_dir}: {os.path.relpath(filename, SCRIPT_DIR)} not found")
+            return None
+
+    motion = read_sixdof_history(motion_file)
+    force_time, force = read_beam_force(force_file)
+    centre_of_mass = read_initial_centre_of_mass(path)
+
+    time, displacement, rotation = apply_time_window(
+        motion["time"],
+        motion["centre_of_rotation"] - centre_of_mass,
+        motion["rotation"],
+    )
+    force_time, force = apply_time_window(force_time, force)
+
+    return {
+        "name": case_dir,
+        "label": label,
+        "colour": colour,
+        "style": style,
+        "time": time,
+        "displacement": displacement,
+        "rotation": rotation,
+        "force_time": force_time,
+        "force": force,
+    }
+
+
+cases = [case for case in (load_case(*entry) for entry in CASES) if case is not None]
+
+if not cases:
+    raise RuntimeError("None of the cases in CASES have results")
+
+reference = next((case for case in cases if case["name"] == REFERENCE_CASE), None)
+if reference is None:
+    print(f"Reference case {REFERENCE_CASE} has no results: difference plots skipped")
+
+
+def difference_from_reference(case, time_key, value_key):
+    """Case values minus the reference, interpolated onto the case times"""
+    ref_time = reference[time_key]
+    ref_values = reference[value_key]
+    time = case[time_key]
+
+    inside = (time >= ref_time[0]) & (time <= ref_time[-1])
+    interpolated = np.column_stack(
+        [np.interp(time[inside], ref_time, ref_values[:, i]) for i in range(3)]
+    )
+    return time[inside], case[value_key][inside] - interpolated
 
 
 # =============================================================
-# PRINT CHECKS
+# PRINT SUMMARY
 # =============================================================
-
-def print_position_summary(name, time, position):
-    displacement = position - REFERENCE_CENTRE_OF_ROTATION
-    rows = [0]
-
-    if len(time) > 1:
-        rows.append(len(time) - 1)
-
-    print("")
-    print(name)
-    print(
-        "row  time"
-        "  x_disp  y_disp  z_disp"
-        "  x_position  y_position  z_position"
-    )
-
-    for row in rows:
-        print(
-            f"{row:3d}"
-            f"  {time[row]:.10g}"
-            f"  {displacement[row, 0]: .10e}"
-            f"  {displacement[row, 1]: .10e}"
-            f"  {displacement[row, 2]: .10e}"
-            f"  {position[row, 0]: .10e}"
-            f"  {position[row, 1]: .10e}"
-            f"  {position[row, 2]: .10e}"
-        )
-
-
-def print_force_summary(name, time, force):
-    rows = [0]
-
-    if len(time) > 1:
-        rows.append(len(time) - 1)
-
-    print("")
-    print(name)
-    print("row  time  force_x  force_y  force_z")
-
-    for row in rows:
-        print(
-            f"{row:3d}"
-            f"  {time[row]:.10g}"
-            f"  {force[row, 0]: .10e}"
-            f"  {force[row, 1]: .10e}"
-            f"  {force[row, 2]: .10e}"
-        )
-
 
 print("")
-print("Rows plotted")
-print("New motion:", len(new_motion_time))
-print("Old motion:", len(old_motion_time))
-print("New force: ", len(new_force_time))
-print("Old force: ", len(old_force_time))
+print("Cases")
+for case in cases:
+    final = case["displacement"][-1]
+    print(
+        f"  {case['label']:<34} {len(case['time']):4d} motion rows, "
+        f"final displacement ({final[0]: .6e} {final[1]: .6e} {final[2]: .6e}) m"
+    )
 
-print_position_summary("New BlockEigen centre-of-rotation", new_motion_time, new_position)
-print_position_summary("Old coupled-solver centre-of-rotation", old_motion_time, old_position)
-print_force_summary("New force", new_force_time, new_force)
-print_force_summary("Old force", old_force_time, old_force)
+if reference is not None:
+    peak_displacement = np.max(np.linalg.norm(reference["displacement"], axis=1))
+    peak_force = np.max(np.linalg.norm(reference["force"], axis=1))
+
+    print("")
+    print(f"Maximum difference from {reference['label']}")
+    print(f"  (peak displacement {peak_displacement:.4e} m, peak force {peak_force:.4e} N)")
+    for case in cases:
+        if case is reference:
+            continue
+        _, d_disp = difference_from_reference(case, "time", "displacement")
+        _, d_force = difference_from_reference(case, "force_time", "force")
+        max_disp = np.max(np.linalg.norm(d_disp, axis=1))
+        max_force = np.max(np.linalg.norm(d_force, axis=1))
+        print(
+            f"  {case['label']:<34} displacement {max_disp:.3e} m "
+            f"({max_disp/peak_displacement:.2e} of peak), "
+            f"force {max_force:.3e} N ({max_force/peak_force:.2e} of peak)"
+        )
 
 
 # =============================================================
 # PLOT DATA
 # =============================================================
 
-def set_informative_y_ticks(ax, values):
-    finite_values = values[np.isfinite(values)]
-
-    if finite_values.size == 0:
-        return
-
-    y_min = np.min(finite_values)
-    y_max = np.max(finite_values)
-
-    if np.isclose(y_min, y_max):
-        padding = max(abs(y_min)*0.1, 1.0e-6)
-    else:
-        padding = 0.08*(y_max - y_min)
-
-    #ax.set_ylim(y_min - padding, y_max + padding)
+def finish_plot(ax, ylabel):
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(ylabel)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=7))
     ax.yaxis.set_minor_locator(AutoMinorLocator(2))
-
-
-def finish_plot(ax, values):
-    set_informative_y_ticks(ax, values)
     ax.grid(which="major", ls="--", lw=0.6, alpha=0.75)
     ax.grid(which="minor", ls=":", lw=0.4, alpha=0.45)
     ax.legend()
@@ -373,100 +267,75 @@ def save_or_show(filename):
     plt.show()
 
 
-def plot_displacement_component(label, component):
-    new_displacement = new_position - REFERENCE_CENTRE_OF_ROTATION
-    old_displacement = old_position - REFERENCE_CENTRE_OF_ROTATION
-
-    plt.figure(figsize=(5, 5))
+def plot_component(time_key, value_key, component, ylabel, filename, scale=1.0):
+    plt.figure(figsize=(7, 4.5))
     ax = plt.gca()
 
-    ax.plot(
-        old_motion_time,
-        old_displacement[:, component],
-        "b-",
-        linewidth=1.8,
-        label="Original Solver",
-    )
-    ax.plot(
-        new_motion_time,
-        new_displacement[:, component],
-        "r--",
-        linewidth=1.5,
-        label="New Solver",
-    )
+    for case in cases:
+        ax.plot(
+            case[time_key],
+            scale*case[value_key][:, component],
+            color=case["colour"],
+            linestyle=case["style"],
+            linewidth=1.6,
+            label=case["label"],
+        )
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel(f"{label} displacement (m)")
-    #ax.set_title(f"Centre-of-rotation {label} displacement")
-    #ax.set_title(f"Centre-of-rotation {label} displacement")
-
-    combined_values = np.concatenate(
-        (old_displacement[:, component], new_displacement[:, component])
-    )
-    finish_plot(ax, combined_values)
-    save_or_show(f"rigid_body_{label.lower()}_displacement_new_vs_old.png")
+    finish_plot(ax, ylabel)
+    save_or_show(filename)
 
 
-def plot_force_component_abs(label, component):
-    plt.figure(figsize=(8, 4))
+def plot_difference(time_key, value_key, component, ylabel, filename):
+    if reference is None:
+        return
+
+    plt.figure(figsize=(7, 4.5))
     ax = plt.gca()
 
-    ax.plot(
-        old_force_time,
-        abs(old_force[:, component]),
-        "b-",
-        linewidth=1.8,
-        label="Original Solver",
+    for case in cases:
+        if case is reference:
+            continue
+        time, difference = difference_from_reference(case, time_key, value_key)
+        ax.plot(
+            time,
+            difference[:, component],
+            color=case["colour"],
+            linestyle=case["style"],
+            linewidth=1.6,
+            label=case["label"],
+        )
+
+    ax.set_title(f"Difference from {reference['label']}")
+    finish_plot(ax, ylabel)
+    save_or_show(filename)
+
+
+for label, component in (("X", 0), ("Height", 2)):
+    plot_component(
+        "time", "displacement", component,
+        f"Body {label.lower()} displacement (m)",
+        f"rigid_body_{label.lower()}_displacement.png",
     )
-    ax.plot(
-        new_force_time,
-        abs(new_force[:, component]),
-        "r--",
-        linewidth=1.5,
-        label="New Solver",
-    )
-
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel(f"{label} {force_ylabel_prefix} (N)")
-    ax.set_ylim(bottom=0)
-    ax.set_title("Magnitude of "+f"{force_ylabel_prefix}: {label} component")
-
-    combined_values = np.concatenate((old_force[:, component], new_force[:, component]))
-    finish_plot(ax, combined_values)
-    save_or_show(f"{force_ylabel_prefix.replace(' ', '_')}_{label.lower()}_new_vs_old.png")
-
-def plot_force_component(label, component):
-    plt.figure(figsize=(8, 4))
-    ax = plt.gca()
-
-    ax.plot(
-        old_force_time,
-        old_force[:, component],
-        "b-",
-        linewidth=1.8,
-        label="Original Solver",
-    )
-    ax.plot(
-        new_force_time,
-        new_force[:, component],
-        "r--",
-        linewidth=1.5,
-        label="New Solver",
+    plot_difference(
+        "time", "displacement", component,
+        f"Body {label.lower()} displacement difference (m)",
+        f"rigid_body_{label.lower()}_displacement_difference.png",
     )
 
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel(f"{label} {force_ylabel_prefix} (N)")
-    ax.set_title(f"{force_ylabel_prefix}: {label} component")
+plot_component(
+    "time", "rotation", 1,
+    "Body rotation about y (rad)",
+    "rigid_body_rotation_y.png",
+)
 
-    combined_values = np.concatenate((old_force[:, component], new_force[:, component]))
-    finish_plot(ax, combined_values)
-    save_or_show(f"{force_ylabel_prefix.replace(' ', '_')}_{label.lower()}_new_vs_old.png")
-
-for component_label, component_index in (("X", 0), ("Y", 1), ("Height", 2)):
-    plot_displacement_component(component_label, component_index)
-
-for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
-    plot_force_component_abs(component_label, component_index)
-    
-for component_label, component_index in (("X", 0), ("Y", 1), ("Z", 2)):
-    plot_force_component(component_label, component_index)
+for label, component in (("X", 0), ("Z", 2)):
+    plot_component(
+        "force_time", "force", component,
+        f"Beam force on body, {label} (N)",
+        f"beam_force_{label.lower()}.png",
+    )
+    plot_difference(
+        "force_time", "force", component,
+        f"Beam force difference, {label} (N)",
+        f"beam_force_{label.lower()}_difference.png",
+    )

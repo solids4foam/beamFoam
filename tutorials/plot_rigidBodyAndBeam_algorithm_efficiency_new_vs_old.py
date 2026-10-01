@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compare computational efficiency of the new BlockEigen-coupled framework
-against the original coupled-solver framework.
+Compare the computational cost of two rigidBodyAndBeam cases, e.g. the
+monolithic framework (beamFoamCoupled) against the loop framework
+(FvBeamNewmark). Choose the two cases with NEW_CASE and OLD_CASE below.
 
 Run from Spyder or from the beamFoam/tutorials directory after both cases have
-completed and contain log.interFoam files.
+completed and contain log.interFoam files. With several PIMPLE outer
+correctors, the beam Newton iterations of all beam solves in a time step are
+added up.
 """
 
 import glob
@@ -24,11 +27,33 @@ from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-NEW_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_monolithic")
-OLD_CASE = os.path.join(SCRIPT_DIR, "rigidBodyAndBeam_loop")
+# Available cases and their labels
+CASE_LABELS = {
+    "rigidBodyAndBeam_beamFoamCoupled": "Monolithic, 1 outer corrector",
+    "rigidBodyAndBeam_beamFoamCoupled_nOuter8": "Monolithic, 8 outer correctors",
+    "rigidBodyAndBeam_loop": "Loop, 1 outer corrector",
+    "rigidBodyAndBeam_loop_nOuter8": "Loop, 8 outer correctors",
+}
 
-NEW_LABEL = "New Solver"
-OLD_LABEL = "Original Solver"
+# Phase 4 stress-test cases, e.g. "rigidBodyAndBeam_stress/stiffLine/loop_nOuter1"
+for variant in ("stiffLine", "lightBody", "stiffLight", "stiffLargeDt"):
+    for method, label in (
+        ("monolithic_nOuter1", "Monolithic, 1 outer corrector"),
+        ("monolithic_nOuter8", "Monolithic, 8 outer correctors"),
+        ("loop_nOuter1", "Loop, 1 outer corrector"),
+        ("loop_nOuter8", "Loop, 8 outer correctors"),
+    ):
+        CASE_LABELS[f"rigidBodyAndBeam_stress/{variant}/{method}"] = f"{label} ({variant})"
+
+# The two cases to compare (any key of CASE_LABELS)
+NEW_CASE_NAME = "rigidBodyAndBeam_beamFoamCoupled"
+OLD_CASE_NAME = "rigidBodyAndBeam_loop_nOuter8"
+
+NEW_CASE = os.path.join(SCRIPT_DIR, NEW_CASE_NAME)
+OLD_CASE = os.path.join(SCRIPT_DIR, OLD_CASE_NAME)
+
+NEW_LABEL = CASE_LABELS.get(NEW_CASE_NAME, NEW_CASE_NAME)
+OLD_LABEL = CASE_LABELS.get(OLD_CASE_NAME, OLD_CASE_NAME)
 
 
 def find_one(pattern, description):
@@ -44,8 +69,8 @@ NEW_LOG_FILE = find_one(os.path.join(NEW_CASE, "log.interFoam"), "new log")
 OLD_LOG_FILE = find_one(os.path.join(OLD_CASE, "log.interFoam"), "old log")
 
 print("Input files")
-print("New framework log:     ", NEW_LOG_FILE)
-print("Original framework log:", OLD_LOG_FILE)
+print(f"{NEW_LABEL}: {NEW_LOG_FILE}")
+print(f"{OLD_LABEL}: {OLD_LOG_FILE}")
 
 
 # =============================================================
@@ -145,9 +170,15 @@ def parse_solver_log(filename):
             if current_time is None:
                 continue
 
+            # Add up the Newton iterations of every beam solve in the time
+            # step (one per outer corrector or coupling pass)
             convergence_match = CONVERGENCE_PATTERN.search(line)
             if convergence_match:
-                current_newton_iterations = float(convergence_match.group(1))
+                iterations = float(convergence_match.group(1))
+                if np.isnan(current_newton_iterations):
+                    current_newton_iterations = iterations
+                else:
+                    current_newton_iterations += iterations
                 continue
 
             pimple_match = PIMPLE_PATTERN.search(line)
@@ -434,13 +465,16 @@ def print_summary_table():
     old_metrics = summary_metrics(old_data)
     new_metrics = summary_metrics(new_data)
 
+    # Columns wide enough for the case labels
+    width = max(20, len(OLD_LABEL) + 2, len(NEW_LABEL) + 2)
+
     print("")
     print("Computational efficiency summary")
     print(
         f"{'metric':36s}"
-        f"{OLD_LABEL:>20s}"
-        f"{NEW_LABEL:>20s}"
-        f"{'new/original':>18s}"
+        f"{OLD_LABEL:>{width}s}"
+        f"{NEW_LABEL:>{width}s}"
+        f"{'new/old':>12s}"
     )
 
     for metric in old_metrics:
@@ -454,9 +488,9 @@ def print_summary_table():
 
         print(
             f"{metric:36s}"
-            f"{old_value:20.6g}"
-            f"{new_value:20.6g}"
-            f"{ratio:18.6g}"
+            f"{old_value:{width}.6g}"
+            f"{new_value:{width}.6g}"
+            f"{ratio:12.6g}"
         )
 
 
@@ -636,7 +670,9 @@ def plot_newton_iterations():
 
     ax.set_xlabel("Simulation time (s)")
     ax.set_ylabel("Newton iterations per time step")
-    ax.set_ylim(0,6)
+    # Starts at zero; with several outer correctors there are many more
+    # beam iterations per step
+    ax.set_ylim(bottom=0)
     finish_plot(
         ax,
         combined_values("newton_iterations"),
