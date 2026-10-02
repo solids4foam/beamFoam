@@ -22,15 +22,15 @@ inlet
 
     nPaddle         1;
 
-    waveHeight      WAVEHEIGHT;
+    waveHeight      0.02;
 
     waveAngle       0.0;
 
-    rampTime        8.0;
+    rampTime        2.0;
 
     activeAbsorption yes;
 
-    wavePeriod       WAVEPERIOD;
+    wavePeriod       1.0;
 }
 
 outlet

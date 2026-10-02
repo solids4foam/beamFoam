@@ -1,6 +1,6 @@
 #!/bin/sh
 #------------------------------------------------------------------------------
-# Build and pretension the mooring line(s), then copy them into the case.
+# Build and pretension the two mooring lines, then copy them into the case.
 #
 # Each line runs from its anchor (patch "left") to its attachment point on the
 # box (patch "right"). It is meshed straight at its unstretched length
@@ -17,11 +17,12 @@ R=1.0E-03       # Radius [m]
 E=5.0E+06       # Young's modulus [Pa]
 G=1.7857E+06    # Shear modulus [Pa], E/(2(1 + 0.4))
 NSEG=40
-STRAIN=0.0      # Pretension strain: T = E*pi*R^2*STRAIN
+STRAIN=0.02     # Pretension strain: T = E*pi*R^2*STRAIN
 
 # name   anchor (x y z)       attachment (x y z)
 lines="
 beamone  0.25 0.025 0.0      0.45 0.025 0.125
+beamtwo  0.75 0.025 0.0      0.55 0.025 0.125
 "
 
 echo "$lines" | while read name ax ay az bx by bz

@@ -1,4 +1,4 @@
-/*--------------------------------*- C++ -*----------------------------------*\
+/*--------------------------------*- C++ -*----------------------------------* \
 | =========                 |                                                 |
 | \\      /  F ield         | foam-extend: Open Source CFD                    |
 |  \\    /   O peration     | Version:     4.0                                |
@@ -9,19 +9,44 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "system";
-    object      decomposeParDict;
+    class       volVectorField;
+    object      DTheta;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-numberOfSubdomains 128;
+dimensions      [0 0 0 0 0 0 0];
 
-method          manual;
+internalField   uniform (0 0 0);
 
-manualCoeffs
+boundaryField
 {
-    dataFile        "cellDecomposition";                                                     
+    left
+    {
+        type momentBeamRotationNR;
+		momentSeries
+		{
+			file	"$FOAM_CASE/constant/timeVsMoment";
+			outOfBounds	clamp;
+		}
+        value uniform (0 0 0);
+    }
+
+    right
+    {
+        type momentBeamRotationNR;
+		momentSeries
+		{
+		file	"$FOAM_CASE/constant/timeVsMoment";
+			outOfBounds	clamp;
+		}
+		value uniform (0 0 0);
+	}
+
+    beam
+    {
+        type empty;
+    }
 }
+
 
 // ************************************************************************* //

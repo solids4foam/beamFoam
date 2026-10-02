@@ -82,7 +82,7 @@ solvers
         maxIter         20;
     }
 
-    "(U|k|epsilon)"
+    U
     {
         solver          smoothSolver;
         smoother        GaussSeidel;
@@ -91,7 +91,7 @@ solvers
         nSweeps         1;
     }
 
-    "(U|k|epsilon)Final"
+    UFinal
     {
         solver          smoothSolver;
         smoother        GaussSeidel;
@@ -104,7 +104,8 @@ solvers
 PIMPLE
 {
     momentumPredictor   no;
-    nOuterCorrectors    1;
+    nOuterCorrectors    3;
+    moveMeshOuterCorrectors yes;
     nCorrectors         3;
     nNonOrthogonalCorrectors 1;
     correctPhi          yes;

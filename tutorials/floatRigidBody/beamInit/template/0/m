@@ -1,27 +1,42 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | foam-extend: Open Source CFD                    |
-|  \\    /   O peration     | Version:     3.2                                |
+|  \\    /   O peration     | Version:     4.0                                |
 |   \\  /    A nd           | Web:         http://www.foam-extend.org         |
-|    \\/     M anipulation  | For copyright notice see file Copyright         |
+|    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "constant";
-    object      forceProperties;
+    class       volVectorField;
+    object      m;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-forceType groundContact;
+dimensions      [1 1 -2 0 0 0 0];
 
-groundContactCoeffs
+internalField   uniform (0 0 0);
+
+boundaryField
 {
-  gDamping    0.1;
-  gStiffness    1000;
-  gCoordinate   (0 0 1);
+    left
+    {
+        type calculated;
+        value uniform (0 0 0);
+    }
+
+    right
+    {
+        type calculated;
+        value uniform (0 0 0);
+    }
+
+    beam
+    {
+        type empty;
+    }
 }
+
 
 // ************************************************************************* //

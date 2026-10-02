@@ -23,15 +23,15 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         28;
+endTime         10;
 
-deltaT         0.01;
+deltaT          0.001;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.1;
+writeInterval   0.05;
 
-purgeWrite      1;
+purgeWrite      0;
 
 writeFormat     ascii;
 
@@ -49,7 +49,7 @@ adjustTimeStep  yes;
 
 maxCo           0.5;
 maxAlphaCo      0.25;
-maxDeltaT       0.01;
+maxDeltaT       0.002;
 
 functions
 {
@@ -59,17 +59,17 @@ functions
         libs           ("libsixDoFRigidBodyStateFvBeam.so");
         angleFormat    radians;
         writeControl   runTime;
-        writeInterval  0.1;                                                                                                     
+        writeInterval  0.01;
     }
     
     interfaceHeight1
     {
      	type            interfaceHeight;
 	libs            ("libfieldFunctionObjects.so");
-	locations       ((5.75 3.5 0.7));
+	locations       ((0.25 0.025 0.15) (0.75 0.025 0.15));
         alpha           alpha.water;
         writeControl   runTime;
-	writeInterval  0.1;
+	writeInterval  0.01;
     }
 	      
 

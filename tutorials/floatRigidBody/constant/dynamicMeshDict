@@ -1,8 +1,8 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v1806                                 |
-|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -10,76 +10,81 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
+    location    "constant";
     object      dynamicMeshDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+dynamicFvMesh       dynamicMotionSolverFvMesh;
 
-dynamicFvMesh        dynamicMotionSolverFvMesh;
 motionSolverLibs    ("libfiniteVolumeBeamMooring");
-motionSolver        sixDoFRigidBodyMotionFvBeam;
 
+motionSolver        sixDoFRigidBodyMotionFvBeam;
 
 sixDoFRigidBodyMotionFvBeamCoeffs
 {
-    patches         (floatingObject); // Specify your floating object patch here
-    mass            7.12; // Define the mass of the floating object
-    centreOfMass    (5.75 2.375 0.617);// Centre of gravity of the floating object
-    orientation     (1 0 0 0 1 0 0 0 1); // Initial orientation of the floating object
-    innerDistance 0;
-    outerDistance 0.5; 
+    patches         (floatingObject);
 
-    //- modified mesh morphing parameters
-    //-----------------------------------
-    containOuterDistance   0;
-    xDistance    1.0;
-    yDistance    1.2;
-    //-----------------------------------
-    
-    // Set other physical properties as needed
-    momentOfInertia (0.5 0.5 0.65); // Moment of inertia of the floating object
-    
+    // Points within innerDistance of the box move rigidly; beyond
+    // outerDistance they are fixed
+    innerDistance   0.01;
+    outerDistance   0.1;
+
+    // Box 0.1 x 0.05 x 0.05 m, half submerged (draft 0.025 m, water at
+    // z = 0.15). Buoyancy = 998.2*0.1*0.05*0.025*g = 0.124775 kg * g. The two
+    // lines pull down with 2 x 0.1707 N (beamInit/makeBeams, strain 0.02),
+    // which is 0.034811 kg * g, so mass = 0.124775 - 0.034811.
+    mass            0.089964;
+    centreOfMass    (0.5 0.025 0.15);
+    orientation     (1 0 0 0 1 0 0 0 1);
+
+    // Solid box: m*(Ly^2 + Lz^2, Lx^2 + Lz^2, Lx^2 + Ly^2)/12
+    momentOfInertia (3.7485e-05 9.3713e-05 9.3713e-05);
+
+    report          on;
+
+    accelerationRelaxation 0.4;
+
     solver
     {
-              type FvBeamNewmark;
+        type FvBeamNewmark;
     }
 
-    accelerationRelaxation 0.7;  
-
-    
+    // The box spans the tank width: surge, heave and pitch only
     constraints
-      {
-	 
-      }
-    
+    {
+        xzPlane
+        {
+            sixDoFRigidBodyMotionFvBeamConstraint plane;
+            normal (0 1 0);
+        }
+        yAxis
+        {
+            sixDoFRigidBodyMotionFvBeamConstraint axis;
+            axis (0 1 0);
+        }
+    }
+
+    // Lines run from the anchor (left) to the box (right): see beamInit
     restraints
-      {
+    {
         beamone
         {
-                sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
-
-                attachmentPatch right;
-
-                anchorPatch left;
-
-                beamRegion      "beamone";
-
-                refAttachmentPt   (5.37785 2.375 0.85);
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+            attachmentPatch right;
+            anchorPatch     left;
+            beamRegion      "beamone";
+            refAttachmentPt (0.45 0.025 0.125);
         }
-	
-	beamtwo
+        beamtwo
         {
-                sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
-
-		attachmentPatch left;
-
-                anchorPatch     right;
-
-                beamRegion      "beamtwo";
-
-                refAttachmentPt   (5.936073 2.375 0.85);
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+            attachmentPatch right;
+            anchorPatch     left;
+            beamRegion      "beamtwo";
+            refAttachmentPt (0.55 0.025 0.125);
         }
-      }
+    }
 }
 
 // ************************************************************************* //

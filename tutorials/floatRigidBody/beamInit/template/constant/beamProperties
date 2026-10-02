@@ -43,9 +43,7 @@ beams
 {
     E E [1 -1 -2 0 0 0 0] @E@;
     G G [1 -1 -2 0 0 0 0] @G@;
-    // Submerged density of nylon (1140 - 998.2): the beam model does not
-    // apply buoyancy, so the line's weight in water is set here
-    rho rho [1 -3 0 0 0 0 0] 141.8;
+    rho rho [1 -3 0 0 0 0 0] 1140;              // Nylon
     rhoFluid rhoFluid [1 -3 0 0 0 0 0] 998.2;   // Lines are submerged
 
     groundContactActive false;
