@@ -1,0 +1,53 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      Theta;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Pinned ends: zero moment
+    left
+    {
+        type            momentBeamRotationNR;
+        value           uniform (0 0 0);
+        momentSeries
+        {
+            file            "$FOAM_CASE/constant/timeVsMoment";
+            outOfBounds     clamp;
+        }
+    }
+
+    right
+    {
+        type            momentBeamRotationNR;
+        value           uniform (0 0 0);
+        momentSeries
+        {
+            file            "$FOAM_CASE/constant/timeVsMoment";
+            outOfBounds     clamp;
+        }
+    }
+
+    beam
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

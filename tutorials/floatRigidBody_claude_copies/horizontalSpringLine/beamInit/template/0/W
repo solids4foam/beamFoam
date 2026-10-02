@@ -1,0 +1,56 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      W;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Anchor: linear spring to a fixed point at the line's start position.
+    // Force = -k (W . d) d, so the spring only acts along the line. The
+    // stiffness is set by K in beamInit/makeBeams
+    left
+    {
+        type            linearSpringForceBeamDisplacementNR;
+        value           uniform (0 0 0);
+        linearSpringCoeffs
+        {
+            springStiffness @K@;
+            springDirection (1 0 0);
+        }
+    }
+
+    // Attachment: pulled along the line to pretension it. In the coupled
+    // run this becomes fixedValue and the rigid body drives it.
+    right
+    {
+        type            fixedDisplacement;
+        value           uniform (0 0 0);
+        displacementSeries
+        {
+            file        "$FOAM_CASE/constant/timeVsDisplacement";
+            outOfBounds clamp;
+        }
+    }
+
+    beam
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

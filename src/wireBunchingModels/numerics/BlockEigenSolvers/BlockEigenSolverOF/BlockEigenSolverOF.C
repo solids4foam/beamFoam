@@ -14,9 +14,9 @@ License
     option) any later version.
 
     foam-extend is distributed in the hope that it will be useful, but
-    WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    General Public License for more details.
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
 
     You should have received a copy of the GNU General Public License
     along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
@@ -24,14 +24,10 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "BlockEigenSolverOF.H"
-
-// #include "OFstream.H"
-// #include "polyMesh.H"
-// #include "addToRunTimeSelectionTable.H"
-// #include "fvMesh.H"
-// #include "beamModel.H"
-// #include "multibeamFvBlockMatrix.H"
 #include "denseMatrixHelperFunctions.H"
+#include "OFstream.H"
+#include "OSspecific.H"
+#include "Pstream.H"
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -43,19 +39,228 @@ License
 namespace Foam
 {
     defineTypeNameAndDebug(BlockEigenSolverOF, 0);
-
-    // addToRunTimeSelectionTable
-    // (
-    //     blockVector6Solver, BlockEigenSolverOF, symMatrix
-    // );
-
-    // addToRunTimeSelectionTable
-    // (
-    //     blockVector6Solver, BlockEigenSolverOF, asymMatrix
-    // );
 }
 
-// * * * * * * * * * * * Protected Data Functions * * * * * * * * * * * * * //
+
+// * * * * * * * * * * * * * Local Helper Functions * * * * * * * * * * * * //
+
+namespace
+{
+    void writeBlockEigenRigidBodyMotion
+    (
+        const Foam::Time& runTime,
+        const Foam::RigidBodySolution& rigidBodySolution,
+        const Foam::vector& velocity,
+        const Foam::vector& angularMomentum,
+        const Foam::vector& acceleration,
+        const Foam::vector& torque
+    )
+    {
+        if (!Foam::Pstream::master())
+        {
+            return;
+        }
+
+        static bool headerWritten = false;
+        static Foam::label solveIndex = 0;
+
+        const Foam::word startTimeName =
+            runTime.timeName(runTime.startTime().value());
+
+        Foam::fileName historyDir;
+
+        if (Foam::Pstream::parRun())
+        {
+            historyDir =
+                runTime.path()
+               /".."
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyMotion"
+               /startTimeName;
+        }
+        else
+        {
+            historyDir =
+                runTime.path()
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyMotion"
+               /startTimeName;
+        }
+
+        Foam::mkDir(historyDir);
+
+        const Foam::fileName historyFile
+        (
+            historyDir/"BlockEigenSolve_rigidBodyMotion.dat"
+        );
+
+        Foam::OFstream os
+        (
+            historyFile,
+            Foam::IOstreamOption(),
+            Foam::IOstreamOption::APPEND
+        );
+
+        if (!headerWritten)
+        {
+            os  << "Time" << " "
+                << "timeIndex" << " "
+                << "solveIndex" << " "
+                << "disp_x" << " "
+                << "disp_y" << " "
+                << "disp_z" << " "
+                << "rotCorr_x" << " "
+                << "rotCorr_y" << " "
+                << "rotCorr_z" << " "
+                << "velocity_x" << " "
+                << "velocity_y" << " "
+                << "velocity_z" << " "
+                << "angularMomentum_x" << " "
+                << "angularMomentum_y" << " "
+                << "angularMomentum_z" << " "
+                << "acceleration_x" << " "
+                << "acceleration_y" << " "
+                << "acceleration_z" << " "
+                << "torque_x" << " "
+                << "torque_y" << " "
+                << "torque_z"
+                << Foam::endl;
+
+            headerWritten = true;
+        }
+
+        const Foam::vector& displacement = rigidBodySolution.displacement;
+        const Foam::vector& rotationCorrection =
+            rigidBodySolution.rotationCorrection;
+
+        os  << runTime.value() << " "
+            << runTime.timeIndex() << " "
+            << solveIndex++ << " "
+            << displacement.x() << " "
+            << displacement.y() << " "
+            << displacement.z() << " "
+            << rotationCorrection.x() << " "
+            << rotationCorrection.y() << " "
+            << rotationCorrection.z() << " "
+            << velocity.x() << " "
+            << velocity.y() << " "
+            << velocity.z() << " "
+            << angularMomentum.x() << " "
+            << angularMomentum.y() << " "
+            << angularMomentum.z() << " "
+            << acceleration.x() << " "
+            << acceleration.y() << " "
+            << acceleration.z() << " "
+            << torque.x() << " "
+            << torque.y() << " "
+            << torque.z()
+            << Foam::endl;
+
+    }
+
+
+    void writeBlockEigenRigidBodyForceCoupling
+    (
+        const Foam::Time& runTime,
+        const Foam::RigidBodyForceCoupling& coupling,
+        const Foam::vector& accelerationContribution,
+        const Foam::vector& torqueContribution
+    )
+    {
+        if (!Foam::Pstream::master())
+        {
+            return;
+        }
+
+        static bool headerWritten = false;
+        static Foam::label solveIndex = 0;
+
+        const Foam::word startTimeName =
+            runTime.timeName(runTime.startTime().value());
+
+        Foam::fileName historyDir;
+
+        if (Foam::Pstream::parRun())
+        {
+            historyDir =
+                runTime.path()
+               /".."
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyForceCoupling"
+               /startTimeName;
+        }
+        else
+        {
+            historyDir =
+                runTime.path()
+               /"postProcessing"
+               /"BlockEigenSolve_rigidBodyForceCoupling"
+               /startTimeName;
+        }
+
+        Foam::mkDir(historyDir);
+
+        const Foam::fileName historyFile
+        (
+            historyDir/"BlockEigenSolve_rigidBodyForceCoupling.dat"
+        );
+
+        Foam::OFstream os
+        (
+            historyFile,
+            Foam::IOstreamOption(),
+            Foam::IOstreamOption::APPEND
+        );
+
+        if (!headerWritten)
+        {
+            os  << "Time" << " "
+                << "timeIndex" << " "
+                << "solveIndex" << " "
+                << "force_x force_y force_z "
+                << "moment_x moment_y moment_z "
+                << "position_x position_y position_z "
+                << "centreOfRotation_x centreOfRotation_y centreOfRotation_z "
+                << "accelerationContribution_x "
+                << "accelerationContribution_y "
+                << "accelerationContribution_z "
+                << "torqueContribution_x "
+                << "torqueContribution_y "
+                << "torqueContribution_z"
+                << Foam::endl;
+
+            headerWritten = true;
+        }
+
+        os  << runTime.value() << " "
+            << runTime.timeIndex() << " "
+            << solveIndex++ << " "
+            << coupling.force.x() << " "
+            << coupling.force.y() << " "
+            << coupling.force.z() << " "
+            << coupling.moment.x() << " "
+            << coupling.moment.y() << " "
+            << coupling.moment.z() << " "
+            << coupling.position.x() << " "
+            << coupling.position.y() << " "
+            << coupling.position.z() << " "
+            << coupling.centreOfRotation.x() << " "
+            << coupling.centreOfRotation.y() << " "
+            << coupling.centreOfRotation.z() << " "
+            << accelerationContribution.x() << " "
+            << accelerationContribution.y() << " "
+            << accelerationContribution.z() << " "
+            << torqueContribution.x() << " "
+            << torqueContribution.y() << " "
+            << torqueContribution.z()
+            << Foam::endl;
+
+    }
+
+}
+
+
+// * * * * * * * * * * * * * * Protected Data Functions * * * * * * * * * * //
 
 void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 (
@@ -64,41 +269,30 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
     const Field<scalarSquareMatrix>& u,
     const labelList& own,
     const labelList& nei,
+    const scalar rigidBodyNewmarkDisplacementScale,
     Eigen::SparseMatrix<scalar>& A
 )
 {
-    // if (BlockLduSolver::debug)
-    // {
-    //     Info<< this->typeName
-    //         << ": copying matrix coefficients into Eigen format"
-    //         << endl;
-    // }
+    // Colm- making number of rows larger by 6 rows
+    const label nRows = 6*(d.size() + 1);
 
-    const label nRows = 6*d.size();
+    // Colm- reserving 6*6 = 36 more spaces for coefficients   
+    std::vector<Eigen::Triplet<scalar> > coefficients;
+    coefficients.reserve(36*(d.size() + l.size() + u.size() + 1));
 
-    // Block CSR matrix storage
+    // -------------------------------------------------------------------------
+    // diagonal
+    // -------------------------------------------------------------------------
 
-    //const labelList& rowPointers = mbMatrix.blockRowPointers();
-    //const labelList& columnIndices = mbMatrix.blockColumnIndices();
-    //const scalarField& coeffs = mbMatrix.blockCoeffs();
-
-    //label blockSize = ::sqrt(coeffs.size()/columnIndices.size());
-
-    // Create coefficient matrix: we must copy coeffs from CSR storage
-    // Maybe it is possible to use CSR storage directly.
-    std::vector< Eigen::Triplet<scalar> > coefficients;
-    coefficients.reserve(36*(d.size() + l.size() + u.size()));
-    //-----------------------------------------------------------------------------
-    //                  diagonal
-    //-----------------------------------------------------------------------------
     label globalRowI = 0;
+
     forAll(d, cellI)
     {
         const scalarSquareMatrix& curD = d[cellI];
 
-        for (label localRowI = 0; localRowI < 6; localRowI++)
+        for (label localRowI = 0; localRowI < 6; ++localRowI)
         {
-            for (label localColI = 0; localColI < 6; localColI++)
+            for (label localColI = 0; localColI < 6; ++localColI)
             {
                 coefficients.push_back
                 (
@@ -114,69 +308,326 @@ void Foam::BlockEigenSolverOF::convertFoamMatrixToEigenMatrix
 
         globalRowI += 6;
     }
-//-----------------------------------------------------------------------------
-//                  off-diagonal
-//-----------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // rigid-body block: displacement/rotation update equations
+    // -------------------------------------------------------------------------
+
+    const label rbRow = 6*d.size();
+
+    for (label i = 0; i < 6; ++i)
+    {
+        coefficients.push_back
+        (
+            Eigen::Triplet<scalar>
+            (
+                rbRow + i,
+                rbRow + i,
+                1.0
+            )
+        );
+    }
+
+    // Monolithic body translation coupling: the attachment cell's force and
+    // moment rows depend on the body displacement increment through the
+    // eliminated attachment face, and the body force rows depend on the body
+    // and on the attachment cell
+    if (monolithicCoupling_.active)
+    {
+        const label beamRow = 6*monolithicCoupling_.attachmentCell;
+
+        for (label rowI = 0; rowI < 3; ++rowI)
+        {
+            for (label colI = 0; colI < 3; ++colI)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.beamWRowCoeff(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + 3 + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.beamThetaRowCoeff(rowI, colI)
+                    )
+                );
+
+                // Added to the identity entered above, so subtract it on
+                // the diagonal
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        rbRow + colI,
+                        monolithicCoupling_.bodyCoeff(rowI, colI)
+                      - (rowI == colI ? 1.0 : 0.0)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + colI,
+                        monolithicCoupling_.bodyWCoeff(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI,
+                        beamRow + 3 + colI,
+                        monolithicCoupling_.bodyThetaCoeff(rowI, colI)
+                    )
+                );
+
+                if (!monolithicCoupling_.rotationActive)
+                {
+                    continue;
+                }
+
+                const RigidBodyMonolithicCoupling& c = monolithicCoupling_;
+
+                // Body rotation columns of the beam rows and the body
+                // translation rows
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI, rbRow + 3 + colI,
+                        c.beamWRowRotCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + 3 + rowI, rbRow + 3 + colI,
+                        c.beamThetaRowRotCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + rowI, rbRow + 3 + colI,
+                        c.bodyTransRotCoeff(rowI, colI)
+                    )
+                );
+
+                // Body rotation rows; the identity entered above is
+                // subtracted on the diagonal
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, rbRow + colI,
+                        c.bodyRotTransCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, rbRow + 3 + colI,
+                        c.bodyRotCoeff(rowI, colI)
+                      - (rowI == colI ? 1.0 : 0.0)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, beamRow + colI,
+                        c.bodyRotWCoeff(rowI, colI)
+                    )
+                );
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        rbRow + 3 + rowI, beamRow + 3 + colI,
+                        c.bodyRotThetaCoeff(rowI, colI)
+                    )
+                );
+            }
+        }
+    }
+
+    // Off-diagonal coupling blocks between beam-end and rigid-body DOFs.
+    if
+    (
+        rigidBodyKinematicCoupling_
+     && rigidBodyAttachmentCell_ >= 0
+     && rigidBodyAttachmentCell_ < d.size()
+    )
+    {
+        const label beamRow = 6*rigidBodyAttachmentCell_;
+        for (label rowI = 0; rowI < 3; ++rowI)
+        {
+            for (label colI = 0; colI < 3; ++colI)
+            {
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + colI,
+                        rigidBodyTranslationCoeff_(rowI, colI)
+                    )
+                );
+
+                coefficients.push_back
+                (
+                    Eigen::Triplet<scalar>
+                    (
+                        beamRow + rowI,
+                        rbRow + 3 + colI,
+                        rigidBodyRotationCoeff_(rowI, colI)
+                    )
+                );
+            }
+        }
+
+        const bool addReciprocalRigidBodyForceRows =
+            rigidBodyForceCoupling_.active;
+
+        if (addReciprocalRigidBodyForceRows && rigidBodyForceCoupling_.active)
+        {
+            const tensor rbTranslationForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyBeamForceWCoeff_;
+
+            const tensor rbRotationForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyRotationCoeff_;
+
+            const tensor beamDisplacementForceCoeff =
+                rigidBodyNewmarkDisplacementScale
+               *rigidBodyBeamForceWCoeff_;
+
+            for (label rowI = 0; rowI < 3; ++rowI)
+            {
+                for (label colI = 0; colI < 3; ++colI)
+                {
+                    // Newmark displacement response to incremental beam
+                    // attachment stretch:
+                    //   dt^2*beta/m * K * (dWrbAttach - dWbeamCell)
+                    // where K is rigidBodyBeamForceWCoeff_ ~= CQW/L.
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            rbRow + colI,
+                            rbTranslationForceCoeff(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            rbRow + 3 + colI,
+                            rbRotationForceCoeff(rowI, colI)
+                        )
+                    );
+
+                    coefficients.push_back
+                    (
+                        Eigen::Triplet<scalar>
+                        (
+                            rbRow + rowI,
+                            beamRow + colI,
+                           -beamDisplacementForceCoeff(rowI, colI)
+                        )
+                    );
+                }
+            }
+        }
+
+        Info<< "BlockEigen kinematic coupling terms added: beamRows="
+            << beamRow << ".." << beamRow + 2
+            << ", rigid translation rows/cols=" << rbRow << ".." << rbRow + 2
+            << ", rigid rotation rows/cols=" << rbRow + 3
+            << ".." << rbRow + 5
+            << ", reciprocal rigid-body rows "
+            << (addReciprocalRigidBodyForceRows ? "added" : "inactive")
+            << endl;
+    }
+
+    // -------------------------------------------------------------------------
+    // off-diagonal
+    // -------------------------------------------------------------------------
 
     forAll(u, faceI)
     {
         const scalarSquareMatrix& curU = u[faceI];
         const scalarSquareMatrix& curL = l[faceI];
 
-        const label globalRowI = 6*own[faceI];
-        const label globalColI = 6*nei[faceI];
+        const label globalRow = 6*own[faceI];
+        const label globalCol = 6*nei[faceI];
 
-        //upper
-        for (label localRowI = 0; localRowI < 6; localRowI++)
+        // upper
+        for (label localRowI = 0; localRowI < 6; ++localRowI)
         {
-            for (label localColI = 0; localColI < 6; localColI++)
+            for (label localColI = 0; localColI < 6; ++localColI)
             {
                 coefficients.push_back
                 (
                     Eigen::Triplet<scalar>
                     (
-                        globalRowI + localRowI,
-                        globalColI + localColI,
+                        globalRow + localRowI,
+                        globalCol + localColI,
                         curU(localRowI, localColI)
                     )
                 );
             }
         }
-        //lower
-        for (label localRowI = 0; localRowI < 6; localRowI++)
+
+        // lower
+        for (label localRowI = 0; localRowI < 6; ++localRowI)
         {
-            for (label localColI = 0; localColI < 6; localColI++)
+            for (label localColI = 0; localColI < 6; ++localColI)
             {
                 coefficients.push_back
                 (
                     Eigen::Triplet<scalar>
                     (
-                        globalColI + localRowI,
-                        globalRowI + localColI,
+                        globalCol + localRowI,
+                        globalRow + localColI,
                         curL(localRowI, localColI)
                     )
                 );
             }
         }
-
-
     }
-    //-----------------------------------------------------------------------------
-    //-----------------------------------------------------------------------------
 
-        // Insert triplets into the matrix
-        //label bnRows = rowPointers.size()-1;
-        //nRows = blockSize*bnRows;
+    // Insert triplets into the matrix
+    //label bnRows = rowPointers.size()-1;
+    //nRows = blockSize*bnRows;    
     A.resize(nRows, nRows);
     A.setFromTriplets(coefficients.begin(), coefficients.end());
-
-    // Compressing matrix is meant to help performance
+    // Compressing matrix is meant to help performance    
     A.makeCompressed();
 }
 
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-//- Construct from matrix
 Foam::BlockEigenSolverOF::BlockEigenSolverOF
 (
     const Field<scalarSquareMatrix>& d,
@@ -190,42 +641,110 @@ Foam::BlockEigenSolverOF::BlockEigenSolverOF
     l_(l),
     u_(u),
     own_(own),
-    nei_(nei)
+    nei_(nei),
+    rigidBodyKinematicCoupling_(false),
+    rigidBodyAttachmentCell_(-1),
+    rigidBodyTranslationCoeff_(tensor::zero),
+    rigidBodyRotationCoeff_(tensor::zero),
+    rigidBodyBeamForceWCoeff_(tensor::zero),
+    rigidBodyBeamForceThetaCoeff_(tensor::zero),
+    rigidBodyMomentArm_(vector::zero),
+    rigidBodyAttachmentDisplacementPrevious_(vector::zero),
+    rigidBodyForceCoupling_()
 {}
 
-// ************************************************************************* //
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Foam::BlockEigenSolverOF::BlockEigenSolverOF
+(
+    const Field<scalarSquareMatrix>& d,
+    const Field<scalarSquareMatrix>& l,
+    const Field<scalarSquareMatrix>& u,
+    const labelList& own,
+    const labelList& nei,
+    const bool rigidBodyKinematicCoupling,
+    const label rigidBodyAttachmentCell,
+    const tensor& rigidBodyTranslationCoeff,
+    const tensor& rigidBodyRotationCoeff,
+    const tensor& rigidBodyBeamForceWCoeff,
+    const tensor& rigidBodyBeamForceThetaCoeff,
+    const vector& rigidBodyMomentArm,
+    const vector& rigidBodyAttachmentDisplacementPrevious,
+    const RigidBodyForceCoupling& rigidBodyForceCoupling
+)
+:
+    d_(d),
+    l_(l),
+    u_(u),
+    own_(own),
+    nei_(nei),
+    rigidBodyKinematicCoupling_(rigidBodyKinematicCoupling),
+    rigidBodyAttachmentCell_(rigidBodyAttachmentCell),
+    rigidBodyTranslationCoeff_(rigidBodyTranslationCoeff),
+    rigidBodyRotationCoeff_(rigidBodyRotationCoeff),
+    rigidBodyBeamForceWCoeff_(rigidBodyBeamForceWCoeff),
+    rigidBodyBeamForceThetaCoeff_(rigidBodyBeamForceThetaCoeff),
+    rigidBodyMomentArm_(rigidBodyMomentArm),
+    rigidBodyAttachmentDisplacementPrevious_
+    (
+        rigidBodyAttachmentDisplacementPrevious
+    ),
+    rigidBodyForceCoupling_(rigidBodyForceCoupling)
+{}
+
+
+// ************************************************************************* //
 
 Foam::scalar Foam::BlockEigenSolverOF::solve
 (
     Foam::Field<Foam::scalarRectangularMatrix>& foamX,
-    const Foam::Field<Foam::scalarRectangularMatrix>& foamB
+    const Foam::Field<Foam::scalarRectangularMatrix>& foamB,
+    RigidBodySolution& rigidBodySolution,
+    const RigidBodyStepData& rigidBodyData,
+    const Time& runTime
 )
 {
-    // Allow to run in parallel, where each core solves its own independent
-    // problem: this will not be correct if the beam is split across cores!
-    // if (Pstream::parRun())
-    // {
-    //     FatalErrorIn
-    //     (
-    //         "bool Foam::BlockEigenSolverOF::solve"
-    //         "(...)"
-    //     )   << "Eigen direct linear solver may not be run in parallel"
-    //         << abort(FatalError);
-    // }
+    // Colm: defining variables for rigid body RHS
+    const scalar rbNewmarkGamma = 0.5;
+    const scalar rbNewmarkBeta = 0.25;
+    const scalar deltaT = runTime.deltaTValue();
 
-    // Create Eigen sparse matrix and set coeffs
-    Eigen::SparseMatrix<scalar> A; // initialized in convertFoamMatrixToEigenMatrix funtion
-    convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A);
-    // Create Eigen source and solution vector from foam vectors
-    //Eigen::Matrix<scalar, Eigen::Dynamic, 1> b;
-    //Eigen::Matrix<scalar, Eigen::Dynamic, 1> x;
+    scalar rigidBodyNewmarkDisplacementScale = 0.0;
+
+    if (rigidBodyForceCoupling_.active)
+    {
+        if (mag(rigidBodyForceCoupling_.mass) < SMALL)
+        {
+            FatalErrorInFunction
+                << "blockEigenForceCoupling requested with zero rigid-body mass"
+                << abort(FatalError);
+        }
+
+        rigidBodyNewmarkDisplacementScale =
+            sqr(deltaT)*rbNewmarkBeta/rigidBodyForceCoupling_.mass;
+    }
+
+    Eigen::SparseMatrix<scalar> A;
+    convertFoamMatrixToEigenMatrix
+    (
+        d_,
+        l_,
+        u_,
+        own_,
+        nei_,
+        rigidBodyNewmarkDisplacementScale,
+        A
+    );
 
     const label nRows = A.rows();
+    const label rigidStart = nRows - 6; //Colm- counter for rigidBody
+
+    // -------------------------------------------------------------------------
+    // Build RHS vector
+    // -------------------------------------------------------------------------
 
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> b(nRows);
     label index = 0;
+
     forAll(foamB, cellI)
     {
         b(index++) = foamB[cellI](0,0);
@@ -236,9 +755,119 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         b(index++) = foamB[cellI](5,0);
     }
 
-    // Copy solution vector into Eigen vector
+    // Colm: Read in variables
+    const RigidBodyState& prev = rigidBodyData.previous;
+    const RigidBodyState& curr = rigidBodyData.current;
+
+    vector currAcceleration = curr.acceleration;
+    vector currTorque = curr.torque;
+
+    if (rigidBodyForceCoupling_.active)
+    {
+        if (mag(rigidBodyForceCoupling_.mass) < SMALL)
+        {
+            FatalErrorInFunction
+                << "blockEigenForceCoupling requested with zero rigid-body mass"
+                << abort(FatalError);
+        }
+
+        const vector accelerationContribution =
+            rigidBodyForceCoupling_.force/rigidBodyForceCoupling_.mass;
+
+        const vector momentArm =
+            rigidBodyForceCoupling_.position
+          - rigidBodyForceCoupling_.centreOfRotation;
+
+        const vector globalMomentContribution =
+            rigidBodyForceCoupling_.moment
+          + (momentArm ^ rigidBodyForceCoupling_.force);
+
+        const vector torqueContribution =
+            rigidBodyForceCoupling_.orientation.T()
+          & globalMomentContribution;
+
+        currAcceleration += accelerationContribution;
+        currTorque += torqueContribution;
+
+        writeBlockEigenRigidBodyForceCoupling
+        (
+            runTime,
+            rigidBodyForceCoupling_,
+            accelerationContribution,
+            torqueContribution
+        );
+    }
+
+    Foam::vector rbVelocity = Foam::vector::zero;
+    Foam::vector rbAngularMomentum = Foam::vector::zero;
+
+    // Colm: Newmark-Beta equations
+     // Colm: Solve for v and pi here
+    // Colm: Not sure what to do with result- following sixDofRigidBodyMotion/FvBeamNewmark structure   
+    for (label i = 0; i < 3; ++i)
+    {
+        rbVelocity[i] =
+            prev.velocity[i]
+          + deltaT
+           *(
+                rbNewmarkGamma*currAcceleration[i]
+              + (1.0 - rbNewmarkGamma)*prev.acceleration[i]
+            );
+
+        rbAngularMomentum[i] =
+            prev.angularMomentum[i]
+          + deltaT
+           *(
+                rbNewmarkGamma*currTorque[i]
+              + (1.0 - rbNewmarkGamma)*prev.torque[i]
+            );
+    }
+
+    // translational part of rigid-body RHS
+    for (label i = 0; i < 3; ++i)
+    {
+        b(rigidStart + i) =
+            prev.displacement[i]
+          + deltaT*prev.velocity[i]
+          + deltaT*deltaT
+           *(
+                rbNewmarkBeta*currAcceleration[i]
+              + (0.5 - rbNewmarkBeta)*prev.acceleration[i]
+            )
+          - rigidBodyAttachmentDisplacementPrevious_[i];
+    }
+
+    // rotational correction part of rigid-body RHS
+    for (label i = 0; i < 3; ++i)
+    {
+        b(rigidStart + 3 + i) =
+            deltaT*prev.angularMomentum[i]
+          + deltaT*deltaT
+           *(
+                rbNewmarkBeta*currTorque[i]
+              + (0.5 - rbNewmarkBeta)*prev.torque[i]
+            );
+    }
+
+    if (monolithicCoupling_.active)
+    {
+        for (label i = 0; i < 3; ++i)
+        {
+            b(rigidStart + i) = monolithicCoupling_.bodySource[i];
+            b(rigidStart + 3 + i) =
+                monolithicCoupling_.rotationActive
+              ? monolithicCoupling_.bodyRotSource[i]
+              : 0;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Build initial guess
+    // -------------------------------------------------------------------------
+
     Eigen::Matrix<scalar, Eigen::Dynamic, 1> x(nRows);
     index = 0;
+
     forAll(foamX, cellI)
     {
         x(index++) = foamX[cellI](0,0);
@@ -249,43 +878,67 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         x(index++) = foamX[cellI](5,0);
     }
 
-    // Calculate initial residual
-    const label nCells = d_.size();
-    scalar initialResidual = 0;
+    // Colm: Rigid body solution vector
+    for (label i = 0; i < 6; ++i)
     {
+        x(rigidStart + i) = 0.0;
+    }
 
+    // -------------------------------------------------------------------------
+    // Calculate initial residual
+    // -------------------------------------------------------------------------
+
+    // Colm: +1 for extra 6 x 6 block for rigid body
+    const label nCells = d_.size() + 1;
+    scalar initialResidual = 0.0;
+
+    {
         Eigen::Matrix<scalar, Eigen::Dynamic, 1> Ax(nRows);
         Ax = A*x;
 
         Field<scalarRectangularMatrix> foamAx
         (
-            nCells, scalarRectangularMatrix(6, 1, 0.0)
+            nCells,
+            scalarRectangularMatrix(6, 1, 0.0)
         );
 
-        // Convert poroduct
+        Field<scalarRectangularMatrix> foamRhs
+        (
+            nCells,
+            scalarRectangularMatrix(6, 1, 0.0)
+        );
+
         label k = 0;
-        for (label i=0; i<nCells; i++)
+        for (label i = 0; i < nCells; ++i)
         {
-            for (label j=0; j<6; j++)
+            for (label j = 0; j < 6; ++j)
             {
-                foamAx[i](j,0) = Ax[k++];
+                foamAx[i](j,0) = Ax[k];
+                foamRhs[i](j,0) = b[k];
+                ++k;
             }
         }
 
-        Field<scalarRectangularMatrix> blockR(foamB - foamAx);
-
-        //scalarRectangularMatrix norm(6, 1, 1.0); //this->normFactor(U, blockB);
-        //initialResidual = cmptDivide(gSum(cmptMag(blockR)), norm);
-        // initialResidual = sqrt(gSum(magSqr(blockR)));
-        // Note: use sum instead of gSum
+        Field<scalarRectangularMatrix> blockR(foamRhs - foamAx);
         initialResidual = sqrt(sum(magSqr(blockR)));
     }
 
+    // -------------------------------------------------------------------------
+    // Solve
+    // -------------------------------------------------------------------------
 
-    typedef enum {SparseLU, BiCGSTAB, GMRES, DGMRES, MINRES} solvers;
+    typedef enum
+    {
+        SparseLU,
+        BiCGSTAB,
+        GMRES,
+        DGMRES,
+        MINRES
+    } solvers;
+
     solvers sol = SparseLU;
 
-    switch(sol)
+    switch (sol)
     {
         case SparseLU:
         {
@@ -294,52 +947,50 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
                 Eigen::SparseMatrix<scalar>,
                 Eigen::COLAMDOrdering<int>
             > solver(A);
+
             x = solver.solve(b);
-            //solverPerf.nIterations()++;
             break;
         }
+
         case BiCGSTAB:
         {
             Eigen::BiCGSTAB
             <
                 Eigen::SparseMatrix<scalar>,
-                // Eigen::IdentityPreconditioner
-                // Eigen::DiagonalPreconditioner<scalar>
                 Eigen::IncompleteLUT<scalar>
             > solver;
+
             solver.compute(A);
             x = solver.solve(b);
-            //solverPerf.nIterations() = solver.iterations();
             break;
         }
+
         case GMRES:
         {
             Eigen::GMRES
             <
                 Eigen::SparseMatrix<scalar>,
-                // Eigen::IdentityPreconditioner
-                // Eigen::DiagonalPreconditioner<scalar>
                 Eigen::IncompleteLUT<scalar>
             > solver;
+
             solver.compute(A);
             x = solver.solve(b);
-            //solverPerf.nIterations() = solver.iterations();
             break;
         }
+
         case DGMRES:
         {
             Eigen::DGMRES
             <
                 Eigen::SparseMatrix<scalar>,
-                // Eigen::IdentityPreconditioner
-                // Eigen::DiagonalPreconditioner<scalar>
                 Eigen::IncompleteLUT<scalar>
             > solver;
+
             solver.compute(A);
             x = solver.solve(b);
-            //solverPerf.nIterations() = solver.iterations();
             break;
         }
+
         case MINRES:
         {
             Eigen::MINRES
@@ -347,28 +998,25 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
                 Eigen::SparseMatrix<scalar>,
                 Eigen::Lower|Eigen::Upper,
                 Eigen::IdentityPreconditioner
-                // Eigen::DiagonalPreconditioner<scalar>
-                // Eigen::IncompleteLUT<scalar>
             > solver;
+
             solver.compute(A);
             x = solver.solve(b);
-            //solverPerf.nIterations() = solver.iterations();
             break;
         }
+
         default:
             FatalErrorIn
             (
-                "Foam::BlockSolverPerformance<Foam::vector6>"
-                "Foam::BlockEigenSolverOF::solve"
-                "("
-                "    Field<Foam::vector6>& U,"
-                "    const Field<Foam::vector6>& blockB"
-                ")"
-            )   << "Undefined Eugen solver."
+                "Foam::scalar Foam::BlockEigenSolverOF::solve(...)"
+            )   << "Undefined Eigen solver."
                 << abort(FatalError);
     }
 
-    // We copy the results from the std::vector into the geometric field
+    // -------------------------------------------------------------------------
+    // Copy solved beam unknowns back to foamX
+    // -------------------------------------------------------------------------
+
     index = 0;
     forAll(foamX, cellI)
     {
@@ -380,35 +1028,35 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         foamX[cellI](5,0) = x(index++);
     }
 
-    //
+    // -------------------------------------------------------------------------
+    // Copy rigid-body result into named output
+    // -------------------------------------------------------------------------
+    // Colm- Codex idea
+    
+    rigidBodySolution.displacement = Foam::vector::zero;
+    rigidBodySolution.rotationCorrection = Foam::vector::zero;
+    rigidBodySolution.velocity = rbVelocity;
+    rigidBodySolution.angularMomentum = rbAngularMomentum;
+    rigidBodySolution.acceleration = currAcceleration;
+    rigidBodySolution.torque = currTorque;
 
-    // Calculate final residual
-    // {
-    //     Eigen::Matrix<scalar, Eigen::Dynamic, 1> p(nRows);
-    //     p = A*x;
+    for (label i = 0; i < 3; ++i)
+    {
+        rigidBodySolution.displacement[i] =
+            rigidBodyAttachmentDisplacementPrevious_[i]
+          + x(rigidStart + i);
+        rigidBodySolution.rotationCorrection[i] = x(rigidStart + 3 + i);
+    }
 
-    //     Field<vector6> blockP(U.size());
-
-    //     // Convert poroduct
-    //     label k = 0;
-    //     for (label i=0; i<nCells; i++)
-    //     {
-    //         for (label j=0; j<blockSize; j++)
-    //         {
-    //             blockP[i](j) = p[k++];
-    //         }
-    //     }
-
-    //     Field<vector6> blockR(blockB - blockP);
-
-    //     vector6 norm = vector6::one; //this->normFactor(U, blockB);
-
-    //     solverPerf.finalResidual() =
-    //         cmptDivide(gSum(cmptMag(blockR)), norm);
-    // }
-
+    writeBlockEigenRigidBodyMotion
+    (
+        runTime,
+        rigidBodySolution,
+        rbVelocity,
+        rbAngularMomentum,
+        currAcceleration,
+        currTorque
+    );
 
     return initialResidual;
 }
-
-

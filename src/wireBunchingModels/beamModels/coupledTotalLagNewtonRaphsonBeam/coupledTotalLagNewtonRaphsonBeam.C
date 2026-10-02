@@ -32,14 +32,14 @@ License
 #include "HermiteSpline.H"
 #include "spinTensor.H"
 #include "pseudoVector.H"
-#include "momentBeamRotationFvPatchVectorField.H"
+// #include "momentBeamRotationFvPatchVectorField.H"
 #include "momentBeamRotationNRFvPatchVectorField.H"
-#include "forceBeamDisplacementFvPatchVectorField.H"
+// #include "forceBeamDisplacementFvPatchVectorField.H"
 #include "forceBeamDisplacementNRFvPatchVectorField.H"
 #include "followerForceBeamDisplacementNRFvPatchVectorField.H"
-#include "axialForceTransverseDisplacementFvPatchVectorField.H"
-#include "axialForceTransverseDisplacementNRFvPatchVectorField.H"
-#include "extrapolatedBeamRotationFvPatchVectorField.H"
+// #include "axialForceTransverseDisplacementFvPatchVectorField.H"
+// #include "axialForceTransverseDisplacementNRFvPatchVectorField.H"
+// #include "extrapolatedBeamRotationFvPatchVectorField.H"
 
 #include "mergePoints.H"
 #include "scalarMatrices.H"
@@ -98,7 +98,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", W_.dimensions(), vector::zero)
@@ -111,7 +111,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         // fvc::ddt(W_)
@@ -125,7 +125,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
@@ -138,7 +138,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", W_.dimensions(), vector::zero)
@@ -163,7 +163,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         //fvc::ddt(Theta_)
@@ -177,7 +177,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
@@ -190,7 +190,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", Theta_.dimensions(), vector::zero)
@@ -203,7 +203,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", dimLength, vector::zero)
@@ -229,7 +229,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", dimForce, vector::zero)
@@ -242,7 +242,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedScalar("0", dimForce, 0)
@@ -260,19 +260,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("M", dimForce*dimLength, vector::zero)
     ),
-    Mref_
-    (
-        IOobject
-        (
-            "Mref",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("Mref", dimForce*dimLength, vector::zero)
-    ),
     explicitM_
     (
         IOobject
@@ -281,7 +268,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
@@ -294,7 +281,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
@@ -307,7 +294,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -320,7 +307,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -333,7 +320,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -346,7 +333,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -359,7 +346,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -372,7 +359,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -385,7 +372,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("x-axis", dimless, vector(1, 0, 0))
@@ -398,7 +385,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea, tensor::zero)
@@ -411,7 +398,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea, tensor::zero)
@@ -424,7 +411,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimForce*dimLength, tensor::zero)
@@ -437,7 +424,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea*dimArea, tensor::zero)
@@ -450,7 +437,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", M_.dimensions(), tensor::zero)
@@ -463,7 +450,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimForce*dimLength, tensor::zero)
@@ -476,7 +463,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor("0", dimForce*dimLength, tensor::zero)
@@ -489,7 +476,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedVector("0", dimless, vector::zero)
@@ -556,7 +543,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         // mesh(),
         indicator(0)
@@ -580,7 +567,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         // mesh(), //CM_
         indicator(0)
@@ -604,7 +591,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimensionedTensor
@@ -631,21 +618,27 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             0,            0,           kCI()*IzzRho().value()
         )
     ),
-    newmark_(beamProperties().lookupOrDefault<bool>("newmark", false)),
-    betaN_(beamProperties().lookupOrDefault<scalar>("newmarkBeta", 0.25)),
-    gammaN_(beamProperties().lookupOrDefault<scalar>("newmarkGamma", 0.5)),
-
-    // Drag Force related fields
-    dragActive_(beamProperties().lookupOrDefault<bool>("dragActive", false)),
-    Cdn_(beamProperties().lookupOrDefault<scalar>("Cdn", 1.0)),
-    Cdt_(beamProperties().lookupOrDefault<scalar>("Cdt", 1.0)),
-
-    // ground contact related parameters and switches
-    groundContactActive_(beamProperties().getOrDefault<bool>("groundContactActive", false)),
-    gDamping_(beamProperties().getOrDefault<scalar>("gDamping", 0.0)),
-    gStiffness_(beamProperties().getOrDefault<scalar>("gStiffness", 0.0)),
-    groundZ_(beamProperties().getOrDefault<scalar>("groundZ", 0.0)),
-
+    ddtSchemeName_
+    (
+         mesh().ddtSchemes().found("ddt(W)")
+         ?
+         (mesh().ddtSchemes().lookup("ddt(W)"))
+         :
+         (mesh().ddtSchemes().lookup("default"))
+    ),
+    d2dt2SchemeName_
+    (
+         mesh().d2dt2Schemes().found("d2dt2(W)")
+         ?
+         (mesh().d2dt2Schemes().lookup("d2dt2(W)"))
+         :
+         (mesh().d2dt2Schemes().lookup("default"))
+    ),
+    // Newmark-beta time integration parameters
+    betaN_(0.0),
+    gammaN_(0.0),
+    // Pointer to add beamMomentumContributions
+    momentumContribPtr_(0),
     totalContactTime_(0),
     totalSolutionTime_(),
     proc_
@@ -656,17 +649,94 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
-        dimensionedScalar("zero", dimless, 0)
+        dimensionedScalar("zero", dimless, 0)//,
+	// rigidBodyData_(),
+	//        rigidBodyDataValid_(false)
     )
 {
+  //  rigidBodyDataValid_(false);
+  rigidBodyDataValid_ = false;
+  blockEigenKinematicCouplingActive_ = false;
+  blockEigenKinematicCouplingStaged_ = false;
+  blockEigenStagedAttachmentDisplacement_ = vector::zero;
+  rigidBodySolutionValid_ = false;
+  newmarkPredictorTimeIndex_ = -1;
+  rigidBodyEndPatchIndex_ = -1;
+  rigidBodyEndX_ = vector::zero;
+  rigidBodyEndTheta_ = vector::zero;
+
+    // Check to enforce user to specify the d2dt2Schemes
+    // system/fvSchemes - Required for dynamic simulations
+
+    if (!List<word>({"steadyState", "Euler", "Newmark"}).found(d2dt2SchemeName_))
+    {
+        FatalErrorIn
+        (
+            "Constructor of coupledTotalLagNewtonRaphsonBeam"
+        )
+            << "The beam solver consists of 2nd order PDEs " << nl
+            << "Please specify the d2dt2Schemes in system/fvSchemes!" << nl
+            << "The valid schemes/keywords are: steadyState, Euler, Newmark." << nl
+            << "The Newmark or Newmark-beta time scheme is a second-order "
+            << "accurate time scheme for solving 2nd order PDEs." << nl
+            << abort(FatalError);
+    }
+
+    // Check to enforce that ddtSchemes and d2dt2Schemes are consistent
+    bool consistentTimeSchemes =
+        (ddtSchemeName_ == "Euler" && d2dt2SchemeName_ == "Euler")
+     || (ddtSchemeName_ == "steadyState" && d2dt2SchemeName_ == "steadyState")
+     || (ddtSchemeName_ == "Newmark" && d2dt2SchemeName_ == "Newmark");
+        // Newmark uses only d2dt2 scheme but set both to Newmark
+
+    if (!consistentTimeSchemes)
+    {
+        FatalErrorInFunction
+          << "Inconsistent time integration schemes! Specified schemes are: \n"
+          << "  ddtScheme:    " << ddtSchemeName_  << nl
+          << "  d2dt2Scheme:  " << d2dt2SchemeName_ << nl << nl
+          << "Allowed combinations of (ddtScheme, d2dt2Scheme) are:\n"
+          << "  (Euler, Euler)\n"
+          << "  (steadyState, steadyState)\n"
+          << "  (Newmark, Newmark)\n" << nl
+          << abort(FatalError);
+    }
+
+    if (d2dt2SchemeName_ == "Newmark")
+    {
+        Info<< "The Newmark-beta time-integration scheme is set as d2dt2Scheme.\n"
+            << nl
+            << "The time integration parameters of Newmark method can be "
+            << "specified inside d2dt2Scheme of system/fvSchemes using "
+            << "keywords 'newmarkBeta(W)' and 'newmarkGamma(W)'. \n"
+            << "The default parameters set are, newmarkBeta(W) = 0.25 "
+            << "& newmarkGamma(W) = 0.5\n"
+            << "They represent constant acceleration method or trapezoidal rule"
+            << ", and are generally good. \n"
+            << endl;
+
+        betaN_ = mesh().d2dt2Schemes().lookupOrDefault<scalar>("newmarkBeta(W)", 0.25);
+        gammaN_ = mesh().d2dt2Schemes().lookupOrDefault<scalar>("newmarkGamma(W)", 0.5);
+
+        if (betaN_ != 0.25 || gammaN_ != 0.5)
+        {
+            Info<< "The user specified Newmark time integration parameters are\n"
+                << "newmarkBeta = " << betaN_ << " , "
+                << "newmarkGamma = " << gammaN_
+                << endl;
+        }
+    }
+
     W_.oldTime();
     U_.oldTime();
+    Accl_.oldTime();
     Omega_.oldTime();
-    Lambda_.oldTime();
+    dotOmega_.oldTime();
 
+    Lambda_.oldTime();
     Gamma_.oldTime();
     K_.oldTime();
     Lambdaf_.oldTime();
@@ -724,14 +794,14 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::AUTO_WRITE
+            IOobject::NO_WRITE
         ),
         mesh(),
         dimLength
     );
     R0 = mesh().C();
     const vectorField refTangentError(fvc::snGrad(R0) - vector(1, 0, 0));
-    
+
     if (max(mag(refTangentError)) > 1e-06)
     {
         FatalErrorIn
@@ -739,11 +809,18 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             "Constructor of Foam::coupledTotalLagNewtonRaphsonBeam "
         )   << "The longitudinal axis of beam in the reference configuration " << nl
             << "is not aligned the global x-axis : This is a mandatory " << nl
-            << "requirement before running the beam solver. For example, " << nl
+            << "requirement before running the beam solver. Check the beam mesh " << nl
+            << "in paraview. For example, " << nl
             << "if the current beam is oriented in the Z direction, run the "
             << "following command: " << nl
             << "    transformPoints -rotate-angle '((0 1 0) 90)'" << nl
-            << "after creating the beam mesh to set the correct reference "
+            << "after creating the beam mesh to set the correct reference " << nl
+            << nl
+            << "You might also be using a deprecated mesh utility " << nl
+            << " 'createCircularBeamMesh' or 'createMultipleBeamMesh' "
+            << " along with transformPoints command! " << nl << nl
+            << " Use 'createBeamMesh' utility instead! and remove  "
+            << " transformPoints command! " << nl
             << abort(FatalError);
     }
 
@@ -993,6 +1070,54 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     explicitM_.setOriented(true);
     Q_.setOriented(true);
     M_.setOriented(true);
+
+    // Create momentumContributions
+    IOobject momentumContribHeader
+    (
+        "beamMomentumContributionProperties",
+        runTime.constant(),
+        runTime,
+        IOobject::MUST_READ
+    );
+    
+    if (momentumContribHeader.typeHeaderOk<dictionary>(true))
+    {
+        Info<< "Found beamMomentumContributionProperties file: creating object"
+            << endl;
+        
+        // TO CHECK: maybe we should not register this dict
+        IOdictionary beamMomentContribDict(momentumContribHeader);
+
+        const PtrList<entry> entries
+        (
+            beamMomentContribDict.lookup("beamMomentumContributions")
+        );
+
+        const label nContrib = entries.size();
+
+        momentumContribPtr_.setSize(nContrib);        
+        // dictionary& momentumContribDicts = dict.lookup("beamContributions");
+        
+        forAll(entries, i)
+        {
+            momentumContribPtr_.set
+            (
+                i,
+                beamMomentumContribution::New
+                (
+                    word(entries[i].dict().lookup("beamMomentumContributionType")),
+                    entries[i].dict()
+                )
+            );
+        }
+    }
+    else
+    {
+        Info<< "beamMomentumContributionProperties file not found: skipping"
+            << endl;
+    }
+
+    readRigidBodyEnd();
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
@@ -1354,7 +1479,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                 runTime().timeName(),
                 mesh,
                 IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE
              ),
             mesh,
             dimensionedVector("R0", dimLength, vector::zero)
@@ -1410,7 +1535,7 @@ tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::currentBeamTangents
                 runTime().timeName(),
                 mesh,
                 IOobject::READ_IF_PRESENT,
-                IOobject::AUTO_WRITE
+                IOobject::NO_WRITE
             ),
             mesh,
             dimensionedVector("R0", dimLength, vector::zero)
@@ -1945,64 +2070,9 @@ void coupledTotalLagNewtonRaphsonBeam::currentGlobalBeamPointsAndTangents
     }
 }
 
-
-tmp<vectorField> coupledTotalLagNewtonRaphsonBeam::
-currentDisplacementIncrement() const
-{
-    label nPoints = this->mesh().nCells() + 1;
-
-    tmp<vectorField> tDW
-    (
-        new vectorField(nPoints, vector::zero)
-    );
-    vectorField& DW(tDW.ref());
-
-    const surfaceVectorField DWf
-    (
-        fvc::interpolate(W_)
-      - fvc::interpolate(W_.oldTime())
-    );
-
-    const vectorField& DWfI = DWf.internalField();
-
-    DW[0] = DWf.boundaryField()[startPatchIndex()][0];
-    DW[nPoints-1] = DWf.boundaryField()[endPatchIndex()][0];
-    for (label i=0; i<DWfI.size(); i++)
-    {
-        DW[i+1] = DWfI[i];
-    }
-
-    return tDW;
-}
-
-tmp<tensorField> coupledTotalLagNewtonRaphsonBeam::
-currentRotationIncrement() const
-{
-    label nPoints = this->mesh().nCells() + 1;
-
-    tmp<tensorField> tDLambda
-    (
-        new tensorField(nPoints, tensor::zero)
-    );
-    tensorField& DLambda(tDLambda.ref());
-
-    const surfaceTensorField DLambdaf((Lambdaf_ & inv(Lambdaf_.oldTime())));
-
-    const tensorField& DLambdafI(DLambdaf.internalField());
-
-    DLambda[0] = DLambdaf.boundaryField()[startPatchIndex()][0];
-    DLambda[nPoints-1] = DLambdaf.boundaryField()[endPatchIndex()][0];
-    for (label i=0; i<DLambdafI.size(); i++)
-    {
-        DLambda[i+1] = DLambdafI[i];
-    }
-
-    return tDLambda;
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-} // End namespace solidModels
+} // End namespace beamModels
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
