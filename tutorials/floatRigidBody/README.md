@@ -1,8 +1,9 @@
-# floatRigidBody_claude
+# floatRigidBody
 
 A floating box moored by two beamFoam mooring lines in a small wave tank,
 run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
-solver.
+solver. `../floatRigidBody_claude` is the same case with a single,
+unpretensioned line.
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
@@ -50,7 +51,9 @@ term in coupledTotalLagNewtonRaphsonBeamEvolve.C is commented out).
 
 The box (0.09 kg) is lighter than its heave added mass (about 0.2 kg), so
 explicit coupling diverges. The case uses `nOuterCorrectors 3` with
-`moveMeshOuterCorrectors yes` and `accelerationRelaxation 0.4`.
+`moveMeshOuterCorrectors yes` and `accelerationRelaxation 0.4`. With these
+settings the case ran stably to 6.15 s in waves (with kEpsilon, before the
+switch to laminar; the laminar version has not been run to completion).
 
 ## Restarting
 
@@ -66,5 +69,5 @@ restart was below 0.2 % of the line force.
 ## Waves
 
 StokesII, H = 0.02 m, T = 1.0 s, ramped over 2 s (`constant/waveProperties`),
-shallow-water absorption at the outlet. The flow is laminar. Free-surface probes at x = 0.25 and
-0.75 m (`postProcessing/interfaceHeight1`).
+shallow-water absorption at the outlet. The flow is laminar. Free-surface
+probes at x = 0.25 and 0.75 m (`postProcessing/interfaceHeight1`).

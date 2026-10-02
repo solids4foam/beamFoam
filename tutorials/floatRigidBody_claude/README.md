@@ -74,5 +74,5 @@ restart was below 0.2 % of the line force.
 ## Waves
 
 StokesII, H = 0.02 m, T = 1.0 s, ramped over 2 s (`constant/waveProperties`),
-shallow-water absorption at the outlet. The flow is laminar. Free-surface probes at x = 0.25 and
-0.75 m (`postProcessing/interfaceHeight1`).
+shallow-water absorption at the outlet. The flow is laminar. Free-surface
+probes at x = 0.25 and 0.75 m (`postProcessing/interfaceHeight1`).
