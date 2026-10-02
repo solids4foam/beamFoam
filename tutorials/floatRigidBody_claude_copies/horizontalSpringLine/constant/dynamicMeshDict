@@ -30,24 +30,17 @@ sixDoFRigidBodyMotionFvBeamCoeffs
     innerDistance   0.01;
     outerDistance   0.1;
 
-    //- modified mesh morphing parameters
-    //-----------------------------------
-    containOuterDistance   0;
-    xDistance    0.3;
-    yDistance    0.15;
-    //-----------------------------------  
-    
     // Box 0.1 x 0.05 x 0.05 m, half submerged (draft 0.025 m, water at
     // z = 0.15). Buoyancy = 998.2*0.1*0.05*0.025*g = 0.124775 kg * g. The
-    // line has no pretension; its sagging weight pulls down on the box with
-    // 0.00447 N (z of Q on the right patch of 0.orig/beamone/Q), which is
-    // 0.000456 kg * g, so mass = 0.124775 - 0.000456.
-    mass            0.124319;
+    // horizontal line is weightless (no constant/beamone/g, as in
+    // AssessmentOfCoupledFVFramework) and unpretensioned, so it exerts no
+    // force at rest and mass = buoyancy.
+    mass            0.124775;
     centreOfMass    (0.5 0.025 0.15);
     orientation     (1 0 0 0 1 0 0 0 1);
 
     // Solid box: m*(Ly^2 + Lz^2, Lx^2 + Lz^2, Lx^2 + Ly^2)/12
-    momentOfInertia (5.1800e-05 1.2950e-04 1.2950e-04);
+    momentOfInertia (5.1990e-05 1.2997e-04 1.2997e-04);
 
     report          on;
 
@@ -73,7 +66,8 @@ sixDoFRigidBodyMotionFvBeamCoeffs
         }
     }
 
-    // Single line from the anchor (left) to the box (right): see beamInit
+    // Single horizontal line from the spring anchor (left) to the box
+    // (right): see beamInit
     restraints
     {
         beamone
