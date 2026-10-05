@@ -424,6 +424,15 @@ class coupledTotalLagNewtonRaphsonBeam
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         RigidBodyMonolithicCoupling rigidBodyEndMonolithicCoupling();
 
+        //- Project the monolithic coupling blocks onto the body's free
+        //  directions: constrained increments are zero and their residuals
+        //  are dropped
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        void constrainRigidBodyEndCoupling
+        (
+            RigidBodyMonolithicCoupling& coupling
+        ) const;
+
         //- Compare the body columns and body rows with finite differences
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         void checkRigidBodyEndJacobian();
@@ -494,6 +503,13 @@ public:
             (
                 const vector& force,
                 const vector& moment
+            );
+
+            //- Set the rigidBodyEnd's constraint projections
+            virtual void setRigidBodyEndConstraints
+            (
+                const tensor& tConstraints,
+                const tensor& rConstraints
             );
 
             //- Accepted rigidBodyEnd state after evolve

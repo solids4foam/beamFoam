@@ -741,6 +741,19 @@ public:
                     << abort(FatalError);
             }
 
+            //- Set the rigidBodyEnd's translation and rotation constraint
+            //  projections for the next evolve (global axes)
+            virtual void setRigidBodyEndConstraints
+            (
+                const tensor& tConstraints,
+                const tensor& rConstraints
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support rigidBodyEnd"
+                    << abort(FatalError);
+            }
+
             //- Accepted rigidBodyEnd state after evolve; false if there is
             //  no rigidBodyEnd
             virtual bool getRigidBodyEndState(RigidBodyEndState&) const

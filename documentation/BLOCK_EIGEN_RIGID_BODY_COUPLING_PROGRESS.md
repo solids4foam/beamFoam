@@ -204,7 +204,7 @@ Changed:
 ```text
 tutorials/rigidBodyAndBeam/constant/beam/beamProperties
 tutorials/rigidBodyAndBeam/constant/dynamicMeshDict
-tutorials/plot_rigidBodyAndBeam_new_vs_old.py
+tutorials/plot_monolithic_vs_partitioned_motion.py
 ```
 
 The case keeps:

@@ -904,10 +904,12 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
             if (rigidBodyEndMonolithic())
             {
-                eigenSolver.setMonolithicCoupling
-                (
-                    rigidBodyEndMonolithicCoupling()
-                );
+                RigidBodyMonolithicCoupling coupling =
+                    rigidBodyEndMonolithicCoupling();
+
+                constrainRigidBodyEndCoupling(coupling);
+
+                eigenSolver.setMonolithicCoupling(coupling);
             }
 
             // Create solution vector

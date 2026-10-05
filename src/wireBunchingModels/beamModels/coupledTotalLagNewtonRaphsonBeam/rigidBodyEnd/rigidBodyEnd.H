@@ -38,6 +38,12 @@ Description
         J alpha + omega x (J omega) + cr omega = externalMoment + r x beamForce
     Without a moment of inertia the body is a point mass at the attachment.
 
+    Motion constraints are given by the caller (setConstraints) as
+    projections onto the free translation and rotation directions, in global
+    axes. Accelerations, and in the monolithic coupling the Newton
+    increments, are projected onto them, so constrained components keep
+    their initial (zero) values.
+
     The body is read from the "rigidBodyEnd" sub-dictionary of the beam model
     coefficients:
 
@@ -146,6 +152,11 @@ class rigidBodyEnd
 
         //- Number of time steps with a finite-difference Jacobian check
         label nJacobianChecks_;
+
+        //- Projections onto the free translation and rotation directions
+        //  (global axes); I when unconstrained
+        tensor tConstraints_;
+        tensor rConstraints_;
 
         //- Displacement, velocity and acceleration at the new time
         vector x_;
@@ -338,6 +349,24 @@ public:
             {
                 return attachmentOffset_;
             }
+
+            const tensor& tConstraints() const
+            {
+                return tConstraints_;
+            }
+
+            const tensor& rConstraints() const
+            {
+                return rConstraints_;
+            }
+
+            //- Set the translation and rotation constraint projections
+            //  (global axes) and project the current state onto them
+            void setConstraints
+            (
+                const tensor& tConstraints,
+                const tensor& rConstraints
+            );
 
             void setAttachmentOffset(const vector& offset)
             {

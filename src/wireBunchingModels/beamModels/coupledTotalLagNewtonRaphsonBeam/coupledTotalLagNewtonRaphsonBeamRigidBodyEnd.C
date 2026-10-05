@@ -172,10 +172,15 @@ void coupledTotalLagNewtonRaphsonBeam::createRigidBodyEnd
     }
 
     rigidBodyEndPatchIndex_ = patchI;
+    // The current end position includes the reference displacement refWf
+    // (e.g. the placement from setInitialPositionBeam), as in the BlockEigen
+    // interface DOF map
     rigidBodyEndPtr_().setAttachmentOffset(W_.boundaryField()[patchI][0]);
     rigidBodyEndPtr_().setAttachmentPoint
     (
-        mesh().Cf().boundaryField()[patchI][0] + W_.boundaryField()[patchI][0]
+        mesh().Cf().boundaryField()[patchI][0]
+      + refWf_.boundaryField()[patchI][0]
+      + W_.boundaryField()[patchI][0]
     );
 }
 
@@ -224,6 +229,23 @@ void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndExternalLoad
     }
 
     rigidBodyEndPtr_().setExternalLoad(force, moment);
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndConstraints
+(
+    const tensor& tConstraints,
+    const tensor& rConstraints
+)
+{
+    if (!rigidBodyEndPtr_.valid())
+    {
+        FatalErrorInFunction
+            << "No rigidBodyEnd: call initialiseRigidBodyEnd first"
+            << abort(FatalError);
+    }
+
+    rigidBodyEndPtr_().setConstraints(tConstraints, rConstraints);
 }
 
 
@@ -521,6 +543,51 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
     }
 
     return coupling;
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::constrainRigidBodyEndCoupling
+(
+    RigidBodyMonolithicCoupling& coupling
+) const
+{
+    const rigidBodyEnd& body = rigidBodyEndPtr_();
+
+    // Projections onto the free (P) and constrained (I - P) directions
+    const tensor& Pt = body.tConstraints();
+    const tensor& Pr = body.rConstraints();
+    const tensor Ct = tensor::I - Pt;
+    const tensor Cr = tensor::I - Pr;
+
+    // With increments dx = Pt dx and dTheta = Pr dTheta, the body columns
+    // are projected on the right. The body rows are projected on the left,
+    // and I - P (scaled like the block) is added to the diagonal blocks, so
+    // the constrained increments solve C dx = 0 and the free ones keep
+    // their Newton equations
+    coupling.beamWRowCoeff = (coupling.beamWRowCoeff & Pt);
+    coupling.beamThetaRowCoeff = (coupling.beamThetaRowCoeff & Pt);
+
+    coupling.bodyCoeff =
+        (Pt & coupling.bodyCoeff & Pt)
+      + max(cmptMax(cmptMag(coupling.bodyCoeff)), 1.0)*Ct;
+    coupling.bodyWCoeff = (Pt & coupling.bodyWCoeff);
+    coupling.bodyThetaCoeff = (Pt & coupling.bodyThetaCoeff);
+    coupling.bodySource = (Pt & coupling.bodySource);
+
+    if (coupling.rotationActive)
+    {
+        coupling.beamWRowRotCoeff = (coupling.beamWRowRotCoeff & Pr);
+        coupling.beamThetaRowRotCoeff = (coupling.beamThetaRowRotCoeff & Pr);
+        coupling.bodyTransRotCoeff = (Pt & coupling.bodyTransRotCoeff & Pr);
+
+        coupling.bodyRotTransCoeff = (Pr & coupling.bodyRotTransCoeff & Pt);
+        coupling.bodyRotCoeff =
+            (Pr & coupling.bodyRotCoeff & Pr)
+          + max(cmptMax(cmptMag(coupling.bodyRotCoeff)), 1.0)*Cr;
+        coupling.bodyRotWCoeff = (Pr & coupling.bodyRotWCoeff);
+        coupling.bodyRotThetaCoeff = (Pr & coupling.bodyRotThetaCoeff);
+        coupling.bodyRotSource = (Pr & coupling.bodyRotSource);
+    }
 }
 
 

@@ -217,6 +217,8 @@ Foam::rigidBodyEnd::rigidBodyEnd
     couplingTolerance_(dict.getOrDefault<scalar>("couplingTolerance", 1e-8)),
     couplingRelaxation_(dict.getOrDefault<scalar>("couplingRelaxation", 1)),
     nJacobianChecks_(dict.getOrDefault<label>("jacobianCheck", 0)),
+    tConstraints_(tensor::I),
+    rConstraints_(tensor::I),
     x_(vector::zero),
     v_(dict.getOrDefault<vector>("velocity", vector::zero)),
     a_(vector::zero),
@@ -325,6 +327,22 @@ void Foam::rigidBodyEnd::setAttachmentPoint(const point& attachmentPoint)
 }
 
 
+void Foam::rigidBodyEnd::setConstraints
+(
+    const tensor& tConstraints,
+    const tensor& rConstraints
+)
+{
+    tConstraints_ = tConstraints;
+    rConstraints_ = rConstraints;
+
+    v_ = (tConstraints_ & v_);
+    a_ = (tConstraints_ & a_);
+    omega_ = (rConstraints_ & omega_);
+    alpha_ = (rConstraints_ & alpha_);
+}
+
+
 Foam::vector Foam::rigidBodyEnd::totalForce(const vector& beamForce) const
 {
     return beamForce + externalForce_ + mass_*gravity_;
@@ -360,7 +378,8 @@ Foam::vector Foam::rigidBodyEnd::newmarkDisplacement
 
     // m a + c (v0 + dt((1 - gamma) a0 + gamma a)) = total force
     const vector aNew =
-        (
+        tConstraints_
+      & (
             totalForce(beamForce)
           - linearDamping_*(v0_ + deltaT*(1 - gamma_)*a0_)
         )
@@ -517,7 +536,8 @@ Foam::vector Foam::rigidBodyEnd::newmarkRotation
 
     // Damping taken implicitly, the gyroscopic term from the estimate
     const vector alphaNew =
-        inv(J + angularDamping_*gamma_*deltaT*tensor::I)
+        rConstraints_
+      & inv(J + angularDamping_*gamma_*deltaT*tensor::I)
       & (
             externalMoment_
           + (arm(thetaEstimate) ^ beamForce)
