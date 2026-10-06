@@ -56,11 +56,14 @@ if CASE_SET == "base":
     REFERENCE_CASE = "rigidBodyAndBeam/rigidBodyAndBeam_loop_nOuter8"
 elif CASE_SET == "floatRigidBody":
     CASES = [
-        ("floatRigidBody/floatRigidBody_partioned", "Partitioned (FvBeamNewmark)", "k", "-"),
-        ("floatRigidBody/floatRigidBody_monolithic", "Monolithic (beamFoamCoupled)", "r", "--"),
+        ("floatRigidBody/floatRigidBody_partioned_nOuter8", "Partitioned, 8 outer correctors", "k", "-"),
+        ("floatRigidBody/floatRigidBody_partioned", "Partitioned, 3 outer correctors", "b", "-"),
+        ("floatRigidBody/floatRigidBody_monolithic", "Monolithic, 3 outer correctors", "r", "--"),
+        ("floatRigidBody/floatRigidBody_monolithic_nOuter8", "Monolithic, 8 outer correctors", "m", ":"),
     ]
 
-    REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned"
+    # Differences are taken against the best-converged partitioned run
+    REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_nOuter8"
 
     # The mooring line region is beamone
     FORCE_FILE = "forcebeamone.dat"

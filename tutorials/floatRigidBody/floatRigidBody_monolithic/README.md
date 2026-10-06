@@ -18,6 +18,49 @@ Differences from floatRigidBody_partioned (`constant/dynamicMeshDict`):
 - `accelerationRelaxation` is not used: `beamFoamCoupled` accepts beamFoam's
   body state as it is.
 
+Here, "monolithic" describes the box--mooring-line subsystem. The fluid is
+still coupled to that subsystem through the three PIMPLE outer correctors.
+
+## Completed-run comparison
+
+The current `floatRigidBody_monolithic` and `floatRigidBody_partioned` results
+both finish stably at 10 s with no beam Newton failures. Their authored
+numerical inputs are identical apart from the rigid-body/beam solver and the
+use of acceleration relaxation by the partitioned solver.
+
+| Quantity at 10 s | Monolithic | Partitioned | Partitioned - monolithic |
+|------------------|------------|-------------|----------------------------|
+| Surge            | -73.303 mm | -86.344 mm  | -13.041 mm                 |
+| Heave            | +5.632 mm  | +6.352 mm   | +0.720 mm                  |
+| Pitch            | +2.908 deg | +2.793 deg  | -0.115 deg                 |
+| Attachment tension | 0.7550 mN | 0.7508 mN | -0.0042 mN                 |
+
+Over the full histories, the largest differences are 14.09 mm in surge,
+0.868 mm in heave and 0.489 deg in pitch. Sway, roll and yaw remain exactly
+zero in both cases. The maximum free-surface differences at the two probes
+are only 0.317 mm and 0.130 mm, so the main difference is accumulated
+horizontal drift rather than the wave field.
+
+The peak attachment tension is 0.0921 N at 1.230 s for the monolithic case
+and 0.0964 N at 1.206 s for the partitioned case. The peak magnitudes differ
+by 4.6%, with a small phase shift during the transient.
+
+| Cost metric | Monolithic | Partitioned |
+|-------------|------------|-------------|
+| Time steps | 5001 | 5012 |
+| Mean summed beam Newton iterations per time step | 12.758 | 11.827 |
+| Execution time | 3214.52 s | 3189.63 s |
+| Wall time | 3234 s | 3191 s |
+
+The monolithic case is 0.78% slower by OpenFOAM execution time and 1.35%
+slower by wall time in these runs. At three outer correctors the schemes are
+therefore similar in cost but are not coupling-converged to the same surge
+trajectory. With 8 outer correctors (the `_nOuter8` cases) the final surge
+difference falls to 1.3 mm, and the 3 corrector monolithic run is much closer
+to the converged drift than the 3 corrector partitioned run. The two methods
+nevertheless give completely different mooring-line shapes. See
+`../compare_partioned_monolithic_claude.txt` for the full comparison.
+
 ## Constraints in the monolithic solve
 
 The constraints are needed, not only convenient: the half-submerged
@@ -98,7 +141,7 @@ patch in `0.orig/beamone/Q`.
 
 ## Coupling stability
 
-The box (0.09 kg) is lighter than its heave added mass (about 0.2 kg), so
+The box (0.124319 kg) is lighter than its heave added mass (about 0.2 kg), so
 explicit coupling diverges (it was lighter still with the earlier
 two-line pretension). The case uses `nOuterCorrectors 3` with
 `moveMeshOuterCorrectors yes` and `accelerationRelaxation 0.4`.
@@ -113,6 +156,10 @@ lines diverge on restart. Copy them in from 0 before restarting:
 
 Line velocity and acceleration are not written either, but the effect on a
 restart was below 0.2 % of the line force.
+
+This restart procedure applies to the partitioned solver. `beamFoamCoupled`
+currently requires the initial body state and rejects a restart from a
+displaced centre of mass.
 
 ## Waves
 

@@ -47,15 +47,19 @@ for variant in ("stiffLine", "lightBody", "stiffLight", "stiffLargeDt"):
     ):
         CASE_LABELS[f"rigidBodyAndBeam/rigidBodyAndBeam_stress/{variant}/{method}"] = f"{label} ({variant})"
 
-# Floating box moored by one line in waves (3 outer correctors in both)
-CASE_LABELS["floatRigidBody/floatRigidBody_monolithic"] = "Monolithic (floatRigidBody)"
-CASE_LABELS["floatRigidBody/floatRigidBody_partioned"] = "Partitioned (floatRigidBody)"
+# Floating box moored by one line in waves
+CASE_LABELS["floatRigidBody/floatRigidBody_monolithic"] = "Monolithic, 3 outer correctors (floatRigidBody)"
+CASE_LABELS["floatRigidBody/floatRigidBody_monolithic_nOuter8"] = "Monolithic, 8 outer correctors (floatRigidBody)"
+CASE_LABELS["floatRigidBody/floatRigidBody_partioned"] = "Partitioned, 3 outer correctors (floatRigidBody)"
+CASE_LABELS["floatRigidBody/floatRigidBody_partioned_nOuter8"] = "Partitioned, 8 outer correctors (floatRigidBody)"
 
 # The two cases to compare (any key of CASE_LABELS), e.g.
 # "rigidBodyAndBeam/rigidBodyAndBeam_beamFoamCoupled" and
-# "rigidBodyAndBeam/rigidBodyAndBeam_loop_nOuter8"
-NEW_CASE_NAME = "floatRigidBody/floatRigidBody_monolithic"
-OLD_CASE_NAME = "floatRigidBody/floatRigidBody_partioned"
+# "rigidBodyAndBeam/rigidBodyAndBeam_loop_nOuter8", or for 3 outer correctors
+# "floatRigidBody/floatRigidBody_monolithic" and
+# "floatRigidBody/floatRigidBody_partioned"
+NEW_CASE_NAME = "floatRigidBody/floatRigidBody_monolithic_nOuter8"
+OLD_CASE_NAME = "floatRigidBody/floatRigidBody_partioned_nOuter8"
 
 NEW_CASE = os.path.join(SCRIPT_DIR, NEW_CASE_NAME)
 OLD_CASE = os.path.join(SCRIPT_DIR, OLD_CASE_NAME)

@@ -1,4 +1,8 @@
-# floatRigidBody_partioned
+# floatRigidBody_partioned_nOuter8
+
+floatRigidBody_partioned with 8 PIMPLE outer correctors (`nOuterCorrectors 8` in
+`system/fvSolution`) instead of 3, to check how far the coupling has
+converged within each time step. Everything else is as in floatRigidBody_partioned.
 
 A floating box moored by a single beamFoam mooring line in a small wave tank,
 run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
@@ -55,7 +59,7 @@ patch in `0.orig/beamone/Q`.
 
 ## Coupling stability
 
-The box (0.124319 kg) is lighter than its heave added mass (about 0.2 kg), so
+The box (0.09 kg) is lighter than its heave added mass (about 0.2 kg), so
 explicit coupling diverges (it was lighter still with the earlier
 two-line pretension). The case uses `nOuterCorrectors 3` with
 `moveMeshOuterCorrectors yes` and `accelerationRelaxation 0.4`.

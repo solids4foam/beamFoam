@@ -1,11 +1,58 @@
-# floatRigidBody_partioned
+# floatRigidBody_monolithic_nOuter8
 
-A floating box moored by a single beamFoam mooring line in a small wave tank,
-run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
-solver.
+floatRigidBody_monolithic with 8 PIMPLE outer correctors (`nOuterCorrectors 8` in
+`system/fvSolution`) instead of 3, to check how far the coupling has
+converged within each time step. Everything else is as in floatRigidBody_monolithic.
+
+floatRigidBody_partioned with the box and its mooring line solved monolithically:
+moorFV solver `beamFoamCoupled` instead of the partitioned `FvBeamNewmark`.
+Everything else (mesh, line, waves, `nOuterCorrectors 3`) is the same, so the
+two cases can be compared with
+`../../plot_monolithic_vs_partitioned_floatRigidBody.py` (motion, line forces,
+free surface) and `../../plot_monolithic_vs_partitioned_cost.py`
+(cost).
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
+
+Differences from floatRigidBody_partioned (`constant/dynamicMeshDict`):
+
+- `solver { type beamFoamCoupled; }`. The plane/axis constraints are the
+  same; beamFoamCoupled applies them inside the monolithic solve (below).
+- `accelerationRelaxation` is not used: `beamFoamCoupled` accepts beamFoam's
+  body state as it is.
+
+## Constraints in the monolithic solve
+
+The constraints are needed, not only convenient: the half-submerged
+0.05 x 0.05 m cross-section has a negative roll metacentric height
+(GM = KB + BM - KG = 0.0125 + 0.0083 - 0.025 = -0.0042 m), so the box is
+hydrostatically unstable in roll. Without constraints, roll grew from about
+1e-7 rad at about 15 /s, took sway with it, and the run diverged at
+t = 1.07 s. Pitch is stable (GM = +0.021 m).
+
+beamFoamCoupled passes the motion's projections onto the free directions to
+beamFoam every step: `tConstraints()` (global axes) and
+`Q & rConstraints() & Q.T` (rConstraints is held in body axes). In the
+rigidBodyEnd rows and columns of the BlockEigen system
+(`constrainRigidBodyEndCoupling`), with P the projection and C = I - P:
+
+- body columns are multiplied by P on the right, body rows by P on the left;
+- C, scaled like the block, is added to the body diagonal blocks;
+- the body sources (minus the residuals) are projected, P b.
+
+So the constrained increments solve C dx = 0, and the free ones keep their
+Newton equations. The constrained parts of the fluid force and moment drop
+out of the residual, as they do in FvBeamNewmark. rigidBodyEnd also projects
+its state and the partitioned Newmark accelerations, for beamFoam's own
+partitioned coupling. The Jacobian check (`jacobianCheck`) still compares
+the unprojected blocks.
+
+This was the first monolithic case whose line is placed by
+`setInitialPositionBeam`, i.e. with a non-zero reference displacement `refWf`.
+rigidBodyEnd used to take the attachment point as `Cf + W` without `refWf`,
+which put the arm 0.3 m off and gave spurious roll and yaw; it now uses
+`Cf + refWf + W` (coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C).
 
 ## Geometry
 
@@ -55,7 +102,7 @@ patch in `0.orig/beamone/Q`.
 
 ## Coupling stability
 
-The box (0.124319 kg) is lighter than its heave added mass (about 0.2 kg), so
+The box (0.09 kg) is lighter than its heave added mass (about 0.2 kg), so
 explicit coupling diverges (it was lighter still with the earlier
 two-line pretension). The case uses `nOuterCorrectors 3` with
 `moveMeshOuterCorrectors yes` and `accelerationRelaxation 0.4`.

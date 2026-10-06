@@ -8,6 +8,9 @@ Compare the floatRigidBody cases between coupling frameworks:
 - monolithic: floatRigidBody/floatRigidBody_monolithic (moorFV solver
   beamFoamCoupled; beamFoam solves the line and the body together)
 
+each with 3 PIMPLE outer correctors and with 8 (the _nOuter8 cases), to see
+how far the coupling has converged within each time step.
+
 Both use the same plane/axis constraints, so the box only surges, heaves and
 pitches. Sway, roll and yaw are still plotted as a check that the
 constraints hold (they should be exactly zero).
@@ -35,12 +38,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # (case directory, legend label, colour, line style)
 CASES = [
-    ("floatRigidBody/floatRigidBody_partioned", "Partitioned (FvBeamNewmark)", "k", "-"),
-    ("floatRigidBody/floatRigidBody_monolithic", "Monolithic (beamFoamCoupled)", "r", "--"),
+    ("floatRigidBody/floatRigidBody_partioned_nOuter8", "Partitioned, 8 outer correctors", "k", "-"),
+    ("floatRigidBody/floatRigidBody_partioned", "Partitioned, 3 outer correctors", "b", "-"),
+    ("floatRigidBody/floatRigidBody_monolithic", "Monolithic, 3 outer correctors", "r", "--"),
+    ("floatRigidBody/floatRigidBody_monolithic_nOuter8", "Monolithic, 8 outer correctors", "m", ":"),
 ]
 
-# Differences are taken against this case
-REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned"
+# Differences are taken against this case (the best-converged partitioned run)
+REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_nOuter8"
 
 # Beam region of the mooring line
 BEAM_NAME = "beamone"
@@ -241,7 +246,7 @@ print("Cases")
 for case in cases:
     final = case["displacement"][-1]
     print(
-        f"  {case['label']:<30} {len(case['time']):5d} motion rows to "
+        f"  {case['label']:<32} {len(case['time']):5d} motion rows to "
         f"t = {case['time'][-1]:.3f} s, final displacement "
         f"({final[0]: .4e} {final[1]: .4e} {final[2]: .4e}) m"
     )
@@ -250,7 +255,7 @@ print("")
 print("Out-of-plane motion (constrained to zero)")
 for case in cases:
     print(
-        f"  {case['label']:<30} max |y| {np.max(np.abs(case['displacement'][:, 1])):.3e} m, "
+        f"  {case['label']:<32} max |y| {np.max(np.abs(case['displacement'][:, 1])):.3e} m, "
         f"max |roll| {np.max(np.abs(case['rotation'][:, 0])):.3e} rad, "
         f"max |yaw| {np.max(np.abs(case['rotation'][:, 2])):.3e} rad"
     )
@@ -291,9 +296,13 @@ def split_drift(time, values, dt=0.005):
     remainder (wave-frequency oscillation). Half a period at each end is
     dropped, where the moving average is incomplete"""
     uniform = np.arange(time[0], time[-1], dt)
-    resampled = np.interp(uniform, time, values)
-
     n = max(int(round(WAVE_PERIOD/dt)), 1)
+
+    # Not yet a full wave period (e.g. a run that has just started)
+    if len(uniform) <= n:
+        return None
+
+    resampled = np.interp(uniform, time, values)
     drift = np.convolve(resampled, np.ones(n)/n, mode="same")
 
     keep = slice(n//2, len(uniform) - n//2)
@@ -311,8 +320,9 @@ SPLIT_QUANTITIES = [
 for case in cases:
     case["split"] = {}
     for name, unit, time_key, values in SPLIT_QUANTITIES:
-        if len(case[time_key]) > 2:
-            case["split"][name] = split_drift(case[time_key], values(case))
+        split = split_drift(case[time_key], values(case))
+        if split is not None:
+            case["split"][name] = split
 
 print("")
 print(
@@ -327,10 +337,10 @@ for name, unit, _, _ in SPLIT_QUANTITIES:
         time, drift, oscillation = case["split"][name]
         steady = time >= STEADY_START
         if not np.any(steady):
-            print(f"    {case['label']:<30} no data after t = {STEADY_START} s")
+            print(f"    {case['label']:<32} no data after t = {STEADY_START} s")
             continue
         print(
-            f"    {case['label']:<30} mean {np.mean(drift[steady]): .4e}, "
+            f"    {case['label']:<32} mean {np.mean(drift[steady]): .4e}, "
             f"amplitude {0.5*np.ptp(oscillation[steady]):.4e}"
         )
 
@@ -340,7 +350,7 @@ for case in cases:
     tension = case["attachment_tension"][:, 0]
     i = np.argmax(tension)
     print(
-        f"  {case['label']:<30} {tension[i]:.4e} N at t = "
+        f"  {case['label']:<32} {tension[i]:.4e} N at t = "
         f"{case['attachment_time'][i]:.3f} s"
     )
 

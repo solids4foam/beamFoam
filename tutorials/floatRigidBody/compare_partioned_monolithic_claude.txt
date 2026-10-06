@@ -1,0 +1,292 @@
+floatRigidBody monolithic versus partitioned comparison
+=======================================================
+
+Cases compared
+--------------
+
+  floatRigidBody_monolithic           (nOuterCorrectors 3)
+  floatRigidBody_partioned            (nOuterCorrectors 3)
+  floatRigidBody_monolithic_nOuter8   (nOuterCorrectors 8)
+  floatRigidBody_partioned_nOuter8    (nOuterCorrectors 8)
+
+The directory name "partioned" is retained here because that is the existing
+case name.
+
+Scope and setup
+---------------
+
+The comparison isolates the rigid-body/mooring-line coupling method. The
+initial fields, generated tank and beam meshes, beam properties, waves, CFD
+schemes, PIMPLE settings and run scripts are identical. The only functional
+input difference between monolithic and partitioned is the solver selected in
+constant/dynamicMeshDict:
+
+  Monolithic:  type beamFoamCoupled;
+  Partitioned: type FvBeamNewmark;
+
+The nOuter8 cases are copies of the corresponding base cases with only
+nOuterCorrectors changed from 3 to 8 in system/fvSolution.
+
+All cases use interFoam, moveMeshOuterCorrectors=yes, adaptive time stepping
+with maxDeltaT=0.002 s, and the same motion constraints. Motion is restricted
+to surge, heave and pitch; sway, roll and yaw are constrained.
+
+"Monolithic" refers only to the box--mooring-line subsystem. Fluid and
+structure are still coupled through the PIMPLE outer-corrector loop.
+
+Coupling algorithms
+-------------------
+
+In the monolithic case, beamFoamCoupled passes the fluid force, moment and
+motion constraints into beamFoam. The mooring line and rigid-body-end degrees
+of freedom are solved together in the BlockEigen/Newton system, and moorFV
+accepts the body state returned by beamFoam. The accelerationRelaxation=0.4
+entry remains in the dictionary for comparison but is not used.
+
+In the partitioned case, the current rigid-body motion prescribes the beam
+attachment kinematics. beamFoam evolves the line and returns its reaction;
+FvBeamNewmark then updates the body. accelerationRelaxation=0.4 relaxes the
+acceleration between coupling iterations.
+
+Completed 10 s results
+----------------------
+
+All four cases completed stably to 10 s with no beam Newton failures. Sway,
+roll and yaw are exactly zero in every motion history, confirming that the
+plane and axis constraints are applied by both coupling methods.
+
+Final state at 10 s:
+
+Quantity              Mono 3      Part 3      Mono 8      Part 8
+--------------------  ----------  ----------  ----------  ----------
+Surge (mm)             -73.303     -86.344     -75.514     -76.810
+Heave (mm)              +5.632      +6.352      +5.766      +5.837
+Pitch (deg)             +2.908      +2.793      +2.892      +2.885
+Attachment tension     0.7550 mN   0.7508 mN   0.7589 mN   0.7347 mN
+
+Differences over the complete histories, after interpolating the first case
+of each pair onto the output times of the second:
+
+                           Part 3 -    Part 8 -    Mono 3 -    Part 3 -
+                           Mono 3      Mono 8      Mono 8      Part 8
+-------------------------  ----------  ----------  ----------  ----------
+Surge at 10 s (mm)          -13.041      -1.296      +2.211      -9.534
+Max |surge| (mm)             14.086       1.449       2.433      10.293
+Max |heave| (mm)              0.868       0.166       0.701       0.644
+Max |pitch| (deg)             0.489       0.255       1.251       0.597
+RMS surge after 6 s (mm)     11.356       1.289       1.839       8.233
+RMS heave after 6 s (mm)      0.495       0.056       0.078       0.362
+RMS pitch after 6 s (deg)     0.207       0.024       0.024       0.161
+
+Outer-corrector convergence
+---------------------------
+
+Increasing nOuterCorrectors from 3 to 8 reduces the monolithic--partitioned
+surge discrepancy by about a factor of ten (final 13.0 mm -> 1.3 mm; RMS after
+6 s 11.4 mm -> 1.3 mm), with similar reductions in heave and pitch. The large
+discrepancy at three outer correctors is therefore predominantly
+outer-iteration (coupling) error rather than a genuine difference between
+the converged solutions of the two methods.
+
+The two methods do not converge at the same rate. Relative to its own 8
+corrector run, the 3 corrector monolithic final surge differs by 2.2 mm,
+whereas the 3 corrector partitioned final surge differs by 9.5 mm. Measured
+against the other method's 8 corrector run, the differences are 3.5 mm
+(Mono 3 vs Part 8) and 10.8 mm (Part 3 vs Mono 8). For the slow drift,
+monolithic coupling at three outer correctors is therefore substantially
+closer to the converged response than partitioned coupling at three.
+
+This advantage does not extend to the initial transient. During the first
+~1.5 s the 3 corrector monolithic run departs further from its 8 corrector
+reference than the partitioned run does: maximum pitch difference 1.25 deg
+versus 0.60 deg, and maximum attachment-force difference 0.086 N versus
+0.056 N (see below).
+
+Mooring loads
+-------------
+
+Attachment tension peak:
+
+  Mono 3:   0.09212 N at 1.230 s
+  Part 3:   0.09636 N at 1.206 s
+  Mono 8:   0.09130 N at 1.154 s
+  Part 8:   0.09478 N at 1.172 s
+
+At three outer correctors the partitioned peak is about 4.6% larger and
+occurs 0.024 s earlier than the monolithic peak. At eight outer correctors
+both peaks move earlier, and the partitioned peak remains about 3.8% larger.
+The peak timing shifts by 0.076 s between Mono 3 and Mono 8 and by 0.034 s
+between Part 3 and Part 8.
+
+Maximum instantaneous difference between the interpolated attachment-force
+vectors:
+
+  Part 3 - Mono 3:   0.04289 N near 1.154 s
+  Part 8 - Mono 8:   0.03014 N near 1.084 s
+  Mono 3 - Mono 8:   0.08624 N near 1.140 s
+  Part 3 - Part 8:   0.05579 N near 1.124 s
+
+The peak-tension transient is not yet converged in outer correctors for
+either method, and a ~4% peak difference between the methods persists at
+eight correctors.
+
+The final tension magnitudes agree to 0.6% at three correctors (0.7550 vs
+0.7508 mN) but differ by 3.2% at eight correctors (0.7589 vs 0.7347 mN). The
+close agreement at three correctors is therefore partly coincidental, and the
+final tension is not a reliable convergence indicator for this case.
+
+Free surface
+------------
+
+Maximum surface-height differences:
+
+                     Part 3 -    Part 8 -    Mono 3 -    Part 3 -
+                     Mono 3      Mono 8      Mono 8      Part 8
+-------------------  ----------  ----------  ----------  ----------
+Probe x=0.25 m (mm)    0.317       0.239       0.940       0.454
+Probe x=0.75 m (mm)    0.130       0.086       0.294       0.138
+
+These are small relative to the imposed 20 mm wave height. The principal
+difference between the cases is therefore accumulated horizontal drift, not
+the propagated wave field.
+
+Mooring-line shape
+------------------
+
+Although body motion and line tension agree closely, the mooring-line
+configurations computed by the two methods are completely different. This is
+visible in ParaView and in the beam fields (<time>/beamone/W, pointW, Theta).
+All four cases start from identical beam fields at t=0.
+
+In-plane shape. The line is initially almost taut, hanging 3.2 mm below the
+anchor--attachment chord. As the box drifts towards the anchor the chord
+shortens, the line becomes slack and it buckles. The two methods buckle in
+opposite directions. Signed maximum offset of the line centreline from the
+chord in the x-z plane (+ = above the chord):
+
+  t (s)      0      0.3     0.5     1       2       5       10
+  Mono 3   -3.2    +1.1    -8.4   -16.1   -46.5   -65.0   -65.8  mm
+  Part 3   -3.2    +0.6    +7.1   +14.2   +48.0   +67.2   +69.8  mm
+  Mono 8   -3.2    -2.6    -5.5    -9.1   -47.7   -65.5   -66.5  mm
+  Part 8   -3.2    +2.1    +6.2   +11.2   +47.9   +65.8   +66.9  mm
+
+The branch is selected between about 0.3 and 0.5 s and is independent of the
+number of outer correctors: monolithic always bows downward, partitioned
+always bows upward. The partitioned line leaves the anchor travelling up and
+back towards x~0.235 m and arches over to the box; the monolithic line leaves
+the anchor travelling forward and down and curves up to the box. At 10 s the
+mid-span centrelines differ by about 108 mm in x and 90 mm in z.
+
+Ground penetration. Because groundContactActive is false, the downward-bowed
+monolithic line passes below the tank floor, reaching z ~ -4.8 mm in both
+Mono 3 and Mono 8. The upward-bowed partitioned line never goes below z=0.
+
+Twist and out-of-plane motion. In both partitioned runs the line remains
+exactly planar: Theta_x and Theta_z remain ~1e-11 rad and W_y ~1e-13 m
+throughout. In the monolithic runs a twist mode grows exponentially from
+round-off: max |Theta_x| rises from 1.7e-11 rad at 0.40 s to 6.1e-8 at
+0.50 s, 5.1e-3 at 0.60 s and 2.3 rad at 0.65 s (Mono 3; the growth occurs
+about 0.1 s earlier in Mono 8). Thereafter the whole line carries a rotation
+of magnitude ~pi about an axis of approximately (0.85, 0, 0.53), i.e. close
+to the line chord. For a circular cross-section this is mainly an invisible
+twist, but it is accompanied by an intermittent out-of-plane excursion of
+the centreline of up to about +/-6 mm in y (largest near 2 s and 7 s).
+Body sway, roll and yaw are identically zero and the loading is symmetric
+in y, so this out-of-plane response has no physical driver.
+
+Assessment. Neither line solution is credible:
+
+  - Partitioned: a slack line with positive submerged weight (rho=141.8
+    kg/m3) sustaining a ~70 mm arch above its chord against gravity is
+    suspect. Rigid rotation of the line about its chord changes no strain
+    energy, so the upward branch should be unstable to out-of-plane
+    perturbations; it is likely preserved only because the partitioned
+    solution remains exactly symmetric in y.
+  - Monolithic: the downward bow is consistent with gravity, but the line
+    penetrates the floor, and the twist/out-of-plane mode grows from
+    round-off without forcing. This points to an issue in the monolithic
+    beam/rigidBodyEnd coupling, possibly in the treatment of the end
+    rotations. The source has not yet been inspected.
+
+Because line tension is small (peak < 0.1 N), these very different line
+configurations have little effect on the body motion. The convergence of the
+two methods noted above therefore applies to body motion and line tension
+only; the line shapes do not converge between methods.
+
+Computational cost
+------------------
+
+Metric                            Mono 3     Part 3     Mono 8     Part 8
+--------------------------------  ---------  ---------  ---------  ---------
+Time steps                        5001       5012       5001       5004
+PIMPLE outer iterations           15003      15036      40008      40032
+Beam Newton iterations, total     63802      59279      171718     131110
+Beam Newton iterations/time step  12.758     11.827     34.337     26.201
+Beam Newton range/time step       10--15     9--14      25--40     20--29
+Beam Newton failures              0          0          0          0
+OpenFOAM execution time (s)       3214.52    3189.63    8150.76    8145.70
+Wall time (s)                     3234       3191       8170       8164
+
+At three outer correctors the monolithic run is 0.78% slower by execution
+time and uses about 7.9% more beam Newton iterations per time step. At eight
+outer correctors the Newton-iteration overhead rises to about 31%, but
+execution times are identical to within 0.1% because the CFD solution
+dominates the cost. Moving from three to eight outer correctors increases the
+cost by about 2.5x for both methods.
+
+Interpretation and limitations
+------------------------------
+
+At three outer correctors the two methods are not numerically equivalent,
+but the 8 corrector runs show that they converge towards a common solution
+as the outer-corrector count increases. For the slow drift, monolithic
+coupling at three correctors is much closer to the converged response than
+partitioned coupling at three, at the same computational cost. For the early
+peak-tension transient neither method is converged at three correctors, and
+the monolithic run is not more accurate there.
+
+These conclusions concern body motion and line loads only. The mooring-line
+shapes differ fundamentally between the methods (see "Mooring-line shape"),
+and neither line solution is currently credible. Suggested follow-up:
+repeat both methods with groundContactActive true; review the end-rotation
+treatment in beamFoamCoupled/rigidBodyEnd; and seed a small out-of-plane
+perturbation in the partitioned case to test the stability of its upward
+branch.
+
+The 8 corrector runs are not a fully converged reference: Part 8 and Mono 8
+still differ by 1.3 mm in final surge, 3.8% in peak tension and 3.2% in
+final tension. A further outer-corrector and/or time-step refinement would
+be required to establish a converged reference for the transient loads.
+
+beamFoamCoupled also has implementation restrictions relevant beyond this
+specific one-line case: it supports one finiteVolumeBeam restraint, requires
+the centre of rotation to coincide with the centre of mass, and currently
+rejects restart from a displaced body state. The partitioned README restart
+procedure should therefore not be assumed to work for the monolithic case.
+
+Documentation correction
+------------------------
+
+The case READMEs previously described the box as 0.09 kg. All
+dynamicMeshDict files use mass=0.124319 kg. The README values have been
+corrected to match the inputs.
+
+Data sources
+------------
+
+The results above were calculated from:
+
+  postProcessing/sixDoF_History/0/sixDoFRigidBodyStateFvBeam.dat
+  postProcessing/0/attachmentForcebeamone.dat
+  postProcessing/interfaceHeight1/0/height.dat
+  log.interFoam
+  <time>/beamone/W, pointW, Theta
+  constant/beamone/polyMesh/points
+
+for all four cases. Line centrelines were obtained by adding pointW to the
+beam mesh points and averaging each 32-point cross-section (41 sections). Surge and heave are centre-of-mass displacements from
+(0.5, 0.025, 0.15) m; pitch is the y rotation component. Force histories
+contain one entry per PIMPLE outer corrector; the last entry at each physical
+time was retained. Histories with different adaptive time grids were compared
+by linear interpolation. Beam Newton iterations are the sums of the
+"N: Converged" counts in log.interFoam.
