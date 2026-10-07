@@ -3,13 +3,13 @@
 """
 Compare the floatRigidBody cases between coupling frameworks:
 
-- partitioned: floatRigidBody/floatRigidBody_partioned (moorFV solver
-  FvBeamNewmark; the body and beamFoam take turns)
-- monolithic: floatRigidBody/floatRigidBody_monolithic (moorFV solver
+- partitioned: floatRigidBody/floatRigidBody_partioned_gravity (moorFV
+  solver FvBeamNewmark; the body and beamFoam take turns)
+- monolithic: floatRigidBody/floatRigidBody_monolithic_gravity (moorFV solver
   beamFoamCoupled; beamFoam solves the line and the body together)
 
-each with 3 PIMPLE outer correctors and with 8 (the _nOuter8 cases), to see
-how far the coupling has converged within each time step.
+both with 3 PIMPLE outer correctors and with gravity acting on the mooring
+line (constant/beamone/g).
 
 Both use the same plane/axis constraints, so the box only surges, heaves and
 pitches. Sway, roll and yaw are still plotted as a check that the
@@ -38,14 +38,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # (case directory, legend label, colour, line style)
 CASES = [
-    ("floatRigidBody/floatRigidBody_partioned_nOuter8", "Partitioned, 8 outer correctors", "k", "-"),
-    ("floatRigidBody/floatRigidBody_partioned", "Partitioned, 3 outer correctors", "b", "-"),
-    ("floatRigidBody/floatRigidBody_monolithic", "Monolithic, 3 outer correctors", "r", "--"),
-    ("floatRigidBody/floatRigidBody_monolithic_nOuter8", "Monolithic, 8 outer correctors", "m", ":"),
+    ("floatRigidBody/floatRigidBody_partioned_gravity", "Partitioned, 3 outer correctors", "b", "-"),
+    ("floatRigidBody/floatRigidBody_monolithic_gravity", "Monolithic, 3 outer correctors", "r", "--"),
 ]
 
-# Differences are taken against this case (the best-converged partitioned run)
-REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_nOuter8"
+# Differences are taken against this case
+REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_gravity"
 
 # Beam region of the mooring line
 BEAM_NAME = "beamone"

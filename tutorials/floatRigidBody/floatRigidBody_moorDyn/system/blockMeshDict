@@ -1,0 +1,87 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Tank 1.0 x 0.05 x 0.3 m, z from -0.15 to 0.15 (still water at z = 0). Cells 10 x 10 x 5 mm, so the box in topoSetDict
+// lines up with cell faces.
+
+scale   0.001;
+
+vertices
+(
+    (   0   0 -150)
+    (1000   0 -150)
+    (1000  50 -150)
+    (   0  50 -150)
+    (   0   0  150)
+    (1000   0  150)
+    (1000  50  150)
+    (   0  50  150)
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) (100 5 60) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces ((0 4 7 3));
+    }
+    outlet
+    {
+        type patch;
+        faces ((1 2 6 5));
+    }
+    stationaryWalls
+    {
+        type wall;
+        faces
+        (
+            (0 1 5 4)
+            (3 7 6 2)
+        );
+    }
+    ground
+    {
+        type wall;
+        faces ((0 3 2 1));
+    }
+    atmosphere
+    {
+        type patch;
+        faces ((4 5 6 7));
+    }
+
+    // Filled by subsetMesh with the faces of the cut-out box
+    floatingObject
+    {
+        type wall;
+        faces ();
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

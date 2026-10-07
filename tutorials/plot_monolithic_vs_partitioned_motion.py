@@ -12,9 +12,9 @@ each with 1 PIMPLE outer corrector and with 8 (converged coupling within each
 time step). Differences are plotted against REFERENCE_CASE. Set CASE_SET to
 plot one of the stress-test variants in rigidBodyAndBeam/rigidBodyAndBeam_stress
 instead, or "floatRigidBody" for the moored floating box in waves
-(floatRigidBody/floatRigidBody_partioned against
-floatRigidBody/floatRigidBody_monolithic; for more detail on that case see
-plot_monolithic_vs_partitioned_floatRigidBody.py).
+(floatRigidBody/floatRigidBody_partioned_gravity against
+floatRigidBody/floatRigidBody_monolithic_gravity; for more detail on that
+case see plot_monolithic_vs_partitioned_floatRigidBody.py).
 
 Run from Spyder or from the beamFoam/tutorials directory after the cases have
 been run with ./Allrun. Cases that have not been run are skipped.
@@ -56,14 +56,12 @@ if CASE_SET == "base":
     REFERENCE_CASE = "rigidBodyAndBeam/rigidBodyAndBeam_loop_nOuter8"
 elif CASE_SET == "floatRigidBody":
     CASES = [
-        ("floatRigidBody/floatRigidBody_partioned_nOuter8", "Partitioned, 8 outer correctors", "k", "-"),
-        ("floatRigidBody/floatRigidBody_partioned", "Partitioned, 3 outer correctors", "b", "-"),
-        ("floatRigidBody/floatRigidBody_monolithic", "Monolithic, 3 outer correctors", "r", "--"),
-        ("floatRigidBody/floatRigidBody_monolithic_nOuter8", "Monolithic, 8 outer correctors", "m", ":"),
+        ("floatRigidBody/floatRigidBody_partioned_gravity", "Partitioned, 3 outer correctors", "b", "-"),
+        ("floatRigidBody/floatRigidBody_monolithic_gravity", "Monolithic, 3 outer correctors", "r", "--"),
     ]
 
-    # Differences are taken against the best-converged partitioned run
-    REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_nOuter8"
+    # Differences are taken against the partitioned run
+    REFERENCE_CASE = "floatRigidBody/floatRigidBody_partioned_gravity"
 
     # The mooring line region is beamone
     FORCE_FILE = "forcebeamone.dat"
