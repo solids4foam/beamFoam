@@ -17,14 +17,29 @@ constraints (surge, heave and pitch only), with the still water at z = 0.
 Three groups of plots:
 - motion: surge, heave and pitch, their difference from REFERENCE_CASE, the
   slow drift and the wave-frequency oscillation
-- mooring tension: line tension at the box (fairlead) and at the anchor
+- mooring tension: line tension at the box (fairlead) and at the anchor,
+  and, for the beamFoam cases, the magnitude of the end force |Q|
 - efficiency: run time, time-step size, linear solver iterations and, for the
   beamFoam cases, beam Newton iterations, all from log.interFoam
 
-Motion is taken relative to each case's initial centreOfMass. The beamFoam
-line tension is the magnitude of the force in
-postProcessing/0/{attachment,anchor}Forcebeamone.dat; the MoorDyn tension is
-FairTen1 and AnchTen1 in Mooring/lines.out.
+Motion is taken relative to each case's initial centreOfMass.
+
+Line tension:
+- MoorDyn: FairTen1 and AnchTen1 in Mooring/lines.out (tension in the end
+  segments; never negative, a slack line has zero tension)
+- beamFoam: the axial force, i.e. the end-face force Q along the line
+  tangent, positive in tension and negative in compression (the beam has
+  bending stiffness, so a slack line can push). Read from
+  postProcessing/0/axialForcebeamone.dat, written every time step by the
+  finiteVolumeBeam restraint in moorFV (since 7 Oct 2026). Runs from before
+  that have no such file: the axial force is then worked out from the beam
+  fields in the time directories (Q, W and refW on the end faces), so only
+  at the write interval (0.05 s) and the snap load is under-resolved.
+
+The end-face force magnitude |Q| in postProcessing/0/{attachment,anchor}
+Forcebeamone.dat (what the AssessmentOfCoupledFVFramework scripts plot as
+tension) is also plotted. It equals the tension only while the line is taut
+and straight; once the line is slack and bends, most of it is shear.
 
 Run from Spyder or from the beamFoam/tutorials directory. Cases that have not
 been run are skipped, and a case that is still running is plotted up to its
@@ -76,6 +91,10 @@ STEADY_START = 6.0
 
 # Window for the zoomed wave-frequency plots
 ZOOM_WINDOW = (8.0, 10.0)
+
+# The snap load at t = 2.3 s (about 0.1 N) hides the tension after it (about
+# 0.001 N): the tension is also plotted from this time on
+TENSION_ZOOM_START = 3.0
 
 SAVE_FIGURES = False
 FIGURE_DIR = os.path.join(SCRIPT_DIR, "comparison_plots", "floatRigidBody_moorDyn")
@@ -231,27 +250,143 @@ def apply_time_window(time, *arrays):
     return (time[mask],) + tuple(array[mask] for array in arrays)
 
 
+def read_field_values(filename, patches):
+    """Internal vector values and the uniform value on each named patch of
+    an OpenFOAM field file"""
+    with open(filename, "r", encoding="utf-8") as handle:
+        text = handle.read()
+
+    start = text.index("internalField")
+    boundary = text.index("boundaryField", start)
+    internal = np.array(
+        [[float(value) for value in match]
+         for match in re.findall(VECTOR, text[start:boundary])]
+    )
+
+    # The first value after the patch name (a patch can hold nested
+    # dictionaries, e.g. displacementSeries)
+    values = {}
+    for patch in patches:
+        start = re.search(rf"\n\s*{patch}\s*\n\s*\{{", text[boundary:])
+        match = start and re.compile(rf"value\s+uniform\s+{VECTOR}").search(
+            text, boundary + start.end()
+        )
+        if not match:
+            raise ValueError(f"No uniform value on patch {patch} in {filename}")
+        values[patch] = np.array([float(value) for value in match.groups()])
+
+    return internal, values
+
+
+def axial_force_from_fields(path):
+    """Axial force at the anchor (patch left) and attachment (patch right)
+    from the beam fields in the time directories, for runs without
+    axialForce<beam>.dat. Q on an end face along the outward line tangent,
+    positive in tension, as in the finiteVolumeBeam restraint. The tangent
+    is taken from the end-cell centre to the end face.
+
+    The beam mesh is straight along x from 0 to L0 in its own coordinates
+    (createCircularBeamMesh); refW moves it to the reference line and W is
+    the displacement from there."""
+    points_file = os.path.join(path, "constant", BEAM_NAME, "polyMesh", "points")
+    ref_file = os.path.join(path, "0", BEAM_NAME, "refW")
+    if not (os.path.isfile(points_file) and os.path.isfile(ref_file)):
+        return None
+
+    with open(points_file, "r", encoding="utf-8") as handle:
+        points = np.array(
+            [[float(value) for value in match]
+             for match in re.findall(VECTOR, handle.read())]
+        )
+    length = points[:, 0].max()
+    if points[:, 0].min() < -1e-9*length or np.abs(points[:, 1:]).max() > 0.1*length:
+        raise ValueError(f"{points_file}: beam mesh is not straight along x")
+
+    ref_cells, ref_faces = read_field_values(ref_file, ("left", "right"))
+    n = len(ref_cells)
+    cell_x = (np.arange(n) + 0.5)*length/n
+    local_cells = np.column_stack([cell_x, np.zeros(n), np.zeros(n)])
+    local_faces = {"left": np.zeros(3), "right": np.array([length, 0, 0])}
+    end_cells = {"left": 0, "right": n - 1}
+
+    times = []
+    for entry in os.listdir(path):
+        try:
+            time = float(entry)
+        except ValueError:
+            continue
+        if os.path.isfile(os.path.join(path, entry, BEAM_NAME, "Q")):
+            times.append((time, entry))
+
+    rows = []
+    for time, entry in sorted(times):
+        W_cells, W_faces = read_field_values(
+            os.path.join(path, entry, BEAM_NAME, "W"), ("left", "right")
+        )
+        _, Q_faces = read_field_values(
+            os.path.join(path, entry, BEAM_NAME, "Q"), ("left", "right")
+        )
+        row = [time]
+        for patch in ("left", "right"):
+            i = end_cells[patch]
+            face = local_faces[patch] + ref_faces[patch] + W_faces[patch]
+            cell = local_cells[i] + ref_cells[i] + W_cells[i]
+            tangent = (face - cell)/np.linalg.norm(face - cell)
+            axial = Q_faces[patch] @ tangent
+            row += [axial, np.linalg.norm(Q_faces[patch] - axial*tangent)]
+        rows.append(row)
+
+    if not rows:
+        return None
+
+    data = np.asarray(rows)
+    # Same columns as axialForce<beam>.dat
+    return data[:, 0], data[:, 1:]
+
+
 def tension_files(path, model):
-    """Fairlead and anchor tension: time and a single-column array each"""
+    """Fairlead and anchor tension (time and a single-column array each) and
+    where they come from; for the beamFoam cases also the end-force
+    magnitude |Q| at the box and at the anchor"""
     if model == "moorDyn":
         # Time, FairTen1, AnchTen1 after a name row and a unit row
         lines_file = os.path.join(path, "Mooring", "lines.out")
         if not os.path.isfile(lines_file):
             return None
         time, tension = read_columns(lines_file, 2, skip_header=2)
-        return (time, tension[:, [0]]), (time, tension[:, [1]])
+        return {
+            "fairlead": (time, tension[:, [0]]),
+            "anchor": (time, tension[:, [1]]),
+            "source": "Mooring/lines.out",
+        }
 
     post = os.path.join(path, "postProcessing", "0")
     attachment_file = os.path.join(post, f"attachmentForce{BEAM_NAME}.dat")
     anchor_file = os.path.join(post, f"anchorForce{BEAM_NAME}.dat")
+    axial_file = os.path.join(post, f"axialForce{BEAM_NAME}.dat")
     if not os.path.isfile(attachment_file):
         return None
 
-    result = []
-    for filename in (attachment_file, anchor_file):
+    result = {}
+    for name, filename in (("fairlead_Q", attachment_file), ("anchor_Q", anchor_file)):
         time, force = read_columns(filename, 3)
-        result.append((time, np.linalg.norm(force, axis=1)[:, None]))
-    return tuple(result)
+        result[name] = (time, np.linalg.norm(force, axis=1)[:, None])
+
+    # Columns: anchor axial, anchor shear, attachment axial, attachment shear
+    if os.path.isfile(axial_file):
+        axial = read_columns(axial_file, 4)
+        result["source"] = os.path.relpath(axial_file, path)
+    else:
+        axial = axial_force_from_fields(path)
+        result["source"] = "beam fields in the time directories"
+        if axial is None:
+            print(f"{path}: no axial force output or beam fields")
+            return None
+
+    time, values = axial
+    result["anchor"] = (time, values[:, [0]])
+    result["fairlead"] = (time, values[:, [2]])
+    return result
 
 
 def load_case(case_dir, label, model, colour, style):
@@ -291,9 +426,13 @@ def load_case(case_dir, label, model, colour, style):
         "rotation": rotation,
     }
 
-    (fair_time, fair), (anchor_time, anchor) = tensions
-    case["fairlead_time"], case["fairlead_tension"] = apply_time_window(fair_time, fair)
-    case["anchor_time"], case["anchor_tension"] = apply_time_window(anchor_time, anchor)
+    case["tension_source"] = tensions["source"]
+    for end in ("fairlead", "anchor"):
+        case[f"{end}_time"], case[f"{end}_tension"] = apply_time_window(*tensions[end])
+        if f"{end}_Q" in tensions:
+            case[f"{end}_Q_time"], case[f"{end}_Q"] = apply_time_window(
+                *tensions[f"{end}_Q"]
+            )
 
     # Free-surface probes at x = 0.25 and 0.75 m: columns are height above
     # the bottom and above the probe location for each probe
@@ -348,6 +487,7 @@ for case in cases:
         f"t = {case['time'][-1]:.3f} s, final displacement "
         f"({final[0]: .4e} {final[1]: .4e} {final[2]: .4e}) m"
     )
+    print(f"  {'':<24} tension from {case['tension_source']}")
 
 if reference is not None:
     comparisons = [
@@ -432,7 +572,7 @@ for name, unit, _, _ in SPLIT_QUANTITIES:
         )
 
 print("")
-print("Peak line tension")
+print("Peak and minimum line tension (negative: compression)")
 for case in cases:
     for name, time_key, value_key in (
         ("fairlead", "fairlead_time", "fairlead_tension"),
@@ -440,9 +580,11 @@ for case in cases:
     ):
         tension = case[value_key][:, 0]
         i = np.argmax(tension)
+        j = np.argmin(tension)
         print(
-            f"  {case['label']:<24} {name:<9} {tension[i]:.4e} N at t = "
-            f"{case[time_key][i]:.3f} s"
+            f"  {case['label']:<24} {name:<9} peak {tension[i]: .4e} N at t = "
+            f"{case[time_key][i]:.3f} s, minimum {tension[j]: .4e} N at t = "
+            f"{case[time_key][j]:.3f} s"
         )
 
 
@@ -614,6 +756,36 @@ plot_component(
     "anchor_time", "anchor_tension", 0,
     "Line tension at the anchor (N)", "anchor_tension.png",
 )
+plot_difference(
+    "anchor_time", "anchor_tension", 0,
+    "Line tension at the anchor, difference (N)", "anchor_tension_difference.png",
+)
+
+# After the snap load
+for end, ylabel in (("fairlead", "Line tension at the box (N)"),
+                    ("anchor", "Line tension at the anchor (N)")):
+    series = []
+    for case in cases:
+        time = case[f"{end}_time"]
+        after = time >= TENSION_ZOOM_START
+        series.append((case, time[after], case[f"{end}_tension"][after, 0]))
+    plot_lines(
+        series, ylabel, f"{end}_tension_after_snap.png",
+        f"From t = {TENSION_ZOOM_START} s (negative: compression)",
+    )
+
+# End-force magnitude |Q| of the beamFoam cases (the tension only while the
+# line is taut), with the MoorDyn tension for reference
+for end, ylabel in (("fairlead", "End force at the box (N)"),
+                    ("anchor", "End force at the anchor (N)")):
+    series = []
+    for case in cases:
+        key = f"{end}_Q" if f"{end}_Q" in case else f"{end}_tension"
+        series.append((case, case[f"{key}_time" if key.endswith("_Q") else f"{end}_time"], case[key][:, 0]))
+    plot_lines(
+        series, ylabel, f"{end}_force_magnitude.png",
+        "beamFoam: |Q| (axial + shear); MoorDyn: tension",
+    )
 
 # Slow drift (moving average over one wave period)
 for name, ylabel in (
