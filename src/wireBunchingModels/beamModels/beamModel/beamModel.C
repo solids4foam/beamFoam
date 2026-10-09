@@ -474,6 +474,13 @@ Foam::beamModel::beamModel
         U_ = scalarField(this->lookup("U"));
     }
 
+    // Colm- merge orthogonal springs 
+    Info<< "\n"<< endl;
+    Info<< "Writing mechanical properties of beam no:" << endl;
+    Info<< beamProperties().name() <<endl;
+    Info<< "E " << E() << endl;
+    Info<< "G " << G() << endl;
+
     // Write beam cross-section properties
     Info << "A: " << A() << endl;
 

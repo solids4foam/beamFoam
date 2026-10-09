@@ -21,7 +21,7 @@ $(boundaryConditions)/fixedPathDisplacement/fixedPathDisplacementFvPatchVectorFi
 $(boundaryConditions)/fixedPathRotation/fixedPathRotationFvPatchVectorField.C
 $(boundaryConditions)/myFixedRotation/myFixedRotationFvPatchVectorField.C
 $(boundaryConditions)/myFollowerForceBeamDisplacementNR/myFollowerForceBeamDisplacementNRFvPatchVectorField.C
-
+$(boundaryConditions)/linearSpringForceBeamDisplacementNR/linearSpringForceBeamDisplacementNRFvPatchVectorField.C
 
 numerics/HermiteSpline/HermiteSpline.C
 numerics/spinTensor/spinTensor.C

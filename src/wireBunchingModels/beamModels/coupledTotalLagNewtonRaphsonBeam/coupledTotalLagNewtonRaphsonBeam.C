@@ -1099,6 +1099,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
 scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
+  // Colm - merge orthogonal spring
+  Info << ">>> coupledTotalLagNewtonRaphsonBeam::evolve() called at time "
+         << runTime().timeName() << endl;
+
     beamModel::evolve();
 
     const int nCorr
