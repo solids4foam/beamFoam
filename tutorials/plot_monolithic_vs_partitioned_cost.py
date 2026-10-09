@@ -48,14 +48,14 @@ for variant in ("stiffLine", "lightBody", "stiffLight", "stiffLargeDt"):
         CASE_LABELS[f"rigidBodyAndBeam/rigidBodyAndBeam_stress/{variant}/{method}"] = f"{label} ({variant})"
 
 # Floating box moored by one line in waves
-CASE_LABELS["floatRigidBody/floatRigidBody_monolithic_gravity"] = "Monolithic, 3 outer correctors (floatRigidBody)"
-CASE_LABELS["floatRigidBody/floatRigidBody_partioned_gravity"] = "Partitioned, 3 outer correctors (floatRigidBody)"
+CASE_LABELS["floatRigidBody/floatRigidBody_monolithic"] = "Monolithic, 3 outer correctors (floatRigidBody)"
+CASE_LABELS["floatRigidBody/floatRigidBody_partioned"] = "Partitioned, 3 outer correctors (floatRigidBody)"
 
 # The two cases to compare (any key of CASE_LABELS), e.g.
 # "rigidBodyAndBeam/rigidBodyAndBeam_beamFoamCoupled" and
 # "rigidBodyAndBeam/rigidBodyAndBeam_loop_nOuter8"
-NEW_CASE_NAME = "floatRigidBody/floatRigidBody_monolithic_gravity"
-OLD_CASE_NAME = "floatRigidBody/floatRigidBody_partioned_gravity"
+NEW_CASE_NAME = "floatRigidBody/floatRigidBody_monolithic"
+OLD_CASE_NAME = "floatRigidBody/floatRigidBody_partioned"
 
 NEW_CASE = os.path.join(SCRIPT_DIR, NEW_CASE_NAME)
 OLD_CASE = os.path.join(SCRIPT_DIR, OLD_CASE_NAME)

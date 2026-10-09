@@ -4,15 +4,18 @@
 Compare the moored floating box in waves (floatRigidBody) between three
 mooring models:
 
-- partitioned: floatRigidBody/floatRigidBody_partioned_gravity (moorFV solver
+- partitioned: floatRigidBody/floatRigidBody_partioned (moorFV solver
   FvBeamNewmark; the body and beamFoam take turns)
-- monolithic: floatRigidBody/floatRigidBody_monolithic_gravity (moorFV solver
+- monolithic: floatRigidBody/floatRigidBody_monolithic (moorFV solver
   beamFoamCoupled; beamFoam solves the line and the body together)
 - MoorDyn: floatRigidBody/floatRigidBody_moorDyn (foamMooring with MoorDyn v2
   lumped-mass line; copied from run/foamMooring/floatRigidBody_moorDyn)
 
 All three use 3 PIMPLE outer correctors, the same mesh, waves, box and
 constraints (surge, heave and pitch only), with the still water at z = 0.
+All three have seabed contact for the line: the beamFoam cases at groundZ
+-0.15 m with kNormal 1e4 (constant/beamMomentumContributionProperties),
+MoorDyn with kBot 3e6.
 
 Three groups of plots:
 - motion: surge, heave and pitch, their difference from REFERENCE_CASE, the
@@ -63,8 +66,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # (case directory, legend label, mooring model ("beam" or "moorDyn"), colour,
 # line style). Directories are relative to this script.
 CASES = [
-    ("floatRigidBody/floatRigidBody_partioned_gravity", "Partitioned (beamFoam)", "beam", "b", "-"),
-    ("floatRigidBody/floatRigidBody_monolithic_gravity", "Monolithic (beamFoam)", "beam", "r", "--"),
+    ("floatRigidBody/floatRigidBody_partioned", "Partitioned (beamFoam)", "beam", "b", "-"),
+    ("floatRigidBody/floatRigidBody_monolithic", "Monolithic (beamFoam)", "beam", "r", "--"),
     ("floatRigidBody/floatRigidBody_moorDyn", "MoorDyn", "moorDyn", "k", ":"),
 ]
 
