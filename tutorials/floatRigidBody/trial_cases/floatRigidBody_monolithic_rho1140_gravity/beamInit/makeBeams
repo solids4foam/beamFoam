@@ -1,0 +1,90 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# Build and pretension the mooring line(s), then copy them into the case.
+#
+# Each line runs from its anchor (patch "left") to its attachment point on the
+# box (patch "right"). It is meshed straight at its unstretched length
+# L0 = L/(1 + strain), then beamFoam pulls the attachment end out to the
+# attachment point. The final state becomes 0.orig/<beam>.
+#------------------------------------------------------------------------------
+cd ${0%/*} || exit 1
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+caseDir=..
+
+# Line properties (keep in sync with the box mass in constant/dynamicMeshDict)
+R=1.0E-03       # Radius [m]
+E=5.0E+06       # Young's modulus [Pa]
+G=1.7857E+06    # Shear modulus [Pa], E/(2(1 + 0.4))
+NSEG=40
+STRAIN=0.0      # Pretension strain: T = E*pi*R^2*STRAIN
+
+# name   anchor (x y z)       attachment (x y z)
+lines="
+beamone  0.25 0.025 -0.15    0.45 0.025 -0.025
+"
+
+echo "$lines" | while read name ax ay az bx by bz
+do
+    [ -z "$name" ] && continue
+
+    # Line direction, stretched and unstretched length, end displacement
+    set -- $(awk -v ax=$ax -v ay=$ay -v az=$az -v bx=$bx -v by=$by -v bz=$bz \
+        -v s=$STRAIN 'BEGIN{
+            dx=bx-ax; dy=by-ay; dz=bz-az; L=sqrt(dx*dx+dy*dy+dz*dz);
+            L0=L/(1+s); d=L-L0;
+            printf "%.9g %.9g %.9g %.9g %.9g %.9g %.9g %.9g\n",
+                dx/L, dy/L, dz/L, L, L0, d*dx/L, d*dy/L, d*dz/L }')
+    tx=$1; ty=$2; tz=$3; L=$4; L0=$5; ux=$6; uy=$7; uz=$8
+
+    echo "$name: L = $L, L0 = $L0, direction ($tx $ty $tz)"
+
+    rm -rf $name
+    cp -r template $name
+
+    sed -i \
+        -e "s/@L0@/$L0/g" -e "s/@R@/$R/g" -e "s/@NSEG@/$NSEG/g" \
+        -e "s/@E@/$E/g" -e "s/@G@/$G/g" -e "s/@STEADY@/true/g" \
+        $name/constant/beamProperties
+
+    cat > $name/constant/timeVsDisplacement <<EOF
+(
+    (0 (0 0 0))
+    (1 ($ux $uy $uz))
+    (2 ($ux $uy $uz))
+)
+EOF
+
+    (
+        cd $name || exit 1
+        # createCircularBeamMesh builds the line along +z: turn it onto +x,
+        # then rotate +x onto the line direction and move it to the anchor
+        runApplication createCircularBeamMesh &&
+        runApplication transformPoints -rotate-angle '((0 1 0) 90)' &&
+        runApplication setInitialPositionBeam -cellZone region0 \
+            -translate "($ax $ay $az)" -rotate "((1 0 0) ($tx $ty $tz))" &&
+        runApplication beamFoam
+    ) || { echo "$name: beam setup failed, see beamInit/$name/log.*"; exit 1; }
+
+    # Copy the pretensioned state into the CFD case
+    rm -rf $caseDir/0.orig/$name $caseDir/constant/$name $caseDir/system/$name
+    cp -r $name/2 $caseDir/0.orig/$name
+    rm -rf $caseDir/0.orig/$name/uniform
+    cp $name/0/ref* $caseDir/0.orig/$name/    # Reference geometry
+    mkdir -p $caseDir/constant/$name $caseDir/system/$name
+    # g too: the beam model reads gravity from constant/<line>/g and sets
+    # it to zero, without a warning, if that file is missing
+    cp -r $name/constant/polyMesh $name/constant/beamProperties \
+          $name/constant/dynamicMeshDict $name/constant/timeVsMoment \
+          $name/constant/g \
+          $caseDir/constant/$name/
+    cp $name/system/fvSchemes $name/system/fvSolution $caseDir/system/$name/
+
+    sed -i "s/steadyState .*/steadyState false;/" \
+        $caseDir/constant/$name/beamProperties
+    sed -i "s/fixedDisplacement/fixedValue/" $caseDir/0.orig/$name/W
+    sed -i "s@constant/timeVsMoment@constant/$name/timeVsMoment@g" \
+        $caseDir/0.orig/$name/Theta
+done
+
+#------------------------------------------------------------------------------

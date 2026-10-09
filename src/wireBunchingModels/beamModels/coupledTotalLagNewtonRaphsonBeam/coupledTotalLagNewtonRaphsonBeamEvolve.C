@@ -37,7 +37,8 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
-
+#include "IOmanip.H"
+#include "fixedValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,7 +53,7 @@ namespace beamModels
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-scalar coupledTotalLagNewtonRaphsonBeam::evolve()
+scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 {
     beamModel::evolve();
 
@@ -61,33 +62,39 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
     );
 
-    const scalar convergenceTol
+    // Tolerance for equation (force) residuals (R = Ax - B)
+    const scalar residualTol
     (
-        beamProperties().lookupOrDefault<scalar>("convergenceTol", 1e-6)
-    );
-    scalar curConvergenceTol = convergenceTol;
-
-    const scalar materialTol
-    (
-        beamProperties().lookupOrDefault<scalar>
-        (
-            "materialTol",
-            curConvergenceTol
-        )
+        beamProperties().lookupOrDefault<scalar>("residualTol", 1e-8)
     );
 
-    const bool debug
+    // Tolerance - displacement (DW) & rotation (DTheta_) correction variables
+    const scalar solutionTol
     (
-        beamProperties().lookupOrDefault<bool>("debug", false)
+        beamProperties().lookupOrDefault<scalar>("solutionTol", 1e-10)
     );
 
-    scalar initialResidual = 1;
-    scalar currentResidual = 1;
-    scalar currentMaterialResidual = 0;
-    //bool completedElasticPrediction = false;
-    //blockLduMatrix::debug = debug;
+    // Absolute tolerance
+    const scalar absoluteTol
+    (
+        beamProperties().lookupOrDefault<scalar>("absoluteTol", 1e-30)
+    );
 
-    scalar curContactResidual = 1;
+    // Tolerance to check of the solver has diverged
+    const scalar divTol
+    (
+        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e4)
+    );
+
+    const label writeResidualFrequency
+    (
+        beamProperties().lookupOrDefault<scalar>("infoFrequency", 1)
+    );
+
+    scalar initialResidualNorm = 1;
+    scalar currentResidualNorm = GREAT;
+    scalar deltaXNorm = GREAT;
+    scalar XNorm = GREAT;
 
     iOuterCorr() = 0;
     do
@@ -97,42 +104,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             Info<< "iOuterCorr: " << iOuterCorr() << endl;
         }
 
-        // if (contactActive())
-        // {
-        //     if (debug)
-        //     {
-        //         Info<< "Updating contact: start" << endl;
-        //     }
-
-        //     scalar tStart = runTime().elapsedCpuTime();
-
-        //     // Info<< "tstart in CTLNRB file: \n " << tStart << endl;
-        //     curContactResidual = contact().update();
-        //     scalar tEnd = runTime().elapsedCpuTime();
-
-        //     totalContactTime_ += tEnd - tStart;
-
-        //     if (debug)
-        //     {
-        //         Pout << "Current total contact update time: "
-        //              << totalContactTime_ << endl;
-        //     }
-
-        //     if (debug)
-        //     {
-        //         Info<< "curContactResidual: "
-        //             << curContactResidual << endl;
-
-        //         Info<< "Updating contact: end" << endl;
-        //     }
-        // }
-
         scalar tStart = runTime().elapsedCpuTime();
 
         {
-            scalar ThetaResidual = GREAT;
-            scalar WResidual = GREAT;
-
             // Initialise the block system
             Field<scalarSquareMatrix> d
             (
@@ -169,40 +143,290 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
             const labelList& nei = mesh().neighbour();
 
+            // SB: Initial accleration and velocity values at 0th iteration
+            // Valid for Newmark-beta integration scheme
+            if
+            (
+                d2dt2SchemeName_ == "Newmark"
+             && iOuterCorr() == 0
+             && runTime().timeIndex() != newmarkPredictorTimeIndex_
+            )
+            {
+                newmarkPredictorTimeIndex_ = runTime().timeIndex();
+
+                // if (iOuterCorr() == 0)
+                // {
+                Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
+                  - (0.5/betaN_ - 1)*Accl_.oldTime();
+
+                U_ = U_.oldTime()
+                  + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
+
+                dotOmega_ =
+                  - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
+                  - (0.5/betaN_ - 1)*dotOmega_.oldTime();
+
+                Omega_ =
+                    Omega_.oldTime()
+                  + runTime().deltaT()
+                  *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
+                // }
+            }
+
+            RigidBodyStepData localRigidBodyData;
+
+            if (rigidBodyDataValid_)
+            {
+                localRigidBodyData = rigidBodyData_;
+            }
+            else
+            {
+                // Backward-compatible fallback for beam-only cases:
+                // zero rigid-body motion, zero acceleration, zero torque.
+                Info<< "No rigid-body data supplied; using zero rigid-body state"
+                    << endl;
+            }
+
+            const Switch blockEigenKinematicCoupling
+            (
+                beamProperties().lookupOrDefault<Switch>
+                (
+                    "blockEigenKinematicCoupling",
+                    false
+                )
+            );
+
+            const Switch blockEigenForceCoupling
+            (
+                beamProperties().lookupOrDefault<Switch>
+                (
+                    "blockEigenForceCoupling",
+                    false
+                )
+            );
+
+            const bool solveAttachmentKinematicsInBlockEigen =
+                rigidBodyDataValid_
+             && localRigidBodyData.solveAttachmentKinematicsInBlockEigen;
+
+            const bool blockEigenKinematicCouplingActive =
+                blockEigenKinematicCoupling
+             && solveAttachmentKinematicsInBlockEigen;
+
+            const word blockEigenKinematicCouplingMode =
+                beamProperties().lookupOrDefault<word>
+                (
+                    "blockEigenKinematicCouplingMode",
+                    "staged"
+                );
+
+            if
+            (
+                blockEigenKinematicCouplingMode != "staged"
+             && blockEigenKinematicCouplingMode != "fullyImplicit"
+            )
+            {
+                FatalErrorInFunction
+                    << "Invalid blockEigenKinematicCouplingMode "
+                    << blockEigenKinematicCouplingMode
+                    << ". Valid options are staged and fullyImplicit."
+                    << abort(FatalError);
+            }
+
+            const bool blockEigenKinematicCouplingStaged =
+                blockEigenKinematicCouplingActive
+             && blockEigenKinematicCouplingMode == "staged";
+
+            const bool blockEigenKinematicCouplingFullyImplicit =
+                blockEigenKinematicCouplingActive
+             && blockEigenKinematicCouplingMode == "fullyImplicit";
+
+            blockEigenKinematicCouplingActive_ =
+                blockEigenKinematicCouplingActive;
+            blockEigenKinematicCouplingStaged_ =
+                blockEigenKinematicCouplingStaged;
+            blockEigenStagedAttachmentDisplacement_ =
+                blockEigenKinematicCouplingStaged
+              ? localRigidBodyData.current.displacement
+              : vector::zero;
+
+            if
+            (
+                blockEigenKinematicCouplingStaged
+             && W_.boundaryField()[endPatchIndex()].size()
+            )
+            {
+                W_.boundaryFieldRef()[endPatchIndex()][0] =
+                    blockEigenStagedAttachmentDisplacement_;
+            }
+
+            // Monolithic rigidBodyEnd: the attachment W holds the current
+            // body iterate with a zero boundary increment, so the body
+            // column carries the increment instead
+            if (rigidBodyEndMonolithic())
+            {
+                if
+                (
+                    runTime().timeIndex() <= rigidBodyEndPtr_().nJacobianChecks()
+                 && iOuterCorr() < 2
+                )
+                {
+                    checkRigidBodyEndJacobian();
+                }
+
+                setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_);
+            }
+
             W_.boundaryFieldRef().updateCoeffs();
             Theta_.boundaryFieldRef().updateCoeffs();
-            
+
             const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
 
             // Update the coefficients of W_ and Theta_ equations
+            // These coefficients are inputs to the Jacobian matrix
             updateEqnCoefficients();
 
-            // SB added - 10/11/2023 - initial accleration and velocity values of 0th iteration
-            // Newmark-beta integration scheme
-            if (!steadyState() && newmark_)
+            //- Assembling the diagonal and off-diagonal contributions
+            //- of DW_ and DTheta_ to solve in block-coupled
+            assembleMatrixCoefficients(d, l, u, source);
+
+            static bool blockEigenKinematicCouplingSanityChecked = false;
+
+            if (!blockEigenKinematicCouplingSanityChecked)
             {
-                if (iOuterCorr() == 0)
+                if
+                (
+                    rigidBodyDataValid_
+                 && localRigidBodyData.solveAttachmentKinematicsInBlockEigen
+                 && !blockEigenKinematicCoupling
+                )
                 {
-                    Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
-                      - (0.5/betaN_ - 1)*Accl_.oldTime();
+                    FatalErrorInFunction
+                        << "beamAttachmentKinematics is solvedByBlockEigen, "
+                        << "but blockEigenKinematicCoupling is false. "
+                        << "Enable blockEigenKinematicCoupling in "
+                        << "constant/beam/beamProperties or set "
+                        << "beamAttachmentKinematics to prescribedByRigidBody."
+                        << abort(FatalError);
+                }
+                else if (blockEigenKinematicCoupling && !rigidBodyDataValid_)
+                {
+                    WarningInFunction
+                        << "blockEigenKinematicCoupling is true, but no "
+                        << "rigid-body data has been supplied. BlockEigen "
+                        << "kinematic coupling is disabled."
+                        << nl << endl;
+                }
+                else if
+                (
+                    blockEigenKinematicCoupling
+                 && !solveAttachmentKinematicsInBlockEigen
+                )
+                {
+                    WarningInFunction
+                        << "blockEigenKinematicCoupling is true, but "
+                        << "beam attachment kinematics are not owned by "
+                        << "BlockEigen. Set beamAttachmentKinematics to "
+                        << "solvedByBlockEigen in the finiteVolumeBeam "
+                        << "restraint to enable kinematic coupling."
+                        << nl << endl;
+                }
 
-                    U_ = U_.oldTime()
-                      + runTime().deltaT()*((1 - gammaN_)*Accl_.oldTime() + gammaN_*Accl_);
+                blockEigenKinematicCouplingSanityChecked = true;
+            }
 
-                    dotOmega_ =
-                      - (1/(runTime().deltaT()*betaN_))*Omega_.oldTime()
-                      - (0.5/betaN_ - 1)*dotOmega_.oldTime();
+            label rigidBodyAttachmentCell = -1;
+            tensor rigidBodyTranslationCoeff = tensor::zero;
+            tensor rigidBodyRotationCoeff = tensor::zero;
+            tensor rigidBodyBeamForceWCoeff = tensor::zero;
+            tensor rigidBodyBeamForceThetaCoeff = tensor::zero;
+            vector rigidBodyMomentArm = vector::zero;
+            vector rigidBodyAttachmentDisplacementPrevious = vector::zero;
+            RigidBodyForceCoupling rigidBodyForceCoupling;
 
-                    Omega_ =
-                        Omega_.oldTime()
-                      + runTime().deltaT()
-                      *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
+            if
+            (
+                blockEigenKinematicCouplingActive
+             && isA<fixedValueFvPatchVectorField>
+                (
+                    W_.boundaryField()[endPatchIndex()]
+                )
+             && mesh().boundary()[endPatchIndex()].size()
+            )
+            {
+                const label patchI = endPatchIndex();
+                const fvPatch& patch = mesh().boundary()[patchI];
+                const labelUList& fc = patch.faceCells();
+                const label faceI = 0;
+
+                if (fc.size())
+                {
+                    rigidBodyAttachmentCell = fc[faceI];
+
+                    const scalar pDelta =
+                        1.0/mesh().deltaCoeffs().boundaryField()[patchI][faceI];
+
+                    const tensor& Cw = CQW_.boundaryField()[patchI][faceI];
+
+                    const vector WPrev =
+                        W_.prevIter().boundaryField()[patchI][faceI];
+
+                    rigidBodyAttachmentDisplacementPrevious = WPrev;
+
+                    const vector momentArm =
+                        localRigidBodyData.attachmentPoint
+                      - localRigidBodyData.centreOfRotation;
+
+                    rigidBodyMomentArm = momentArm;
+                    rigidBodyTranslationCoeff = Cw/pDelta;
+                    rigidBodyRotationCoeff =
+                        (Cw & -spinTensor(momentArm))/pDelta;
+                    rigidBodyBeamForceWCoeff = Cw/pDelta;
+                    rigidBodyBeamForceThetaCoeff =
+                        CQTheta_.boundaryField()[patchI][faceI];
+
+                    Info<< "BlockEigen kinematic coupling prepared: patch="
+                        << patch.name()
+                        << ", face=" << faceI
+                        << ", cell=" << rigidBodyAttachmentCell
+                        << ", beam displacement rows="
+                        << 6*rigidBodyAttachmentCell
+                        << ".." << 6*rigidBodyAttachmentCell + 2
+                        << ", attachment displacement previous="
+                        << rigidBodyAttachmentDisplacementPrevious
+                        << ", momentArm=" << momentArm
+                        << endl;
                 }
             }
 
-            //- Assembling the diagonal and off-diagonal contributions
-            //- of W_ and Theta_ to solve in block-coupled
-            assembleMatrixCoefficients(d, l, u, source);
+            if
+            (
+                blockEigenForceCoupling
+             && rigidBodyDataValid_
+             && Q_.boundaryField()[endPatchIndex()].size()
+            )
+            {
+                const label patchI = endPatchIndex();
+                const label faceI = 0;
+
+                const vector attachmentForce =
+                    Q_.boundaryField()[patchI][faceI];
+
+                const vector attachmentMoment =
+                    M_.boundaryField()[patchI][faceI];
+
+                rigidBodyForceCoupling.active = true;
+                rigidBodyForceCoupling.force = -attachmentForce;
+                rigidBodyForceCoupling.moment = -attachmentMoment;
+                rigidBodyForceCoupling.position =
+                    localRigidBodyData.attachmentPoint;
+                rigidBodyForceCoupling.centreOfRotation =
+                    localRigidBodyData.centreOfRotation;
+                rigidBodyForceCoupling.orientation =
+                    localRigidBodyData.current.orientation;
+                rigidBodyForceCoupling.mass = localRigidBodyData.mass;
+
+            }
 
             // Add distributed force
             forAll(source, cellI)
@@ -291,327 +515,439 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Add body force due to gravity and buoyancy if fluid is present
             // Note that for buoyant force calculation it is assumed
             // that the entire beam is submerged in the fluid
-            forAll(source, cellI)
+            // forAll(source, cellI)
+            // {
+            //     source[cellI](0,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(0).value();
+
+            //     source[cellI](1,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(1).value();
+
+            //     source[cellI](2,0) -=
+            //         (
+            //             rho().value() - rhoFluid().value()
+            //         )*L()[cellI]*A().value()*g().component(2).value();
+            // }
+
+            // Add inertial components if not steadyState
+            // SB Note: The inertia terms have two components
+            // 1. Inertia term in the force balance equation
+            // 2. Inertia term in the moment balance equation
+
+            // The difference between Newmark and Euler is how
+            // linear and angular velocities/accelerations are updated.
+            // Note: The updations are done after solving the eqns
+            // Also the implicit contributions of inertia terms that
+            // go into the diagonal of the matrix are different
+            // for Euler and Newmark.
+
+            // Temporal Variables
+            // U_ = Linear Velocity
+            // Accl_ = Linear Acceleration
+            // Omega_ = Angular Velocity
+            // dotOmega_ = Angular Acceleration
+
+            // if (!steadyState())
+            if (d2dt2SchemeName_ != "steadyState")
             {
-                source[cellI](0,0) -=
-                    (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(0).value();
+                // Throw error if rho is set to zero for transient case
+                for (label bI = 0 ; bI < nBeams() ; ++bI)
+                {
+                    if (rho(bI).value() == 0.0)
+                    {
+                        FatalErrorInFunction
+                            << "The time integration scheme provided is " << d2dt2SchemeName_
+                            << " but density 'rho' is not specified!!\n"
+                            << "Specify density as scalar either locally in crossSectionModel dict "
+                            << "of constant/beamProperties or as a global variable with dimensions "
+                            << "inside coupledTotalLagNewtonRaphsonBeamCoeffs sub-dictionary"
+                            << abort(FatalError);
+                    }
+                }
 
-                source[cellI](1,0) -=
-                    (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(1).value();
+                // The EXPLICIT inertial contributions to source
+                // 1. Initialise explicit inertial force contribution to zero
+                vectorField QRho(W_.size(), vector(0,0,0));
 
-                source[cellI](2,0) -=
+                // 2. Initialise explicit inertial moment contribution to zero
+                volVectorField MRho
+                (
+                    IOobject
                     (
-                        rho().value() - rhoFluid().value()
-                    )*L()[cellI]*A().value()*g().component(2).value();
-            }
+                        "MRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedVector("zero", dimForce*dimLength, vector::zero)
+                );
 
-            // ground contact contribution
-            if (groundContactActive_)
-            {
-                label cellsInContact = 0 ;
+                if (d2dt2SchemeName_ == "Newmark")
+                {
+                    // 1. Inertial force
+                    QRho = ARho_*L()*Accl_;
+
+                    // 2. Inertial angular momentum
+                    MRho =
+                    (
+                        L()
+                        *(
+                            (Lambda_ & (CIRho_ & dotOmega_))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                        )
+                    );
+
+                }
+                else if (d2dt2SchemeName_ == "Euler")
+                {
+                    // 1. Inertial force
+                    QRho = ARho_*L()*fvc::ddt(U_);
+
+                    // 2. Inertial angular momentum
+                    MRho =
+                    (
+                        L()
+                        *(
+                          (Lambda_ & (CIRho_ & fvc::ddt(Omega_)))
+                            + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                        )
+                    );
+
+                }
+                else
+                {
+                    FatalErrorInFunction
+                        << "d2dt2SchemeName undefined: " << d2dt2SchemeName_
+                        << exit(FatalError);
+                }
+
                 forAll(source, cellI)
                 {
-                    const vector coord = refW_[cellI] + W_[cellI];
+                    // 1. Add the explicit inertial force contribution
+                    source[cellI](0,0) += QRho[cellI].x();
+                    source[cellI](1,0) += QRho[cellI].y();
+                    source[cellI](2,0) += QRho[cellI].z();
 
-                    if (coord.z() < groundZ_)
-                    {
-                        cellsInContact += 1;
-                        source[cellI](2,0) +=
-                            (2.0*gStiffness_*R()*(coord.z() - groundZ_))
-                            - (2.0*gDamping_*R()*max(U_[cellI].component(2), 0));
-                    }
+                    // 2. Add the explicit inertial moment contribution
+                    source[cellI](3,0) += MRho[cellI].x();
+                    source[cellI](4,0) += MRho[cellI].y();
+                    source[cellI](5,0) += MRho[cellI].z();
                 }
-                Info<< "Number of cells in contact : " << cellsInContact << endl;
-            }
 
-            // Add inertial forces
-            if (!steadyState())
-            {
-                // First order Euler scheme
-                // Add inertial force
+                // The IMPLICIT inertial contributions to source
+                // 1. Initialise implicit inertial force contribution to zero
+                scalarField QRhoCoeff(W_.size(), 0.0);
+
+                // 2. Initialise implicit inertial moment contribution to zero
+                volTensorField MRhoCoeff
+                (
+                    IOobject
+                    (
+                        "MRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedTensor("zero", dimForce*dimLength, tensor::zero)
+                );
+
+                // if (newmark_)
+                if (d2dt2SchemeName_ == "Newmark")
                 {
-                    // SB modified - (10/11/2023)
-                    if (newmark_)
-                    {
-                        const vectorField QRho = ARho_*L()*Accl_;
+                    // 1. Implicit inertial force coefficient
+                    QRhoCoeff =
+                        -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
 
-                        forAll(source, cellI)
-                        {
-                            source[cellI](0,0) += QRho[cellI].x();
-                            source[cellI](1,0) += QRho[cellI].y();
-                            source[cellI](2,0) += QRho[cellI].z();
-                        }
-
-                        // Add diagonal contribution (N-R method)
-                        const scalarField QRhoCoeff =
-                            -L()*ARho_/(sqr(runTime().deltaT().value())*betaN_);
-
-                        forAll(d, cellI)
-                        {
-                            d[cellI](0,0) += QRhoCoeff[cellI];
-                            d[cellI](1,1) += QRhoCoeff[cellI];
-                            d[cellI](2,2) += QRhoCoeff[cellI];
-                        }
-
-                    }
-                    else
-                    {
-                        const volVectorField a(fvc::ddt(U_));
-                        const vectorField QRho = rho().value()*A().value()*L()*a;
-
-                        forAll(source, cellI)
-                        {
-                            source[cellI](0,0) += QRho[cellI].x();
-                            source[cellI](1,0) += QRho[cellI].y();
-                            source[cellI](2,0) += QRho[cellI].z();
-                        }
-
-                        // Add diagonal contribution (N-R method)
-                        const scalarField QRhoCoeff =
-                            -L()*rho().value()*A().value()
-                            /sqr(runTime().deltaT().value());
-
-                        forAll(d, cellI)
-                        {
-                            d[cellI](0,0) += QRhoCoeff[cellI];
-                            d[cellI](1,1) += QRhoCoeff[cellI];
-                            d[cellI](2,2) += QRhoCoeff[cellI];
-                        }
-                    }
+                    // 2. Implicit contribution of inertial torque because of
+                    // Newton-Raphson linearisation
+                    MRhoCoeff =
+                        L()
+                        *(
+                            spinTensor
+                            (
+                                (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
+                                + (Lambda_ & (CIRho_ & dotOmega_))
+                            )
+                            + (
+                                (spinTensor(Lambda_ & (CIRho_ & Omega_)))
+                                - (
+                                    Lambda_
+                                    & (
+                                        spinTensor(Omega_)
+                                        & (CIRho_ &  Lambda_.T())
+                                    )
+                                )
+                            )*(gammaN_/(betaN_*runTime().deltaT()))
+                            - (
+                                Lambda_ & (CIRho_ & Lambda_.T())
+                            )*(1/(betaN_*sqr(runTime().deltaT())))
+                        );
                 }
-
-
-                // Add inertial torque
+                else if (d2dt2SchemeName_ == "Euler")
                 {
-                    if (newmark_)
+                    // 1. Implicit inertial force coefficient
+                    QRhoCoeff =
+                        -L()*ARho_/sqr(runTime().deltaT().value());
+
+                    // 2. ZT code: Implicit contribution of inertial torque
+                    // because of Newton-Raphson linearisation
+                    MRhoCoeff =
+                        L()
+                        *(
+                            spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT()
+
+                            - (Lambda_ & (CIRho_ & Lambda_.T()))/sqr(runTime().deltaT())
+
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
+
+                            - spinTensor(Lambda_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
+
+                            - spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
+
+                            + (Lambda_ & (spinTensor(Omega_) & (CIRho_ & Lambda_.T())))/runTime().deltaT()
+                        );
+                }
+
+                // Adding the implicit contribution to the diagonal
+                forAll(d, cellI)
                     {
-                        // Angular acceleration
-                        volVectorField dotOmega = dotOmega_;
+                        // 1. Add implicit inertia force contribution to diag
+                        d[cellI](0,0) += QRhoCoeff[cellI];
+                        d[cellI](1,1) += QRhoCoeff[cellI];
+                        d[cellI](2,2) += QRhoCoeff[cellI];
 
-                        volVectorField MRho
-                            (
+                        // 2. Add implicit inertia momentum contribution to diag
+                        d[cellI](3,3) += MRhoCoeff[cellI].xx();
+                        d[cellI](3,4) += MRhoCoeff[cellI].xy();
+                        d[cellI](3,5) += MRhoCoeff[cellI].xz();
 
-                                L()
-                               *(
-                                    (Lambda_ & (CIRho_ & dotOmega))
-                                  + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                )
-                            );
-                        forAll(source, cellI)
-                        {
-                            source[cellI](3,0) += MRho[cellI].x();
-                            source[cellI](4,0) += MRho[cellI].y();
-                            source[cellI](5,0) += MRho[cellI].z();
-                        }
+                        d[cellI](4,3) += MRhoCoeff[cellI].yx();
+                        d[cellI](4,4) += MRhoCoeff[cellI].yy();
+                        d[cellI](4,5) += MRhoCoeff[cellI].yz();
 
-                        // Add diagonal contribution (N-R method)- SB : Nov 2023
-                        // Implicit contrbution without tangent space
-                        volTensorField MRhoCoeff
-                            (
-                                L()
-                               *(
-                                    spinTensor
-                                    (
-                                        (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                      + (Lambda_ & (CIRho_ & dotOmega))
-                                    )
-                                  + (
-                                        (spinTensor(Lambda_ & (CIRho_ & Omega_)))
-                                      - (
-                                            Lambda_ 
-                                          & (
-                                                spinTensor(Omega_)
-                                              & (CIRho_ &  Lambda_.T())
-                                            )
-                                        )
-                                    )*(gammaN_/(betaN_*runTime().deltaT()))
-                                  - (
-                                        Lambda_ & (CIRho_ & Lambda_.T())
-                                    )*(1/(betaN_*sqr(runTime().deltaT())))
-                                )
-                            );
-                        forAll(d, cellI)
-                        {
-                            d[cellI](3,3) += MRhoCoeff[cellI].xx();
-                            d[cellI](3,4) += MRhoCoeff[cellI].xy();
-                            d[cellI](3,5) += MRhoCoeff[cellI].xz();
-
-                            d[cellI](4,3) += MRhoCoeff[cellI].yx();
-                            d[cellI](4,4) += MRhoCoeff[cellI].yy();
-                            d[cellI](4,5) += MRhoCoeff[cellI].yz();
-
-                            d[cellI](5,3) += MRhoCoeff[cellI].zx();
-                            d[cellI](5,4) += MRhoCoeff[cellI].zy();
-                            d[cellI](5,5) += MRhoCoeff[cellI].zz();
-                        }
+                        d[cellI](5,3) += MRhoCoeff[cellI].zx();
+                        d[cellI](5,4) += MRhoCoeff[cellI].zy();
+                        d[cellI](5,5) += MRhoCoeff[cellI].zz();
                     }
-                    else
+            }
+
+            // // Add run-time selectable momentum contributions
+            if (momentumContribPtr_.size() > 0)
+            {
+                forAll(momentumContribPtr_, i)
+                {
+                    const vectorField linMomSource
+                    (
+                        momentumContribPtr_[i].linearMomentumSource(*this, U_, Accl_)
+                    );
+
+                    const vectorField angMomSource
+                    (
+                        momentumContribPtr_[i].angularMomentumSource(*this, U_, Accl_)
+                    );
+
+                    forAll(source, cellI)
                     {
-                        // Angular acceleration
-                        volVectorField dotOmega(fvc::ddt(Omega_));
+                        source[cellI](0,0) += linMomSource[cellI][vector::X];
+                        source[cellI](1,0) += linMomSource[cellI][vector::Y];
+                        source[cellI](2,0) += linMomSource[cellI][vector::Z];
 
-                        volVectorField MRho
-                            (
-                                L()
-                                *(
-                                    (Lambda_ & (CIRho_ & dotOmega))
-                                    + (Lambda_ & (Omega_ ^ (CIRho_ & Omega_)))
-                                )
-                            );
-
-                        forAll(source, cellI)
-                        {
-                            source[cellI](3,0) += MRho[cellI].x();
-                            source[cellI](4,0) += MRho[cellI].y();
-                            source[cellI](5,0) += MRho[cellI].z();
-                        }
-
-                        //- Drag forces due to Morison's Equation
-                        if (dragActive_ && !steadyState())
-                        {
-                            // Create spline using current beam points and tangents data
-                            HermiteSpline spline
-                            (
-                                currentBeamPoints(),
-                                currentBeamTangents()
-                            );
-
-                            // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-                            const vectorField& dRdScell = spline.midPointDerivatives();
-
-                            // Tangential component of velocity vector
-                            vectorField Ut
-                                (
-                                    (
-                                        (U_.internalField() & dRdScell)
-                                        *dRdScell
-                                    )
-                                );
-
-                            vectorField UtHat (Ut/(mag(Ut) + SMALL));
-
-                            // Normal component of velocity vector
-                            vectorField Un
-                                (
-                                    (
-                                        U_.internalField()
-                                        - (
-                                            (U_.internalField() & dRdScell)
-                                            *dRdScell
-                                        )
-                                    )
-                                );
-
-                            vectorField UnHat (Un/(mag(Un) + SMALL));
-
-                            // Scalar values of drag force (normal and tangential)
-                            const scalarField Fdn(rho().value()*Cdn_*R()*L()*(Un & Un));
-                            const scalarField Fdt(rho().value()*Cdt_*R()*L()*(Ut & Ut));
-
-                            // Explicit drag forces included in the source vector
-                            forAll(source, cellI)
-                            {
-                                source[cellI](0,0) += Fdn[cellI]*UnHat[cellI].component(0);
-                                source[cellI](1,0) += Fdn[cellI]*UnHat[cellI].component(1);
-                                source[cellI](2,0) += Fdn[cellI]*UnHat[cellI].component(2);
-
-                                source[cellI](0,0) += Fdt[cellI]*UtHat[cellI].component(0);
-                                source[cellI](1,0) += Fdt[cellI]*UtHat[cellI].component(1);
-                                source[cellI](2,0) += Fdt[cellI]*UtHat[cellI].component(2);
-                            }
-
-                        }
-                        else
-                        {
-                            WarningIn("coupledTotalLagNewtonRaphsonBeam::evolve()")
-                                << "Drag forces are zero for steady state calculation"
-                                << nl
-                                << "Set both 'steadyState' flag to false and "
-                                << "'dragActive' flag to  true to include drag force"
-                                << " contributions" << nl << endl;
-                        }
-
-                        // Add diagonal contribution (N-R method)-ZT code
-                        volTensorField MRhoCoeff
-                            (
-                                L()
-                                *(
-                                    spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT()
-
-                                    - (Lambda_ & (CIRho_ & Lambda_.T()))/sqr(runTime().deltaT())
-
-                                    - spinTensor(Lambda_ & (CIRho_ & Omega_.oldTime()))/runTime().deltaT() // + sign ?
-
-                                    - spinTensor(Lambda_ & (spinTensor(Omega_) & (CIRho_ & Omega_)))
-
-                                    - spinTensor(Lambda_ & (CIRho_ & Omega_))/runTime().deltaT() // - sign
-
-                                    + (Lambda_ & (spinTensor(Omega_) & (CIRho_ & Lambda_.T())))/runTime().deltaT()
-                                )
-                            );
-                        forAll(d, cellI)
-                        {
-                            d[cellI](3,3) += MRhoCoeff[cellI].xx();
-                            d[cellI](3,4) += MRhoCoeff[cellI].xy();
-                            d[cellI](3,5) += MRhoCoeff[cellI].xz();
-
-                            d[cellI](4,3) += MRhoCoeff[cellI].yx();
-                            d[cellI](4,4) += MRhoCoeff[cellI].yy();
-                            d[cellI](4,5) += MRhoCoeff[cellI].yz();
-
-                            d[cellI](5,3) += MRhoCoeff[cellI].zx();
-                            d[cellI](5,4) += MRhoCoeff[cellI].zy();
-                            d[cellI](5,5) += MRhoCoeff[cellI].zz();
-                        }
+                        source[cellI](3,0) += angMomSource[cellI][vector::X];
+                        source[cellI](4,0) += angMomSource[cellI][vector::Y];
+                        source[cellI](5,0) += angMomSource[cellI][vector::Z];
                     }
+
+                    // Jacobian diagonal contribution
+                    const Field<scalarSquareMatrix> diagCoeff
+                    (
+                         momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
+                    );
+
+                    d += diagCoeff;   
                 }
             }
-
-
-            // Calculate equilibrium equations residual
-            if (debug)
-            {
-                // Note: we do not user a gSum here as the beam is assumed to be on one
-                // core
-                const scalar eqResidual = sqrt(sum(magSqr(source)));
-                Info<< "L2 norm of the equlibrium equations residual: "
-                    << eqResidual << endl;
-            }
+	    
+	    // Amir
+	    // const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
+	    //	    Info<< "available objects = " << fluidMesh.names() << endl;
 
             // Block coupled solver call
+            static bool blockEigenInterfaceDofsWritten = false;
+
+            if (!blockEigenInterfaceDofsWritten)
+            {
+                const label startPatchI = startPatchIndex();
+                const label endPatchI = endPatchIndex();
+
+                const fvPatch& startPatch = mesh().boundary()[startPatchI];
+                const fvPatch& endPatch = mesh().boundary()[endPatchI];
+
+                const labelUList& startFaceCells =
+                    startPatch.faceCells();
+
+                const labelUList& endFaceCells =
+                    endPatch.faceCells();
+
+                const label startCellI =
+                    startFaceCells.size() ? startFaceCells[0] : -1;
+
+                const label endCellI =
+                    endFaceCells.size() ? endFaceCells[0] : -1;
+
+                const label startBeamRow =
+                    startCellI >= 0 ? 6*startCellI : -1;
+
+                const label endBeamRow =
+                    endCellI >= 0 ? 6*endCellI : -1;
+
+                const label rigidBodyRow = 6*d.size();
+
+                tmp<surfaceVectorField> tWf = fvc::interpolate(W_);
+                const surfaceVectorField& Wf = tWf();
+
+                vector startReferencePoint = vector::zero;
+                vector startCurrentPoint = vector::zero;
+                vector endReferencePoint = vector::zero;
+                vector endCurrentPoint = vector::zero;
+
+                if (startPatch.size())
+                {
+                    startReferencePoint =
+                        mesh().Cf().boundaryField()[startPatchI][0]
+                      + refWf_.boundaryField()[startPatchI][0];
+
+                    startCurrentPoint =
+                        startReferencePoint
+                      + Wf.boundaryField()[startPatchI][0];
+                }
+
+                if (endPatch.size())
+                {
+                    endReferencePoint =
+                        mesh().Cf().boundaryField()[endPatchI][0]
+                      + refWf_.boundaryField()[endPatchI][0];
+
+                    endCurrentPoint =
+                        endReferencePoint
+                      + Wf.boundaryField()[endPatchI][0];
+                }
+
+                Info<< "BlockEigen interface DOF map" << nl
+                    << "  anchor patch: " << startPatch.name()
+                    << " patchIndex=" << startPatchI
+                    << " nFaces=" << startPatch.size()
+                    << " firstCell=" << startCellI
+                    << " beamRows=" << startBeamRow
+                    << ".." << startBeamRow + 5
+                    << " referencePoint=" << startReferencePoint
+                    << " currentPoint=" << startCurrentPoint << nl
+                    << "  attachment patch: " << endPatch.name()
+                    << " patchIndex=" << endPatchI
+                    << " nFaces=" << endPatch.size()
+                    << " firstCell=" << endCellI
+                    << " beamRows=" << endBeamRow
+                    << ".." << endBeamRow + 5
+                    << " referencePoint=" << endReferencePoint
+                    << " currentPoint=" << endCurrentPoint << nl
+                    << "  rigid-body translation rows="
+                    << rigidBodyRow << ".." << rigidBodyRow + 2 << nl
+                    << "  rigid-body rotation rows="
+                    << rigidBodyRow + 3 << ".." << rigidBodyRow + 5
+                    << endl;
+
+                blockEigenInterfaceDofsWritten = true;
+            }
 
             // Create Eigen linear solver
-            BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
+            autoPtr<BlockEigenSolverOF> eigenSolverPtr;
+
+            if (blockEigenKinematicCouplingActive || blockEigenForceCoupling)
+            {
+                eigenSolverPtr.reset
+                (
+                    new BlockEigenSolverOF
+                    (
+                        d,
+                        l,
+                        u,
+                        own,
+                        nei,
+                        blockEigenKinematicCouplingFullyImplicit,
+                        rigidBodyAttachmentCell,
+                        rigidBodyTranslationCoeff,
+                        rigidBodyRotationCoeff,
+                        rigidBodyBeamForceWCoeff,
+                        rigidBodyBeamForceThetaCoeff,
+                        rigidBodyMomentArm,
+                        rigidBodyAttachmentDisplacementPrevious,
+                        rigidBodyForceCoupling
+                    )
+                );
+            }
+            else
+            {
+                eigenSolverPtr.reset
+                (
+                    new BlockEigenSolverOF(d, l, u, own, nei)
+                );
+            }
+
+            BlockEigenSolverOF& eigenSolver = eigenSolverPtr();
+
+            if (rigidBodyEndMonolithic())
+            {
+                RigidBodyMonolithicCoupling coupling =
+                    rigidBodyEndMonolithicCoupling();
+
+                constrainRigidBodyEndCoupling(coupling);
+
+                eigenSolver.setMonolithicCoupling(coupling);
+            }
 
             // Create solution vector
             Field<scalarRectangularMatrix> solVec
             (
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
+	    
+            //------------------------------------------------------------------
+	    // Colm - Codex
+	    //-------------------------------------------------------------------
+            // Create rigid-body solution holder
+            RigidBodySolution rigidBodySolution;
 
-            // Solve the linear system
-            // Currently this residual is not used, Check with Seevani.
-            currentResidual = eigenSolver.solve(solVec, source); // peak RAM
-            Info<< "Equation Residual: " << currentResidual << endl;
+            currentResidualNorm =
+                eigenSolver.solve
+                (
+                    solVec,
+                    source,
+                    rigidBodySolution,
+                    localRigidBodyData,
+                    runTime()
+                );
 
-            //vector6 eqnRes = WThetaEqn.solve().initialResidual();
-            // vector eqnRes = vector::zero;
-            // currentResidual = mag(eqnRes);
 
+	    // Colm- rigid body results
+            rigidBodySolution_ = rigidBodySolution;
+            rigidBodySolutionValid_ = true;
+	    
             if (iOuterCorr() == 0)
             {
-                initialResidual = currentResidual;
+                initialResidualNorm = currentResidualNorm;
             }
 
-            // Copy the solution from solVec into the DW and DTheta fields
-            //WThetaEqn.retrieveSolution(3, DTheta_.internalField());
-            //DTheta_.boundaryField().evaluateCoupled();
+            // Copy the solution from solVec into the DW_ and DTheta_ fields
             vectorField& DWI = DW_;
             vectorField& DThetaI = DTheta_;
+
             forAll(solVec, cellI)
             {
                 DWI[cellI][vector::X] = solVec[cellI](0, 0);
@@ -626,240 +962,80 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             DW_.correctBoundaryConditions();
             DTheta_.correctBoundaryConditions();
 
-            // DTheta_.internalField().replace(0, 0);
-
-            Theta_.primitiveFieldRef() +=
-                (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
-
-            // Theta_.internalField().replace(0, 0);
-
-            Theta_.correctBoundaryConditions();
-            Theta_.storePrevIter();
-
-            //WThetaEqn.retrieveSolution(0, DW_.internalField());
-            //DW_.boundaryField().evaluateCoupled();
-            W_.primitiveFieldRef() += DW_.internalField();
-
-            W_.correctBoundaryConditions();
-            W_.storePrevIter();
-
-            // Update displacement increment (for contact calculation of pulleys)
-            WIncrement_ = W_ - W_.oldTime();
-
-            // Update mean line velocity field
-            //  SB added: (10/11/2023) Update mean line velocity field
-            if (newmark_)
+            if
+            (
+                blockEigenKinematicCouplingActive
+             && rigidBodyAttachmentCell >= 0
+             && W_.boundaryField()[endPatchIndex()].size()
+            )
             {
-                U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
+                const label patchI = endPatchIndex();
+                const vector attachmentDisplacement =
+                    blockEigenKinematicCouplingStaged
+                  ? blockEigenStagedAttachmentDisplacement_
+                  : rigidBodySolution.displacement;
 
-                // SB added: (19/04/2023) Update mean line acceleration field
-                Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
+                DW_.boundaryFieldRef()[patchI][0] =
+                    attachmentDisplacement
+                  - W_.prevIter().boundaryField()[patchI][0];
 
-            }
-            else
-            {
-                U_ = fvc::ddt(W_);
+                W_.boundaryFieldRef()[patchI][0] =
+                    attachmentDisplacement;
+
+                Info<< "BlockEigen attachment DW boundary set from "
+                    << (blockEigenKinematicCouplingStaged
+                        ? "staged rigid-body target: "
+                        : "rigid-body solution: ")
+                    << DW_.boundaryField()[patchI][0]
+                    << endl;
             }
 
+            // Monolithic rigidBodyEnd: the solve returns the body
+            // displacement and rotation increments; the attachment W
+            // follows from the updated body state
+            scalar rigidBodyEndIncrementSqr = 0;
 
-            if (objectiveInterpolation())
+            if (rigidBodyEndMonolithic())
             {
-                // Info<< "Using objective interpolation for rotation" << endl;
+                const vector dx = rigidBodySolution.displacement;
+                const vector dTheta =
+                    rigidBodyEndPtr_().rotation()
+                  ? rigidBodySolution.rotationCorrection
+                  : vector::zero;
 
-                // Calculate rotation matrix correction from
-                // cell-centre rotation vector correction
-                volTensorField DLambda(rotationMatrix(DTheta_));
+                rigidBodyEndIncrementSqr = magSqr(dx) + magSqr(dTheta);
 
-                // Update cell-centre rotation matrix
-                Lambda_ = (DLambda & Lambda_);
+                rigidBodyEndX_ += dx;
+                rigidBodyEndTheta_ += dTheta;
 
-                // Calculate mean line curvature at cell-faces
-                K_ = refLambdaf_.T() & meanLineCurvature(Lambda_); // this does not work
-                //K_ +=
-                //    (
-                //          (refLambdaf_.T() & Lambdaf_.T()) &
-                //        meanLineCurvature(DLambda)
-                //    );
+                const label patchI = rigidBodyEndPatchIndex_;
+                const vector WbNew =
+                    rigidBodyEndAttachmentW(rigidBodyEndX_, rigidBodyEndTheta_);
 
-                // Objective cell-to-face interpolation of rotation matrix correction
-                //surfaceTensorField DLambdaf =
-                //   interpolateRotationMatrix(DLambda);
-
-                // Update cell-face rotation matrix
-                //Lambdaf_ = (DLambdaf & Lambdaf_);
-                Lambdaf_ = interpolateRotationMatrix(Lambda_); // this does not work
+                DW_.boundaryFieldRef()[patchI][0] =
+                    WbNew - W_.boundaryField()[patchI][0];
+                W_.boundaryFieldRef()[patchI][0] = WbNew;
             }
-            else
-            {
-                //Info<< "Rotations are not interpolated objectively \n" << endl;
-                const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
-                const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-                const surfaceTensorField DThetaHat(spinTensor(DThetaf));
+            // Update all the solution and output variables for
+            // the current (Newton) iteration loop
+            updateSolutionVariables();
 
-                const dimensionedTensor I("I", dimless, tensor::I);
+            // Calculating norm of primary correction variables DW_ & DTheta_
+            deltaXNorm =
+                sqrt(sum(magSqr(solVec)) + rigidBodyEndIncrementSqr);
 
-                // Tangent operator
-                const surfaceTensorField DT
+            // Calculating the norm of W_ and Theta_
+            XNorm =
+                sqrt
                 (
-                    (Foam::sin(magDThetaf)/magDThetaf)*I
-                  + (
-                        (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
-                    )
-                   *(DThetaf*DThetaf)
-                  + (
-                        (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
-                    )*DThetaHat
+                    sum(magSqr(W_.primitiveFieldRef()))
+                  + sum(magSqr(Theta_.primitiveFieldRef()))
                 );
-
-                // Update bending strain vector
-                K_ +=
-                (
-                    (refLambdaf_.T() & Lambdaf_.T())
-                  // & fvc::snGrad(DTheta_)
-                  & (DT.T() & fvc::snGrad(DTheta_))
-                );
-
-                // Rodrigues formula
-                const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
-
-                // Update rotation matrix
-                Lambdaf_ = (DLambdaf & Lambdaf_);
-
-                // Update cell-centre rotation matrix
-                const volTensorField DLambda(rotationMatrix(DTheta_));
-
-                Lambda_ = (DLambda & Lambda_);
-                // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
-
-                if (newmark_)
-                {
-                    // Update angular velocity
-                    // without tangent space
-                    Omega_ +=
-                        (
-                            gammaN_/(betaN_*runTime().deltaT())
-                        )*(Lambda_.T() & DTheta_);
-
-                    // Update angular acceleration
-                    dotOmega_ +=
-                        (
-                            1/(betaN_*sqr(runTime().deltaT()))
-                        )*(Lambda_.T() & DTheta_);
-                }
-                else // First order Euler scheme
-                {
-                    Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
-                }
-            }
-
-            // Update axial and shear strain vector
-            {
-                // W_.correctBoundaryConditions();
-
-                surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-                Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
-            }
-
-            // Q_ = (CQ_ & (Gamma_ - GammaP_));
-            // M_ = (CM_ & (K_ - KP_));
-
-            // Q_ = ((Lambdaf_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
-            // M_ = ((Lambdaf_ & refLambdaf_) & (CM_ & (K_ - KP_)));
-
-            // Calculate Q, where we ignore the orientation check
-            {
-                explicitQ_.setOriented(true);
-                surfaceVectorField implicitQ(CQW_ & fvc::snGrad(DW_));
-                implicitQ.setOriented(false);
-                implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
-                implicitQ.setOriented(true);
-                Q_ = explicitQ_ + implicitQ;
-            }
-
-            // Calculate M, where we ignore the orientation check
-            {
-                explicitM_.setOriented(true);
-                surfaceVectorField implicitM(CMTheta_ & fvc::snGrad(DTheta_));
-                implicitM.setOriented(false);
-                implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
-                implicitM.setOriented(true);
-                M_ = explicitM_ + implicitM;
-            }
-
-            // Calculate axial force
-            {
-                // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
-                // dRdS /= mag(dRdS);
-                // Qa_ = (dRdS & Q_);
-
-                Qa_ = (Lambdaf_.T() & Q_)().component(0);
-            }
-
-            // Calculate DTheta residual
-            {
-                scalar denom =
-                    // gMax
-                    max
-                    (
-                        mag
-                        (
-                            Theta_.primitiveFieldRef()
-                          - Theta_.oldTime().primitiveFieldRef()
-                        )()
-                    );
-
-                if (denom < 10*SMALL)
-                {
-                    // denom = max(gMax(mag(Theta_.internalField())), SMALL);
-                    denom = 1.0;
-                }
-
-                ThetaResidual =
-                    // gMax(mag(DTheta_.internalField())());
-                    max(mag(DTheta_.primitiveFieldRef())());
-                // ThetaResidual =
-                    // gMax(mag(DTheta_.internalField()))/denom;
-            }
-
-            // Calculate DW residual
-            {
-                scalar denom =
-                    max //gMax
-                    (
-                        mag
-                        (
-                            W_.primitiveFieldRef()
-                          - W_.oldTime().primitiveFieldRef()
-                        )()
-                    );
-
-                if (denom < 10*SMALL)
-                {
-                    // denom = max(gMax(mag(W_.internalField())), SMALL);
-                    denom = 1.0;
-                }
-
-                WResidual =
-                    // gMax(mag(DW_.internalField())());
-                    max(mag(DW_.primitiveFieldRef())());
-                // WResidual =
-                //     gMax(mag(DW_.internalField()))/denom;
-            }
-
-            if (debug)
-            {
-                Info<< "Theta residual: " << ThetaResidual << endl;
-                Info<< "W residual: " << WResidual << endl;
-            }
-
-            // this currentResidual is not normalized, check with Seevani
-            currentResidual = max(WResidual, ThetaResidual);
 
             if (iOuterCorr() == 0)
             {
-                initialResidual = currentResidual;
+                initialResidualNorm = currentResidualNorm;
             }
         }
 
@@ -875,31 +1051,36 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     }
     while
     (
-        (++iOuterCorr() < nCorr)
-     && (
-            (currentResidual > curConvergenceTol)
-         || (currentMaterialResidual > materialTol)
+        !checkConvergence
+        (
+            currentResidualNorm,
+            initialResidualNorm,
+            deltaXNorm,
+            XNorm,
+            ++iOuterCorr(),
+            nCorr,
+            residualTol,
+            absoluteTol,
+            solutionTol,
+            divTol,
+            writeResidualFrequency
         )
     );
 
     totalIter_ += iOuterCorr();
 
-    Info<< "\nInitial residual: " << initialResidual
-        << ", current residual: " << currentResidual
-        << ", current material residual: " << currentMaterialResidual
-        << ", current contact force residual: " << curContactResidual
-        << ",\n iCorr = " << iOuterCorr() << nl
-        << "total Iterations " << totalIter_ << endl;
+    if (debug)
+    {
+        Info<< "Total iterations " << totalIter_ << endl;
+    }
 
-    return initialResidual;
+    return initialResidualNorm;
 }
 
-//- Update the coefficients of the governing equations
+//- Update the matrix coefficients for the Jacobian matrix
 void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
 {
     const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-    // Info << "Updating coefficients" << endl;
 
     // Total rotation matrix
     const surfaceTensorField Lambdaf((Lambdaf_ & refLambdaf_));
@@ -920,6 +1101,7 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
+    // SB - NOT USED
     CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
@@ -976,6 +1158,277 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
             explicitMQ_.boundaryFieldRef()[patchI] *= 2;
         }
     }
+}
+
+//- Update the solution variables like displacements, rotations,
+//- translational and rotational strains, forces and moments
+void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
+{
+    Theta_.primitiveFieldRef() +=
+        (Lambda_.internalField().T() & DTheta_.internalField()); // Get back to this
+
+    // Theta_.internalField().replace(0, 0);
+
+    Theta_.correctBoundaryConditions();
+    Theta_.storePrevIter();
+
+    //WThetaEqn.retrieveSolution(0, DW_.internalField());
+    //DW_.boundaryField().evaluateCoupled();
+    W_.primitiveFieldRef() += DW_.internalField();
+
+    W_.correctBoundaryConditions();
+    W_.storePrevIter();
+
+    // Update displacement increment (for contact calculation of pulleys)
+    WIncrement_ = W_ - W_.oldTime();
+
+    // Update mean line linear velocity and acceleration fields
+    if (d2dt2SchemeName_ == "steadyState")
+    {
+        // Do Nothing, no update of temporal variables reqd
+    }
+    else if (d2dt2SchemeName_ == "Newmark")
+    {
+        // SB: Update mean line acceleration field
+        U_ += (1/runTime().deltaT())*(gammaN_/betaN_)*DW_;
+
+        // SB: Update mean line acceleration field
+        Accl_ += (1/(sqr(runTime().deltaT())*betaN_))*DW_;
+
+    }
+    else if (d2dt2SchemeName_ == "Euler")
+    {
+        U_ = fvc::ddt(W_);
+        Accl_ = fvc::ddt(U_);
+    }
+    else
+    {
+        FatalErrorInFunction
+            << "Provided d2dt2Scheme is not implemented!"
+            << "Valid choices are steadyState, Euler, Newmark"
+            << abort(FatalError);
+    }
+
+    const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
+
+    const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
+    const surfaceTensorField DThetaHat(spinTensor(DThetaf));
+
+    const dimensionedTensor I("I", dimless, tensor::I);
+
+    // Tangent operator
+    const surfaceTensorField DT
+    (
+        (Foam::sin(magDThetaf)/magDThetaf)*I
+        + (
+            (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
+        )
+        *(DThetaf*DThetaf)
+        + (
+            (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
+        )*DThetaHat
+    );
+
+    // Update bending strain vector
+    K_ +=
+    (
+        (refLambdaf_.T() & Lambdaf_.T())
+        // & fvc::snGrad(DTheta_)
+        & (DT.T() & fvc::snGrad(DTheta_))
+    );
+
+    // Rodrigues formula
+    const surfaceTensorField DLambdaf(rotationMatrix(DThetaf));
+
+    // Update rotation matrix
+    Lambdaf_ = (DLambdaf & Lambdaf_);
+
+    // Update cell-centre rotation matrix
+    const volTensorField DLambda(rotationMatrix(DTheta_));
+
+    Lambda_ = (DLambda & Lambda_);
+    // interpolateRotationMatrix(*this, Lambdaf_, Lambda_);
+
+    // Update mean line angular velocity and acceleration fields
+    if (d2dt2SchemeName_ == "steadyState")
+    {
+        // Do nothing; no update of temporal variables reqd
+    }
+    else if (d2dt2SchemeName_ == "Newmark")
+    {
+        // Update angular velocity
+        // without tangent space
+        Omega_ +=
+            (
+                gammaN_/(betaN_*runTime().deltaT())
+            )*(Lambda_.T() & DTheta_);
+
+        // Update angular acceleration
+        dotOmega_ +=
+            (
+                1/(betaN_*sqr(runTime().deltaT()))
+            )*(Lambda_.T() & DTheta_);
+    }
+    else if (d2dt2SchemeName_ == "Euler") // First order Euler scheme
+    {
+        Omega_ = axialVector(Lambda_.T() & fvc::ddt(Lambda_));
+
+        // dotOmega_ = fvc::ddt(Omega_);
+    }
+    else
+    {
+        FatalErrorInFunction
+            << "Provided d2dt2Scheme is not implemented!"
+            << "Valid choices are steadyState, Euler, Newmark"
+            << abort(FatalError);
+    }
+
+    // }
+
+    // Update axial and shear strain vector
+    {
+        // W_.correctBoundaryConditions();
+
+        surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+
+        Gamma_ = (refLambdaf_.T() & ((Lambdaf_.T() & dRdS) - dR0Ds_));
+    }
+
+    // Q_ = (CQ_ & (Gamma_ - GammaP_));
+    // M_ = (CM_ & (K_ - KP_));
+
+    // Q_ = ((Lambdaf_ & refLambdaf_) & (CQ_ & (Gamma_ - GammaP_)));
+    // M_ = ((Lambdaf_ & refLambdaf_) & (CM_ & (K_ - KP_)));
+
+    // Calculate Q, where we ignore the orientation check
+    {
+        explicitQ_.setOriented(true);
+        surfaceVectorField implicitQ(CQW_ & fvc::snGrad(DW_));
+        implicitQ.setOriented(false);
+        implicitQ += (CQTheta_ & fvc::interpolate(DTheta_));
+        implicitQ.setOriented(true);
+        Q_ = explicitQ_ + implicitQ;
+    }
+
+    // Calculate M, where we ignore the orientation check
+    {
+        explicitM_.setOriented(true);
+        surfaceVectorField implicitM(CMTheta_ & fvc::snGrad(DTheta_));
+        implicitM.setOriented(false);
+        implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
+        implicitM.setOriented(true);
+        M_ = explicitM_ + implicitM;
+    }
+
+    // Calculate axial force
+    {
+        // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
+        // dRdS /= mag(dRdS);
+        // Qa_ = (dRdS & Q_);
+
+        Qa_ = (Lambdaf_.T() & Q_)().component(0);
+    }
+}
+
+//- Function to check convergence of the outer (Newton) loop
+bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
+(
+    const scalar currentResidualNorm,
+    const scalar initialResidualNorm,
+    const scalar deltaXNorm,
+    const scalar xNorm,
+    const label iteration,
+    const label maxIterations,
+    const scalar rtol,
+    const scalar atol,
+    const scalar stol,
+    const scalar divtol,
+    const label writeResidualFrequency,
+    const bool writeConvergedReason
+)
+{
+    // Precompute tolerances
+    const scalar relativeResidualTol = rtol*initialResidualNorm;
+    const scalar stepTolerance = stol*xNorm;
+
+    // Log residuals if enabled
+    if (writeResidualFrequency > 0)
+    {
+        if (iteration == 1)
+        {
+            // Print the header with fixed widths
+            Info<< setw(10) << "Iteration"
+                << setw(20) << "Residual Norm"
+                << setw(20) << "Step Norm" << endl;
+        }
+
+        // Print each iteration's data with aligned fields
+        if (iteration % writeResidualFrequency == 0)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << currentResidualNorm
+                << setw(20) << deltaXNorm << endl;
+        }
+    }
+
+    // 1. Check Residual Norm against absolute tolerance
+    if (currentResidualNorm <= atol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Absolute residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 2. Check Residual Norm Convergence
+    if (currentResidualNorm <= relativeResidualTol)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Relative residual tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 3. Check Step Norm Convergence
+    if (deltaXNorm <= stepTolerance)
+    {
+        if (writeConvergedReason)
+        {
+            Info<< setw(10) << iteration
+                << setw(20) << ": Converged - Step norm relative tolerance met."
+                << endl;
+        }
+        return true;
+    }
+
+    // 4. Check Divergence
+    if (currentResidualNorm >= divtol*initialResidualNorm)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Diverged - Residual grew excessively."
+            << abort(FatalError);
+        return false;
+    }
+
+    // 5. Check Maximum Iterations
+    if (iteration >= maxIterations)
+    {
+        FatalErrorInFunction
+            << "Iteration " << iteration
+            << setw(20) << ": Failed - Maximum iterations reached."
+            << abort(FatalError);
+        return false;
+    }
+
+    // 6. Not Converged Yet
+    return false;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
