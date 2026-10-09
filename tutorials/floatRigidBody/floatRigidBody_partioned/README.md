@@ -1,6 +1,15 @@
-# floatRigidBody_partioned_gravity
+# floatRigidBody_partioned
 
-floatRigidBody_partioned with gravity on the mooring line in the coupled run.
+A floating box moored by one beamFoam line in waves, with the box and the
+line coupled partitioned (moorFV solver `FvBeamNewmark`: the body and
+beamFoam take turns). The line has weight, rests on the tank floor through
+seabed contact, and the beam function objects write the line end forces and
+displacements. `../floatRigidBody_monolithic` is the same case solved
+monolithically; `../floatRigidBody_moorDyn` is the MoorDyn reference.
+The same case without seabed contact is
+`../trial_cases/floatRigidBody_partioned_gravity_noContact`.
+
+## Gravity on the line
 
 The beam model reads gravity from `constant/<line>/g` and silently uses
 g = 0 if that file is missing. `beamInit/makeBeams` did not copy it, so in
@@ -9,7 +18,9 @@ pretension step and was weightless in interFoam. `makeBeams` here also
 copies `constant/g` (check: `log.interFoam` contains
 "g is set for gravitational body force").
 
-The case is also shifted down 0.15 m to match the MoorDyn case
+## Shift to the MoorDyn geometry
+
+The case is shifted down 0.15 m to match the MoorDyn case
 (foamMooring/floatRigidBody_moorDyn): floor z = -0.15, still water z = 0,
 box centre (0.5 0.025 0), attachment (0.45 0.025 -0.025), anchor
 (0.25 0.025 -0.15), free-surface probes at z = 0 (blockMeshDict,
@@ -18,12 +29,69 @@ dynamicMeshDict). The z values in the tables below are those of the
 unshifted case. mass (0.124319) balances the line weight at rho = 141.8
 (MoorDyn case: 0.124316).
 
-A floating box moored by a single beamFoam mooring line in a small wave tank,
-run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
-solver.
+## Running
+
+Run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
+solver (about 65 min on one core):
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
+
+## Seabed contact
+
+Seabed contact is switched on only by `constant/beamMomentumContributionProperties`
+(type `groundContact`, read by every beam in the case). The
+`groundContactActive`, `groundZ`, `gStiffness` and `gDamping` keys in
+`beamProperties` are not read by the code.
+
+| Setting      | Value                                   |
+|--------------|-----------------------------------------|
+| groundZ      | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
+| kNormal      | 1e4 Pa/m                                |
+| cNormal      | 1 Pa s/m                                |
+| Friction     | none (as in MoorDyn)                    |
+
+Contact acts on the cell centres below `groundZ`, with a force per unit
+length max(2R (kNormal penetration - cNormal Uz), 0). The normal stiffness
+is in the Jacobian; damping is explicit. kNormal = 1e4 was chosen before the
+contact force was fixed (8 Oct 2026: wrong sign, no cell length, no
+Jacobian, so the first floor contact diverged); MoorDyn's kBot = 3e6 has not
+been tried since.
+
+Check in `log.interFoam`: "Found beamMomentumContribution type:
+groundContact" once, and "Number of cells in contact : N" in every beam
+iteration. The line first touches the floor at t = 2.60 s, after the snap
+load, and up to 15 cells are then in contact. The floor carries the slack
+line: the mean axial force from t = 6 s is -0.54 mN at the anchor and
++0.004 mN at the box (without contact: -0.22 mN and +0.33 mN). Peak tension
+at the box: 0.1006 N at t = 2.316 s.
+
+## Output
+
+As well as moorFV's restraint output in `postProcessing/0`
+(`axialForcebeamone.dat`: time, anchor axial, anchor shear, attachment axial,
+attachment shear; `anchorForcebeamone.dat`, `attachmentForcebeamone.dat`),
+four beam function objects run from the main `system/controlDict` with
+`region beamone;` (in a coupled run `system/beamone/controlDict` is not
+read):
+
+| Function object             | File in postProcessing/0                  |
+|-----------------------------|--------------------------------------------|
+| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor)        |
+| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)          |
+| beamDisplacementsAttachment | beamDisplacements_right.dat (box)          |
+| beamConvergenceData         | beamConvergenceData.dat                    |
+
+The force Q in beamForcesMoments and in anchor/attachmentForce is the end
+force vector (axial plus shear), not the tension: once the line is slack
+and bends, most of it is shear. The tension is the axial force in
+`axialForcebeamone.dat`. With outer correctors these files have several
+rows per time step; keep the last one.
+
+Plot with `../../plot_monolithic_vs_partitioned_floatRigidBody.py`,
+`../../plot_floatRigidBody_moorDyn_comparison.py`,
+`../../plot_monolithic_vs_partitioned_motion.py` and
+`../../plot_monolithic_vs_partitioned_cost.py`.
 
 ## Geometry
 

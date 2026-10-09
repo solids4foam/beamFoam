@@ -1,6 +1,14 @@
-# floatRigidBody_monolithic_gravity
+# floatRigidBody_monolithic
 
-floatRigidBody_monolithic with gravity on the mooring line in the coupled run.
+A floating box moored by one beamFoam line in waves, with the box and the
+line solved monolithically: moorFV solver `beamFoamCoupled` instead of the
+partitioned `FvBeamNewmark` in `../floatRigidBody_partioned`. Everything else
+(mesh, line, waves, seabed contact, function objects, `nOuterCorrectors 3`)
+is the same, so the two cases can be compared directly.
+`../floatRigidBody_moorDyn` is the MoorDyn reference. The same case without
+seabed contact is `../trial_cases/floatRigidBody_monolithic_gravity_noContact`.
+
+## Gravity on the line
 
 The beam model reads gravity from `constant/<line>/g` and silently uses
 g = 0 if that file is missing. `beamInit/makeBeams` did not copy it, so in
@@ -9,7 +17,9 @@ pretension step and was weightless in interFoam. `makeBeams` here also
 copies `constant/g` (check: `log.interFoam` contains
 "g is set for gravitational body force").
 
-The case is also shifted down 0.15 m to match the MoorDyn case
+## Shift to the MoorDyn geometry
+
+The case is shifted down 0.15 m to match the MoorDyn case
 (foamMooring/floatRigidBody_moorDyn): floor z = -0.15, still water z = 0,
 box centre (0.5 0.025 0), attachment (0.45 0.025 -0.025), anchor
 (0.25 0.025 -0.15), free-surface probes at z = 0 (blockMeshDict,
@@ -18,13 +28,9 @@ dynamicMeshDict). The z values in the tables below are those of the
 unshifted case. mass (0.124319) balances the line weight at rho = 141.8
 (MoorDyn case: 0.124316).
 
-floatRigidBody_partioned with the box and its mooring line solved monolithically:
-moorFV solver `beamFoamCoupled` instead of the partitioned `FvBeamNewmark`.
-Everything else (mesh, line, waves, `nOuterCorrectors 3`) is the same, so the
-two cases can be compared with
-`../../plot_monolithic_vs_partitioned_floatRigidBody.py` (motion, line forces,
-free surface) and `../../plot_monolithic_vs_partitioned_cost.py`
-(cost).
+## Running
+
+Run in serial (about 65 min on one core):
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
@@ -41,43 +47,89 @@ still coupled to that subsystem through the three PIMPLE outer correctors.
 
 ## Completed-run comparison
 
-The current `floatRigidBody_monolithic` and `floatRigidBody_partioned` results
-both finish stably at 10 s with no beam Newton failures. Their authored
-numerical inputs are identical apart from the rigid-body/beam solver and the
-use of acceleration relaxation by the partitioned solver.
+Both cases (run 9 Oct 2026) reach 10 s with no fatal errors, in the same 5008
+time steps.
 
-| Quantity at 10 s | Monolithic | Partitioned | Partitioned - monolithic |
-|------------------|------------|-------------|----------------------------|
-| Surge            | -73.303 mm | -86.344 mm  | -13.041 mm                 |
-| Heave            | +5.632 mm  | +6.352 mm   | +0.720 mm                  |
-| Pitch            | +2.908 deg | +2.793 deg  | -0.115 deg                 |
-| Attachment tension | 0.7550 mN | 0.7508 mN | -0.0042 mN                 |
+| Quantity at 10 s     | Monolithic | Partitioned | Partitioned - monolithic |
+|----------------------|------------|-------------|--------------------------|
+| Surge                | -87.393 mm | -88.516 mm  | -1.123 mm                |
+| Heave                | +6.392 mm  | +6.460 mm   | +0.068 mm                |
+| Pitch                | +2.756 deg | +2.770 deg  | +0.014 deg               |
+| Axial force at box   | +0.030 mN  | -0.016 mN   | -0.046 mN                |
+| Axial force at anchor | -0.528 mN | -0.578 mN   | -0.050 mN                |
 
-Over the full histories, the largest differences are 14.09 mm in surge,
-0.868 mm in heave and 0.489 deg in pitch. Sway, roll and yaw remain exactly
-zero in both cases. The maximum free-surface differences at the two probes
-are only 0.317 mm and 0.130 mm, so the main difference is accumulated
-horizontal drift rather than the wave field.
+Over the full histories the largest differences are 1.12 mm in surge,
+0.075 mm in heave and 0.154 deg in pitch; sway, roll and yaw stay exactly
+zero in both. The free-surface probes differ by at most 0.11 mm and
+0.03 mm. The peak tension at the box is 0.1044 N at 2.312 s (monolithic)
+and 0.1006 N at 2.316 s (partitioned), 3.7% apart; MoorDyn gives 0.1098 N
+at 2.296 s.
 
-The peak attachment tension is 0.0921 N at 1.230 s for the monolithic case
-and 0.0964 N at 1.206 s for the partitioned case. The peak magnitudes differ
-by 4.6%, with a small phase shift during the transient.
+| Cost metric                                      | Monolithic | Partitioned |
+|--------------------------------------------------|------------|-------------|
+| Time steps                                       | 5008       | 5008        |
+| Mean summed beam Newton iterations per time step | 12.72      | 12.08       |
+| Execution time                                   | 3834.84 s  | 3835.94 s   |
+| Wall time                                        | 3880 s     | 3877 s      |
 
-| Cost metric | Monolithic | Partitioned |
-|-------------|------------|-------------|
-| Time steps | 5001 | 5012 |
-| Mean summed beam Newton iterations per time step | 12.758 | 11.827 |
-| Execution time | 3214.52 s | 3189.63 s |
-| Wall time | 3234 s | 3191 s |
+The two cost the same. The monolithic case takes about 5% more beam Newton
+iterations per time step, but each is cheaper.
 
-The monolithic case is 0.78% slower by OpenFOAM execution time and 1.35%
-slower by wall time in these runs. At three outer correctors the schemes are
-therefore similar in cost but are not coupling-converged to the same surge
-trajectory. With 8 outer correctors (the `_nOuter8` cases) the final surge
-difference falls to 1.3 mm, and the 3 corrector monolithic run is much closer
-to the converged drift than the 3 corrector partitioned run. The two methods
-nevertheless give completely different mooring-line shapes. See
-`../compare_partioned_monolithic_claude.txt` for the full comparison.
+## Seabed contact
+
+Seabed contact is switched on only by `constant/beamMomentumContributionProperties`
+(type `groundContact`, read by every beam in the case). The
+`groundContactActive`, `groundZ`, `gStiffness` and `gDamping` keys in
+`beamProperties` are not read by the code.
+
+| Setting      | Value                                   |
+|--------------|-----------------------------------------|
+| groundZ      | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
+| kNormal      | 1e4 Pa/m                                |
+| cNormal      | 1 Pa s/m                                |
+| Friction     | none (as in MoorDyn)                    |
+
+Contact acts on the cell centres below `groundZ`, with a force per unit
+length max(2R (kNormal penetration - cNormal Uz), 0). The normal stiffness
+is in the Jacobian; damping is explicit. kNormal = 1e4 was chosen before the
+contact force was fixed (8 Oct 2026: wrong sign, no cell length, no
+Jacobian, so the first floor contact diverged); MoorDyn's kBot = 3e6 has not
+been tried since.
+
+Check in `log.interFoam`: "Found beamMomentumContribution type:
+groundContact" once, and "Number of cells in contact : N" in every beam
+iteration. The line first touches the floor at t = 2.60 s, after the snap
+load, and up to 15 cells are then in contact. The floor carries the slack
+line: the mean axial force from t = 6 s is -0.53 mN at the anchor and
++0.015 mN at the box (without contact: -0.22 mN and +0.33 mN). Peak tension
+at the box: 0.1044 N at t = 2.312 s.
+
+## Output
+
+As well as moorFV's restraint output in `postProcessing/0`
+(`axialForcebeamone.dat`: time, anchor axial, anchor shear, attachment axial,
+attachment shear; `anchorForcebeamone.dat`, `attachmentForcebeamone.dat`),
+four beam function objects run from the main `system/controlDict` with
+`region beamone;` (in a coupled run `system/beamone/controlDict` is not
+read):
+
+| Function object             | File in postProcessing/0                  |
+|-----------------------------|--------------------------------------------|
+| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor)        |
+| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)          |
+| beamDisplacementsAttachment | beamDisplacements_right.dat (box)          |
+| beamConvergenceData         | beamConvergenceData.dat                    |
+
+The force Q in beamForcesMoments and in anchor/attachmentForce is the end
+force vector (axial plus shear), not the tension: once the line is slack
+and bends, most of it is shear. The tension is the axial force in
+`axialForcebeamone.dat`. With outer correctors these files have several
+rows per time step; keep the last one.
+
+Plot with `../../plot_monolithic_vs_partitioned_floatRigidBody.py`,
+`../../plot_floatRigidBody_moorDyn_comparison.py`,
+`../../plot_monolithic_vs_partitioned_motion.py` and
+`../../plot_monolithic_vs_partitioned_cost.py`.
 
 ## Constraints in the monolithic solve
 
