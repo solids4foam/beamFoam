@@ -15,6 +15,13 @@ Both use the same plane/axis constraints, so the box only surges, heaves and
 pitches. Sway, roll and yaw are still plotted as a check that the
 constraints hold (they should be exactly zero).
 
+Line tension is the axial force at each end of the line (positive in
+tension) from postProcessing/0/axialForce<beam>.dat, written by moorFV's
+finiteVolumeBeam restraint. The end-force magnitude |Q| in
+anchorForce<beam>.dat and attachmentForce<beam>.dat is axial plus shear: it
+equals the tension only while the line is taut and straight, so it is
+plotted separately as the end force.
+
 Differences are plotted against REFERENCE_CASE.
 
 Run from Spyder or from the beamFoam/tutorials directory after the cases have
@@ -158,9 +165,10 @@ def load_case(case_dir, label, colour, style):
     )
     attachment_file = os.path.join(post, "0", f"attachmentForce{BEAM_NAME}.dat")
     anchor_file = os.path.join(post, "0", f"anchorForce{BEAM_NAME}.dat")
+    axial_file = os.path.join(post, "0", f"axialForce{BEAM_NAME}.dat")
     height_file = os.path.join(post, "interfaceHeight1", "0", "height.dat")
 
-    for filename in (motion_file, attachment_file):
+    for filename in (motion_file, attachment_file, axial_file):
         if not os.path.isfile(filename):
             print(f"Skipping {case_dir}: {os.path.relpath(filename, SCRIPT_DIR)} not found")
             return None
@@ -188,17 +196,24 @@ def load_case(case_dir, label, colour, style):
         "omega": omega,
     }
 
-    # Line tension at the box (attachment) and at the seabed (anchor)
+    # Line end force on the box (attachment) and at the seabed (anchor), and
+    # its magnitude |Q| (axial plus shear)
     case["attachment_time"], case["attachment_force"] = apply_time_window(
         *read_columns(attachment_file, 3)
     )
-    case["attachment_tension"] = np.linalg.norm(case["attachment_force"], axis=1)[:, None]
+    case["attachment_Q"] = np.linalg.norm(case["attachment_force"], axis=1)[:, None]
 
     if os.path.isfile(anchor_file):
         case["anchor_time"], case["anchor_force"] = apply_time_window(
             *read_columns(anchor_file, 3)
         )
-        case["anchor_tension"] = np.linalg.norm(case["anchor_force"], axis=1)[:, None]
+        case["anchor_Q"] = np.linalg.norm(case["anchor_force"], axis=1)[:, None]
+
+    # Line tension: the axial force at each end, positive in tension.
+    # Columns: anchor axial, anchor shear, attachment axial, attachment shear
+    case["tension_time"], axial = apply_time_window(*read_columns(axial_file, 4))
+    case["anchor_tension"] = axial[:, [0]]
+    case["attachment_tension"] = axial[:, [2]]
 
     # Free-surface probes at x = 0.25 and 0.75 m: columns are height above
     # the bottom and above the probe location for each probe
@@ -312,7 +327,7 @@ SPLIT_QUANTITIES = [
     ("surge", "m", "time", lambda c: c["displacement"][:, 0]),
     ("heave", "m", "time", lambda c: c["displacement"][:, 2]),
     ("pitch", "rad", "time", lambda c: c["rotation"][:, 1]),
-    ("tension", "N", "attachment_time", lambda c: c["attachment_tension"][:, 0]),
+    ("tension", "N", "tension_time", lambda c: c["attachment_tension"][:, 0]),
 ]
 
 for case in cases:
@@ -349,7 +364,7 @@ for case in cases:
     i = np.argmax(tension)
     print(
         f"  {case['label']:<32} {tension[i]:.4e} N at t = "
-        f"{case['attachment_time'][i]:.3f} s"
+        f"{case['tension_time'][i]:.3f} s"
     )
 
 
@@ -467,12 +482,35 @@ for label, component in (("X", 0), ("Z", 2)):
     )
 
 plot_component(
-    "attachment_time", "attachment_tension", 0,
+    "tension_time", "attachment_tension", 0,
     "Line tension at the box (N)", "attachment_tension.png",
+    title="Axial force (negative: compression)",
 )
 plot_component(
-    "anchor_time", "anchor_tension", 0,
+    "tension_time", "anchor_tension", 0,
     "Line tension at the anchor (N)", "anchor_tension.png",
+    title="Axial force (negative: compression)",
+)
+plot_difference(
+    "tension_time", "attachment_tension", 0,
+    "Line tension difference at the box (N)", "attachment_tension_difference.png",
+)
+plot_difference(
+    "tension_time", "anchor_tension", 0,
+    "Line tension difference at the anchor (N)", "anchor_tension_difference.png",
+)
+
+# End-force magnitude |Q|: axial plus shear, not the tension once the line
+# is slack or bent
+plot_component(
+    "attachment_time", "attachment_Q", 0,
+    "Line end-force magnitude |Q| at the box (N)", "attachment_Q.png",
+    title="Axial plus shear (not the tension)",
+)
+plot_component(
+    "anchor_time", "anchor_Q", 0,
+    "Line end-force magnitude |Q| at the anchor (N)", "anchor_Q.png",
+    title="Axial plus shear (not the tension)",
 )
 
 # Free surface: checks the waves reaching the box are the same in both runs

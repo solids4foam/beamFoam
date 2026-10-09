@@ -74,7 +74,8 @@ groundContactContribution::groundContactContribution
     groundZ_
     (
         readScalar(beamMomentumContribDict_.lookup("groundZ"))
-    )
+    ),
+    contactStiffness_()
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
 }
@@ -102,7 +103,22 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
             mesh.nCells(), scalarSquareMatrix(6, 0.0)
         )
     );
-    // Field<scalarSquareMatrix>& result = tresult.ref();
+    Field<scalarSquareMatrix>& result = tresult.ref();
+
+    // The diagonal holds the derivative of the residual (internal plus
+    // external force minus inertia) with respect to W, like the implicit
+    // inertia coefficient. The normal contact force is
+    // 2*R*kNormal*(groundZ - z)*L, so its derivative with respect to W.z is
+    // -2*R*kNormal*L. The damping and friction terms stay explicit.
+    // contactStiffness_ is set by linearMomentumSource, which the beam model
+    // calls first in the same Newton iteration
+    if (contactStiffness_.size() == mesh.nCells())
+    {
+        forAll(result, cellI)
+        {
+            result[cellI](2, 2) -= contactStiffness_[cellI];
+        }
+    }
 
     return tresult;
 }
@@ -192,6 +208,12 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     vectorField UtHat (Ut/(mag(Ut) + SMALL));
 
+    // Beam cell lengths: the forces below are per unit length
+    const volScalarField& L = bm.L();
+
+    contactStiffness_.setSize(mesh.nCells());
+    contactStiffness_ = 0;
+
     // Initialise beam cells in contact with ground
     label cellsInContact = 0;
 
@@ -202,9 +224,16 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
-            const scalar f_gc_normal =
+            contactStiffness_[cellI] = 2*R*kNormal_*L[cellI];
+
+            // Spring plus damper, damping motion in both directions; the
+            // ground can push but not pull
+            const scalar f_gc_normal = max
+            (
                 (2*R*kNormal_*(groundZ_ - coord.z()))
-              - (2*R*cNormal_*max(U[cellI].component(2), 0));
+              - (2*R*cNormal_*U[cellI].component(2)),
+                0
+            );
 
             vector f_gc_tangential(vector::zero);
 
@@ -222,9 +251,14 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
             {
                 f_gc_tangential = -2.0*R*kTangential_*Ut[cellI];
             }
-            result[cellI][vector::X] += f_gc_tangential.x();
-            result[cellI][vector::Y] += f_gc_tangential.y();
-            result[cellI][vector::Z] += (f_gc_normal + f_gc_tangential.z());
+            // The beam model adds this to its source, which holds minus the
+            // external force on each cell (as for gravity and the
+            // distributed load q), so store minus the force times the
+            // cell length
+            result[cellI][vector::X] -= f_gc_tangential.x()*L[cellI];
+            result[cellI][vector::Y] -= f_gc_tangential.y()*L[cellI];
+            result[cellI][vector::Z] -=
+                (f_gc_normal + f_gc_tangential.z())*L[cellI];
 
         }
      }
