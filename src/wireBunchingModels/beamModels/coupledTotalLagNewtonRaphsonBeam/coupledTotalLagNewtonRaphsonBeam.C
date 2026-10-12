@@ -286,6 +286,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
     ),
+    // Lambdaf and Lambda are written so that a restart (and the coupled run
+    // starting from the beamInit state) continues from the current
+    // rotations; without them they restart as the identity, inconsistent
+    // with a deformed W
     Lambdaf_
     (
         IOobject
@@ -294,7 +298,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -307,7 +311,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
