@@ -1,0 +1,93 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+// Cantilever along +x, clamped at left, with a 1 kg body pinned to the tip.
+// Bending stiffness EI = 266.67 N m^2: tip stiffness 3EI/L^3 = 100 N/m, so
+// the whirl critical speed is sqrt(100/1) = 10 rad/s (rod mass 0.016 kg).
+// The rod is thick (radius 0.05 m) to keep the axial stiffness EA/L down,
+// 2.13e5 N/m: partitioned coupling iterations converge only while
+// beta dt^2 EA/(L m) < 1 (0.053 here). makeCases scales E and G
+beams
+(
+    beam_0
+    {
+        crossSectionModel    circle;
+
+        circleCrossSectionModelDict
+        {
+            radius    0.05;
+        }
+
+        length       2;
+        nSegments    40;
+        E            5.4326e7;
+        G            2.0895e7;
+        rho          1;
+    }
+);
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    // No buoyancy
+    rhoFluid rhoFluid [1 -3 0 0 0 0 0] 0;
+
+    startPatchName    left;
+    endPatchName      right;
+
+    nCorrectors       200;
+    solutionTol       1e-10;
+    // Round-off floor of the force residual
+    absoluteTol       1e-8;
+
+    debug no;
+
+    rigidBodyCoupling partitioned;
+
+    rigidBodyEnd
+    {
+        patch               right;
+        mass                1;
+
+        // Centre of mass 0.1 m from the tip, perpendicular to the rod.
+        // About the pin, x is the axis of largest inertia (0.06 kg m^2), so
+        // the spin about the rod axis is stable
+        momentOfInertia     (0.05 0.01 0.01);
+        centreOfMass        (2 0.1 0);
+
+        // Constant moment about the rod axis, against viscous damping: the
+        // body spins up towards M/c = 7.5 rad/s (0.75 of the critical
+        // speed) and whirls the rod tip round the x axis
+        externalMoment      (0.225 0 0);
+        angularDamping      0.03;
+
+        // Trapezoidal rule: no numerical damping
+        newmarkBeta         0.25;
+        newmarkGamma        0.5;
+
+        // Partitioned: iterate to convergence
+        nCouplingIterations 50;
+        couplingTolerance   1e-10;
+
+        // Monolithic only: finite-difference check of the body columns in
+        // the first 2 time steps
+        jacobianCheck       2;
+    }
+}
+
+// ************************************************************************* //
