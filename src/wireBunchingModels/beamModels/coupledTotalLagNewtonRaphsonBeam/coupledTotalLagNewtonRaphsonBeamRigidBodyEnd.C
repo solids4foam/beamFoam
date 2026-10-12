@@ -163,6 +163,20 @@ void coupledTotalLagNewtonRaphsonBeam::createRigidBodyEnd
             << abort(FatalError);
     }
 
+    if
+    (
+        rigidBodyEndPtr_().welded()
+     && Theta_.boundaryField()[patchI].type()
+     != fixedValueFvPatchVectorField::typeName
+    )
+    {
+        FatalErrorInFunction
+            << "A welded rigidBodyEnd needs a fixedValue Theta boundary "
+            << "condition on patch " << rigidBodyEndPtr_().patchName()
+            << ", got " << Theta_.boundaryField()[patchI].type()
+            << abort(FatalError);
+    }
+
     if (W_.boundaryField()[patchI].size() != 1)
     {
         FatalErrorInFunction
@@ -303,14 +317,25 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
     rigidBodyEnd& body = rigidBodyEndPtr_();
 
     body.newTimeStep();
+    if (body.welded())
+    {
+        storeWeldLambda0(rigidBodyEndPatchIndex_);
+    }
 
     const label patchI = rigidBodyEndPatchIndex_;
 
-    // Length that converts a rotation change to a displacement change
-    const scalar armLength = mag(body.arm(vector::zero));
+    // Length that converts a rotation change to a displacement change. A
+    // welded body can turn without its arm moving (e.g. a centre of mass
+    // at the attachment), so its radius of gyration sets a lower bound
+    const scalar armLength =
+        body.welded()
+      ? max(mag(body.arm(vector::zero)), body.radiusOfGyration())
+      : mag(body.arm(vector::zero));
 
-    // Coupling starts from the beam force of the last accepted state
+    // Coupling starts from the beam force and moment of the last accepted
+    // state
     vector beamForce = body.beamForce();
+    vector beamMoment = body.beamMoment();
     vector x = body.displacement();
     vector theta = vector::zero;
 
@@ -320,10 +345,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
     for (label iter = 1; iter <= body.nCouplingIterations(); ++iter)
     {
         const vector xNewmark = body.newmarkDisplacement(beamForce);
-        const vector thetaNewmark = body.newmarkRotation(beamForce, theta);
+        const vector thetaNewmark =
+            body.newmarkRotation(beamForce, theta, beamMoment);
 
         // Change relative to the larger of the step and total motion, so the
-        // test still works when the body is at rest
+        // test still works when the body is at rest. A welded body's total
+        // motion includes its rotation, which may be all it does
+        const scalar totalMotion =
+            mag(xNewmark)
+          + (
+                body.welded()
+              ? armLength*body.totalRotation(thetaNewmark)
+              : 0
+            );
+
         const scalar change =
             (mag(xNewmark - x) + armLength*mag(thetaNewmark - theta))
            /max
@@ -332,7 +367,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
                 (
                     mag(xNewmark - body.oldDisplacement())
                   + armLength*mag(thetaNewmark),
-                    mag(xNewmark)
+                    totalMotion
                 ),
                 VSMALL
             );
@@ -354,6 +389,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
 
         W_.boundaryFieldRef()[patchI][0] = rigidBodyEndAttachmentW(x, theta);
 
+        if (body.welded())
+        {
+            setWeldRotationIncrement
+            (
+                rigidBodyEndRotationIncrement(theta)
+            );
+        }
+
         const scalar residual = evolveBeam();
 
         if (nBeamSolves == 0)
@@ -363,17 +406,19 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
 
         ++nBeamSolves;
 
-        // Force from the beam on the body
+        // Force and moment from the beam on the body
         beamForce = -Q_.boundaryField()[patchI][0];
+        beamMoment = rigidBodyEndBeamMoment();
     }
 
-    body.accept(x, theta, beamForce, nBeamSolves);
+    body.accept(x, theta, beamForce, nBeamSolves, beamMoment);
     body.write();
 
     Info<< "rigidBodyEnd: displacement " << body.displacement()
         << ", velocity " << body.velocity()
         << ", angular velocity " << body.angularVelocity()
         << ", beam force " << body.beamForce()
+        << ", beam moment " << body.beamMoment()
         << ", beam solves " << nBeamSolves << endl;
 
     return initialResidual;
@@ -385,6 +430,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
     rigidBodyEnd& body = rigidBodyEndPtr_();
 
     body.newTimeStep();
+    if (body.welded())
+    {
+        storeWeldLambda0(rigidBodyEndPatchIndex_);
+    }
 
     // Start from the last accepted state; the Newton iterations of
     // evolveBeam() then update the body and the beam together
@@ -397,7 +446,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
         rigidBodyEndX_,
         rigidBodyEndTheta_,
         -Q_.boundaryField()[rigidBodyEndPatchIndex_][0],
-        iOuterCorr()
+        iOuterCorr(),
+        rigidBodyEndBeamMoment()
     );
     body.write();
 
@@ -405,6 +455,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveMonolithicRigidBodyEnd()
         << ", velocity " << body.velocity()
         << ", angular velocity " << body.angularVelocity()
         << ", beam force " << body.beamForce()
+        << ", beam moment " << body.beamMoment()
         << ", Newton iterations " << iOuterCorr() << endl;
 
     return residual;
@@ -438,6 +489,106 @@ void coupledTotalLagNewtonRaphsonBeam::setRigidBodyEndIterate
     // W_ is otherwise unchanged since its last storePrevIter(), so only the
     // attachment value of the previous iterate needs to follow
     W_.storePrevIter();
+
+    // A welded end face cannot be set the same way: its rotation and
+    // curvature are updated incrementally by the beam solve. Any mismatch
+    // with the body is left as a boundary increment for the next solve
+    // (zero during the monolithic Newton iterations, which turn the end
+    // face with the body after every solve)
+    if (rigidBodyEndPtr_().welded())
+    {
+        setWeldRotationIncrement(rigidBodyEndRotationIncrement(theta));
+    }
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::storeWeldLambda0(const label patchI)
+{
+    if
+    (
+        patchI == weldPatchIndex_
+     && runTime().timeIndex() == weldTimeIndex_
+    )
+    {
+        return;
+    }
+
+    if
+    (
+        Theta_.boundaryField()[patchI].type()
+     != fixedValueFvPatchVectorField::typeName
+    )
+    {
+        FatalErrorInFunction
+            << "A welded end needs a fixedValue Theta boundary condition "
+            << "on patch " << mesh().boundary()[patchI].name() << ", got "
+            << Theta_.boundaryField()[patchI].type() << abort(FatalError);
+    }
+
+    if (Theta_.boundaryField()[patchI].size() != 1)
+    {
+        FatalErrorInFunction
+            << "Welded end patch " << mesh().boundary()[patchI].name()
+            << " must have exactly one face on this processor"
+            << abort(FatalError);
+    }
+
+    weldPatchIndex_ = patchI;
+    weldTimeIndex_ = runTime().timeIndex();
+    weldLambda0_ = Lambdaf_.boundaryField()[patchI][0];
+}
+
+
+vector coupledTotalLagNewtonRaphsonBeam::weldRotationIncrement
+(
+    const tensor& R
+) const
+{
+    // Lambdaf_ excludes the reference rotation refLambdaf_, which is the
+    // same on both sides and cancels
+    return rigidBodyEnd::rotationVector
+    (
+        R & weldLambda0_ & Lambdaf_.boundaryField()[weldPatchIndex_][0].T()
+    );
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::setEndStepRotation
+(
+    const label patchI,
+    const tensor& R
+)
+{
+    storeWeldLambda0(patchI);
+    setWeldRotationIncrement(weldRotationIncrement(R));
+}
+
+
+void coupledTotalLagNewtonRaphsonBeam::setWeldRotationIncrement
+(
+    const vector& increment
+)
+{
+    const label patchI = weldPatchIndex_;
+
+    // The fixedValue Theta condition turns the end face by the spatial
+    // rotation vector Lambdaf & (Theta - Theta.prevIter())
+    Theta_.boundaryFieldRef()[patchI][0] =
+        Theta_.prevIter().boundaryField()[patchI][0]
+      + (Lambdaf_.boundaryField()[patchI][0].T() & increment);
+}
+
+
+vector coupledTotalLagNewtonRaphsonBeam::rigidBodyEndBeamMoment() const
+{
+    if (!rigidBodyEndPtr_().welded())
+    {
+        return vector::zero;
+    }
+
+    // As for the force, the beam acts on the body with minus the end-face
+    // moment
+    return -M_.boundaryField()[rigidBodyEndPatchIndex_][0];
 }
 
 
@@ -540,6 +691,48 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
 
         coupling.bodyRotSource =
             -body.rotationalResidual(rigidBodyEndTheta_, -Qb);
+    }
+
+    if (body.welded())
+    {
+        // The end face turns with the body: a change dTheta of the step
+        // rotation turns it by T dTheta, which enters the beam equations as
+        // the fixedValue Theta boundary increment does. CF and CM are that
+        // increment's coefficients in the attachment cell's force and moment
+        // rows
+        const tensor T = body.rotationJacobian(rigidBodyEndTheta_);
+
+        const tensor CF =
+            CQTheta_.boundaryField()[patchI][faceI]
+          + CQDTheta_.boundaryField()[patchI][faceI]/pDelta;
+
+        // End-face moment: M_b = explicitM
+        //   + CMTheta (DTheta_b - DTheta_c)/pDelta + CMTheta2 DTheta_b
+        const tensor CMb =
+            CMTheta_.boundaryField()[patchI][faceI]/pDelta
+          + CMTheta2_.boundaryField()[patchI][faceI];
+
+        const tensor CM = CMb + CMQTheta_.boundaryField()[patchI][faceI];
+
+        // Pending boundary increment, as set by assembleBoundaryConditions
+        const vector& increment = DTheta_.boundaryField()[patchI][faceI];
+
+        const vector Mb =
+            explicitM_.boundaryField()[patchI][faceI] + (CMb & increment);
+
+        coupling.beamWRowRotCoeff += (CF & T);
+        coupling.beamThetaRowRotCoeff += (CM & T);
+        coupling.bodyTransRotCoeff += (CF & T);
+
+        // Moment balance about the centre of mass, with the moment from the
+        // beam on the body equal to minus the end-face moment:
+        //     ... + r x Qb + Mb
+        coupling.bodyRotCoeff += (Sr & CF & T) + (CMb & T);
+        coupling.bodyRotThetaCoeff -=
+            CMTheta_.boundaryField()[patchI][faceI]/pDelta;
+
+        coupling.bodyRotSource =
+            -body.rotationalResidual(rigidBodyEndTheta_, -Qb, -Mb);
     }
 
     return coupling;

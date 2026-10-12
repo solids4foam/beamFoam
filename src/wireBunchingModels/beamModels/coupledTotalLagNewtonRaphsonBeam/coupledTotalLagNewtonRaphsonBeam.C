@@ -671,6 +671,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
   rigidBodyEndPatchIndex_ = -1;
   rigidBodyEndX_ = vector::zero;
   rigidBodyEndTheta_ = vector::zero;
+  weldPatchIndex_ = -1;
+  weldLambda0_ = tensor::I;
+  weldTimeIndex_ = -1;
 
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations

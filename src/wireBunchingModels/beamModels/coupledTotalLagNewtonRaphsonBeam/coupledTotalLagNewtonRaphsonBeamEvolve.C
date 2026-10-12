@@ -1015,6 +1015,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                 DW_.boundaryFieldRef()[patchI][0] =
                     WbNew - W_.boundaryField()[patchI][0];
                 W_.boundaryFieldRef()[patchI][0] = WbNew;
+
+                // Welded: the end face turns with the updated body, exactly
+                // rather than by the linearised increment
+                if (rigidBodyEndPtr_().welded())
+                {
+                    const vector increment =
+                        rigidBodyEndRotationIncrement(rigidBodyEndTheta_);
+
+                    setWeldRotationIncrement(increment);
+                    DTheta_.boundaryFieldRef()[patchI][0] = increment;
+                }
             }
 
             // Update all the solution and output variables for

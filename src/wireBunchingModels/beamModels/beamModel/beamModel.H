@@ -766,6 +766,22 @@ public:
                 return false;
             }
 
+            //- Welded end driven by a caller (e.g. moorFV's partitioned
+            //  coupling): turn the end face of patch patchI with a body
+            //  that has turned by the spatial rotation R since the start
+            //  of the time step. Applied by the next evolve; needs a
+            //  fixedValue Theta condition on the patch
+            virtual void setEndStepRotation
+            (
+                const label patchI,
+                const tensor& R
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support welded ends"
+                    << abort(FatalError);
+            }
+
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
 

@@ -920,6 +920,23 @@ Foam::scalar Foam::BlockEigenSolverOF::solve
         }
 
         Field<scalarRectangularMatrix> blockR(foamRhs - foamAx);
+
+        // Rigid-body rows that no beam row is coupled to are solved
+        // exactly, whatever the beam does. Their residual at the zero
+        // initial guess (e.g. dt*angularMomentum of a body supplied by
+        // moorFV without coupling) is not a beam residual, and would stop
+        // the Newton iterations of a beam that starts undeformed from
+        // converging
+        const bool rigidBodyRowsCoupled =
+            monolithicCoupling_.active
+         || rigidBodyKinematicCoupling_
+         || rigidBodyForceCoupling_.active;
+
+        if (!rigidBodyRowsCoupled)
+        {
+            blockR[nCells - 1] = scalarRectangularMatrix(6, 1, 0.0);
+        }
+
         initialResidual = sqrt(sum(magSqr(blockR)));
     }
 

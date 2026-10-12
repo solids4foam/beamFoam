@@ -133,6 +133,7 @@ void Foam::rigidBodyEnd::makeHistoryFile()
         << " rotationX rotationY rotationZ"
         << " omegaX omegaY omegaZ"
         << " beamTorqueX beamTorqueY beamTorqueZ"
+        << " beamMomentX beamMomentY beamMomentZ"
         << endl;
 }
 
@@ -193,6 +194,7 @@ Foam::rigidBodyEnd::rigidBodyEnd
 :
     runTime_(runTime),
     patchName_(dict.getOrDefault<word>("patch", defaultPatchName)),
+    joint_(jointType::pin),
     mass_(dict.get<scalar>("mass")),
     momentOfInertia_
     (
@@ -228,17 +230,33 @@ Foam::rigidBodyEnd::rigidBodyEnd
     Q_(dict.getOrDefault<tensor>("orientation", tensor::I)),
     omega_(dict.getOrDefault<vector>("angularVelocity", vector::zero)),
     alpha_(vector::zero),
+    Qinit_(Q_),
     Q0_(Q_),
     omega0_(vector::zero),
     alpha0_(vector::zero),
     theta_(vector::zero),
     beamForce_(vector::zero),
+    beamMoment_(vector::zero),
     beamTorque_(vector::zero),
     attachmentOffset_(vector::zero),
     timeIndex_(runTime.timeIndex()),
     nIterationsUsed_(0),
     historyFilePtr_()
 {
+    const word joint(dict.getOrDefault<word>("joint", "pin"));
+
+    if (joint == "welded")
+    {
+        joint_ = jointType::welded;
+    }
+    else if (joint != "pin")
+    {
+        FatalIOErrorInFunction(dict)
+            << "Invalid rigidBodyEnd joint " << joint << nl
+            << "Valid options are pin and welded"
+            << exit(FatalIOError);
+    }
+
     if (mass_ <= SMALL)
     {
         FatalIOErrorInFunction(dict)
@@ -259,6 +277,13 @@ Foam::rigidBodyEnd::rigidBodyEnd
             << "All principal moments of inertia must be positive when "
             << "rotation is modelled, got " << momentOfInertia_
             << exit(FatalIOError);
+    }
+
+    if (welded() && !rotation_)
+    {
+        FatalIOErrorInFunction(dict)
+            << "A welded rigidBodyEnd turns the beam end with the body: "
+            << "give a momentOfInertia" << exit(FatalIOError);
     }
 
     if (!rotation_)
@@ -282,7 +307,17 @@ Foam::rigidBodyEnd::rigidBodyEnd
             );
     }
 
+    // The old-time state is the initial state. A caller such as moorFV
+    // creates the body during the first time step, when newTimeStep() does
+    // not copy the state across, so the first step must start from it
+    x0_ = x_;
+    v0_ = v_;
+    a0_ = a_;
+    omega0_ = omega_;
+    alpha0_ = alpha_;
+
     Info<< "rigidBodyEnd on patch " << patchName_ << nl
+        << "    joint " << joint << nl
         << "    mass " << mass_ << nl
         << "    momentOfInertia " << momentOfInertia_
         << (rotation_ ? "" : " (point mass: rotation not modelled)") << nl
@@ -433,6 +468,12 @@ Foam::tensor Foam::rigidBodyEnd::orientation(const vector& theta) const
 }
 
 
+Foam::scalar Foam::rigidBodyEnd::totalRotation(const vector& theta) const
+{
+    return mag(logMap(orientation(theta) & Qinit_.T()));
+}
+
+
 Foam::vector Foam::rigidBodyEnd::arm(const vector& theta) const
 {
     return (orientation(theta) & armBody_);
@@ -452,7 +493,8 @@ Foam::vector Foam::rigidBodyEnd::attachmentDisplacement
 Foam::vector Foam::rigidBodyEnd::rotationalResidual
 (
     const vector& theta,
-    const vector& beamForce
+    const vector& beamForce,
+    const vector& beamMoment
 ) const
 {
     if (!rotation_)
@@ -468,7 +510,8 @@ Foam::vector Foam::rigidBodyEnd::rotationalResidual
       + (omega ^ (J & omega))
       + angularDamping_*omega
       - externalMoment_
-      - (arm(theta) ^ beamForce);
+      - (arm(theta) ^ beamForce)
+      - beamMoment;
 }
 
 
@@ -519,10 +562,23 @@ Foam::tensor Foam::rigidBodyEnd::rotationJacobian(const vector& theta) const
 }
 
 
+Foam::tensor Foam::rigidBodyEnd::rotationTensor(const vector& theta)
+{
+    return expMap(theta);
+}
+
+
+Foam::vector Foam::rigidBodyEnd::rotationVector(const tensor& R)
+{
+    return logMap(R);
+}
+
+
 Foam::vector Foam::rigidBodyEnd::newmarkRotation
 (
     const vector& beamForce,
-    const vector& thetaEstimate
+    const vector& thetaEstimate,
+    const vector& beamMoment
 ) const
 {
     if (!rotation_)
@@ -541,6 +597,7 @@ Foam::vector Foam::rigidBodyEnd::newmarkRotation
       & (
             externalMoment_
           + (arm(thetaEstimate) ^ beamForce)
+          + beamMoment
           - (omega ^ (J & omega))
           - angularDamping_*(omega0_ + deltaT*(1 - gamma_)*alpha0_)
         );
@@ -556,7 +613,8 @@ void Foam::rigidBodyEnd::accept
     const vector& displacement,
     const vector& theta,
     const vector& beamForce,
-    const label nIterations
+    const label nIterations,
+    const vector& beamMoment
 )
 {
     const scalar deltaT = runTime_.deltaTValue();
@@ -574,7 +632,8 @@ void Foam::rigidBodyEnd::accept
     }
 
     beamForce_ = beamForce;
-    beamTorque_ = (arm(theta_) ^ beamForce);
+    beamMoment_ = beamMoment;
+    beamTorque_ = (arm(theta_) ^ beamForce) + beamMoment;
     nIterationsUsed_ = nIterations;
 }
 
@@ -605,6 +664,9 @@ void Foam::rigidBodyEnd::write() const
         << " " << beamTorque_.x()
         << " " << beamTorque_.y()
         << " " << beamTorque_.z()
+        << " " << beamMoment_.x()
+        << " " << beamMoment_.y()
+        << " " << beamMoment_.z()
         << endl;
 }
 

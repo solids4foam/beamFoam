@@ -25,17 +25,23 @@ Class
     Foam::rigidBodyEnd
 
 Description
-    Rigid body pinned to the end patch of a beam, owned by beamFoam.
+    Rigid body attached to the end patch of a beam, owned by beamFoam.
 
     Holds the body mass, inertia and state, and advances it with the
-    Newmark-beta method. The beam end is attached to the body at a pin, so
-    the beam passes a force, and a torque through the arm from the centre of
-    mass to the attachment point.
+    Newmark-beta method. The joint between the beam end and the body is
+    either
+        pin      the beam passes a force, and a torque through the arm from
+                 the centre of mass to the attachment point (default)
+        welded   the beam end cross-section also turns with the body, and
+                 the beam passes its end moment as well; needs a moment of
+                 inertia and a fixedValue Theta condition on the patch
 
     Rotation is modelled when a moment of inertia is given. The orientation
     at the new time is exp(theta) & Q0, with theta the rotation vector of the
     time step, integrated with the same Newmark parameters as translation:
-        J alpha + omega x (J omega) + cr omega = externalMoment + r x beamForce
+        J alpha + omega x (J omega) + cr omega
+          = externalMoment + r x beamForce + beamMoment
+    with beamMoment = 0 for a pin.
     Without a moment of inertia the body is a point mass at the attachment.
 
     Motion constraints are given by the caller (setConstraints) as
@@ -50,6 +56,7 @@ Description
         rigidBodyEnd
         {
             patch               right;   // default: endPatchName
+            joint               pin;     // pin or welded
             mass                10;
             momentOfInertia     (0 0 0); // principal, body axes;
                                          // zero: no rotation
@@ -112,6 +119,10 @@ class rigidBodyEnd
         //- Name of the beam patch the body is attached to
         word patchName_;
 
+        //- Joint between the beam end and the body
+        enum class jointType { pin, welded };
+        jointType joint_;
+
         //- Body mass
         scalar mass_;
 
@@ -173,6 +184,9 @@ class rigidBodyEnd
         vector omega_;
         vector alpha_;
 
+        //- Initial orientation
+        tensor Qinit_;
+
         //- Orientation, angular velocity and acceleration at the old time
         tensor Q0_;
         vector omega0_;
@@ -184,7 +198,11 @@ class rigidBodyEnd
         //- Force from the beam on the body at the latest beam solution
         vector beamForce_;
 
-        //- Torque about the centre of mass from the beam force
+        //- Moment from the beam on the body (welded joint; zero for a pin)
+        vector beamMoment_;
+
+        //- Total torque from the beam about the centre of mass:
+        //  arm x beamForce + beamMoment
         vector beamTorque_;
 
         //- Beam end displacement W when the body displacement is zero
@@ -260,6 +278,12 @@ public:
                 return mass_;
             }
 
+            //- Radius of gyration about the largest principal axis
+            scalar radiusOfGyration() const
+            {
+                return Foam::sqrt(cmptMax(momentOfInertia_)/mass_);
+            }
+
             const vector& displacement() const
             {
                 return x_;
@@ -283,6 +307,17 @@ public:
             bool rotation() const
             {
                 return rotation_;
+            }
+
+            //- True for a welded joint: the beam end turns with the body
+            bool welded() const
+            {
+                return joint_ == jointType::welded;
+            }
+
+            const vector& beamMoment() const
+            {
+                return beamMoment_;
             }
 
             //- Rotation vector of the accepted time step
@@ -413,6 +448,10 @@ public:
             //- Orientation at the new time for a step rotation vector
             tensor orientation(const vector& theta) const;
 
+            //- Angle turned from the initial orientation, for a step
+            //  rotation vector
+            scalar totalRotation(const vector& theta) const;
+
             //- Arm from the centre of mass to the attachment point
             vector arm(const vector& theta) const;
 
@@ -425,11 +464,12 @@ public:
 
             //- Rotational residual (moment balance about the centre of mass)
             //      J alpha + omega x (J omega) + cr omega - externalMoment
-            //    - arm x beamForce
+            //    - arm x beamForce - beamMoment
             vector rotationalResidual
             (
                 const vector& theta,
-                const vector& beamForce
+                const vector& beamForce,
+                const vector& beamMoment = vector::zero
             ) const;
 
             //- Derivative of the rotational residual's inertia, gyroscopic
@@ -441,23 +481,31 @@ public:
             //  vector rotationJacobian(theta) & dtheta
             tensor rotationJacobian(const vector& theta) const;
 
-            //- Newmark step rotation for a given beam force, with the
-            //  inertia, arm and angular velocity from a previous estimate
+            //- Rotation tensor of a rotation vector (Rodrigues)
+            static tensor rotationTensor(const vector& theta);
+
+            //- Rotation vector of a rotation tensor
+            static vector rotationVector(const tensor& R);
+
+            //- Newmark step rotation for a given beam force and moment, with
+            //  the inertia, arm and angular velocity from a previous estimate
             vector newmarkRotation
             (
                 const vector& beamForce,
-                const vector& thetaEstimate
+                const vector& thetaEstimate,
+                const vector& beamMoment = vector::zero
             ) const;
 
-            //- Accept a displacement, step rotation and the beam force they
-            //  produced: accelerations and velocities follow from the
-            //  Newmark relations
+            //- Accept a displacement, step rotation and the beam force and
+            //  moment they produced: accelerations and velocities follow
+            //  from the Newmark relations
             void accept
             (
                 const vector& displacement,
                 const vector& theta,
                 const vector& beamForce,
-                const label nIterations
+                const label nIterations,
+                const vector& beamMoment = vector::zero
             );
 
 

@@ -249,6 +249,12 @@ class coupledTotalLagNewtonRaphsonBeam
         vector rigidBodyEndX_;
         vector rigidBodyEndTheta_;
 
+        //- Welded end: patch, its end-face rotation Lambdaf at the start of
+        //  the time step, and the time index it was stored at
+        label weldPatchIndex_;
+        tensor weldLambda0_;
+        label weldTimeIndex_;
+
         //- Time index at which the Newmark predictor was last applied.
         //  The predictor must run once per time step: U and Accl are then
         //  updated incrementally with DW, so re-applying it on a repeated
@@ -419,6 +425,33 @@ class coupledTotalLagNewtonRaphsonBeam
         //  is zero and the body columns carry it instead
         void setRigidBodyEndIterate(const vector& x, const vector& theta);
 
+        //- Welded end: store the end-face rotation of a patch at the start
+        //  of a time step. Safe to call more than once per time step
+        void storeWeldLambda0(const label patchI);
+
+        //- Welded end: spatial rotation vector that turns the end face from
+        //  its current rotation to R & (its rotation at the start of the
+        //  time step), R being the body's rotation over the step
+        vector weldRotationIncrement(const tensor& R) const;
+
+        //- Welded end: set the fixedValue Theta on the patch so the next
+        //  beam solve turns the end face by the given increment
+        void setWeldRotationIncrement(const vector& increment);
+
+        //- Welded rigidBodyEnd: end-face rotation increment for a step
+        //  rotation theta of the body
+        vector rigidBodyEndRotationIncrement(const vector& theta) const
+        {
+            return weldRotationIncrement
+            (
+                rigidBodyEnd::rotationTensor(theta)
+            );
+        }
+
+        //- Moment from the beam on the body: minus the end-face moment for a
+        //  welded joint, zero for a pin
+        vector rigidBodyEndBeamMoment() const;
+
         //- Monolithic coupling blocks at the current iterate. Needs the
         //  equation coefficients to be up to date
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
@@ -514,6 +547,13 @@ public:
 
             //- Accepted rigidBodyEnd state after evolve
             virtual bool getRigidBodyEndState(RigidBodyEndState& state) const;
+
+            //- Welded end driven by a caller: see beamModel
+            virtual void setEndStepRotation
+            (
+                const label patchI,
+                const tensor& R
+            );
 
             virtual bool getRigidBodySolution(RigidBodySolution& solution) const
             {
