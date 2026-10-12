@@ -19,9 +19,11 @@ There is no gravity. A constant `externalMoment` M about the rod axis acts
 against `angularDamping` c = 0.03 N m s. The body spins up towards M/c and
 whirls the rod tip round the x axis.
 
-`rigidBodyEnd` is a pin: the beam passes the body only a force. The applied
-moment reaches the rod through the arm from the tip to the centre of mass,
-as the centrifugal pull of the whirling body.
+The body is pinned to the rod (`rigidBodyEnd`'s default `joint pin`): the
+beam passes the body only a force. The applied moment reaches the rod
+through the arm from the tip to the centre of mass, as the centrifugal pull
+of the whirling body. `../rigidBodyEndTwist` welds the body on instead
+(`joint welded`) and twists the rod.
 
 | Base value | |
 |---|---|
