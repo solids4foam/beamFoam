@@ -11,6 +11,9 @@ run with rigidBodyEndTwist/Allrun):
     - settled twist error against M L/(G Ip), and the partitioned-monolithic
       difference
     - run time
+    - grouped bars of total and average beam Newton iterations against
+      applied moment M (N m) and torsional stiffness kt (N m/rad), including
+      partial runs (hatched bars)
 The moment sweep is plotted against the static twist, the stiffness sweep
 against the partitioned stability number beta dt^2 kt/J. A cross marks the
 point a run crashed at.
@@ -382,6 +385,57 @@ def plot_runtime(rows, x, xlabel, log_x, sweep, filename):
     save_or_show(filename)
 
 
+def plot_newton_bars(rows, sweep, x_of, xlabel, average=False):
+    """Two bars per sweep case, using the same logged counts as the summaries.
+
+    Categories keep every case readable despite the uneven parameter spacing.
+    Hatched bars show iterations up to an early stop, not a full-length run.
+    """
+    if not rows:
+        return
+
+    fig, ax = plt.subplots(figsize=(max(8, 0.9*len(rows)), 4.8))
+    positions = np.arange(len(rows))
+    width = 0.36
+    metric = "average" if average else "total"
+    ylabel = (
+        "Average beam Newton iterations per time step"
+        if average else "Total beam Newton iterations"
+    )
+    partial = False
+    for offset, coupling in zip((-width/2, width/2), ("monolithic", "partitioned")):
+        values = [
+            row[coupling]["newton_per_step"] if average
+            else row[coupling]["log"]["newton"]
+            for row in rows
+        ]
+        bars = ax.bar(
+            positions + offset, values, width, color=COLOURS[coupling],
+            label=coupling_label(coupling), zorder=3,
+        )
+        for bar, row in zip(bars, rows):
+            if not row[coupling]["finished"]:
+                partial = True
+                bar.set_hatch("///")
+                bar.set_edgecolor("0.25")
+
+    ax.set_xticks(positions)
+    ax.set_xticklabels([f"{x_of(row):.6g}" for row in rows], rotation=30, ha="right")
+    ax.set_ylim(bottom=0)
+    ax.set_title(f"{sweep.capitalize()} sweep: {metric} beam Newton iterations")
+    finish_plot(ax, ylabel, xlabel)
+    # Vertical grid lines have no quantitative meaning on a categorical axis.
+    ax.xaxis.grid(False, which="both")
+    if partial:
+        fig.text(
+            0.5, 0.01,
+            "Hatched bars: run stopped early; counts cover only the logged run.",
+            ha="center", fontsize=8, color="0.35",
+        )
+        fig.tight_layout(rect=(0, 0.06, 1, 1))
+    save_or_show(f"{sweep}_newton_{metric}_bars.png")
+
+
 def plot_sweep(rows, sweep, x_of, xlabel, log_x, title_of, stability_line=False):
     if not rows:
         print(f"No {sweep} sweep results: run rigidBodyEndTwist/Allrun {sweep}")
@@ -413,6 +467,18 @@ plot_sweep(
     ),
     stability_line=True,
 )
+
+for average in (False, True):
+    plot_newton_bars(
+        moment, "moment", x_of=lambda row: row["monolithic"]["p"]["M"],
+        xlabel="Applied moment M (N m)", average=average,
+    )
+
+for average in (False, True):
+    plot_newton_bars(
+        stiffness, "stiffness", x_of=lambda row: row["monolithic"]["p"]["kt"],
+        xlabel="Torsional stiffness kt = G Ip/L (N m/rad)", average=average,
+    )
 
 
 # =============================================================
