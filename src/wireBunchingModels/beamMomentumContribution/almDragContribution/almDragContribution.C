@@ -116,6 +116,20 @@ void almDragContribution::preEvolve(const beamModel& bm)
     // processors. Collective, hence outside any master guard.
     if (!decompositionChecked_)
     {
+        // The tangents below come from beam 0 alone, so a region holding
+        // several beams would pair the other beams' cells with out-of-range
+        // tangents. Multi-beam support is tracked in issue #46.
+        if (bm.nBeams() > 1)
+        {
+            FatalErrorInFunction
+                << "The " << typeName << " beam momentum contribution supports"
+                << " a single beam per region, but beam region '"
+                << beamMesh.name() << "' holds " << bm.nBeams()
+                << " beams (cellZones)." << nl
+                << "See https://github.com/solids4foam/beamFoam/issues/46"
+                << abort(FatalError);
+        }
+
         checkBeamOnMasterProcessor
         (
             beamMesh,
@@ -143,7 +157,10 @@ void almDragContribution::preEvolve(const beamModel& bm)
     // outer-corrector under-relaxation
     const vectorField almForceStart(almForce.internalField());
 
-    // Beam-aligned tangent at beam cell centres (broadcast from master)
+    // Beam-aligned tangent at beam cell centres. Built on the master, which
+    // holds every beam cell, and left empty on the other ranks so that it
+    // matches the local beam mesh size; getFluidVelocity broadcasts it for
+    // the collective sampling.
     vectorField dRdScell;
 
     if (Pstream::master())
@@ -157,16 +174,6 @@ void almDragContribution::preEvolve(const beamModel& bm)
 
         dRdScell = spline.midPointDerivatives();
     }
-
-    label nDRdS = dRdScell.size();
-    Pstream::broadcast(nDRdS);
-
-    if (!Pstream::master())
-    {
-        dRdScell.setSize(nDRdS, vector::zero);
-    }
-
-    Pstream::broadcast(dRdScell);
 
     const vectorField dRdScellHat(dRdScell/(mag(dRdScell) + SMALL));
 

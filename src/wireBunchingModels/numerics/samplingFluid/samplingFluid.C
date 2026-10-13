@@ -164,18 +164,12 @@ namespace Foam
             resultVect[beamCellI] = vector::zero;
             continue;
         }
-        if (seedCellIDs[beamCellI] == -1)
+        // Seed the search from the fluid cell found for the previous beam
+        // cell; the first beam cell has no previous one, so it falls through
+        // to the full search below
+        if (seedCellIDs[beamCellI] == -1 && beamCellI > 0)
         {
-            if (beamCellI == 0)
-            {
-                // Look for the seed in the next cell
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI + 1] ;
-            }
-            else
-            {
-                // Look for the seed in the previous cell
-                seedCellIDs[beamCellI] = seedCellIDs[beamCellI - 1] ;
-            }
+            seedCellIDs[beamCellI] = seedCellIDs[beamCellI - 1];
         }
         label fluidCellID = -1;
         if (seedCellIDs[beamCellI] != -1)
@@ -277,7 +271,11 @@ namespace Foam
 
 
     reduce(resultVect, FieldSumOp<vector>());
-    result.primitiveFieldRef() = resultVect;
+
+    // resultVect spans the whole beam on every rank, but the result field
+    // must keep the local beam mesh size: all cells on the master, none
+    // elsewhere (see checkBeamOnMasterProcessor)
+    result.primitiveFieldRef() = SubField<vector>(resultVect, mesh.nCells());
 
     return std::make_tuple(std::move(tresult), std::move(tmarkerResults), std::move(tmarkerVelocity), std::move(fluidCellIDs));
     }
