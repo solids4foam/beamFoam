@@ -7,7 +7,7 @@ cleanCase0                       # time dirs, processor*, postProcessing, logs, 
 # Generated content staged in from beamInitialisation
 # (constant/cellDecomposition.beams is a tracked input and is kept)
 rm -rf constant/beam_0
-rm -rf 0_orig/beam_0
+rm -rf 0.orig/beam_0
 
 # Post-processing output
 rm -f case.foam tipDisplacement.dat tipDisplacement.pdf

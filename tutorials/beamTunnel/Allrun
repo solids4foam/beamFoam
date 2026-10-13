@@ -37,11 +37,11 @@ echo "Stage 2a: staging the beam mesh and fields into beamTunnel/beamTunnel"
 rm -rf beamTunnel/constant/beam_0
 cp -r  beamInitialisation/beam_0/constant beamTunnel/constant/beam_0
 
-# Beam initial/reference fields -> 0_orig/beam_0 (restored to 0/beam_0 at run
-# time). 0_orig/beam_0 is git-ignored; only the fluid templates in 0_orig are
+# Beam initial/reference fields -> 0.orig/beam_0 (restored to 0/beam_0 at run
+# time). 0.orig/beam_0 is git-ignored; only the fluid templates in 0.orig are
 # version controlled.
-rm -rf beamTunnel/0_orig/beam_0
-cp -r  beamInitialisation/beam_0/0 beamTunnel/0_orig/beam_0
+rm -rf beamTunnel/0.orig/beam_0
+cp -r  beamInitialisation/beam_0/0 beamTunnel/0.orig/beam_0
 
 echo "Stage 2b: running the coupled FSI case (beamTunnel/beamTunnel)"
 ( cd beamTunnel && ./Allrun )

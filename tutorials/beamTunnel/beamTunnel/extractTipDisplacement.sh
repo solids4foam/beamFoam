@@ -15,7 +15,7 @@ for Wfile in [0-9]*/beam_0/W; do
     [ -f "$Wfile" ] || continue
     timeDir=${Wfile%%/*}
 
-    # Skip non-time directories (e.g. 0_orig, which also matches [0-9]*)
+    # Skip non-time directories (e.g. 0.orig, which also matches [0-9]*)
     case "$timeDir" in ''|*[!0-9.]*) continue;; esac
 
     # "value uniform (x y z)" -> x

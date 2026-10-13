@@ -5,7 +5,7 @@ cd "${0%/*}" || exit 1                               # Run from this directory
 # This script runs the coupled fluid + beam (FSI) case only. It assumes the
 # beam has already been initialised and staged into this case, i.e.
 #   constant/beam_0   : beam mesh + dictionaries        (from beamInitialisation)
-#   0_orig/beam_0     : beam initial/reference fields   (from beamInitialisation)
+#   0.orig/beam_0     : beam initial/reference fields   (from beamInitialisation)
 # The top-level ../Allrun performs that initialisation and staging before
 # calling this script; run ../Allrun to drive the whole case from scratch.
 
@@ -21,11 +21,9 @@ fi
 # Background fluid mesh
 runApplication blockMesh
 
-# Restore the initial-field directory: fluid templates in 0_orig plus the
-# staged beam fields in 0_orig/beam_0. This replaces restore0Dir, which only
-# recognises the name "0.orig" (matched by this repo's *.orig gitignore rule).
-rm -rf 0
-cp -r 0_orig 0
+# Restore the initial-field directory: fluid templates in 0.orig plus the
+# staged beam fields in 0.orig/beam_0
+restore0Dir
 touch case.foam
 
 # --- Parallel run (2 subdomains) --------------------------------------------
