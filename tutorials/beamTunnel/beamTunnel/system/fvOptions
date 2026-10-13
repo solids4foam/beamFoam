@@ -1,0 +1,33 @@
+/*--------------------------------*- C++ -*----------------------------------* \
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2306                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvOptions;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+leaflet
+{
+    type            beamActuatorLine;
+    active          yes;
+
+    beamActuatorLineCoeffs
+    {
+        U               U;
+        epsilon         6e-04;
+        beamName        beam_0;
+        rho             1000;
+    }
+}
+
+
+
+// ************************************************************************* //

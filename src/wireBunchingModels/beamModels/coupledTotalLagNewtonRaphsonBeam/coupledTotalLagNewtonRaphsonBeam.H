@@ -83,6 +83,12 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line velocity field
         mutable volVectorField U_;
 
+        //- ALM line force acting on each beam cell (populated by an
+        //  almDrag beamMomentumContribution if one is configured; otherwise
+        //  remains zero).  Kept on the beam model so that external consumers
+        //  (e.g. moorFV's beamActuatorLine fvOption) can look it up by name.
+        mutable volVectorField almForce_;
+
         //- Mean line acceleration field
         mutable volVectorField Accl_;
 

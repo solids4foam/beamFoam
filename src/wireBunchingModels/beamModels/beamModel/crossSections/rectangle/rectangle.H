@@ -91,7 +91,7 @@ class rectangle
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Disallow copy construct
@@ -128,13 +128,13 @@ public:
         {
             return h_/2;
         }
-    
+
         //- Return cross-section area
         virtual scalar R() const
         {
             return h_/2;
         }
-    
+
         //- Return the width b
         virtual scalar b() const
         {
@@ -146,19 +146,19 @@ public:
         {
             return scalingArea_*b_*h_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
             return scalingSecondMomentArea_*b_*pow(h_, 3)/12;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const
         {
             return scalingSecondMomentArea_*h_*pow(b_, 3)/12;
         }
-    
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -197,7 +197,7 @@ public:
             label nTheta = 4;
             return nTheta;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {

@@ -1,0 +1,74 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2306                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    inlet
+    {
+        type            codedFixedValue;
+        value           uniform (0 0 0);
+        name            beamTunnelInlet_Zhang2012;
+
+        // Zhang/Liu/Khoo 2012, sec 6.4: parabolic inlet, step at t=0
+        // Paper (CGS, y in cm):  v1f(y) = 1.5(-y^2 + 2y) = -1.5 y^2 + 3 y  [cm/s]
+        // Convert to SI (y in m): Ux(y) = -150 y^2 + 3 y  [m/s]
+        // Peak Ux = 1.5 cm/s = 0.015 m/s at y = H = 1 cm (dv/dy=0 at top symmetry)
+        code
+        #{
+            const fvPatch& p = patch();
+            vectorField& Uf = *this;
+            const vectorField& Cf = p.Cf();
+
+            forAll(Uf, faceI)
+            {
+                const scalar y = Cf[faceI].y();
+                const scalar Ux = -150.0*y*y + 3.0*y;
+                Uf[faceI] = vector(Ux, 0, 0);
+            }
+        #};
+    }
+
+    outlet
+    {
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
+    }
+
+    upperWall
+    {
+        // top edge: v2f = 0  ->  symmetry
+        type            symmetry;
+    }
+
+    lowerWall
+    {
+        // bottom edge: no-slip wall (beam fixed here)
+        type            noSlip;
+    }
+
+    frontAndBack
+    {
+        //  type            empty;
+        type        symmetry;
+    }
+}
+
+
+// ************************************************************************* //

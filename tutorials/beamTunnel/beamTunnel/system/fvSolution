@@ -1,0 +1,78 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2306                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+    {
+        solver           GAMG;
+        tolerance        1e-08;        // was 1e-07
+        relTol           0;            // was 0.01 — drive each solve to abs tol
+        smoother         DICGaussSeidel;
+        nPreSweeps       0;
+        nPostSweeps      2;
+        cacheAgglomeration true;
+    }
+
+    "(pFinal|pcorrFinal)"
+    {
+        $p;
+        relTol          0;
+    }
+
+    "(U|k|epsilon)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-08;         // was 1e-05 — biggest target (ALM samples this)
+        relTol          0;             // was 0.1
+        nSweeps         2;
+    }
+
+    "(U|k|epsilon)Final"
+    {
+        $U;
+        relTol          0;
+    }
+}
+
+PIMPLE
+{
+    nNonOrthogonalCorrectors 0;
+    nCorrectors              2;       // 2 PISO inner per outer iter
+    nOuterCorrectors         20;      // PIMPLE outer loop, exits via residualControl
+    momentumPredictor        yes;
+    moveMeshOuterCorrectors  no;      // beam.evolve() only on outer iter 1
+                                      // (keeps explicit FSI, avoids NR cell-boundary 2-cycle)
+
+    residualControl
+    {
+        p { tolerance 1e-07; relTol 1e-04; }   // was 1e-06 / 1e-03
+        U { tolerance 1e-07; relTol 1e-04; }
+    }
+}
+
+relaxationFactors
+{
+    equations
+    {
+        "U.*"  1.0;
+        "p.*"  1.0;
+    }
+}
+
+
+// ************************************************************************* //

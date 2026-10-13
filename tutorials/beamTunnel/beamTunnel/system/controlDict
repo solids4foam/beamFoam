@@ -1,0 +1,79 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2306                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+DebugSwitches
+{
+    //    optionList 10;
+}
+
+application     pimpleFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         2.5;
+
+deltaT          1e-04;
+
+writeControl    adjustable;
+
+writeInterval   0.1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable yes;
+
+adjustTimeStep  no;
+
+maxCo           0.1;
+maxDeltaT    0.00005;
+libs
+(
+  libsixDoFRigidBodyBeamMotion.so
+  libwireBunchingModels.so
+);
+functions
+{
+    // probeVelocity
+    // {
+    //     type            probes;
+    //     functionObjectLibs ("libsampling.so");
+    //     enabled         true;
+    //     fields
+    //     (
+    //         U
+    //     );
+    //     probeLocations
+    //     (
+    //         (0 0.005 0.0003)
+    //     );
+    // }
+}
+
+// ************************************************************************* //
