@@ -1,0 +1,158 @@
+Monolithic beam + rigid body solver: how the code handles the rigid body
+=========================================================================
+
+Paths below starting with sDoFRGBFvBeam/ are in the moorFV repository
+(moorFV/src/sDoFRGBFvBeam). All others are in this repository under
+src/wireBunchingModels/.
+
+The entry point is the same as in the partitioned solver. What changes is
+what solver_->solve(...) does once it's called.
+
+
+1. moorFV entry is unchanged
+----------------------------
+sixDoFRigidBodyMotionFvBeam::update still calls
+    solver_->solve(firstIter, fGlobal, tauGlobal, deltaT, deltaT0)
+(sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C:349).
+
+In dynamicMeshDict the solver is set to "type beamFoamCoupled;" instead of
+FvBeamNewmark, so the call goes to beamFoamCoupled::solve.
+
+
+2. beamFoamCoupled::solve
+-------------------------
+(sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C:59)
+
+This replaces both updateAcceleration and the Newmark update in FvBeamNewmark.
+
+- It does NOT call updateAcceleration() or applyRestraints(). It loops over
+  the restraints itself:
+    * Every restraint except the finiteVolumeBeam is evaluated with
+      restrain() at the current state. Its force and moment are added to
+      fGlobal/tauGlobal. This makes one explicit "applied load" that also
+      includes the weight.
+    * The finiteVolumeBeam restraint is skipped and kept aside. Only one is
+      allowed.
+- It turns the constraint tensors into global axes. rConstraints is in body
+  axes, so it computes Q & rC & Q.T().
+- It calls beamRestraint->solveMonolithic(body, force, moment, tC, rC, dict).
+- It overwrites the motion state with what beamFoam returns:
+  centreOfRotation, Q, v, a, pi = J & (Q^T & omega), and tau.
+  There is no Newmark step in moorFV and no aRelax.
+
+
+3. finiteVolumeBeam::solveMonolithic
+------------------------------------
+(sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/
+ finiteVolumeBeamRestraint/finiteVolumeBeam.C:554)
+
+On the first call only:
+- It builds a bodyDict from the moorFV motion: mass, J, orientation, CoM,
+  v, omega, beta, gamma and damping. It then calls
+      beam.initialiseRigidBodyEnd(bodyDict, vector::zero)
+- This creates a rigidBodyEnd object INSIDE beamFoam, and from then on
+  beamFoam owns the body dynamics.
+- Gravity is passed as zero because the weight is already in "force".
+- It is a fatal error if the CoR is not at the CoM, or on a restart.
+
+On every call:
+    setRigidBodyEndConstraints
+    -> setRigidBodyEndExternalLoad(force, moment)
+    -> beam.evolve()
+    -> updateTotalFields()
+    -> getRigidBodyEndState(state)
+It then writes the force histories and returns state.
+
+Compare the partitioned path: there, restrain() evolves the beam with the
+attachment displacement prescribed and returns a force. Here the beam is
+handed a load and returns the body's motion.
+
+
+4. beamFoam time step
+---------------------
+(beamModels/coupledTotalLagNewtonRaphsonBeam/
+ coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C)
+
+evolve() (:292) sends the call to evolveMonolithicRigidBodyEnd() (:428).
+That function:
+  1. Calls body.newTimeStep(), which stores x0, v0, a0, Q0, omega0, alpha0
+     and sets theta = 0 (rigidBodyEnd/rigidBodyEnd.C:387). A timeIndex guard
+     makes it safe to call more than once per step.
+  2. Calls setRigidBodyEndIterate(x, theta = 0) (:477). This sets the
+     attachment-face W to the body's attachment point,
+         x + R(theta) r_body - r0
+  3. Runs evolveBeam(), the ordinary Newton loop, but with the body inside
+     it (section 5 below).
+  4. Calls body.accept(x, theta, -Q_b, nIter, M_b)
+     (rigidBodyEnd/rigidBodyEnd.C:611). From the converged x and theta it
+     gets a, v, alpha, omega through the Newmark relations, and
+     Q = exp(theta) & Q0.
+
+
+5. Inside each Newton iteration
+-------------------------------
+(coupledTotalLagNewtonRaphsonBeamEvolve.C)
+
+- The beam blocks are assembled as usual.
+- rigidBodyEndMonolithicCoupling() (RigidBodyEnd.C:596) builds the body
+  equations as residuals in DISPLACEMENT form:
+    Translation:
+        R_x = m/(beta dt^2) (x - x_pred) + c v(x) - F_ext + Q_b
+      where Q_b is the attachment face force and the beam pushes on the
+      body with -Q_b.
+    Rotation (about the CoM):
+        R_theta = J alpha + omega x (J omega) + c_r omega - M_ext
+                + r x Q_b (+ M_b if welded)
+      where J = R J_body R^T.
+  Jacobian blocks:
+    body-body:                   translationalJacobian I + K_b
+    body -> attachment cell:     dcW, dcTheta
+    attachment cell -> body:     K_b, KbM
+    rotation coupling via arm:   Sr & T, where T is the rotation Jacobian
+- constrainRigidBodyEndCoupling() (:742) projects onto the free directions.
+  Constrained DOFs get (I - P) on the diagonal, so their increments come out
+  as zero.
+- eigenSolver.setMonolithicCoupling(coupling) (Evolve.C:905) adds the 6 body
+  rows/columns to the sparse system, and BlockEigenSolverOF solves it with
+  SparseLU (assembly at BlockEigenSolverOF.C:335, RHS at :852).
+- After the solve (Evolve.C:998):
+    * rigidBodyEndX_ += dx and rigidBodyEndTheta_ += dTheta.
+    * The attachment W is reset to the exact new position from the body
+      state, not a linearised one.
+    * For a welded joint, the end face is turned with the body.
+    * The body increment is included in the convergence norm.
+
+
+Partitioned vs monolithic
+-------------------------
+Partitioned (FvBeamNewmark)            | Monolithic (beamFoamCoupled)
+---------------------------------------+---------------------------------------
+updateAcceleration: a = F/m, then      | Other restraints are summed by hand,
+applyRestraints()                      | explicitly. The beam is NOT a
+                                       | restraint force.
+Mooring force from restrain(): the     | The beam and body are solved together
+beam is solved with the attachment     | in one Newton system
+prescribed                             |
+Newmark update of v, pi, then position | Newmark lives in rigidBodyEnd
+and Q, in moorFV                       | (beamFoam), using x and the step
+                                       | rotation vector theta as unknowns
+aRelax acceleration relaxation         | None. moorFV copies the accepted
+                                       | state as it is.
+Constraints applied in moorFV          | Constraints are projections inside
+                                       | the Newton matrix
+
+
+Things worth knowing
+--------------------
+- The external load is frozen during the Newton loop. Fluid forces, the
+  weight and the other restraints are evaluated once, at the moorFV state at
+  the start of solve. Only the beam-body interaction is implicit.
+- Angular momentum is rebuilt, not integrated. moorFV's pi is reconstructed
+  from beamFoam's omega, and tau holds moment + beamTorque in body axes. That
+  is for reporting only and isn't used to advance anything.
+- The old rigid-body path is still in the code. The rigidBodyData_ /
+  RigidBodyForceCoupling / solveAttachmentKinematicsInBlockEigen path is
+  still in evolveBeam and BlockEigenSolverOF. For example, the
+  prev.angularMomentum RHS rows just above BlockEigenSolverOF.C:852 belong to
+  it. When the monolithic coupling is active, its sources overwrite those
+  rows. evolve() stops with a fatal error if both paths are active at once.
