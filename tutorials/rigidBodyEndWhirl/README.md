@@ -10,6 +10,22 @@ under a minute.
 ./Allclean
 ```
 
+## Viewing in ParaView
+
+beamFoam writes the rigid body only to
+`postProcessing/rigidBodyEnd/0/rigidBodyEnd.dat`, so opening `case.foam`
+shows the beam alone. `Allrun` runs `./writeRigidBodyVTK <case>` after each
+case, which draws the body as a box at its centre of mass, turned with it,
+and an arm out to the pin on the beam tip, at every time directory:
+
+- open `case.foam`, then Warp By Vector with `pointW` (the beam);
+- open `VTK/rigidBody.vtk.series` (the body; cell field `part`: 0 body,
+  1 arm; point fields `U`, `omega`).
+
+The box side defaults to 0.8 × the arm (`--size` to change). The script checks
+that the pin it rebuilds from the body's position and rotation sits on the
+beam tip (printed as `pin to beam tip`).
+
 ## Setup (`base`)
 
 A 2 m rod along +x is clamped at `left`. A 1 kg body is pinned to `right`,

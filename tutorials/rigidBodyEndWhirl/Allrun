@@ -20,4 +20,12 @@ done
 echo $cases | tr ' ' '\n' | xargs -P "${NJOBS:-6}" -I{} \
     sh -c 'cd {} && ./Allrun > Allrun.out 2>&1; echo "{} finished"'
 
+# The rigid body is only in postProcessing/rigidBodyEnd: write it as VTK for
+# ParaView, and a case.foam for the beam
+for c in $cases
+do
+    ./writeRigidBodyVTK "$c"
+    touch "$c/case.foam"
+done
+
 ./summarise.py "$@"
