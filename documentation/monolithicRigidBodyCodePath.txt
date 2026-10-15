@@ -1,9 +1,16 @@
 Monolithic beam + rigid body solver: how the code handles the rigid body
 =========================================================================
 
-Paths below starting with sDoFRGBFvBeam/ are in the moorFV repository
-(moorFV/src/sDoFRGBFvBeam). All others are in this repository under
-src/wireBunchingModels/.
+Files referenced (full paths; line numbers are given as <file>:<line>):
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.C
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+The sDoFRGBFvBeam files are in the moorFV repository; the others are in
+this (beamFoam) repository.
 
 The entry point is the same as in the partitioned solver. What changes is
 what solver_->solve(...) does once it's called.
@@ -13,7 +20,9 @@ what solver_->solve(...) does once it's called.
 ----------------------------
 sixDoFRigidBodyMotionFvBeam::update still calls
     solver_->solve(firstIter, fGlobal, tauGlobal, deltaT, deltaT0)
-(sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C:349).
+(
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C:349
+).
 
 In dynamicMeshDict the solver is set to "type beamFoamCoupled;" instead of
 FvBeamNewmark, so the call goes to beamFoamCoupled::solve.
@@ -21,7 +30,7 @@ FvBeamNewmark, so the call goes to beamFoamCoupled::solve.
 
 2. beamFoamCoupled::solve
 -------------------------
-(sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C:59)
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C:59
 
 This replaces both updateAcceleration and the Newmark update in FvBeamNewmark.
 
@@ -43,8 +52,7 @@ This replaces both updateAcceleration and the Newmark update in FvBeamNewmark.
 
 3. finiteVolumeBeam::solveMonolithic
 ------------------------------------
-(sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/
- finiteVolumeBeamRestraint/finiteVolumeBeam.C:554)
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C:554
 
 On the first call only:
 - It builds a bodyDict from the moorFV motion: mass, J, orientation, CoM,
@@ -70,31 +78,33 @@ handed a load and returns the body's motion.
 
 4. beamFoam time step
 ---------------------
-(beamModels/coupledTotalLagNewtonRaphsonBeam/
- coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C)
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
 
-evolve() (:292) sends the call to evolveMonolithicRigidBodyEnd() (:428).
+evolve() (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C:292)
+sends the call to evolveMonolithicRigidBodyEnd() (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C:428).
 That function:
   1. Calls body.newTimeStep(), which stores x0, v0, a0, Q0, omega0, alpha0
-     and sets theta = 0 (rigidBodyEnd/rigidBodyEnd.C:387). A timeIndex guard
+     and sets theta = 0 (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.C:387). A timeIndex guard
      makes it safe to call more than once per step.
-  2. Calls setRigidBodyEndIterate(x, theta = 0) (:477). This sets the
+  2. Calls setRigidBodyEndIterate(x, theta = 0)
+     (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C:477). This sets the
      attachment-face W to the body's attachment point,
          x + R(theta) r_body - r0
   3. Runs evolveBeam(), the ordinary Newton loop, but with the body inside
      it (section 5 below).
   4. Calls body.accept(x, theta, -Q_b, nIter, M_b)
-     (rigidBodyEnd/rigidBodyEnd.C:611). From the converged x and theta it
+     (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.C:611). From the converged x and theta it
      gets a, v, alpha, omega through the Newmark relations, and
      Q = exp(theta) & Q0.
 
 
 5. Inside each Newton iteration
 -------------------------------
-(coupledTotalLagNewtonRaphsonBeamEvolve.C)
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
 
 - The beam blocks are assembled as usual.
-- rigidBodyEndMonolithicCoupling() (RigidBodyEnd.C:596) builds the body
+- rigidBodyEndMonolithicCoupling()
+  (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C:596) builds the body
   equations as residuals in DISPLACEMENT form:
     Translation:
         R_x = m/(beta dt^2) (x - x_pred) + c v(x) - F_ext + Q_b
@@ -109,13 +119,17 @@ That function:
     body -> attachment cell:     dcW, dcTheta
     attachment cell -> body:     K_b, KbM
     rotation coupling via arm:   Sr & T, where T is the rotation Jacobian
-- constrainRigidBodyEndCoupling() (:742) projects onto the free directions.
+- constrainRigidBodyEndCoupling()
+  (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C:742) projects onto the free directions.
   Constrained DOFs get (I - P) on the diagonal, so their increments come out
   as zero.
-- eigenSolver.setMonolithicCoupling(coupling) (Evolve.C:905) adds the 6 body
+- eigenSolver.setMonolithicCoupling(coupling)
+  (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C:905) adds the 6 body
   rows/columns to the sparse system, and BlockEigenSolverOF solves it with
-  SparseLU (assembly at BlockEigenSolverOF.C:335, RHS at :852).
-- After the solve (Evolve.C:998):
+  SparseLU (assembly at
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C:335,
+  RHS at /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C:852).
+- After the solve (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C:998):
     * rigidBodyEndX_ += dx and rigidBodyEndTheta_ += dTheta.
     * The attachment W is reset to the exact new position from the body
       state, not a linearised one.
@@ -153,6 +167,7 @@ Things worth knowing
 - The old rigid-body path is still in the code. The rigidBodyData_ /
   RigidBodyForceCoupling / solveAttachmentKinematicsInBlockEigen path is
   still in evolveBeam and BlockEigenSolverOF. For example, the
-  prev.angularMomentum RHS rows just above BlockEigenSolverOF.C:852 belong to
-  it. When the monolithic coupling is active, its sources overwrite those
+  prev.angularMomentum RHS rows just above
+  /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C:852
+  belong to it. When the monolithic coupling is active, its sources overwrite those
   rows. evolve() stops with a fatal error if both paths are active at once.
