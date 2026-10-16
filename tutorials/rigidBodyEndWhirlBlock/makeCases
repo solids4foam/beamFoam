@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""
+Generate the rigidBodyEndWhirl robustness sweeps from ./base.
+
+A cantilever is clamped at one end; a rigid body is pinned to the other, with
+its centre of mass offset from the tip. A constant moment about the rod axis,
+against viscous damping, spins the body up towards M/c and whirls the tip.
+Two sweeps, each case run with partitioned and with monolithic coupling:
+
+    moment     the applied moment M (rod as in base)
+    stiffness  the rod's bending stiffness EI, through E and G (M as in base)
+
+Base: EI = 266.67 N m^2, critical speed 10 rad/s, c = 0.03 N m s,
+M = 0.225 N m (terminal spin 7.5 rad/s).
+
+Cases are written to <sweep>/<label>/<coupling>.
+
+Usage: ./makeCases [sweep ...]   (default: all sweeps)
+"""
+
+import os
+import re
+import shutil
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(HERE, "base")
+
+BASE_E = 5.4326e7
+BASE_M = 0.225
+
+# Terminal spin M/c relative to the critical speed: 0.25 to 3
+MOMENTS = [0.075, 0.15, 0.225, 0.27, 0.3, 0.45, 0.9]
+
+# EI relative to base: critical speed 5 to 80 rad/s. The partitioned
+# stability number beta dt^2 EA/(L m) goes from 0.013 to 3.4
+STIFFNESS_FACTORS = [0.25, 0.5, 0.75, 1, 2, 4, 16, 64]
+
+SWEEPS = {
+    "moment": {f"M{m:g}": {"moment": m} for m in MOMENTS},
+    "stiffness": {f"EIx{f:g}": {"E": f*BASE_E} for f in STIFFNESS_FACTORS},
+}
+
+COUPLINGS = ["partitioned", "monolithic"]
+
+
+def substitute(path, pattern, replacement):
+    with open(path) as f:
+        text = f.read()
+    text, n = re.subn(pattern, replacement, text, flags=re.M)
+    if n != 1:
+        raise RuntimeError(f"{pattern!r} found {n} times in {path}")
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def make_case(sweep, label, coupling):
+    settings = SWEEPS[sweep][label]
+    case = os.path.join(HERE, sweep, label, coupling)
+
+    if os.path.isdir(case):
+        shutil.rmtree(case)
+    shutil.copytree(BASE, case)
+
+    beam = os.path.join(case, "constant", "beamProperties")
+    substitute(beam, r"^(\s*rigidBodyCoupling\s+)\w+;", rf"\g<1>{coupling};")
+    if "moment" in settings:
+        substitute(
+            beam, r"^(\s*externalMoment\s+)\([^)]*\);",
+            rf"\g<1>({settings['moment']:g} 0 0);",
+        )
+    if "E" in settings:
+        # Keep E/G = 2.6 (Poisson's ratio 0.3)
+        substitute(beam, r"^(\s*E\s+)\S+;", rf"\g<1>{settings['E']:.6g};")
+        substitute(beam, r"^(\s*G\s+)\S+;", rf"\g<1>{settings['E']/2.6:.6g};")
+
+    return case
+
+
+sweeps = sys.argv[1:] or list(SWEEPS)
+for sweep in sweeps:
+    if sweep not in SWEEPS:
+        sys.exit(f"Unknown sweep {sweep}; choose from {', '.join(SWEEPS)}")
+    for label in SWEEPS[sweep]:
+        for coupling in COUPLINGS:
+            print("Created", os.path.relpath(make_case(sweep, label, coupling), HERE))
