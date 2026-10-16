@@ -112,7 +112,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         // fvc::ddt(W_)
@@ -139,7 +139,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
@@ -177,7 +177,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         //fvc::ddt(Theta_)
@@ -191,7 +191,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
@@ -308,7 +308,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -321,7 +321,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -334,7 +334,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -347,7 +347,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -360,7 +360,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -373,7 +373,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -386,7 +386,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("x-axis", dimless, vector(1, 0, 0))
