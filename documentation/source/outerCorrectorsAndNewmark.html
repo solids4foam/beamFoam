@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Outer correctors and Newmark</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root {
+    --ink: #1c1f24; --muted: #5b6270; --rule: #d9dde3; --accent: #1f5f8b;
+    --soft: #f3f6f9; --warn: #9a5b00; --warnbg: #fdf6ea; --ok: #2d6a3e; --okbg: #eef6f0;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 10.2pt/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; background: #fff; }
+  h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 4pt; letter-spacing: -0.01em; }
+  h2 { font-size: 12.5pt; color: var(--accent); margin: 18pt 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule); break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 11pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt; padding-left: 15pt; }
+  li { margin-bottom: 2.5pt; }
+  code { font: 8.8pt/1.3 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); padding: 0.5pt 3pt; border-radius: 2pt; }
+  pre { font: 8.6pt/1.5 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); border-left: 3px solid var(--accent); padding: 6pt 9pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 4pt 0 9pt; font-size: 9.2pt; break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 4pt 6pt; border-bottom: 1px solid var(--rule); }
+  th { background: var(--soft); font-weight: 600; }
+  td.n, th.n { text-align: right; }
+  .meta { color: var(--muted); font-size: 9.2pt; margin-bottom: 10pt; }
+  .lede { font-size: 10.6pt; background: var(--soft); border-radius: 3pt; padding: 8pt 11pt; margin: 8pt 0 4pt; }
+  .callout { border-radius: 3pt; padding: 7pt 10pt; margin: 6pt 0 9pt; break-inside: avoid; }
+  .warn { background: var(--warnbg); border-left: 3px solid var(--warn); }
+  .okc { background: var(--okbg); border-left: 3px solid var(--ok); }
+  .ref { font-size: 8.4pt; color: var(--muted); }
+  .eq { font-family: "Times New Roman", Times, serif; font-size: 11pt; text-align: center; margin: 5pt 0 7pt; }
+  figure { margin: 6pt 0 10pt; break-inside: avoid; }
+  figure img { width: 100%; }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 2pt; }
+</style>
+</head>
+<body>
+
+<h1>Outer correctors, Newton iterations and the Newmark scheme</h1>
+<div class="meta">
+  1 October 2026 · Colm Mc Alister · beamFoam <code>colm_6DOF_solver</code>, moorFV <code>feature-beamFoamCoupling-colm</code><br>
+  Companion to <code>monolithicCouplingPlan.pdf</code> (Phase 4). Every statement about behaviour is taken from the code cited
+  or from the logs of the <code>rigidBodyAndBeam_*</code> tutorial runs.
+</div>
+
+<div class="lede">
+  <b>In short.</b> The PIMPLE outer correctors repeat the whole fluid–body–beam update inside a time step.
+  <ul>
+    <li><b>Loop framework.</b> Each corrector is one pass of a relaxed fixed-point iteration towards the implicit Newmark solution.
+      With one corrector the beam force lags the body by a step. That makes the body's Newmark scheme
+      explicit, first order and unstable at every time step (in a linear model).</li>
+    <li><b>Monolithic framework.</b> Newmark is already implicit in the beam force. Outer correctors only update the
+      explicit fluid force, so one corrector is stable and second-order accurate.</li>
+  </ul>
+  Each extra corrector costs a full fluid solve plus 2–3 beam Newton iterations. In these cases the fluid solve dominates the run time.
+</div>
+
+<h2>1. Two loops called “outer corrector”</h2>
+<p>The name is used for two different loops, so it helps to separate them first:</p>
+<table>
+  <tr><th style="width:24%">Loop</th><th>Set by</th><th>What it repeats</th></tr>
+  <tr><td><b>PIMPLE outer corrector</b></td><td><code>nOuterCorrectors</code> in <code>system/fvSolution</code> (PIMPLE)</td>
+      <td>The whole interFoam time step: mesh motion (body and beam), then α, U and p. This document is about this loop.</td></tr>
+  <tr><td><b>beamFoam Newton iteration</b></td><td><code>nCorrectors 200</code> (the maximum) in <code>constant/beam/beamProperties</code></td>
+      <td>One Newton–Raphson iteration of the beam (or beam + body) system. The counter is called <code>iOuterCorr()</code> in the
+      code, but it is a Newton iteration. The log line <code>N: Converged</code> reports N of them for one beam solve.</td></tr>
+</table>
+
+<pre>for each time step n → n+1
+    for each PIMPLE outer corrector k = 1 … nOuterCorrectors
+        if (k == 1 or moveMeshOuterCorrectors)  mesh.update()      ← body + beam
+            moorFV motion solver: fluid force on body, then solver.solve(firstIter = (k == 1))
+                beamFoam evolve():  Newton iterations until converged      ← "N: Converged"
+        solve α, U, p</pre>
+<p class="ref">interFoam.C:112 (<code>if (pimple.firstIter() || moveMeshOuterCorrectors) mesh.update();</code>);
+  sixDoFRigidBodyMotionFvBeamSolver.C:212–268</p>
+
+<div class="callout warn"><b><code>moveMeshOuterCorrectors yes</code> is needed for any coupling iteration.</b> Without it, correctors
+  2 … N repeat only the fluid solve. The body and beam are updated once per step whatever <code>nOuterCorrectors</code> is.
+  The <code>_nOuter8</code> cases set both.</div>
+
+<h2>2. What one outer corrector does in each framework</h2>
+<h3>Start of a time step</h3>
+<p>On the first call in a time step, moorFV stores the start-of-step body state
+  (<code>motion_.newTime()</code>: <code>motionState0_ = motionState_</code>). Every later corrector updates the body
+  <i>from that stored state</i> (x<sub>n</sub>, v<sub>n</sub>, a<sub>n</sub>), not from the previous corrector. In the monolithic path,
+  beamFoam's <code>rigidBodyEnd::newTimeStep()</code> does the same once per time index. So repeating a corrector re-solves the
+  same step with updated forces; it never advances time twice.</p>
+
+<h3>Loop framework (<code>FvBeamNewmark</code>), corrector k</h3>
+<ol>
+  <li><b>Beam solve with the end prescribed.</b> <code>updateAcceleration</code> calls the <code>finiteVolumeBeam</code> restraint
+    before the body is moved. The beam end is set to the body's <i>current</i> position: on corrector 1 that is the end of the last
+    step, x<sub>n</sub>; on corrector k it is x<sup>(k−1)</sup>. beamFoam then solves the beam at time t<sub>n+1</sub>.
+    <span class="ref">finiteVolumeBeam.C:277–286, 349</span></li>
+  <li><b>Acceleration with relaxation.</b> a* = (F<sub>fluid</sub> + m g + F<sub>beam</sub>)/m, then
+    a<sup>(k)</sup> = 0.5 a* + 0.5 a<sup>(k−1)</sup> (<code>accelerationRelaxation 0.5</code>).
+    <span class="ref">sixDoFRigidBodyMotionFvBeam.C:306–333</span></li>
+  <li><b>Newmark update</b> from the stored start-of-step state, with β = 1/4 and γ = 1/2:
+    <div class="eq">v = v<sub>n</sub> + Δt[γ a + (1−γ) a<sub>n</sub>],&nbsp;&nbsp;
+      x = x<sub>n</sub> + Δt v<sub>n</sub> + Δt²[β a + (½−β) a<sub>n</sub>]</div>
+    <span class="ref">FvBeamNewmark.C:74–115</span></li>
+</ol>
+<div class="callout warn"><b>Relaxation on the first corrector of each step.</b> The relaxation is skipped only on the first call
+  of the whole run (a <code>static bool first</code>). On corrector 1 of every later step, a<sup>(0)</sup> is the previous step's
+  acceleration a<sub>n</sub>. With one corrector the body therefore uses a = 0.5 a* + 0.5 a<sub>n</sub>: half of the new
+  acceleration and half of the old. This is a lag on top of the lagged beam force. Resetting it on
+  <code>firstIter</code> would be a one-line change in moorFV; it hasn't been made.</div>
+
+<h3>Monolithic framework (<code>beamFoamCoupled</code>), corrector k</h3>
+<ol>
+  <li><b>Explicit applied load.</b> The fluid force and moment, the weight and any other restraints are taken at the current state.</li>
+  <li><b>One Newton solve of beam + body.</b> <code>solveMonolithic</code> runs beamFoam's Newton iteration on the beam
+    equations and the body's Newmark residual
+    <span class="eq" style="display:inline">R = m a(x) + c v(x) − F<sub>ext</sub> − m g + Q<sub>b</sub>(x)</span>
+    together, in one BlockEigen system. The Newmark relations are applied from the stored start-of-step state, so the beam force is implicit.
+    The Newton iteration starts from the previous corrector's solution.</li>
+  <li><b>Accept the state.</b> The converged state is copied into the motion. Nothing is recomputed or relaxed.</li>
+</ol>
+
+<h2>3. Effect on the Newton iterations</h2>
+<p>From the base tutorial logs (88–89 time steps to t = 0.25 s; air only, so the fluid force is small):</p>
+<figure>
+  <img src="newton.png" alt="Mean beam Newton iterations per outer corrector">
+  <figcaption>Figure 1. Mean beam Newton iterations for each PIMPLE outer corrector, <code>rigidBodyAndBeam_loop_nOuter8</code>
+    and <code>rigidBodyAndBeam_beamFoamCoupled_nOuter8</code>.</figcaption>
+</figure>
+<table>
+  <tr><th>Case</th><th class="n">Beam solves</th><th class="n">Newton iterations</th><th class="n">Per step</th><th class="n">Run time (s)</th></tr>
+  <tr><td>Loop, 1 corrector</td><td class="n">88</td><td class="n">439</td><td class="n">5.0</td><td class="n">359</td></tr>
+  <tr><td>Monolithic, 1 corrector</td><td class="n">88</td><td class="n">351</td><td class="n">4.0</td><td class="n">359</td></tr>
+  <tr><td>Loop, 8 correctors</td><td class="n">712</td><td class="n">2402</td><td class="n">27.0</td><td class="n">2219</td></tr>
+  <tr><td>Monolithic, 8 correctors</td><td class="n">712</td><td class="n">1601</td><td class="n">18.0</td><td class="n">2219</td></tr>
+</table>
+<ul>
+  <li><b>Loop.</b>
+    <ul>
+      <li>Corrector 1 takes about 5 iterations: the beam is advanced to t<sub>n+1</sub> with its end still at x<sub>n</sub>.</li>
+      <li>Corrector 2 also takes about 5: the end jumps by the whole step's body displacement.</li>
+      <li>Correctors 3–8 take about 3: the end keeps moving, by an amount that halves each corrector (the relaxation factor),
+        so every beam solve has a new boundary value to absorb.</li>
+    </ul></li>
+  <li><b>Monolithic.</b> Corrector 1 takes 4 iterations. Correctors 2–8 take 2 each, the fewest any beam solve takes in these
+    runs: only the small fluid force has changed, and the iteration starts from the converged state.</li>
+  <li><b>Cost.</b> The run times are identical step by step between the frameworks: 359 s and 359 s, 2219 s and 2219 s.
+    The 60-cell beam solve is negligible next to the fluid solve, so in this case the cost of an outer corrector is the fluid.
+    The 6.2× saving reported in part 1 (monolithic with 1 corrector against the loop with 8) comes from needing fewer correctors,
+    not from a faster beam solve. The Newton-iteration saving (1.25× with 1 corrector, 1.5× with 8) would matter only when the beam
+    is a large share of the cost, for example with many segments or several lines.</li>
+</ul>
+
+<h2>4. Effect on the Newmark-β scheme</h2>
+<p>Newmark with β = 1/4 and γ = 1/2 (average acceleration, the trapezoidal rule) has three properties:</p>
+<ul>
+  <li>it is unconditionally stable;</li>
+  <li>it is second-order accurate;</li>
+  <li>it adds no numerical damping.</li>
+</ul>
+<p>These hold <i>only</i> when the end-of-step acceleration a<sub>n+1</sub> is consistent with the end-of-step position
+  x<sub>n+1</sub>, that is, when the scheme is solved implicitly for every stiff force. The outer correctors control whether this is true
+  for the beam force.</p>
+
+<h3>A model problem</h3>
+<p>The line seen by the body is modelled as a linear spring k on a mass m. The line's own mass is about 1.5×10<sup>−4</sup> kg against a 15 kg body,
+  so the spring needs no mass. The model is then advanced with exactly the update order in §2, giving a 3×3 amplification matrix on
+  (x, v, a). The important number is Ω = ω<sub>n</sub>Δt, where ω<sub>n</sub> = √(k/m).</p>
+<figure>
+  <img src="growth.png" alt="Amplitude growth per period against omega dt">
+  <figcaption>Figure 2. Growth of the line–body oscillation per period in the model, against Ω = ω<sub>n</sub>Δt. The loop uses
+    relaxation 0.5 unless stated. Curves that leave through the bottom are damped there, not growing. Arrows: the range of Ω in
+    each case, from the starting Δt = 0.01 s to the Courant-limited Δt ≈ 8.5×10<sup>−4</sup> s, using k = EA/L for the axial line stiffness.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:26%">Scheme</th><th>Stability</th><th>Accuracy</th></tr>
+  <tr><td>Loop, 1 corrector</td>
+      <td><b>Unstable for every Ω.</b> The beam force lags the displacement, which acts as negative damping. Growth per period is about
+        e<sup>2πΩ</sup> with relaxation 0.5 and e<sup>πΩ</sup> without it: 13% per period at Ω = 0.02, rising to about
+        ×6 at Ω ≈ 1. Phase 0 measured +15% per period for one-pass partitioned coupling, which matches.</td>
+      <td>First order: the local error falls 4× when Δt is halved.</td></tr>
+  <tr><td>Loop, K correctors</td>
+      <td>Fixed-point iteration towards the implicit solution, with contraction factor
+        ρ = |1 − ω<sub>r</sub>(1 + βΩ²)|, where ω<sub>r</sub> is the relaxation factor. With ω<sub>r</sub> = 0.5 and small Ω, ρ ≈ 0.5: the error
+        halves per corrector, as seen in the part 1 runs. The iteration <b>diverges within the step</b> if Ω &gt; 2√3 ≈ 3.5
+        (ω<sub>r</sub> = 0.5) or Ω &gt; 2 (no relaxation). The leftover growth falls about 2× per corrector; 7–11 correctors are needed
+        for growth below 0.1% per period.</td>
+      <td>Tends to second order as K increases, but stays first order with a small coefficient for any finite K.</td></tr>
+  <tr><td>Monolithic, any number of correctors</td>
+      <td><b>|λ| = 1 exactly for every Ω</b>: no growth and no numerical damping from the beam–body coupling.</td>
+      <td>Second order: the local error falls 8× when Δt is halved.</td></tr>
+</table>
+
+<h3>What the extra monolithic correctors do</h3>
+<p>The only explicit term left in the monolithic path is the fluid force (and any other restraint). Each extra corrector re-solves the
+  step from the stored start-of-step state, using the latest fluid force. With converged correctors, the body's Newmark scheme is then
+  implicit in <i>all</i> forces. In air the fluid force barely changes between correctors, which is why one corrector already agrees with
+  eight to about 3×10<sup>−4</sup> of the peak displacement (Phase 4, part 1). In water, a light body with a large added mass would need
+  more correctors, as any partitioned fluid–structure scheme does; that is separate from the beam coupling.</p>
+
+<h3>The beam's own time integration</h3>
+<p>The beam has its own scheme. This tutorial uses <code>d2dt2Schemes default Euler</code> in <code>system/beam/fvSchemes</code>, so the
+  beam's inertia is integrated with a first-order, dissipative Euler scheme, while the body uses Newmark β = 1/4, γ = 1/2.
+  beamFoam's Newmark predictor and coefficients apply only when the beam's scheme is <code>Newmark</code>. The line's mass is tiny here, so
+  this barely affects the body. With a heavy line it would add numerical damping to the line's own waves, whatever the coupling.</p>
+
+<h2>5. What this means for the tutorial and the stress tests</h2>
+<ul>
+  <li><b>Base case.</b> Ω ≈ 0.002–0.02 and the line–body period (about 3.2 s) is far longer than the 0.25 s run. The loop's growth of a few
+    per cent per period has no time to appear, which is why loop with 1 corrector differs from the converged loop by only
+    5×10<sup>−4</sup> of the peak displacement.</li>
+  <li><b>Stress tests.</b>
+    <ul>
+      <li><code>stiffLine</code> (E × 100): Ω ≈ 0.02–0.2, period about 0.32 s.</li>
+      <li><code>stiffLight</code> (also m ÷ 10): Ω ≈ 0.05–0.6, period about 0.1 s, so about 2.5 periods in the run.</li>
+    </ul>
+    The model predicts that the loop with 1 corrector will grow by tens of per cent to several times per period in these cases, while the
+    monolithic solver stays neutral.
+    <p style="margin:4pt 0 2pt"><b>Measured</b> (<code>tutorials/rigidBodyAndBeam_stress</code>; maximum force error against monolithic with 8 correctors,
+    as a fraction of its peak):</p>
+    <table>
+      <tr><th>Variant</th><th class="n">Loop, 1</th><th class="n">Monolithic, 1</th><th class="n">Loop, 8</th><th class="n">Growth of the loop-1 error over the run</th></tr>
+      <tr><td><code>stiffLine</code></td><td class="n">4.3e-2</td><td class="n">4.6e-4</td><td class="n">1.9e-4</td><td class="n">×39</td></tr>
+      <tr><td><code>stiffLight</code></td><td class="n">1.2e-1</td><td class="n">3.4e-3</td><td class="n">2.2e-4</td><td class="n">×15</td></tr>
+      <tr><td><code>stiffLargeDt</code> (maxCo 1)</td><td class="n">1.5e-1</td><td class="n">5.1e-4</td><td class="n">6.2e-4</td><td class="n">×115</td></tr>
+    </table>
+    No run diverged within 0.25 s. The loop's error with 1 corrector grows steadily, as the negative damping predicts, but more slowly than
+    the model's rate. The real system has damping the model leaves out: the beam's Euler time integration, the fluid and
+    the nonlinear line. Treat the model as an upper bound on the growth rate. Monolithic with 1 corrector stays within 0.34%.</li>
+  <li><b>Settings.</b>
+    <ul>
+      <li><b>Monolithic:</b> 1 outer corrector is enough when the fluid force is weakly coupled. Use 2–3 (with
+        <code>moveMeshOuterCorrectors yes</code>) when fluid added mass matters. Correctors after the first cost a fluid solve plus 2 Newton iterations.</li>
+      <li><b>Loop:</b> use enough correctors to converge the fixed point (about 8 with relaxation 0.5), and keep Ω well below 2√3.</li>
+    </ul></li>
+</ul>
+
+<p class="ref">Model script: amplification matrices for the update order in §2; growth per period = ρ<sup>2π/Ω</sup>. Newton counts are from
+  <code>N: Converged</code> lines grouped by <code>PIMPLE: iteration k</code>; run times are the final <code>ExecutionTime</code>.</p>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""
+Generate the rigidBodyEndTwist robustness sweeps from ./base.
+
+A cantilever is clamped at one end; a rigid body is welded to the other, so
+the rod's end face turns with the body. A step moment about the rod axis
+twists the rod; angular damping on the body lets it settle on the static
+twist M L/(G Ip). Two sweeps, each case run with partitioned and with
+monolithic coupling:
+
+    moment     the applied moment M, as the static twist it gives
+               (G as in base)
+    stiffness  the rod's torsional stiffness G Ip/L, through G
+               (M as in base)
+
+Base: G Ip/L = 102.57 N m/rad, J = 0.05 kg m^2, c = 1 N m s,
+M = 102.57 N m (static twist 1 rad).
+
+Cases are written to <sweep>/<label>/<coupling>.
+
+Usage: ./makeCases [sweep ...]   (default: all sweeps)
+"""
+
+import os
+import re
+import shutil
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(HERE, "base")
+
+BASE_G = 2.0895e7
+BASE_KT = 102.57
+
+# Static twist [rad]. Greenhill: a clamped-free rod under an axial end torque
+# buckles at about pi EI/L = 4.1 rad of twist here (E/G = 2.6)
+TWISTS = [0.1, 0.5, 1, 2, 3, 4, 6]
+
+# G relative to base: torsional mode 23 to 5800 rad/s. The partitioned
+# stability number beta dt^2 (G Ip/L)/J goes from 1.3e-4 to 8.4
+STIFFNESS_FACTORS = [0.25, 1, 4, 16, 64, 256, 1024, 4096, 16384]
+
+SWEEPS = {
+    "moment": {f"twist{t:g}": {"moment": t*BASE_KT} for t in TWISTS},
+    "stiffness": {f"Gx{f:g}": {"G": f*BASE_G} for f in STIFFNESS_FACTORS},
+}
+
+COUPLINGS = ["partitioned", "monolithic"]
+
+
+def substitute(path, pattern, replacement):
+    with open(path) as f:
+        text = f.read()
+    text, n = re.subn(pattern, replacement, text, flags=re.M)
+    if n != 1:
+        raise RuntimeError(f"{pattern!r} found {n} times in {path}")
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def make_case(sweep, label, coupling):
+    settings = SWEEPS[sweep][label]
+    case = os.path.join(HERE, sweep, label, coupling)
+
+    if os.path.isdir(case):
+        shutil.rmtree(case)
+    shutil.copytree(BASE, case)
+
+    beam = os.path.join(case, "constant", "beamProperties")
+    substitute(beam, r"^(\s*rigidBodyCoupling\s+)\w+;", rf"\g<1>{coupling};")
+    if "moment" in settings:
+        substitute(
+            beam, r"^(\s*externalMoment\s+)\([^)]*\);",
+            rf"\g<1>({settings['moment']:.6g} 0 0);",
+        )
+    if "G" in settings:
+        substitute(beam, r"^(\s*G\s+)\S+;", rf"\g<1>{settings['G']:.6g};")
+
+    return case
+
+
+sweeps = sys.argv[1:] or list(SWEEPS)
+for sweep in sweeps:
+    if sweep not in SWEEPS:
+        sys.exit(f"Unknown sweep {sweep}; choose from {', '.join(SWEEPS)}")
+    for label in SWEEPS[sweep]:
+        for coupling in COUPLINGS:
+            print("Created", os.path.relpath(make_case(sweep, label, coupling), HERE))

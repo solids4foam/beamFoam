@@ -208,9 +208,9 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
         vectorField t = dRdS/(mag(dRdS) + SMALL);
         */
 
-	const tensorField& Lambda=
+	const tensorField& Lambdaf =
 
-            patch().lookupPatchField<surfaceTensorField, tensor>("Lambda");
+            patch().lookupPatchField<surfaceTensorField, tensor>("Lambdaf");
 
 
 	// Extraction of column vectors from the rotation matrix
@@ -218,19 +218,19 @@ void followerForceBeamDisplacementNRFvPatchVectorField::updateCoeffs()
 	// frame t1,t2,t3
 
 	// 1st column
-	const scalarField txx(Lambda.component(tensor::XX));
-	const scalarField tyx(Lambda.component(tensor::YX));
-	const scalarField tzx(Lambda.component(tensor::ZX));
+	const scalarField txx(Lambdaf.component(tensor::XX));
+	const scalarField tyx(Lambdaf.component(tensor::YX));
+	const scalarField tzx(Lambdaf.component(tensor::ZX));
 
 	// 2nd column
-	const scalarField txy(Lambda.component(tensor::XY));
-	const scalarField tyy(Lambda.component(tensor::YY));
-	const scalarField tzy(Lambda.component(tensor::ZY));
+	const scalarField txy(Lambdaf.component(tensor::XY));
+	const scalarField tyy(Lambdaf.component(tensor::YY));
+	const scalarField tzy(Lambdaf.component(tensor::ZY));
 
 	// 3rd column
-	const scalarField txz(Lambda.component(tensor::XZ));
-	const scalarField tyz(Lambda.component(tensor::YZ));
-	const scalarField tzz(Lambda.component(tensor::ZZ));
+	const scalarField txz(Lambdaf.component(tensor::XZ));
+	const scalarField tyz(Lambdaf.component(tensor::YZ));
+	const scalarField tzz(Lambdaf.component(tensor::ZZ));
 
 
 	// Fixed reference coordinate system

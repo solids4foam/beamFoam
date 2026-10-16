@@ -1,0 +1,98 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh       dynamicMotionSolverFvMesh;
+
+// sixDoFModifiedMorphing (moorFV/src/sixDoFModifiedMorphing): the standard
+// solver with moorFV's modified mesh morphing, as in the beamFoam cases
+motionSolverLibs    (sixDoFRigidBodyMotion sixDoFModifiedMorphing);
+
+motionSolver        sixDoFRigidBodyMotionModifiedMorphing;
+
+sixDoFRigidBodyMotionCoeffs
+{
+    patches         (floatingObject);
+
+    // Points within innerDistance of the box move rigidly; beyond
+    // outerDistance they are fixed
+    innerDistance   0.01;
+    outerDistance   0.1;
+
+    // Modified mesh morphing (as in the beamFoam floatRigidBody cases): the
+    // surge is applied rigidly over the box's x range and blended to zero
+    // over xDistance through the whole depth. The box spans the tank width,
+    // so the y blending length is cut to zero and yDistance has no effect
+    xDistance       0.3;
+    yDistance       0.15;
+
+    // Box 0.1 x 0.05 x 0.05 m, half submerged (draft 0.025 m, water at
+    // z = 0). Buoyancy = 998.2*0.1*0.05*0.025*g = 0.124775 kg * g. MoorDyn's
+    // initial line force on the box is (-0.006355 0 -0.004506) N (log.interFoam,
+    // "t = 0 attachPt[0] force"); 0.004506 N = 0.000459 kg * g, so
+    // mass = 0.124775 - 0.000459.
+    mass            0.124316;
+    centreOfMass    (0.5 0.025 0);
+    orientation     (1 0 0 0 1 0 0 0 1);
+
+    // Solid box: m*(Ly^2 + Lz^2, Lx^2 + Lz^2, Lx^2 + Ly^2)/12
+    momentOfInertia (5.1800e-05 1.2950e-04 1.2950e-04);
+
+    report          on;
+
+    accelerationRelaxation 0.4;
+
+    solver
+    {
+        type Newmark;
+    }
+
+    // The box spans the tank width: surge, heave and pitch only
+    constraints
+    {
+        xzPlane
+        {
+            sixDoFRigidBodyMotionConstraint plane;
+            normal (0 1 0);
+        }
+        yAxis
+        {
+            sixDoFRigidBodyMotionConstraint axis;
+            axis (0 1 0);
+        }
+    }
+
+    // Single MoorDyn v2 line from the anchor to the box bottom-left corner,
+    // coupled at the fairlead point (Mooring/lines.txt)
+    restraints
+    {
+        moorDynR2
+        {
+            sixDoFRigidBodyMotionRestraint moorDynR2;
+            couplingMode       "POINT";
+            inputFile          "Mooring/lines.txt";
+            refAttachmentPt
+            (
+                (0.45 0.025 -0.025)
+            );
+            writeMooringVTK    true;
+            vtkPrefix          "mdv2";
+            vtkStartTime       0;
+        }
+    }
+}
+
+// ************************************************************************* //

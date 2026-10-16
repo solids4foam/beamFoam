@@ -1,0 +1,101 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh       dynamicMotionSolverFvMesh;
+
+motionSolverLibs    ("libfiniteVolumeBeamMooring");
+
+motionSolver        sixDoFRigidBodyMotionFvBeam;
+
+sixDoFRigidBodyMotionFvBeamCoeffs
+{
+    patches         (floatingObject);
+
+    // Points within innerDistance of the box move rigidly; beyond
+    // outerDistance they are fixed
+    innerDistance   0.01;
+    outerDistance   0.1;
+
+    //- modified mesh morphing parameters
+    //-----------------------------------
+    containOuterDistance   0;
+    xDistance    0.3;
+    yDistance    0.15;
+    //-----------------------------------  
+    
+    // Box 0.1 x 0.05 x 0.05 m, half submerged (draft 0.025 m, water at
+    // z = 0, as in the MoorDyn case). Buoyancy = 998.2*0.1*0.05*0.025*g = 0.124775 kg * g. The
+    // lines have no pretension; each line's sagging weight pulls down on the
+    // box with 0.00447 N (z of Q on the right patch of 0.orig/beamone/Q in the
+    // one-line case), which is 0.000456 kg * g. Two mirror-image lines, so
+    // mass = 0.124775 - 2*0.000456. Check against the z of Q on the right
+    // patch of 0.orig/beamone/Q and 0.orig/beamtwo/Q after beamInit/makeBeams
+    mass            0.123863;
+    centreOfMass    (0.5 0.025 0);
+    orientation     (1 0 0 0 1 0 0 0 1);
+
+    // Solid box: m*(Ly^2 + Lz^2, Lx^2 + Lz^2, Lx^2 + Ly^2)/12
+    momentOfInertia (5.1800e-05 1.2950e-04 1.2950e-04);
+
+    report          on;
+
+    accelerationRelaxation 0.4;
+
+    solver
+    {
+        type FvBeamNewmark;
+    }
+
+    // The box spans the tank width: surge, heave and pitch only
+    constraints
+    {
+        xzPlane
+        {
+            sixDoFRigidBodyMotionFvBeamConstraint plane;
+            normal (0 1 0);
+        }
+        yAxis
+        {
+            sixDoFRigidBodyMotionFvBeamConstraint axis;
+            axis (0 1 0);
+        }
+    }
+
+    // Two lines, mirror images about x = 0.5 (see beamInit/makeBeams). In
+    // each line patch left is the anchor and right the attachment to the box
+    restraints
+    {
+        beamone
+        {
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+            attachmentPatch right;
+            anchorPatch     left;
+            beamRegion      "beamone";
+            refAttachmentPt (0.45 0.025 -0.025);
+        }
+        beamtwo
+        {
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+            attachmentPatch right;
+            anchorPatch     left;
+            beamRegion      "beamtwo";
+            refAttachmentPt (0.55 0.025 -0.025);
+        }
+    }
+}
+
+// ************************************************************************* //

@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamMomentumContributionProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Read by every beam in the case (coupledTotalLagNewtonRaphsonBeam). Ground
+// contact acts on cell centres (refW + W) below groundZ; force per unit
+// length max(2R*(kNormal*penetration - cNormal*Uz), 0). The normal stiffness
+// 2R*kNormal*L is in the Jacobian (fixed in groundContactContribution.C on
+// 8 Oct 2026); damping and friction are explicit. kNormal = 1e4 was chosen
+// before that fix; MoorDyn's kBot = 3e6 is untested here
+
+beamMomentumContributions
+(
+    groundContact
+    {
+        beamMomentumContributionType groundContact;
+
+        groundContactCoeffs
+        {
+            groundZ      -0.15;     // Tank floor (MoorDyn WtrDpth 0.15)
+            kNormal      1E04;      // [Pa/m]
+            cNormal      1.0;       // [Pa s/m]
+            kTangential  0;         // No friction, as in MoorDyn
+            muFriction   0;
+        }
+    }
+);
+
+// ************************************************************************* //

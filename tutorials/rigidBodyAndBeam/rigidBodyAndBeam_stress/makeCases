@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""
+Generate the rigidBodyAndBeam stress-test cases (Phase 4, part 2).
+
+Each variant changes the base case (../rigidBodyAndBeam_loop and
+../rigidBodyAndBeam_beamFoamCoupled) to make the beam / body coupling harder:
+a stiffer line, a lighter body, both, or a stiffer line with a larger time
+step. Each variant is generated for four coupling methods:
+
+    loop_nOuter1        moorFV FvBeamNewmark, 1 PIMPLE outer corrector
+    loop_nOuter8        moorFV FvBeamNewmark, 8 outer correctors
+    monolithic_nOuter1  moorFV beamFoamCoupled, 1 outer corrector
+    monolithic_nOuter8  moorFV beamFoamCoupled, 8 outer correctors (reference)
+
+Cases are written to <variant>/<method>. Fields are written only at endTime
+(the per-step sixDoF and beam-force histories are kept) to save disk space.
+
+Usage: ./makeCases [variant ...]   (default: all variants)
+"""
+
+import os
+import re
+import shutil
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+TUTORIALS = os.path.dirname(HERE)
+
+BASE = {
+    "loop": os.path.join(TUTORIALS, "rigidBodyAndBeam_loop"),
+    "monolithic": os.path.join(TUTORIALS, "rigidBodyAndBeam_beamFoamCoupled"),
+}
+
+# Base case: mass 15 kg, inertia 0.4 kg m^2, E = G = 3e6 Pa, maxCo 0.3
+VARIANTS = {
+    "stiffLine":    {"E": 3.0e8},
+    "lightBody":    {"mass": 1.5, "inertia": 0.04},
+    "stiffLight":   {"E": 3.0e8, "mass": 1.5, "inertia": 0.04},
+    "stiffLargeDt": {"E": 3.0e8, "maxCo": 1.0},
+}
+
+METHODS = {
+    "loop_nOuter1": ("loop", 1),
+    "loop_nOuter8": ("loop", 8),
+    "monolithic_nOuter1": ("monolithic", 1),
+    "monolithic_nOuter8": ("monolithic", 8),
+}
+
+
+def substitute(path, pattern, replacement):
+    with open(path) as f:
+        text = f.read()
+    text, n = re.subn(pattern, replacement, text, flags=re.M)
+    if n == 0:
+        raise RuntimeError(f"{pattern!r} not found in {path}")
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def make_case(variant, method):
+    framework, n_outer = METHODS[method]
+    settings = VARIANTS[variant]
+    base = BASE[framework]
+    case = os.path.join(HERE, variant, method)
+
+    if os.path.isdir(case):
+        shutil.rmtree(case)
+    os.makedirs(case)
+
+    for name in ("0", "constant", "system"):
+        shutil.copytree(
+            os.path.join(base, name), os.path.join(case, name),
+            ignore=shutil.ignore_patterns("polyMesh") if name == "constant" else None,
+        )
+    # The beam mesh is part of the case; only the fluid mesh is generated
+    shutil.copytree(
+        os.path.join(base, "constant", "beam", "polyMesh"),
+        os.path.join(case, "constant", "beam", "polyMesh"),
+    )
+    for name in ("Allrun", "Allclean"):
+        shutil.copy2(os.path.join(base, name), case)
+
+    beam = os.path.join(case, "constant", "beam", "beamProperties")
+    motion = os.path.join(case, "constant", "dynamicMeshDict")
+    control = os.path.join(case, "system", "controlDict")
+    solution = os.path.join(case, "system", "fvSolution")
+
+    if "E" in settings:
+        for key in ("E", "G"):
+            substitute(beam, rf"^(\s*{key} {key} \[[^\]]*\]\s*)\S+;", rf"\g<1>{settings['E']:.6g};")
+        # 0/beam holds a saved beam state whose CQ and CM fields (EA, GA, GJ,
+        # EI) are read in preference to E and G. Remove them so beamFoam
+        # builds them from the new E and G
+        for name in ("CQ", "CM"):
+            os.remove(os.path.join(case, "0", "beam", name))
+    if "mass" in settings:
+        substitute(motion, r"^(\s*mass\s+)\S+;", rf"\g<1>{settings['mass']:.6g};")
+    if "inertia" in settings:
+        j = f"{settings['inertia']:.6g}"
+        substitute(motion, r"^(\s*momentOfInertia\s+)\([^)]*\);", rf"\g<1>({j} {j} {j});")
+    if "maxCo" in settings:
+        for key in ("maxCo", "maxAlphaCo"):
+            substitute(control, rf"^({key}\s+)\S+;", rf"\g<1>{settings['maxCo']:.6g};")
+
+    substitute(control, r"^(writeInterval\s+)\S+;", r"\g<1>0.25;")
+    substitute(solution, r"^(\s*nOuterCorrectors\s+)\d+;", rf"\g<1>{n_outer};")
+    if n_outer > 1:
+        substitute(
+            solution, r"^(\s*nOuterCorrectors\s+\d+;)",
+            r"\g<1>\n    moveMeshOuterCorrectors yes;",
+        )
+
+    return case
+
+
+variants = sys.argv[1:] or list(VARIANTS)
+for variant in variants:
+    if variant not in VARIANTS:
+        sys.exit(f"Unknown variant {variant}; choose from {', '.join(VARIANTS)}")
+    for method in METHODS:
+        print("Created", os.path.relpath(make_case(variant, method), HERE))

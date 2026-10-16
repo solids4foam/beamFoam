@@ -1,0 +1,77 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      beamProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+beamModel coupledTotalLagNewtonRaphsonBeam;
+
+// Thin rod, clamped at the top: EA/L = 1.2566e4 N/m, rod mass 2.5e-4 kg,
+// tip bending stiffness 3EI/L^3 = 9.4e-3 N/m << pendulum stiffness mg/L
+beams
+(
+    beam_0
+    {
+        crossSectionModel    circle;
+
+        circleCrossSectionModelDict
+        {
+            radius    0.002;
+        }
+
+        length       2;
+        nSegments    40;
+        E            2e9;
+        G            7.6923e8;
+        rho          10;
+    }
+);
+
+"coupledTotalLagNewtonRaphsonBeamCoeffs"
+{
+    // No buoyancy
+    rhoFluid rhoFluid [1 -3 0 0 0 0 0] 0;
+
+    startPatchName    left;
+    endPatchName      right;
+
+    nCorrectors       200;
+    solutionTol       1e-10;
+    // Round-off floor of the force residual is about 1e-9 N here
+    absoluteTol       1e-8;
+
+    debug no;
+
+    rigidBodyCoupling partitioned;
+
+    rigidBodyEnd
+    {
+        patch               right;
+        mass                10;
+
+        // Trapezoidal rule: no numerical damping
+        newmarkBeta         0.25;
+        newmarkGamma        0.5;
+
+        // Iterate to convergence: one pass per step is unstable here
+        nCouplingIterations 50;
+        couplingTolerance   1e-10;
+
+        // Monolithic only: finite-difference check of the body columns in
+        // the first 2 time steps
+        jacobianCheck       2;
+    }
+}
+
+// ************************************************************************* //

@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------* \
+/*---------------------------------------------------------------------------*\
   =========                 |
   \\      /  F ield         | foam-extend: Open Source CFD
    \\    /   O peration     |
@@ -33,8 +33,10 @@ Description
 Author
     Philip Cardiff, UCD
     Amirhossein Taran, UCD
+    Colm McAlister UCD,
     Based on class from Zeljko Tukovic, FMENA, Zagreb
 
+    
 SourceFiles
     BlockEigenSolverOF.C
 
@@ -43,19 +45,18 @@ SourceFiles
 #ifndef BlockEigenSolverOF_H
 #define BlockEigenSolverOF_H
 
-// #include <functional>
-// #include <numeric>
 #include "typeInfo.H"
 #include "Switch.H"
-#include <Eigen/Sparse>
 #include "scalarMatrices.H"
+#include "vector.H"
+#include "Time.H"
+#include <Eigen/Sparse>
+#include "RigidBodyCouplingData.H"
 
-
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 namespace Foam
 {
+
 
 /*---------------------------------------------------------------------------*\
                       Class BlockEigenSolverOF Declaration
@@ -80,6 +81,37 @@ class BlockEigenSolverOF
         //- Const-reference to neighbour list
         const labelList& nei_;
 
+        //- Attach the beam end displacement equation to rigid-body DOFs
+        const bool rigidBodyKinematicCoupling_;
+
+        //- Beam cell adjacent to the rigid-body attachment patch
+        const label rigidBodyAttachmentCell_;
+
+        //- Coefficients multiplying rigid-body translation in the beam rows
+        const tensor rigidBodyTranslationCoeff_;
+
+        //- Coefficients multiplying rigid-body rotation in the beam rows
+        const tensor rigidBodyRotationCoeff_;
+
+        //- Coefficients multiplying beam displacement in rigid-body force rows
+        const tensor rigidBodyBeamForceWCoeff_;
+
+        //- Coefficients multiplying beam rotation in rigid-body force rows
+        const tensor rigidBodyBeamForceThetaCoeff_;
+
+        //- Rigid-body moment arm from centre of rotation to attachment point
+        const vector rigidBodyMomentArm_;
+
+        //- Previous total attachment displacement used for increment solve
+        const vector rigidBodyAttachmentDisplacementPrevious_;
+
+        //- Optional explicit beam reaction contribution to rigid-body RHS
+        const RigidBodyForceCoupling rigidBodyForceCoupling_;
+
+        //- Optional monolithic body translation coupling (rigidBodyEnd)
+        RigidBodyMonolithicCoupling monolithicCoupling_;
+
+
     // Private Member Functions
 
         //- Disallow default bitwise copy construct
@@ -87,6 +119,7 @@ class BlockEigenSolverOF
 
         //- Disallow default bitwise assignment
         void operator=(const BlockEigenSolverOF&);
+
 
 protected:
 
@@ -98,13 +131,16 @@ protected:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei,
+            const scalar rigidBodyNewmarkDisplacementScale,
             Eigen::SparseMatrix<scalar>& A
         );
+
 
 public:
 
     //- Runtime type information
     TypeName("Eigen");
+
 
     // Constructors
 
@@ -116,22 +152,54 @@ public:
             const Field<scalarSquareMatrix>& u,
             const labelList& own,
             const labelList& nei
-            // const dictionary& dict
         );
+
+        //- Construct from matrix and rigid-body coupling
+        BlockEigenSolverOF
+        (
+            const Field<scalarSquareMatrix>& d,
+            const Field<scalarSquareMatrix>& l,
+            const Field<scalarSquareMatrix>& u,
+            const labelList& own,
+            const labelList& nei,
+            const bool rigidBodyKinematicCoupling,
+            const label rigidBodyAttachmentCell,
+            const tensor& rigidBodyTranslationCoeff,
+            const tensor& rigidBodyRotationCoeff,
+            const tensor& rigidBodyBeamForceWCoeff,
+            const tensor& rigidBodyBeamForceThetaCoeff,
+            const vector& rigidBodyMomentArm,
+            const vector& rigidBodyAttachmentDisplacementPrevious,
+            const RigidBodyForceCoupling& rigidBodyForceCoupling =
+                RigidBodyForceCoupling()
+        );
+
 
     // Destructor
 
         virtual ~BlockEigenSolverOF()
         {}
 
+
     // Member Functions
+
+        //- Couple the body translation rows monolithically. The returned
+        //  RigidBodySolution displacement is then the Newton increment of the
+        //  body displacement
+        void setMonolithicCoupling(const RigidBodyMonolithicCoupling& coupling)
+        {
+            monolithicCoupling_ = coupling;
+        }
 
         //- Solve the matrix with this source and solution vector and return the
         //  initial residual magnitude
         scalar solve
         (
             Field<scalarRectangularMatrix>& x,
-            const Field<scalarRectangularMatrix>& b
+            const Field<scalarRectangularMatrix>& b,
+            RigidBodySolution& rigidBodySolution,
+            const RigidBodyStepData& rigidBodyData,
+            const Time& runTime
         );
 
         // //- Re-initialise solver after matrix coefficient update
@@ -139,11 +207,8 @@ public:
         // {}
 };
 
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 #endif
 
