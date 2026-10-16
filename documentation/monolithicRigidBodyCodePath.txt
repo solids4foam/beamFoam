@@ -171,3 +171,282 @@ Things worth knowing
   /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C:852
   belong to it. When the monolithic coupling is active, its sources overwrite those
   rows. evolve() stops with a fatal error if both paths are active at once.
+
+
+=========================================================================
+Detail: evolveBeam() and BlockEigenSolverOF
+=========================================================================
+
+Files (line numbers below are written as E:<line>, B:<line>):
+  E = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  B = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+  R = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/RigidBodyCouplingData.H
+      (struct RigidBodyMonolithicCoupling, R:126)
+
+setMonolithicCoupling adds 6 extra rows and columns for the body to the
+beam's Newton matrix, so each Newton iteration solves the beam increments
+and the body increments (dx, dtheta) in one linear solve.
+
+
+Part 1: evolveBeam() (E:56-1089)
+--------------------------------
+evolveBeam is the beam's Newton-Raphson loop for one time step. The unknowns
+are the increments DW and DTheta in every cell. Each pass of the
+do { ... } while (!checkConvergence(...)) loop assembles the linearised
+system, solves it, updates the fields and checks convergence. In monolithic
+mode the body is solved inside the same loop.
+
+Step 1: Setup and the Newton loop (E:59-100)
+  Reads the tolerances (nCorrectors, residualTol, solutionTol, ...) and
+  starts the loop:
+      iOuterCorr() = 0;          // E:99
+      do                         // E:100
+
+Step 2: Allocate the block system (E:110-137)
+  Each cell gets one 6x6 diagonal block d. Each internal face gets one 6x6
+  block in l and one in u. Each cell also gets a 6x1 entry in source.
+  Rows 0-2 of a cell are its force balance and rows 3-5 its moment balance.
+      Field<scalarSquareMatrix> d(mesh().nCells(), scalarSquareMatrix(6, 0.0));
+      Field<scalarRectangularMatrix> source(mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0));
+
+Step 3: Newmark predictor for the beam, first iteration only (E:146-173)
+      newmarkPredictorTimeIndex_ = runTime().timeIndex();   // E:155
+      Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime() - (0.5/betaN_ - 1)*Accl_.oldTime();
+
+Step 4: Legacy rigid-body setup (E:176-260 and E:335-428)
+  Builds localRigidBodyData and reads the old blockEigenKinematicCoupling /
+  blockEigenForceCoupling switches. In monolithic mode all of this is
+  inactive. rigidBodyDataValid_ is false and the switches are off, so it
+  prints "No rigid-body data supplied; using zero rigid-body state" and
+  leaves everything at zero.
+
+Step 5: Put the body iterate on the attachment boundary (E:266-278).
+        Monolithic step A.
+      if (rigidBodyEndMonolithic())                      // E:266
+      {
+          if (runTime().timeIndex() <= rigidBodyEndPtr_().nJacobianChecks() && iOuterCorr() < 2)
+          {
+              checkRigidBodyEndJacobian();               // E:274, optional FD check
+          }
+          setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_);   // E:277
+      }
+  setRigidBodyEndIterate writes W on the attachment face as x + R(theta) r - r0
+  and calls W_.storePrevIter(). This makes the boundary increment zero, so
+  the beam assembly treats the attachment face as fixed. The body's columns
+  in the matrix then carry the motion of that face.
+
+Step 6: Assemble the beam Jacobian and residual (E:280-291)
+      W_.boundaryFieldRef().updateCoeffs();          // E:280
+      Theta_.boundaryFieldRef().updateCoeffs();      // E:281
+      updateEqnCoefficients();                        // E:287
+      assembleMatrixCoefficients(d, l, u, source);    // E:291
+
+Step 7: Add loads to source (E:431-777)
+  - distributed force q, from E:431
+  - line weight rho*A*g*L
+  - point forces and moments
+  - distributed moment m
+  - the beam's own inertia: explicit parts go into source, implicit parts
+    onto d (from E:555)
+  - run-time momentum contributions such as drag and ground contact
+    (from E:743):
+        source[cellI](0,0) += linMomSource[cellI][vector::X];
+        d += diagCoeff;
+
+Step 8: Create the solver (E:870-903)
+  In monolithic mode the legacy switches are off, so the plain constructor
+  is used:
+      autoPtr<BlockEigenSolverOF> eigenSolverPtr;              // E:870
+      ...
+      eigenSolverPtr.reset(new BlockEigenSolverOF(d, l, u, own, nei));   // E:899
+
+Step 9: Attach the body to the matrix (E:905-913). Monolithic step B.
+      if (rigidBodyEndMonolithic())                               // E:905
+      {
+          RigidBodyMonolithicCoupling coupling =
+              rigidBodyEndMonolithicCoupling();                   // build body rows/cols + residual
+          constrainRigidBodyEndCoupling(coupling);                // project onto free DOFs
+          eigenSolver.setMonolithicCoupling(coupling);            // E:912
+      }
+  - rigidBodyEndMonolithicCoupling() evaluates the body residual at the
+    current (x, theta) and its Jacobian blocks. It also builds the blocks
+    that couple the body to the attachment cell.
+  - constrainRigidBodyEndCoupling() applies the moorFV motion constraints.
+  - setMonolithicCoupling itself does almost nothing. It is a one-line
+    setter in BlockEigenSolverOF.H:189:
+        void setMonolithicCoupling(const RigidBodyMonolithicCoupling& coupling)
+        {
+            monolithicCoupling_ = coupling;
+        }
+    It stores the struct. The work happens later, inside eigenSolver.solve
+    (Part 2).
+
+Step 10: Solve (E:927-935)
+      currentResidualNorm =
+          eigenSolver.solve(solVec, source, rigidBodySolution, localRigidBodyData, runTime);
+  - solVec gets the beam increments.
+  - rigidBodySolution.displacement and .rotationCorrection get the body's
+    dx and dtheta.
+  - The return value is the norm of the full residual, beam plus body.
+
+Step 11: Copy beam increments into DW and DTheta (E:948-963)
+      DWI[cellI][vector::X] = solVec[cellI](0, 0);   // E:953
+      ...
+      DW_.correctBoundaryConditions();               // E:962
+      DTheta_.correctBoundaryConditions();
+
+Step 12: Update the body and move the attachment face exactly (E:998-1029).
+         Monolithic step C.
+      const vector dx = rigidBodySolution.displacement;
+      const vector dTheta = rigidBodyEndPtr_().rotation() ? rigidBodySolution.rotationCorrection : vector::zero;
+      rigidBodyEndIncrementSqr = magSqr(dx) + magSqr(dTheta);
+      rigidBodyEndX_ += dx;                                                    // E:1008
+      rigidBodyEndTheta_ += dTheta;
+      const vector WbNew = rigidBodyEndAttachmentW(rigidBodyEndX_, rigidBodyEndTheta_);
+      DW_.boundaryFieldRef()[patchI][0] = WbNew - W_.boundaryField()[patchI][0];
+      W_.boundaryFieldRef()[patchI][0] = WbNew;                                // E:1017
+  The attachment point comes from the nonlinear map x + R(theta) r - r0, not
+  from the linearised increment. A welded joint also turns the end face here.
+
+Step 13: Update fields and check convergence (E:1033-1088)
+      updateSolutionVariables();                                           // E:1033: W += DW, Lambda, Q, M...
+      deltaXNorm = sqrt(sum(magSqr(solVec)) + rigidBodyEndIncrementSqr);   // E:1037: body included
+      ...
+      while (!checkConvergence(currentResidualNorm, initialResidualNorm, deltaXNorm, XNorm, ++iOuterCorr(), ...));  // E:1065
+  checkConvergence (E:1345) stops the loop when any one of these holds:
+  - the residual is at or below the absolute tolerance
+  - the residual is at or below residualTol x the first residual
+  - deltaXNorm is at or below solutionTol x XNorm
+  Because the body is in both the residual and the step norm, the loop only
+  stops when the beam and body are converged together.
+
+After the loop, evolveMonolithicRigidBodyEnd calls body.accept(...). That
+turns the converged x and theta into a, v, alpha and omega.
+
+
+Part 2: BlockEigenSolverOF.C
+----------------------------
+What the file is
+  It wraps the Eigen library so it can solve OpenFOAM's 6x6-block beam
+  system. There are three parts:
+  - Two constructors (B:631, B:657). The plain one stores d, l, u, own, nei.
+    The long one also takes the legacy kinematic/force-coupling data. The
+    monolithic path uses the plain one, so all legacy members are zero or
+    false.
+  - convertFoamMatrixToEigenMatrix (B:265) flattens the blocks into one
+    sparse matrix, A.
+  - solve (B:697) builds b and x, solves A x = b, and copies the results
+    back.
+
+Matrix layout, always 6 rows bigger than the beam
+  The last block row and column always belong to the rigid body, even in a
+  beam-only case:
+      const label nRows = 6*(d.size() + 1);    // B:277, "Colm- making number of rows larger by 6 rows"
+      const label rbRow = 6*d.size();          // B:316
+  The body block's diagonal is first set to the identity. In a beam-only
+  run, that makes the extra rows trivial, I x = 0:
+      coefficients.push_back(Eigen::Triplet<scalar>(rbRow + i, rbRow + i, 1.0));   // B:320-329
+
+Where the monolithic coupling goes into the matrix (B:335-467)
+      if (monolithicCoupling_.active)                       // B:335
+      {
+          const label beamRow = 6*monolithicCoupling_.attachmentCell;
+  For a 3x3 loop over (rowI, colI) it adds:
+
+  Matrix position                          Coefficient            Meaning
+  ---------------------------------------  ---------------------  ------------------------------------
+  attachment-cell force rows x             beamWRowCoeff (= K_b)  moving the body by dx moves the fixed
+    body translation cols                                         attachment face, which changes the
+                                                                  force in the end cell
+  attachment-cell moment rows x            beamThetaRowCoeff      same effect, on the moment balance
+    body translation cols
+  body translation rows x                  bodyCoeff - I          m/(beta dt^2) + ... plus K_b. The -I
+    body translation cols                                         cancels the identity added at B:320.
+  body translation rows x                  bodyWCoeff,            the force the beam puts on the body
+    attachment-cell W and Theta cols       bodyThetaCoeff         depends on the end cell
+  the same pattern for rotation            beamWRowRotCoeff,      effects through the arm r and the
+    (only if rotationActive)               bodyTransRotCoeff,     rotation Jacobian
+                                           bodyRotCoeff - I,
+                                           bodyRotWCoeff, ...
+
+  For example:
+      coefficients.push_back(Eigen::Triplet<scalar>(beamRow + rowI, rbRow + colI,
+          monolithicCoupling_.beamWRowCoeff(rowI, colI)));
+      ...
+      coefficients.push_back(Eigen::Triplet<scalar>(rbRow + rowI, rbRow + colI,
+          monolithicCoupling_.bodyCoeff(rowI, colI) - (rowI == colI ? 1.0 : 0.0)));
+
+  The full system looks like this:
+
+                    beam cells (6 cols each)                 body (6 cols)
+                 +-------------------------------------+----------------------+
+       beam rows |  d / l / u  (beam Jacobian)         | only attachment-cell |   [DW,DTheta]   [beam source]
+                 |                                     | rows: beam*RowCoeff  | .             =
+                 +-------------------------------------+----------------------+
+       body rows | only attachment-cell cols:          | bodyCoeff  TransRot  |   [dx, dtheta]  [bodySource,
+                 | bodyWCoeff, bodyThetaCoeff, Rot...  | RotTrans   bodyRot   |                  bodyRotSource]
+                 +-------------------------------------+----------------------+
+
+  The B:469-563 block after this is the legacy kinematic/force coupling. It
+  is skipped here because rigidBodyKinematicCoupling_ is false. The beam's
+  u and l face blocks are added after that (B:572-617), then
+  A.setFromTriplets(...).
+
+What solve() does (B:697-1078), step by step
+  1. Legacy setup (B:706-734). The constants rbNewmarkBeta = 0.25 and
+     rbNewmarkGamma = 0.5 are hard-coded and used only by the legacy path.
+     The monolithic body uses beta and gamma from rigidBodyEnd, which come
+     from moorFV's solver dict. Then the matrix is built:
+         convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, rigidBodyNewmarkDisplacementScale, A);
+         const label rigidStart = nRows - 6;   // B:739
+
+  2. RHS b (B:745-862).
+     - The beam rows are copied from source (B:748-756).
+     - The legacy code then works out a Newmark velocity and angular
+       momentum and fills the body rows of b from rigidBodyData (B:804-850).
+       In monolithic mode that data is all zero.
+     - Those rows are then overwritten by the monolithic residuals:
+         if (monolithicCoupling_.active)                              // B:852
+         {
+             for (label i = 0; i < 3; ++i)
+             {
+                 b(rigidStart + i) = monolithicCoupling_.bodySource[i];          // -R_x
+                 b(rigidStart + 3 + i) = monolithicCoupling_.rotationActive
+                   ? monolithicCoupling_.bodyRotSource[i] : 0;                   // -R_theta
+             }
+         }
+
+  3. Initial guess x (B:868-885). The beam part is copied from foamX, which
+     is the zeroed solVec. The body part is set to zero:
+         x(rigidStart + i) = 0.0;
+
+  4. Initial residual (B:891-940). This is ||b - A x|| with x = 0, so it is
+     just ||b|| over the beam and body rows. It is the value evolveBeam uses
+     as currentResidualNorm. The body block is zeroed out only if nothing
+     couples to it:
+         const bool rigidBodyRowsCoupled = monolithicCoupling_.active || rigidBodyKinematicCoupling_ || rigidBodyForceCoupling_.active;
+         if (!rigidBodyRowsCoupled) { blockR[nCells - 1] = scalarRectangularMatrix(6, 1, 0.0); }
+
+  5. Direct solve (B:946-1031). sol is fixed at SparseLU with COLAMD
+     ordering, a direct factorisation:
+         Eigen::SparseLU<Eigen::SparseMatrix<scalar>, Eigen::COLAMDOrdering<int>> solver(A);
+         x = solver.solve(b);
+
+  6. Copy results back (B:1036-1067). The beam increments go into foamX,
+     which is solVec. The body increments go into rigidBodySolution:
+         rigidBodySolution.displacement[i] = rigidBodyAttachmentDisplacementPrevious_[i] + x(rigidStart + i);  // = dx (prev is 0 here)
+         rigidBodySolution.rotationCorrection[i] = x(rigidStart + 3 + i);                                     // = dtheta
+     In monolithic mode, rigidBodyAttachmentDisplacementPrevious_ is zero
+     because of the plain constructor. So displacement is the increment dx,
+     not a total displacement. evolveBeam then adds it on at E:1008.
+
+Things that can mislead you in this file
+  - rigidBodySolution.velocity, .angularMomentum, .acceleration and .torque,
+    and the writeBlockEigenRigidBodyMotion(...) output (B:1069), come from
+    the legacy formulas. In monolithic mode they are built from zero data
+    and don't describe the body. The real velocity and omega come from
+    rigidBodyEnd::accept after the Newton loop.
+  - The legacy body rows of b (B:828-850) are always computed and then
+    overwritten. That is why the monolithic sources "overwrite" them.
+  - The body's identity diagonal is always present, which is why the
+    monolithic diagonal blocks subtract 1.
