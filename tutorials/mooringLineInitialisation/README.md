@@ -12,10 +12,11 @@ resting on the seabed) is the standard starting point for moored floating body
 simulations with the `moorFV` coupling library, where the initialised beam is
 used as a mooring-line restraint on a 6-DoF rigid body [Taran et al. (2025)].
 
-The case exercises two runtime-selectable **beam momentum contributions**:
+The case exercises three runtime-selectable **beam momentum contributions**:
 
 - `groundContact` — penalty spring/damper seabed contact,
-- `morisonDrag` — Morison drag through still water (pure damping here).
+- `morisonDrag` — Morison drag through still water (pure damping here),
+- `morisonAddedMass` — Morison added mass through still water.
 
 ---
 
@@ -97,7 +98,7 @@ equivalent cylinder [Taran et al. (2025)]:
 
 ## Seabed Contact and Damping
 
-Both models are configured in
+All three models are configured in
 `constant/beamMomentumContributionProperties` (not in `beamProperties`):
 
 - **`groundContact`:** beam cells penetrating below `groundZ = -0.5 m` receive
@@ -109,6 +110,11 @@ Both models are configured in
   beam's own velocity through still water. With no dissipation the line would
   bounce indefinitely instead of settling; the Morison drag provides the
   hydrodynamic damping that brings it to rest as a catenary by `t = 2 s`.
+- **`morisonAddedMass`:** added-mass coefficients `CMn = 1.0` / `CMt = 0.0`
+  acting on the beam's own acceleration through still water. These are the
+  added-mass coefficients `C_a`, not the Morison inertia coefficient
+  `C_M = 1 + C_a`. Added mass changes how the line settles, not the final
+  catenary.
 
 ---
 
