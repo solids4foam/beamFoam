@@ -41,6 +41,17 @@ Description
     force is added to the linear momentum source, and its linearisation to
     the diagonal of the Jacobian, in the same way as the beam inertia.
 
+    Notes:
+    - CMn and CMt are the added-mass coefficients C_a (as Can and Cat in
+      MoorDyn), not the Morison inertia coefficient C_M = 1 + C_a.
+    - Only the beam's own acceleration is used. The fluid-acceleration
+      (Froude-Krylov) terms rhoFluid*V*(1 + C_a)*a_fluid are not included,
+      so in waves, or in a coupled free-surface simulation, the contribution
+      is incomplete.
+    - rhoFluid applies along the whole beam, including any part above a free
+      surface.
+    - A beam region must hold a single beam.
+
     Example of an entry in constant/beamMomentumContributionProperties:
     \verbatim
     morisonAddedMass
@@ -69,7 +80,7 @@ Author
 
 #include "beamMomentumContribution.H"
 #include "HermiteSpline.H"
-#include "coupledTotalLagNewtonRaphsonBeam.H"
+#include "beamModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -87,26 +98,30 @@ class morisonAddedMassContribution
 
 private:
 
-    //- beam momentum contributions sub dictionary
-    dictionary beamMomentumContribDict_;
+    // Private Data
 
-    //- Normal added-mass coefficient for Morison Force
-    scalar CMn_;
+        //- beam momentum contributions sub dictionary
+        dictionary beamMomentumContribDict_;
 
-    //- Tangential added-mass coefficient for Morison Force
-    scalar CMt_;
+        //- Normal added-mass coefficient for Morison Force
+        scalar CMn_;
 
-    //- Fluid density
-    scalar rhoFluid_;
+        //- Tangential added-mass coefficient for Morison Force
+        scalar CMt_;
+
+        //- Fluid density
+        scalar rhoFluid_;
 
 
     // Private Member Functions
 
-        //- Return the d2dt2 scheme of W, as selected by the beam model
+        //- Return the d2dt2 scheme of W, as selected by the beam model.
+        //  Stops with an error unless it is Euler or Newmark
         static word d2dt2SchemeName(const fvMesh& mesh);
 
         //- Return the unit tangents to the beam centreline at the beam
-        //  CV cell-centres
+        //  CV cell-centres. Stops with an error if the beam region holds
+        //  more than one beam
         static tmp<vectorField> unitTangents(const beamModel& bm);
 
 
@@ -117,7 +132,7 @@ public:
 
     // Constructors
 
-        //- Contruct from components
+        //- Construct from components
         morisonAddedMassContribution
         (
             const word& name,

@@ -45,7 +45,7 @@ addToRunTimeSelectionTable
 
 word morisonAddedMassContribution::d2dt2SchemeName(const fvMesh& mesh)
 {
-    return
+    const word schemeName
     (
         mesh.d2dt2Schemes().found("d2dt2(W)")
         ?
@@ -53,6 +53,21 @@ word morisonAddedMassContribution::d2dt2SchemeName(const fvMesh& mesh)
         :
         word(mesh.d2dt2Schemes().lookup("default"))
     );
+
+    if (schemeName != "Euler" && schemeName != "Newmark")
+    {
+        FatalErrorInFunction
+            << "Momentum contribution due to Morison added mass - type: "
+            << typeName
+            << " for time scheme " << schemeName
+            << " is not defined!!\n"
+            << "Set d2dt2Scheme and ddtScheme in system/fvSchemes as "
+            << "'Euler' or 'Newmark' "
+            << "to include added-mass force contributions"
+            << abort(FatalError);
+    }
+
+    return schemeName;
 }
 
 
@@ -61,6 +76,20 @@ tmp<vectorField> morisonAddedMassContribution::unitTangents
     const beamModel& bm
 )
 {
+    // The tangents below come from beam 0 alone, so a region holding
+    // several beams would pair the other beams' cells with out-of-range
+    // tangents. Multi-beam support is tracked in issue #46.
+    if (bm.nBeams() > 1)
+    {
+        FatalErrorInFunction
+            << "The " << typeName << " beam momentum contribution supports"
+            << " a single beam per region, but beam region '"
+            << bm.solutionW().mesh().name() << "' holds " << bm.nBeams()
+            << " beams (cellZones)." << nl
+            << "See https://github.com/solids4foam/beamFoam/issues/46"
+            << abort(FatalError);
+    }
+
     // Create spline using current beam points and tangents data
     // The 0 argument selects the 0th beam (beam index bI = 0).
     HermiteSpline spline
@@ -119,36 +148,18 @@ tmp<Field<scalarSquareMatrix>> morisonAddedMassContribution::diagCoeff
     // Take a reference to the mesh
     const fvMesh& mesh = bm.solutionW().mesh();
 
-    const word schemeName(d2dt2SchemeName(mesh));
-
     const scalar deltaT = mesh.time().deltaTValue();
 
     // Derivative of the acceleration with respect to the displacement, as
     // used for the implicit beam inertia term
-    scalar dAccldW = 0;
+    scalar dAccldW = 1/sqr(deltaT);
 
-    if (schemeName == "Newmark")
+    if (d2dt2SchemeName(mesh) == "Newmark")
     {
         const scalar betaN =
             mesh.d2dt2Schemes().lookupOrDefault<scalar>("newmarkBeta(W)", 0.25);
 
-        dAccldW = 1/(betaN*sqr(deltaT));
-    }
-    else if (schemeName == "Euler")
-    {
-        dAccldW = 1/sqr(deltaT);
-    }
-    else
-    {
-        FatalErrorInFunction
-        << "Momentum contribution due to Morison added mass - type: "
-        << typeName
-        << " for time scheme " << schemeName
-        << " is not defined!!\n"
-        << "Set d2dt2Scheme and ddtScheme in system/fvSchemes as "
-        << "'Euler' or 'Newmark'"
-        << "to include added-mass force contributions"
-        << abort(FatalError);
+        dAccldW /= betaN;
     }
 
     // Prepare the result
@@ -204,31 +215,13 @@ tmp<vectorField> morisonAddedMassContribution::linearMomentumSource
     // Take a reference to the mesh
     const fvMesh& mesh = bm.solutionW().mesh();
 
-    const word schemeName(d2dt2SchemeName(mesh));
-
     // Beam acceleration, evaluated as in the beam inertia term
-    vectorField acclb(mesh.nCells(), vector::zero);
-
-    if (schemeName == "Newmark")
-    {
-        acclb = Accl.internalField();
-    }
-    else if (schemeName == "Euler")
-    {
-        acclb = fvc::ddt(U)().internalField();
-    }
-    else
-    {
-        FatalErrorInFunction
-        << "Momentum contribution due to Morison added mass - type: "
-        << typeName
-        << " for time scheme " << schemeName
-        << " is not defined!!\n"
-        << "Set d2dt2Scheme and ddtScheme in system/fvSchemes as "
-        << "'Euler' or 'Newmark'"
-        << "to include added-mass force contributions"
-        << abort(FatalError);
-    }
+    const vectorField acclb
+    (
+        d2dt2SchemeName(mesh) == "Newmark"
+      ? Accl.internalField()
+      : fvc::ddt(U)().internalField()
+    );
 
     const vectorField tHat(unitTangents(bm));
 
@@ -255,14 +248,11 @@ tmp<vectorField> morisonAddedMassContribution::angularMomentumSource
     const volVectorField& Accl
 )
 {
-    const volVectorField& W = bm.solutionW();
-    // Take a reference to the mesh
-    const fvMesh& mesh = W.mesh();
-
-    // Prepare the result
-    tmp<vectorField> tresult(new vectorField(mesh.nCells(), vector::zero));
-
-    return tresult;
+    // No added rotational inertia
+    return tmp<vectorField>
+    (
+        new vectorField(bm.solutionW().mesh().nCells(), vector::zero)
+    );
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
