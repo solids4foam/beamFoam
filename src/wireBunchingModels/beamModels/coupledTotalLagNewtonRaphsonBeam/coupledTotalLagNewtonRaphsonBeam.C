@@ -656,17 +656,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             IOobject::NO_WRITE
         ),
         mesh(),
-        dimensionedScalar("zero", dimless, 0)//,
-	// rigidBodyData_(),
-	//        rigidBodyDataValid_(false)
+        dimensionedScalar("zero", dimless, 0)
     )
 {
-  //  rigidBodyDataValid_(false);
-  rigidBodyDataValid_ = false;
-  blockEigenKinematicCouplingActive_ = false;
-  blockEigenKinematicCouplingStaged_ = false;
-  blockEigenStagedAttachmentDisplacement_ = vector::zero;
-  rigidBodySolutionValid_ = false;
   newmarkPredictorTimeIndex_ = -1;
   rigidBodyEndPatchIndex_ = -1;
   rigidBodyEndX_ = vector::zero;

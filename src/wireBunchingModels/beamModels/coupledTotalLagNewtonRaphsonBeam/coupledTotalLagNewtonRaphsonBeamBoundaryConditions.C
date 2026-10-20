@@ -383,51 +383,18 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                 // Source contribution
                 forAll(pW, faceI)
                 {
-                    const bool blockEigenOwnsAttachmentFace =
-                        blockEigenKinematicCouplingActive_
-                     && patchI == endPatchIndex()
-                     && faceI == 0;
+                    const vector WContrib =
+                    (
+                        pCQW[faceI]
+                      & (
+                            pWCorr[faceI]
+                          + vector(SMALL, SMALL, SMALL) // Not sure why
+                        )
+                    )/pDelta[faceI];
 
-                    if (blockEigenOwnsAttachmentFace)
-                    {
-                        if (blockEigenKinematicCouplingStaged_)
-                        {
-                            const vector WContrib =
-                            (
-                                pCQW[faceI]
-                              & (
-                                    blockEigenStagedAttachmentDisplacement_
-                                  - pWPrev[faceI]
-                                  + vector(SMALL, SMALL, SMALL) // Not sure why
-                                )
-                            )/pDelta[faceI];
-
-                            source[fc[faceI]](0,0) -= WContrib.x();
-                            source[fc[faceI]](1,0) -= WContrib.y();
-                            source[fc[faceI]](2,0) -= WContrib.z();
-                        }
-                        else
-                        {
-                            // The rigid-body column solves the attachment
-                            // displacement increment, so the coupled boundary
-                            // equation has zero explicit source.
-                        }
-                    }
-                    else
-                    {
-                        const vector WContrib =
-                        (
-                            pCQW[faceI]
-                          & (
-                                pWCorr[faceI]
-                              + vector(SMALL, SMALL, SMALL) // Not sure why
-                            )
-                        )/pDelta[faceI];
-
-                        source[fc[faceI]](0,0) -= WContrib.x();
-                        source[fc[faceI]](1,0) -= WContrib.y();
-                        source[fc[faceI]](2,0) -= WContrib.z();
-                    }
+                    source[fc[faceI]](0,0) -= WContrib.x();
+                    source[fc[faceI]](1,0) -= WContrib.y();
+                    source[fc[faceI]](2,0) -= WContrib.z();
                 }
 
                 if

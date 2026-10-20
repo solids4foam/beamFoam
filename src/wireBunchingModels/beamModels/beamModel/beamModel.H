@@ -712,9 +712,6 @@ public:
                 vectorField& tangents
             ) const = 0;
 
-            virtual void setRigidBodyStepData(const RigidBodyStepData&)
-            {}
-
             //- Create a rigidBodyEnd from a caller's body description and
             //  solve it monolithically with the beam (e.g. from moorFV)
             virtual void initialiseRigidBodyEnd
@@ -757,11 +754,6 @@ public:
             //- Accepted rigidBodyEnd state after evolve; false if there is
             //  no rigidBodyEnd
             virtual bool getRigidBodyEndState(RigidBodyEndState&) const
-            {
-                return false;
-            }
-
-            virtual bool getRigidBodySolution(RigidBodySolution&) const
             {
                 return false;
             }

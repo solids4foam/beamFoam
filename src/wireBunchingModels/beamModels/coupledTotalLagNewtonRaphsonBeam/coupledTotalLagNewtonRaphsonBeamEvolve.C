@@ -38,7 +38,6 @@ License
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
 #include "IOmanip.H"
-#include "fixedValueFvPatchFields.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -173,93 +172,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                 // }
             }
 
-            RigidBodyStepData localRigidBodyData;
-
-            if (rigidBodyDataValid_)
-            {
-                localRigidBodyData = rigidBodyData_;
-            }
-            else
-            {
-                // Backward-compatible fallback for beam-only cases:
-                // zero rigid-body motion, zero acceleration, zero torque.
-                Info<< "No rigid-body data supplied; using zero rigid-body state"
-                    << endl;
-            }
-
-            const Switch blockEigenKinematicCoupling
-            (
-                beamProperties().lookupOrDefault<Switch>
-                (
-                    "blockEigenKinematicCoupling",
-                    false
-                )
-            );
-
-            const Switch blockEigenForceCoupling
-            (
-                beamProperties().lookupOrDefault<Switch>
-                (
-                    "blockEigenForceCoupling",
-                    false
-                )
-            );
-
-            const bool solveAttachmentKinematicsInBlockEigen =
-                rigidBodyDataValid_
-             && localRigidBodyData.solveAttachmentKinematicsInBlockEigen;
-
-            const bool blockEigenKinematicCouplingActive =
-                blockEigenKinematicCoupling
-             && solveAttachmentKinematicsInBlockEigen;
-
-            const word blockEigenKinematicCouplingMode =
-                beamProperties().lookupOrDefault<word>
-                (
-                    "blockEigenKinematicCouplingMode",
-                    "staged"
-                );
-
-            if
-            (
-                blockEigenKinematicCouplingMode != "staged"
-             && blockEigenKinematicCouplingMode != "fullyImplicit"
-            )
-            {
-                FatalErrorInFunction
-                    << "Invalid blockEigenKinematicCouplingMode "
-                    << blockEigenKinematicCouplingMode
-                    << ". Valid options are staged and fullyImplicit."
-                    << abort(FatalError);
-            }
-
-            const bool blockEigenKinematicCouplingStaged =
-                blockEigenKinematicCouplingActive
-             && blockEigenKinematicCouplingMode == "staged";
-
-            const bool blockEigenKinematicCouplingFullyImplicit =
-                blockEigenKinematicCouplingActive
-             && blockEigenKinematicCouplingMode == "fullyImplicit";
-
-            blockEigenKinematicCouplingActive_ =
-                blockEigenKinematicCouplingActive;
-            blockEigenKinematicCouplingStaged_ =
-                blockEigenKinematicCouplingStaged;
-            blockEigenStagedAttachmentDisplacement_ =
-                blockEigenKinematicCouplingStaged
-              ? localRigidBodyData.current.displacement
-              : vector::zero;
-
-            if
-            (
-                blockEigenKinematicCouplingStaged
-             && W_.boundaryField()[endPatchIndex()].size()
-            )
-            {
-                W_.boundaryFieldRef()[endPatchIndex()][0] =
-                    blockEigenStagedAttachmentDisplacement_;
-            }
-
             // Monolithic rigidBodyEnd: the attachment W holds the current
             // body iterate with a zero boundary increment, so the body
             // column carries the increment instead
@@ -289,144 +201,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             //- Assembling the diagonal and off-diagonal contributions
             //- of DW_ and DTheta_ to solve in block-coupled
             assembleMatrixCoefficients(d, l, u, source);
-
-            static bool blockEigenKinematicCouplingSanityChecked = false;
-
-            if (!blockEigenKinematicCouplingSanityChecked)
-            {
-                if
-                (
-                    rigidBodyDataValid_
-                 && localRigidBodyData.solveAttachmentKinematicsInBlockEigen
-                 && !blockEigenKinematicCoupling
-                )
-                {
-                    FatalErrorInFunction
-                        << "beamAttachmentKinematics is solvedByBlockEigen, "
-                        << "but blockEigenKinematicCoupling is false. "
-                        << "Enable blockEigenKinematicCoupling in "
-                        << "constant/beam/beamProperties or set "
-                        << "beamAttachmentKinematics to prescribedByRigidBody."
-                        << abort(FatalError);
-                }
-                else if (blockEigenKinematicCoupling && !rigidBodyDataValid_)
-                {
-                    WarningInFunction
-                        << "blockEigenKinematicCoupling is true, but no "
-                        << "rigid-body data has been supplied. BlockEigen "
-                        << "kinematic coupling is disabled."
-                        << nl << endl;
-                }
-                else if
-                (
-                    blockEigenKinematicCoupling
-                 && !solveAttachmentKinematicsInBlockEigen
-                )
-                {
-                    WarningInFunction
-                        << "blockEigenKinematicCoupling is true, but "
-                        << "beam attachment kinematics are not owned by "
-                        << "BlockEigen. Set beamAttachmentKinematics to "
-                        << "solvedByBlockEigen in the finiteVolumeBeam "
-                        << "restraint to enable kinematic coupling."
-                        << nl << endl;
-                }
-
-                blockEigenKinematicCouplingSanityChecked = true;
-            }
-
-            label rigidBodyAttachmentCell = -1;
-            tensor rigidBodyTranslationCoeff = tensor::zero;
-            tensor rigidBodyRotationCoeff = tensor::zero;
-            tensor rigidBodyBeamForceWCoeff = tensor::zero;
-            tensor rigidBodyBeamForceThetaCoeff = tensor::zero;
-            vector rigidBodyMomentArm = vector::zero;
-            vector rigidBodyAttachmentDisplacementPrevious = vector::zero;
-            RigidBodyForceCoupling rigidBodyForceCoupling;
-
-            if
-            (
-                blockEigenKinematicCouplingActive
-             && isA<fixedValueFvPatchVectorField>
-                (
-                    W_.boundaryField()[endPatchIndex()]
-                )
-             && mesh().boundary()[endPatchIndex()].size()
-            )
-            {
-                const label patchI = endPatchIndex();
-                const fvPatch& patch = mesh().boundary()[patchI];
-                const labelUList& fc = patch.faceCells();
-                const label faceI = 0;
-
-                if (fc.size())
-                {
-                    rigidBodyAttachmentCell = fc[faceI];
-
-                    const scalar pDelta =
-                        1.0/mesh().deltaCoeffs().boundaryField()[patchI][faceI];
-
-                    const tensor& Cw = CQW_.boundaryField()[patchI][faceI];
-
-                    const vector WPrev =
-                        W_.prevIter().boundaryField()[patchI][faceI];
-
-                    rigidBodyAttachmentDisplacementPrevious = WPrev;
-
-                    const vector momentArm =
-                        localRigidBodyData.attachmentPoint
-                      - localRigidBodyData.centreOfRotation;
-
-                    rigidBodyMomentArm = momentArm;
-                    rigidBodyTranslationCoeff = Cw/pDelta;
-                    rigidBodyRotationCoeff =
-                        (Cw & -spinTensor(momentArm))/pDelta;
-                    rigidBodyBeamForceWCoeff = Cw/pDelta;
-                    rigidBodyBeamForceThetaCoeff =
-                        CQTheta_.boundaryField()[patchI][faceI];
-
-                    Info<< "BlockEigen kinematic coupling prepared: patch="
-                        << patch.name()
-                        << ", face=" << faceI
-                        << ", cell=" << rigidBodyAttachmentCell
-                        << ", beam displacement rows="
-                        << 6*rigidBodyAttachmentCell
-                        << ".." << 6*rigidBodyAttachmentCell + 2
-                        << ", attachment displacement previous="
-                        << rigidBodyAttachmentDisplacementPrevious
-                        << ", momentArm=" << momentArm
-                        << endl;
-                }
-            }
-
-            if
-            (
-                blockEigenForceCoupling
-             && rigidBodyDataValid_
-             && Q_.boundaryField()[endPatchIndex()].size()
-            )
-            {
-                const label patchI = endPatchIndex();
-                const label faceI = 0;
-
-                const vector attachmentForce =
-                    Q_.boundaryField()[patchI][faceI];
-
-                const vector attachmentMoment =
-                    M_.boundaryField()[patchI][faceI];
-
-                rigidBodyForceCoupling.active = true;
-                rigidBodyForceCoupling.force = -attachmentForce;
-                rigidBodyForceCoupling.moment = -attachmentMoment;
-                rigidBodyForceCoupling.position =
-                    localRigidBodyData.attachmentPoint;
-                rigidBodyForceCoupling.centreOfRotation =
-                    localRigidBodyData.centreOfRotation;
-                rigidBodyForceCoupling.orientation =
-                    localRigidBodyData.current.orientation;
-                rigidBodyForceCoupling.mass = localRigidBodyData.mass;
-
-            }
 
             // Add distributed force
             forAll(source, cellI)
@@ -780,127 +554,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 	    //	    Info<< "available objects = " << fluidMesh.names() << endl;
 
             // Block coupled solver call
-            static bool blockEigenInterfaceDofsWritten = false;
-
-            if (!blockEigenInterfaceDofsWritten)
-            {
-                const label startPatchI = startPatchIndex();
-                const label endPatchI = endPatchIndex();
-
-                const fvPatch& startPatch = mesh().boundary()[startPatchI];
-                const fvPatch& endPatch = mesh().boundary()[endPatchI];
-
-                const labelUList& startFaceCells =
-                    startPatch.faceCells();
-
-                const labelUList& endFaceCells =
-                    endPatch.faceCells();
-
-                const label startCellI =
-                    startFaceCells.size() ? startFaceCells[0] : -1;
-
-                const label endCellI =
-                    endFaceCells.size() ? endFaceCells[0] : -1;
-
-                const label startBeamRow =
-                    startCellI >= 0 ? 6*startCellI : -1;
-
-                const label endBeamRow =
-                    endCellI >= 0 ? 6*endCellI : -1;
-
-                const label rigidBodyRow = 6*d.size();
-
-                tmp<surfaceVectorField> tWf = fvc::interpolate(W_);
-                const surfaceVectorField& Wf = tWf();
-
-                vector startReferencePoint = vector::zero;
-                vector startCurrentPoint = vector::zero;
-                vector endReferencePoint = vector::zero;
-                vector endCurrentPoint = vector::zero;
-
-                if (startPatch.size())
-                {
-                    startReferencePoint =
-                        mesh().Cf().boundaryField()[startPatchI][0]
-                      + refWf_.boundaryField()[startPatchI][0];
-
-                    startCurrentPoint =
-                        startReferencePoint
-                      + Wf.boundaryField()[startPatchI][0];
-                }
-
-                if (endPatch.size())
-                {
-                    endReferencePoint =
-                        mesh().Cf().boundaryField()[endPatchI][0]
-                      + refWf_.boundaryField()[endPatchI][0];
-
-                    endCurrentPoint =
-                        endReferencePoint
-                      + Wf.boundaryField()[endPatchI][0];
-                }
-
-                Info<< "BlockEigen interface DOF map" << nl
-                    << "  anchor patch: " << startPatch.name()
-                    << " patchIndex=" << startPatchI
-                    << " nFaces=" << startPatch.size()
-                    << " firstCell=" << startCellI
-                    << " beamRows=" << startBeamRow
-                    << ".." << startBeamRow + 5
-                    << " referencePoint=" << startReferencePoint
-                    << " currentPoint=" << startCurrentPoint << nl
-                    << "  attachment patch: " << endPatch.name()
-                    << " patchIndex=" << endPatchI
-                    << " nFaces=" << endPatch.size()
-                    << " firstCell=" << endCellI
-                    << " beamRows=" << endBeamRow
-                    << ".." << endBeamRow + 5
-                    << " referencePoint=" << endReferencePoint
-                    << " currentPoint=" << endCurrentPoint << nl
-                    << "  rigid-body translation rows="
-                    << rigidBodyRow << ".." << rigidBodyRow + 2 << nl
-                    << "  rigid-body rotation rows="
-                    << rigidBodyRow + 3 << ".." << rigidBodyRow + 5
-                    << endl;
-
-                blockEigenInterfaceDofsWritten = true;
-            }
-
-            // Create Eigen linear solver
-            autoPtr<BlockEigenSolverOF> eigenSolverPtr;
-
-            if (blockEigenKinematicCouplingActive || blockEigenForceCoupling)
-            {
-                eigenSolverPtr.reset
-                (
-                    new BlockEigenSolverOF
-                    (
-                        d,
-                        l,
-                        u,
-                        own,
-                        nei,
-                        blockEigenKinematicCouplingFullyImplicit,
-                        rigidBodyAttachmentCell,
-                        rigidBodyTranslationCoeff,
-                        rigidBodyRotationCoeff,
-                        rigidBodyBeamForceWCoeff,
-                        rigidBodyBeamForceThetaCoeff,
-                        rigidBodyMomentArm,
-                        rigidBodyAttachmentDisplacementPrevious,
-                        rigidBodyForceCoupling
-                    )
-                );
-            }
-            else
-            {
-                eigenSolverPtr.reset
-                (
-                    new BlockEigenSolverOF(d, l, u, own, nei)
-                );
-            }
-
-            BlockEigenSolverOF& eigenSolver = eigenSolverPtr();
+            BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
 
             if (rigidBodyEndMonolithic())
             {
@@ -917,28 +571,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             (
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
-	    
-            //------------------------------------------------------------------
-	    // Colm - Codex
-	    //-------------------------------------------------------------------
-            // Create rigid-body solution holder
-            RigidBodySolution rigidBodySolution;
 
-            currentResidualNorm =
-                eigenSolver.solve
-                (
-                    solVec,
-                    source,
-                    rigidBodySolution,
-                    localRigidBodyData,
-                    runTime()
-                );
+            currentResidualNorm = eigenSolver.solve(solVec, source);
 
-
-	    // Colm- rigid body results
-            rigidBodySolution_ = rigidBodySolution;
-            rigidBodySolutionValid_ = true;
-	    
             if (iOuterCorr() == 0)
             {
                 initialResidualNorm = currentResidualNorm;
@@ -962,34 +597,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             DW_.correctBoundaryConditions();
             DTheta_.correctBoundaryConditions();
 
-            if
-            (
-                blockEigenKinematicCouplingActive
-             && rigidBodyAttachmentCell >= 0
-             && W_.boundaryField()[endPatchIndex()].size()
-            )
-            {
-                const label patchI = endPatchIndex();
-                const vector attachmentDisplacement =
-                    blockEigenKinematicCouplingStaged
-                  ? blockEigenStagedAttachmentDisplacement_
-                  : rigidBodySolution.displacement;
-
-                DW_.boundaryFieldRef()[patchI][0] =
-                    attachmentDisplacement
-                  - W_.prevIter().boundaryField()[patchI][0];
-
-                W_.boundaryFieldRef()[patchI][0] =
-                    attachmentDisplacement;
-
-                Info<< "BlockEigen attachment DW boundary set from "
-                    << (blockEigenKinematicCouplingStaged
-                        ? "staged rigid-body target: "
-                        : "rigid-body solution: ")
-                    << DW_.boundaryField()[patchI][0]
-                    << endl;
-            }
-
             // Monolithic rigidBodyEnd: the solve returns the body
             // displacement and rotation increments; the attachment W
             // follows from the updated body state
@@ -997,10 +604,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
             if (rigidBodyEndMonolithic())
             {
-                const vector dx = rigidBodySolution.displacement;
+                const vector dx = eigenSolver.bodyTranslationIncrement();
                 const vector dTheta =
                     rigidBodyEndPtr_().rotation()
-                  ? rigidBodySolution.rotationCorrection
+                  ? eigenSolver.bodyRotationIncrement()
                   : vector::zero;
 
                 rigidBodyEndIncrementSqr = magSqr(dx) + magSqr(dTheta);

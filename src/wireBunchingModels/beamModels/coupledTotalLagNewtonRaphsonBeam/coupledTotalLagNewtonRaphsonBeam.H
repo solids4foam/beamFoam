@@ -213,27 +213,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Processor index
         volScalarField proc_;
 
-        //- Rigid-body data supplied by the sixDoF motion solver
-        RigidBodyStepData rigidBodyData_;
-
-        //- Flag indicating whether rigid-body data has been supplied
-        bool rigidBodyDataValid_;
-
-        //- True when BlockEigen owns attachment displacement kinematics
-        bool blockEigenKinematicCouplingActive_;
-
-        //- True when attachment kinematics use staged rigid-body target
-        bool blockEigenKinematicCouplingStaged_;
-
-        //- Fixed attachment displacement target for staged Newton solve
-        vector blockEigenStagedAttachmentDisplacement_;
-
-        //- Last rigid-body solution returned by the block Eigen solve
-        RigidBodySolution rigidBodySolution_;
-
-        //- Flag indicating whether the last rigid-body solution is valid
-        bool rigidBodySolutionValid_;
-
         //- Rigid body owned by beamFoam, attached to the end patch
         autoPtr<rigidBodyEnd> rigidBodyEndPtr_;
 
@@ -386,9 +365,6 @@ class coupledTotalLagNewtonRaphsonBeam
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         void readRigidBodyEnd();
 
-        //- True if any legacy blockEigen coupling switch is on
-        bool legacyBlockEigenCouplingOn() const;
-
         //- Construct rigidBodyEnd from a body dictionary and attach it to its
         //  patch
         void createRigidBodyEnd
@@ -514,15 +490,6 @@ public:
         {}
 
     // Member Functions
-       // Colm
-           //- Set rigid-body data for coupling with the sixDoF solver
-          virtual  void setRigidBodyStepData(const RigidBodyStepData& data)
-            {
-                rigidBodyData_ = data;
-                rigidBodyDataValid_ = true;
-                rigidBodySolutionValid_ = false;
-            }
-
             //- Create a rigidBodyEnd from a caller's body description,
             //  solved monolithically with the beam
             virtual void initialiseRigidBodyEnd
@@ -554,17 +521,6 @@ public:
                 const label patchI,
                 const tensor& R
             );
-
-            virtual bool getRigidBodySolution(RigidBodySolution& solution) const
-            {
-                if (!rigidBodySolutionValid_)
-                {
-                    return false;
-                }
-
-                solution = rigidBodySolution_;
-                return true;
-            }
   
         // Access
             //- Each beamModel must indicate whether W or DW is the primary

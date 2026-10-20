@@ -28,12 +28,9 @@ Description
         none         no rigid body (default without a rigidBodyEnd dict)
         partitioned  body and beam solved in turn, with optional coupling
                      iterations (default with a rigidBodyEnd dict)
-        monolithic   body translation solved inside the BlockEigen system,
-                     in the same Newton iteration as the beam (Phase 1 of
-                     documentation/monolithicCouplingPlan; rotation not yet)
-
-    The legacy blockEigen* switches are used by the moorFV-driven path and
-    cannot be combined with rigidBodyEnd.
+        monolithic   body translation and rotation solved inside the
+                     BlockEigen system, in the same Newton iteration as the
+                     beam
 
 \*---------------------------------------------------------------------------*/
 
@@ -76,7 +73,22 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << exit(FatalIOError);
     }
 
-    const bool legacyCouplingOn = legacyBlockEigenCouplingOn();
+    // The earlier BlockEigen rigid-body coupling has been removed: stop
+    // rather than run an old case with different coupling
+    for
+    (
+        const word& key
+      : {"blockEigenForceCoupling", "blockEigenKinematicCoupling"}
+    )
+    {
+        if (coeffs.found(key))
+        {
+            FatalIOErrorInFunction(coeffs)
+                << key << " has been removed. Use rigidBodyCoupling with a "
+                << "rigidBodyEnd, or moorFV's FvBeamNewmark or "
+                << "beamFoamCoupled solver" << exit(FatalIOError);
+        }
+    }
 
     if (!hasRigidBodyEnd)
     {
@@ -86,13 +98,6 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
                 << "rigidBodyCoupling " << rigidBodyCoupling_
                 << " needs a rigidBodyEnd dictionary"
                 << exit(FatalIOError);
-        }
-
-        if (legacyCouplingOn)
-        {
-            Info<< "Legacy blockEigen coupling switches are set. They are "
-                << "used by the moorFV-driven path and do not give a "
-                << "monolithic beam / rigid-body solve." << endl;
         }
 
         return;
@@ -105,27 +110,9 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << "is none" << exit(FatalIOError);
     }
 
-    if (legacyCouplingOn)
-    {
-        FatalIOErrorInFunction(coeffs)
-            << "rigidBodyEnd cannot be combined with the legacy "
-            << "blockEigenForceCoupling / blockEigenKinematicCoupling "
-            << "switches" << exit(FatalIOError);
-    }
-
     createRigidBodyEnd(coeffs.subDict("rigidBodyEnd"), g().value());
 
     Info<< "rigidBodyCoupling " << rigidBodyCoupling_ << endl;
-}
-
-
-bool coupledTotalLagNewtonRaphsonBeam::legacyBlockEigenCouplingOn() const
-{
-    const dictionary& coeffs = beamProperties();
-
-    return
-        coeffs.getOrDefault<Switch>("blockEigenForceCoupling", false)
-     || coeffs.getOrDefault<Switch>("blockEigenKinematicCoupling", false);
 }
 
 
@@ -213,14 +200,6 @@ void coupledTotalLagNewtonRaphsonBeam::initialiseRigidBodyEnd
             << abort(FatalError);
     }
 
-    if (legacyBlockEigenCouplingOn())
-    {
-        FatalErrorInFunction
-            << "rigidBodyEnd cannot be combined with the legacy "
-            << "blockEigenForceCoupling / blockEigenKinematicCoupling "
-            << "switches in beamProperties" << abort(FatalError);
-    }
-
     rigidBodyCoupling_ = "monolithic";
     createRigidBodyEnd(bodyDict, gravity);
 
@@ -293,13 +272,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
     if (rigidBodyEndPtr_.valid())
     {
-        if (rigidBodyDataValid_)
-        {
-            FatalErrorInFunction
-                << "rigidBodyEnd cannot be used when rigid-body data is also "
-                << "supplied by moorFV" << abort(FatalError);
-        }
-
         if (rigidBodyCoupling_ == "monolithic")
         {
             return evolveMonolithicRigidBodyEnd();
