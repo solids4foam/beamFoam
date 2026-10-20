@@ -450,3 +450,88 @@ Things that can mislead you in this file
     overwritten. That is why the monolithic sources "overwrite" them.
   - The body's identity diagonal is always present, which is why the
     monolithic diagonal blocks subtract 1.
+
+
+=========================================================================
+Which lines of BlockEigenSolverOF::solve() the monolithic solver uses
+=========================================================================
+
+File: B = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+
+Key
+  USED             the monolithic solver depends on these lines
+  LEGACY, runs     executes every Newton iteration, but the result is
+                   overwritten or never read
+  LEGACY, skipped  the if condition is false in monolithic mode, so it
+                   never executes
+
+solve() (B:697-1078)
+--------------------
+Lines      Code                                          Status
+---------  --------------------------------------------  ---------------------------------------
+707-709    rbNewmarkGamma = 0.5, rbNewmarkBeta = 0.25,   LEGACY, runs. Only the legacy formulas
+           deltaT                                        below use them.
+711        rigidBodyNewmarkDisplacementScale = 0.0       LEGACY, runs. Stays 0. Passed into
+                                                         convertFoamMatrixToEigenMatrix but only
+                                                         used in the skipped legacy block there.
+713-724    if (rigidBodyForceCoupling_.active) {...}     LEGACY, skipped
+726-736    convertFoamMatrixToEigenMatrix(...) builds A  USED. This is where the
+                                                         monolithicCoupling_ blocks go into the
+                                                         matrix.
+738-739    nRows, rigidStart = nRows - 6                 USED
+745-756    b declared, beam rows copied from foamB       USED
+           (source)
+759-762    prev, curr, currAcceleration, currTorque      LEGACY, runs. All values are zero,
+           from rigidBodyData                            because rigidBodyDataValid_ is false.
+764-799    if (rigidBodyForceCoupling_.active) {...}     LEGACY, skipped
+801-824    rbVelocity, rbAngularMomentum Newmark update  LEGACY, runs. Only goes into fields
+                                                         nobody reads (lines 1055-1056).
+826-838    legacy translational body RHS                 LEGACY, runs. Overwritten at 856.
+           b(rigidStart + i) = ...
+840-850    legacy rotational body RHS                    LEGACY, runs. Overwritten at 857-860.
+           b(rigidStart + 3 + i) = ...
+852-862    if (monolithicCoupling_.active) puts          USED. This is the monolithic RHS.
+           bodySource and bodyRotSource into b
+868-879    initial guess x, beam part from foamX         USED. All zero, because solVec starts
+                                                         at zero.
+882-885    x(rigidStart + i) = 0.0                       USED
+891-940    initial residual ||b - A x||                  USED. Returned as currentResidualNorm.
+930-938    if (!rigidBodyRowsCoupled)                    Skipped. monolithicCoupling_.active
+           { blockR[nCells - 1] = ... }                  makes rigidBodyRowsCoupled true, so the
+                                                         body residual is kept.
+946-1031   switch (sol), case SparseLU:                  USED. The BiCGSTAB, GMRES, DGMRES and
+                                                         MINRES cases never run, because sol is
+                                                         hard-coded to SparseLU. That's dead
+                                                         code, but not rigid-body legacy.
+1037-1046  copy beam increments back into foamX          USED
+           (solVec)
+1053-1054  zero displacement and rotationCorrection      USED
+1055-1058  velocity, angularMomentum, acceleration,      LEGACY, runs, never read (see below).
+           torque = legacy values
+1060-1066  displacement[i] =                             USED. These are dx and dtheta. The
+             rigidBodyAttachmentDisplacementPrevious_[i] rigidBodyAttachmentDisplacementPrevious_
+             + x(rigidStart + i)                         term is always zero here: a legacy
+           rotationCorrection[i] = x(rigidStart + 3 + i) leftover that does no harm.
+1068-1076  writeBlockEigenRigidBodyMotion(...)           LEGACY, runs. Writes
+                                                         BlockEigenSolve_rigidBodyMotion.dat on
+                                                         the master processor with the legacy
+                                                         values, which are zeros or meaningless
+                                                         in monolithic mode.
+1078       return initialResidual                        USED
+
+Why lines 1055-1058 are never read
+  evolveBeam stores the whole struct in rigidBodySolution_
+  (coupledTotalLagNewtonRaphsonBeamEvolve.C:938-940). However:
+  - evolveBeam itself only reads .displacement and .rotationCorrection
+    (Evolve.C:1000-1004).
+  - The only other reader is getRigidBodySolution. It is called from
+    finiteVolumeBeam::restrain()
+    (/Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C:450),
+    which is the partitioned/legacy path. The monolithic path goes through
+    solveMonolithic, which uses getRigidBodyEndState instead.
+
+The same split in convertFoamMatrixToEigenMatrix (B:265)
+  USED:             277-310 (beam diagonal blocks), 316-329 (body identity
+                    diagonal), 335-467 (monolithicCoupling_ blocks),
+                    572-627 (beam u/l blocks and building A)
+  LEGACY, skipped:  469-563 (if (rigidBodyKinematicCoupling_ && ...))
