@@ -105,6 +105,38 @@ tmp<vectorField> morisonAddedMassContribution::unitTangents
 }
 
 
+tmp<scalarField> morisonAddedMassContribution::fluidMass
+(
+    const beamModel& bm
+) const
+{
+    // pi*R^2 is the displaced area, and the added mass is the same in all
+    // directions normal to the beam, only for a circular cross-section.
+    // R() of the other cross-section models is not a radius (issue #34).
+    const word sectionType(bm.crossSections()[0].type());
+
+    if (sectionType != "circle")
+    {
+        FatalErrorInFunction
+            << "The " << typeName << " beam momentum contribution uses"
+            << " pi*R^2 for the displaced area and the same added mass in"
+            << " all directions normal to the beam, which is only valid for"
+            << " a circular cross-section, but beam region '"
+            << bm.solutionW().mesh().name() << "' has cross-section type '"
+            << sectionType << "'." << nl
+            << "See https://github.com/solids4foam/beamFoam/issues/34"
+            << abort(FatalError);
+    }
+
+    const scalar R = bm.R();
+
+    return tmp<scalarField>
+    (
+        new scalarField(rhoFluid_*M_PI*R*R*bm.L().internalField())
+    );
+}
+
+
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
 morisonAddedMassContribution::morisonAddedMassContribution
@@ -175,14 +207,13 @@ tmp<Field<scalarSquareMatrix>> morisonAddedMassContribution::diagCoeff
     const vectorField tHat(unitTangents(bm));
 
     // Displaced fluid mass of each beam CV
-    const scalar R = bm.R();
-    const scalarField fluidMass(rhoFluid_*M_PI*R*R*bm.L().internalField());
+    const scalarField mf(fluidMass(bm));
 
     forAll(result, cellI)
     {
         // Added-mass tensor: CMn normal to the beam, CMt along it
         const tensor tt(tHat[cellI]*tHat[cellI]);
-        const tensor addedMass(fluidMass[cellI]*(CMn_*(I - tt) + CMt_*tt));
+        const tensor addedMass(mf[cellI]*(CMn_*(I - tt) + CMt_*tt));
 
         // Implicit added-mass force coefficient (same sign as the beam
         // inertia coefficient QRhoCoeff)
@@ -230,13 +261,12 @@ tmp<vectorField> morisonAddedMassContribution::linearMomentumSource
     const vectorField acclbn(acclb - acclbt);
 
     // Displaced fluid mass of each beam CV
-    const scalar R = bm.R();
-    const scalarField fluidMass(rhoFluid_*M_PI*R*R*bm.L().internalField());
+    const scalarField mf(fluidMass(bm));
 
     // Added-mass force, with the same sign as the beam inertia force QRho
     return tmp<vectorField>
     (
-        new vectorField(fluidMass*(CMn_*acclbn + CMt_*acclbt))
+        new vectorField(mf*(CMn_*acclbn + CMt_*acclbt))
     );
 }
 

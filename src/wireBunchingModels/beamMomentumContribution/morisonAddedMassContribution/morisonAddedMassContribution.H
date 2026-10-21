@@ -50,6 +50,9 @@ Description
       is incomplete.
     - rhoFluid applies along the whole beam, including any part above a free
       surface.
+    - Only valid for a circular cross-section (crossSectionModel circle):
+      pi*R^2 is the displaced area and the added mass is the same in all
+      directions normal to the beam. Other cross-sections stop with an error.
     - A beam region must hold a single beam.
 
     Example of an entry in constant/beamMomentumContributionProperties:
@@ -123,6 +126,11 @@ private:
         //  CV cell-centres. Stops with an error if the beam region holds
         //  more than one beam
         static tmp<vectorField> unitTangents(const beamModel& bm);
+
+        //- Return the displaced fluid mass of each beam CV,
+        //  rhoFluid*pi*R^2*L. Stops with an error unless the beam has a
+        //  circular cross-section
+        tmp<scalarField> fluidMass(const beamModel& bm) const;
 
 
 public:
