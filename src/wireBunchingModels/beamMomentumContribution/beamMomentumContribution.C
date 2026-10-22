@@ -25,6 +25,7 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "beamMomentumContribution.H"
+#include "HermiteSpline.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -97,6 +98,67 @@ beamMomentumContribution::beamMomentumContribution
 
 beamMomentumContribution::~beamMomentumContribution()
 {}
+
+
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+
+void beamMomentumContribution::checkSingleBeam(const beamModel& bm) const
+{
+    // The contributions use the spline and the radius of beam 0 alone, so a
+    // region holding several beams would pair the other beams' cells with
+    // out-of-range data
+    if (bm.nBeams() > 1)
+    {
+        FatalErrorInFunction
+            << "The " << type() << " beam momentum contribution supports"
+            << " a single beam per region, but beam region '"
+            << bm.solutionW().mesh().name() << "' holds " << bm.nBeams()
+            << " beams (cellZones)." << nl
+            << "See https://github.com/solids4foam/beamFoam/issues/46"
+            << abort(FatalError);
+    }
+}
+
+
+void beamMomentumContribution::checkCircularSection(const beamModel& bm) const
+{
+    const word sectionType(bm.crossSections()[0].type());
+
+    if (sectionType != "circle")
+    {
+        FatalErrorInFunction
+            << "The " << type() << " beam momentum contribution uses R()"
+            << " as the radius of a circular cross-section, but beam region '"
+            << bm.solutionW().mesh().name() << "' has cross-section type '"
+            << sectionType << "'." << nl
+            << "See https://github.com/solids4foam/beamFoam/issues/34"
+            << abort(FatalError);
+    }
+}
+
+
+tmp<vectorField> beamMomentumContribution::unitTangents
+(
+    const beamModel& bm
+) const
+{
+    checkSingleBeam(bm);
+
+    // Create spline using current beam points and tangents data
+    // The 0 argument selects the 0th beam (beam index bI = 0).
+    HermiteSpline spline
+    (
+        bm.currentBeamPoints(0),
+        bm.currentBeamTangents(0)
+    );
+
+    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres.
+    // HermiteSpline::firstDerivative already returns unit vectors; they are
+    // normalised again so that the projections do not rely on it
+    const vectorField& dRdScell = spline.midPointDerivatives();
+
+    return tmp<vectorField>(new vectorField(dRdScell/(mag(dRdScell) + SMALL)));
+}
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

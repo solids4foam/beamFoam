@@ -79,6 +79,24 @@ private:
     //- Disallow default bitwise assignment
     void operator=(const beamMomentumContribution&);
 
+protected:
+
+    // Protected Member Functions
+
+    //- Stop with an error if the beam region holds more than one beam.
+    //  Multi-beam support is tracked in issue #46
+    void checkSingleBeam(const beamModel& bm) const;
+
+    //- Stop with an error unless the beam has a circular cross-section,
+    //  for contributions that use R() as the radius. R() of the other
+    //  cross-section models is not a radius (issue #34)
+    void checkCircularSection(const beamModel& bm) const;
+
+    //- Return the unit tangents to the beam centreline at the beam
+    //  CV cell-centres. Stops with an error if the beam region holds
+    //  more than one beam
+    tmp<vectorField> unitTangents(const beamModel& bm) const;
+
 public:
 
     //- Runtime type information

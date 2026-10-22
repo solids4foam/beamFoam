@@ -29,6 +29,10 @@ Description
     Derived class to evaluate the (explicit) Morison drag force
     contributions which will be added to the beam solver governing eqns
 
+    Only valid for a circular cross-section (crossSectionModel circle),
+    as R is used as the radius. A beam region must hold a single beam.
+    Other cases stop with an error.
+
 SourceFiles
     morisonDragContribution.C
 

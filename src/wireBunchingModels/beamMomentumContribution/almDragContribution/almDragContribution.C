@@ -116,19 +116,8 @@ void almDragContribution::preEvolve(const beamModel& bm)
     // processors. Collective, hence outside any master guard.
     if (!decompositionChecked_)
     {
-        // The tangents below come from beam 0 alone, so a region holding
-        // several beams would pair the other beams' cells with out-of-range
-        // tangents. Multi-beam support is tracked in issue #46.
-        if (bm.nBeams() > 1)
-        {
-            FatalErrorInFunction
-                << "The " << typeName << " beam momentum contribution supports"
-                << " a single beam per region, but beam region '"
-                << beamMesh.name() << "' holds " << bm.nBeams()
-                << " beams (cellZones)." << nl
-                << "See https://github.com/solids4foam/beamFoam/issues/46"
-                << abort(FatalError);
-        }
+        // The tangents below come from beam 0 alone
+        checkSingleBeam(bm);
 
         checkBeamOnMasterProcessor
         (

@@ -71,40 +71,6 @@ word morisonAddedMassContribution::d2dt2SchemeName(const fvMesh& mesh)
 }
 
 
-tmp<vectorField> morisonAddedMassContribution::unitTangents
-(
-    const beamModel& bm
-)
-{
-    // The tangents below come from beam 0 alone, so a region holding
-    // several beams would pair the other beams' cells with out-of-range
-    // tangents. Multi-beam support is tracked in issue #46.
-    if (bm.nBeams() > 1)
-    {
-        FatalErrorInFunction
-            << "The " << typeName << " beam momentum contribution supports"
-            << " a single beam per region, but beam region '"
-            << bm.solutionW().mesh().name() << "' holds " << bm.nBeams()
-            << " beams (cellZones)." << nl
-            << "See https://github.com/solids4foam/beamFoam/issues/46"
-            << abort(FatalError);
-    }
-
-    // Create spline using current beam points and tangents data
-    // The 0 argument selects the 0th beam (beam index bI = 0).
-    HermiteSpline spline
-    (
-        bm.currentBeamPoints(0),
-        bm.currentBeamTangents(0)
-    );
-
-    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-    const vectorField& dRdScell = spline.midPointDerivatives();
-
-    return tmp<vectorField>(new vectorField(dRdScell/(mag(dRdScell) + SMALL)));
-}
-
-
 tmp<scalarField> morisonAddedMassContribution::fluidMass
 (
     const beamModel& bm
@@ -112,21 +78,7 @@ tmp<scalarField> morisonAddedMassContribution::fluidMass
 {
     // pi*R^2 is the displaced area, and the added mass is the same in all
     // directions normal to the beam, only for a circular cross-section.
-    // R() of the other cross-section models is not a radius (issue #34).
-    const word sectionType(bm.crossSections()[0].type());
-
-    if (sectionType != "circle")
-    {
-        FatalErrorInFunction
-            << "The " << typeName << " beam momentum contribution uses"
-            << " pi*R^2 for the displaced area and the same added mass in"
-            << " all directions normal to the beam, which is only valid for"
-            << " a circular cross-section, but beam region '"
-            << bm.solutionW().mesh().name() << "' has cross-section type '"
-            << sectionType << "'." << nl
-            << "See https://github.com/solids4foam/beamFoam/issues/34"
-            << abort(FatalError);
-    }
+    checkCircularSection(bm);
 
     const scalar R = bm.R();
 
