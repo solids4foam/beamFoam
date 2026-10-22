@@ -420,16 +420,56 @@ So each outer corrector re-solves the same time step with a newer fluid
 force, starting from the same old state.
 
 
-Summary of the chain
---------------------
-  interFoam.C:114                           mesh.update()
-  -> dynamicMotionSolverFvMesh::update      (OpenFOAM, derived from dynamicFvMesh)
-  -> motionSolver::newPoints                (OpenFOAM base class)
-  -> sixDoFRigidBodyMotionFvBeamSolver::solve   (moorFV, derived from displacementMotionSolver)
+Summary of the chain, down to eigenSolver.solve (monolithic beamFoamCoupled)
+---------------------------------------------------------------------------
+File names are short here. Full paths:
+  beamFoamCoupled.C   MFV/sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C
+  finiteVolumeBeam.C  MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+  RigidBodyEnd.C      BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+  Evolve.C            BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  ...BeamMatrix.C     BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamMatrix.C
+  BlockEigenSolverOF  BF/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.{C,H}
+
+  interFoam.C:114                                  mesh.update()
+  -> dynamicMotionSolverFvMesh::update             (OpenFOAM, derived from dynamicFvMesh)
+  -> motionSolver::newPoints                       (OpenFOAM base class)
+  -> sixDoFRigidBodyMotionFvBeamSolver::solve      (moorFV, derived from displacementMotionSolver)
        forces f(...); f.calcForcesMoments();
-  -> sixDoFRigidBodyMotionFvBeam::update    (moorFV, the body)
-  -> solver_->solve                         (virtual call through base sixDoFFvBeamSolver)
-  -> beamFoamCoupled::solve                 (moorFV, derived from sixDoFFvBeamSolver)
-  -> finiteVolumeBeam::solveMonolithic      (moorFV, derived from ...Restraint)
-  -> beam.evolve()                          (virtual call through base beamModel)
-  -> coupledTotalLagNewtonRaphsonBeam::evolve (beamFoam, derived from beamModel)
+  -> sixDoFRigidBodyMotionFvBeam::update           (moorFV, the body)
+  -> solver_->solve                                (virtual call through the base sixDoFFvBeamSolver)
+  -> beamFoamCoupled::solve                        (moorFV, derived from sixDoFFvBeamSolver)
+       sums the other restraints into force/moment; constraints into global axes
+  -> finiteVolumeBeam::solveMonolithic             (moorFV, derived from ...Restraint)        beamFoamCoupled.C:119
+       first call only: beam.initialiseRigidBodyEnd(bodyDict, 0)                             finiteVolumeBeam.C:510
+       beam.setRigidBodyEndConstraints(tC, rC)                                               finiteVolumeBeam.C:535
+       beam.setRigidBodyEndExternalLoad(force, moment)                                       finiteVolumeBeam.C:536
+  -> beam.evolve()                                 (virtual call through the base beamModel)  finiteVolumeBeam.C:538
+  -> coupledTotalLagNewtonRaphsonBeam::evolve      (beamFoam, derived from beamModel)          RigidBodyEnd.C:271
+       rigidBodyCoupling_ == "monolithic"
+  -> evolveMonolithicRigidBodyEnd                  (beamFoam)                                  RigidBodyEnd.C:277 -> :400
+       body.newTimeStep()              store x0, v0, a0, Q0, omega0, alpha0 (once per step)  RigidBodyEnd.C:404
+       setRigidBodyEndIterate(x, theta=0)  attachment W = body attachment point             RigidBodyEnd.C:412
+  -> evolveBeam                                    (beamFoam, the Newton loop)                 RigidBodyEnd.C:414 -> Evolve.C:55
+       do {                                                                                  Evolve.C:99
+         setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_)                          Evolve.C:189
+         assembleMatrixCoefficients(d, l, u, source)   beam Jacobian and residual            Evolve.C:203 (code in ...BeamMatrix.C:55)
+         ... loads, beam inertia, momentum contributions added to source/d ...
+         BlockEigenSolverOF eigenSolver(d, l, u, own, nei)                                   Evolve.C:557
+         coupling = rigidBodyEndMonolithicCoupling()   body residual and Jacobian blocks     Evolve.C:562 (code at RigidBodyEnd.C:568)
+         constrainRigidBodyEndCoupling(coupling)       project onto free DOFs                Evolve.C:564 (code at RigidBodyEnd.C:714)
+         eigenSolver.setMonolithicCoupling(coupling)   store the 6 body rows/cols            Evolve.C:566 (BlockEigenSolverOF.H:154)
+  ->     eigenSolver.solve(solVec, source)                                                    Evolve.C:575
+  ->       BlockEigenSolverOF::solve                                                          BlockEigenSolverOF.C:312
+             convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A)  beam + body blocks    BlockEigenSolverOF.C:319 (code at :44)
+             b = beam source + bodySource/bodyRotSource; x = 0; initial residual
+             Eigen::SparseLU<...> solver(A);  x = solver.solve(b);                           BlockEigenSolverOF.C:441-443
+         ... DW, DTheta, then rigidBodyEndX_ += dx, rigidBodyEndTheta_ += dtheta ...
+       } while (!checkConvergence(...))                                                      Evolve.C:672
+     then body.accept(x, theta, ...) gives a, v, alpha, omega, and the chain
+     unwinds back to beamFoamCoupled::solve                                                  RigidBodyEnd.C:416
+
+Everything from evolve down is one class, coupledTotalLagNewtonRaphsonBeam:
+its member functions are split over several .C files, and none of those
+calls are virtual except evolve() itself. BlockEigenSolverOF is a separate
+class with no base class; evolveBeam creates it as an ordinary local object
+in every Newton iteration.
