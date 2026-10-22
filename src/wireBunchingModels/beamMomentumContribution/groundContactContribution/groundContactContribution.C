@@ -204,22 +204,27 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         {
             cellsInContact++;
             // Seabed force on the cell: the spring pushes the penetrating
-            // cell up, and the damper resists its rebound (upward velocity)
-            const scalar f_gc_normal =
+            // cell up, and the damper resists its rebound (upward velocity).
+            // The seabed can only push, so a damper stronger than the spring
+            // does not pull the cell down
+            const scalar f_gc_normal = max
+            (
                 (2*R*kNormal_*(groundZ_ - coord.z()))
-              - (2*R*cNormal_*max(U[cellI].z(), 0));
+              - (2*R*cNormal_*max(U[cellI].z(), 0)),
+                0
+            );
 
             vector f_gc_tangential(vector::zero);
 
             if
             (
                 kTangential_*2.0*R*mag(Ut[cellI])
-             >= muFriction_*mag(f_gc_normal)
+             >= muFriction_*f_gc_normal
             )
             {
                 // Max value of friction as per Coulomb's law
                 f_gc_tangential =
-                    -muFriction_*mag(f_gc_normal)*UtHat[cellI];
+                    -muFriction_*f_gc_normal*UtHat[cellI];
             }
             else
             {
