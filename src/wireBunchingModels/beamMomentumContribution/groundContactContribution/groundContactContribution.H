@@ -114,6 +114,18 @@ public:
 
     // Member Functions
 
+        //- The tangents and the radius come from beam 0 alone
+        virtual bool requiresSingleBeam() const
+        {
+            return true;
+        }
+
+        //- R() is used as the radius
+        virtual bool requiresCircularSection() const
+        {
+            return true;
+        }
+
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
         //  U     : the current cell-centred velocity field

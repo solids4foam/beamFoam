@@ -79,10 +79,6 @@ private:
     //- Disallow default bitwise assignment
     void operator=(const beamMomentumContribution&);
 
-protected:
-
-    // Protected Member Functions
-
     //- Stop with an error if the beam region holds more than one beam.
     //  Multi-beam support is tracked in issue #46
     void checkSingleBeam(const beamModel& bm) const;
@@ -92,9 +88,13 @@ protected:
     //  cross-section models is not a radius (issue #34)
     void checkCircularSection(const beamModel& bm) const;
 
+protected:
+
+    // Protected Member Functions
+
     //- Return the unit tangents to the beam centreline at the beam
-    //  CV cell-centres. Stops with an error if the beam region holds
-    //  more than one beam
+    //  CV cell-centres. They are built from beam 0 alone, so a contribution
+    //  that uses them must return true from requiresSingleBeam()
     tmp<vectorField> unitTangents(const beamModel& bm) const;
 
 public:
@@ -142,6 +142,25 @@ public:
 
 
     // Member Functions
+
+        //- Whether the contribution supports only a single beam per region.
+        //  Default: false
+        virtual bool requiresSingleBeam() const
+        {
+            return false;
+        }
+
+        //- Whether the contribution uses R() as the radius of a circular
+        //  cross-section. Default: false
+        virtual bool requiresCircularSection() const
+        {
+            return false;
+        }
+
+        //- Stop with an error if the beam does not suit the contribution,
+        //  as declared by requiresSingleBeam() and requiresCircularSection().
+        //  Called once by the beam model, after it creates the contributions
+        void checkBeam(const beamModel& bm) const;
 
         //- Hook called once per beam evolve() before the NR loop.
         //  Default no-op.  Contributions that need to perform work that

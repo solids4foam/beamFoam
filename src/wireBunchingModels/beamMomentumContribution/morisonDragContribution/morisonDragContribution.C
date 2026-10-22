@@ -156,7 +156,6 @@ tmp<vectorField> morisonDragContribution::linearMomentumSource
         vectorField UnHat (Un/(mag(Un) + SMALL));
 
         // Beam Radius and Length
-        checkCircularSection(bm);
         const scalar R = bm.R();
         const volScalarField& L = bm.L();
 

@@ -116,9 +116,6 @@ void almDragContribution::preEvolve(const beamModel& bm)
     // processors. Collective, hence outside any master guard.
     if (!decompositionChecked_)
     {
-        // The tangents below come from beam 0 alone
-        checkSingleBeam(bm);
-
         checkBeamOnMasterProcessor
         (
             beamMesh,

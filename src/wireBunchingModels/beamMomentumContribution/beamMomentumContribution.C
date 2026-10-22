@@ -100,7 +100,7 @@ beamMomentumContribution::~beamMomentumContribution()
 {}
 
 
-// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
 void beamMomentumContribution::checkSingleBeam(const beamModel& bm) const
 {
@@ -137,13 +137,13 @@ void beamMomentumContribution::checkCircularSection(const beamModel& bm) const
 }
 
 
+// * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * * //
+
 tmp<vectorField> beamMomentumContribution::unitTangents
 (
     const beamModel& bm
 ) const
 {
-    checkSingleBeam(bm);
-
     // Create spline using current beam points and tangents data
     // The 0 argument selects the 0th beam (beam index bI = 0).
     HermiteSpline spline
@@ -158,6 +158,22 @@ tmp<vectorField> beamMomentumContribution::unitTangents
     const vectorField& dRdScell = spline.midPointDerivatives();
 
     return tmp<vectorField>(new vectorField(dRdScell/(mag(dRdScell) + SMALL)));
+}
+
+
+// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+
+void beamMomentumContribution::checkBeam(const beamModel& bm) const
+{
+    if (requiresSingleBeam())
+    {
+        checkSingleBeam(bm);
+    }
+
+    if (requiresCircularSection())
+    {
+        checkCircularSection(bm);
+    }
 }
 
 

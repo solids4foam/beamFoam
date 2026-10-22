@@ -1193,6 +1193,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                     entries[i].dict()
                 )
             );
+
+            // Stop before the first time step if the beam does not suit the
+            // contribution
+            momentumContribPtr_[i].checkBeam(*this);
         }
     }
     else

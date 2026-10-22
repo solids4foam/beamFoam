@@ -162,7 +162,6 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     volVectorField& refW = refWPtr();
 
     // Beam Radius
-    checkCircularSection(bm);
     const scalar R = bm.R();
 
     // Prepare the result

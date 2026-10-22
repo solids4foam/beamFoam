@@ -77,9 +77,8 @@ tmp<scalarField> morisonAddedMassContribution::fluidMass
 ) const
 {
     // pi*R^2 is the displaced area, and the added mass is the same in all
-    // directions normal to the beam, only for a circular cross-section.
-    checkCircularSection(bm);
-
+    // directions normal to the beam, only for a circular cross-section
+    // (see requiresCircularSection)
     const scalar R = bm.R();
 
     return tmp<scalarField>
