@@ -28,6 +28,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "HermiteSpline.H"
 #include "samplingFluid.H"
+#include "groundContactContribution.H"
 #include "beamParallelChecks.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -78,9 +79,13 @@ almDragContribution::almDragContribution
     (
         coeffs_.lookupOrDefault<bool>("groundContactActive", false)
     ),
-    groundZ_
+    groundPlane_
     (
-        coeffs_.lookupOrDefault<scalar>("groundZ", 0.0)
+        coeffs_.found("groundZ")
+     || coeffs_.found("groundPoint")
+     || coeffs_.found("groundNormal")
+      ? groundContactContribution::readGroundPlane(coeffs_)
+      : plane(point::zero, vector(0, 0, 1))
     ),
     searchEnginePtr_(),
     decompositionChecked_(false)
@@ -219,7 +224,7 @@ void almDragContribution::preEvolve(const beamModel& bm)
             beamMesh,
             beamCellCenterCoord,
             seedCellIDs,
-            groundZ_,
+            groundPlane_,
             groundContactActive_,
             dRdScell,
             samplingRefL,

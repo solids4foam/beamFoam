@@ -49,7 +49,7 @@ namespace Foam
         const fvMesh& mesh,
         const vectorField& beamCellCenterCoord,
         labelList& seedCellIDs,
-        const scalar groundZ,
+        const plane& groundPlane,
         const bool groundContactActive,
         const vectorField& dRdScell,
         const scalar samplingReferenceLength,
@@ -158,7 +158,11 @@ namespace Foam
             continue;
         }
         // This part only should activate when we have a mooring case!
-        if (beamCoords[beamCellI].z() <= groundZ && groundContactActive)
+        if
+        (
+            groundContactActive
+         && groundPlane.signedDistance(beamCoords[beamCellI]) <= 0
+        )
         {
             seedCellIDs[beamCellI] = -1;
             resultVect[beamCellI] = vector::zero;

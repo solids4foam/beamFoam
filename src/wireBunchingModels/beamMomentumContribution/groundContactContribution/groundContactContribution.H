@@ -29,7 +29,30 @@ Description
     Derived class to evaluate the ground contact force contribution
     due to seabed interactions -
     which will be added to the beam solver governing eqns
-    * For now, the seabed contact is only allowed in z-direction
+    The ground is a plane. A beam CV cell-centre below it is pushed out
+    along the plane normal by a penalty spring (kNormal) and a damper
+    (cNormal, acting on rebound only), and its sliding along the beam is
+    resisted by friction (kTangential, muFriction).
+
+    The plane is given by groundPoint and groundNormal, or by groundZ as a
+    short form for the horizontal plane z = groundZ with normal (0 0 1):
+    \verbatim
+    groundContact
+    {
+        beamMomentumContributionType groundContact;
+
+        groundContactCoeffs
+        {
+            groundPoint    (0 0 -0.5);  // a point on the ground
+            groundNormal   (0 0 1);     // from the ground into the fluid
+            // groundZ     -0.5;        // short form of the two entries above
+            kNormal        1e3;
+            cNormal        1.0;
+            kTangential    0.0;
+            muFriction     0.0;
+        }
+    }
+    \endverbatim
 
 SourceFiles
     groundContactContribution.C
@@ -49,6 +72,7 @@ Author
 #include "HermiteSpline.H"
 // #include "beamModel.H"
 #include "coupledTotalLagNewtonRaphsonBeam.H"
+#include "plane.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -84,8 +108,8 @@ private:
     //- Friction coefficient for ground contact model
     scalar muFriction_;
 
-    //- ground coordinate for ground contact model
-    scalar groundZ_;
+    //- Ground plane, with the normal pointing from the ground into the fluid
+    plane groundPlane_;
 
 public:
 
@@ -106,6 +130,14 @@ public:
 
         ~groundContactContribution()
         {}
+
+
+    // Static Member Functions
+
+        //- Read the ground plane from groundPoint and groundNormal, or from
+        //  groundZ as a short form for the plane z = groundZ with normal
+        //  (0 0 1)
+        static plane readGroundPlane(const dictionary& dict);
 
 
     // Member Functions
