@@ -1,0 +1,23 @@
+#!/bin/sh
+cd ${0%/*} || exit 1                        # Run from this directory
+. $WM_PROJECT_DIR/bin/tools/RunFunctions    # Tutorial run functions
+
+touch case.foam
+
+# Tank mesh (z from -0.15 to 0.15) with the floating box cut out
+runApplication blockMesh
+runApplication topoSet
+runApplication subsetMesh -overwrite c0 -patch floatingObject
+
+restore0Dir
+
+# Initial free surface at z = 0 (MoorDyn's still-water level)
+runApplication setFields
+
+# Serial run (mooring line: Mooring/lines.txt, MoorDyn v2)
+runApplication $(getApplication)
+
+# Mooring line time series for ParaView (open with case.foam)
+./makeMooringVTKSeries.py
+
+#------------------------------------------------------------------------------

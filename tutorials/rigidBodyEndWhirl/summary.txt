@@ -1,0 +1,46 @@
+Sweep: moment
+case            M       EI     wc   stab coupling     status         t Newton/step failed coupl mean/max/capped  runtime   w/wc whirl err part-mono
+M0.075      0.075    266.7   9.98  0.107 partitioned  finished  15.000        6.81      0              2.91/6/0     31.5  0.250    -5.27%          
+M0.075      0.075    266.7   9.98  0.107 monolithic   finished  15.000        3.00      0                           14.4  0.250    -5.27%   6.8e-05
+M0.15        0.15    266.7   9.98  0.107 partitioned  finished  15.000        8.05      0              3.27/6/0     37.1  0.497    -2.03%          
+M0.15        0.15    266.7   9.98  0.107 monolithic   finished  15.000        3.77      0                           18.0  0.497    -2.03%   1.8e-05
+M0.225      0.225    266.7   9.98  0.107 partitioned  finished  15.000        8.74      0              3.46/6/0     40.3  0.717    -0.81%          
+M0.225      0.225    266.7   9.98  0.107 monolithic   finished  15.000        3.90      0                           18.5  0.717    -0.81%   5.2e-06
+M0.27        0.27    266.7   9.98  0.107 partitioned  finished  15.000        9.25      0              3.50/6/0     42.6  0.803    -2.42%          
+M0.27        0.27    266.7   9.98  0.107 monolithic   finished  15.000        3.91      0                           18.7  0.803    -2.42%   1.5e-06
+M0.3          0.3    266.7   9.98  0.107 partitioned  finished  15.000        9.48      0              3.53/6/0     43.9  0.841 -          
+M0.3          0.3    266.7   9.98  0.107 monolithic   finished  15.000        3.93      0                           18.9  0.841 -   4.2e-06
+M0.45        0.45    266.7   9.98  0.107 partitioned  finished  15.000        9.49      0              3.46/6/0     44.3  0.924 -          
+M0.45        0.45    266.7   9.98  0.107 monolithic   finished  15.000        3.91      0                           18.9  0.924 -   1.6e-05
+M0.9          0.9    266.7   9.98  0.107 partitioned  finished  15.000        9.59      0              3.40/7/0     45.6  1.036 -          
+M0.9          0.9    266.7   9.98  0.107 monolithic   finished  15.000        3.82      0                           18.8  1.036 -   1.2e-04
+
+Sweep: stiffness
+case            M       EI     wc   stab coupling     status         t Newton/step failed coupl mean/max/capped  runtime   w/wc whirl err part-mono
+EIx0.25     0.225    66.67   4.99  0.027 partitioned  finished  15.000        6.90      0              2.21/4/0     32.2  0.918 -          
+EIx0.25     0.225    66.67   4.99  0.027 monolithic   finished  15.000        3.00      0                           14.7  0.918 -   2.7e-04
+EIx0.5      0.225    133.3   7.06  0.053 partitioned  finished  15.000        7.17      0              2.46/5/0     33.1  0.855 -          
+EIx0.5      0.225    133.3   7.06  0.053 monolithic   finished  15.000        3.00      0                           14.4  0.855 -   4.7e-04
+EIx0.75     0.225      200   8.64  0.080 partitioned  finished  15.000        8.41      0              3.31/6/0     38.5  0.785    -1.39%          
+EIx0.75     0.225      200   8.64  0.080 monolithic   finished  15.000        3.86      0                           18.5  0.785    -1.39%   1.0e-05
+EIx1        0.225    266.7   9.98  0.107 partitioned  finished  15.000        8.74      0              3.46/6/0     39.9  0.717    -0.81%          
+EIx1        0.225    266.7   9.98  0.107 monolithic   finished  15.000        3.90      0                           18.6  0.717    -0.81%   5.4e-06
+EIx2        0.225    533.3  14.12  0.213 partitioned  finished  15.000        9.41      0              3.79/8/0     42.3  0.527    -1.50%          
+EIx2        0.225    533.3  14.12  0.213 monolithic   finished  15.000        3.92      0                           18.6  0.527    -1.50%   2.7e-06
+EIx4        0.225     1067  19.96  0.427 partitioned  finished  15.000       14.83      0             6.50/14/0     64.1  0.375    -1.16%          
+EIx4        0.225     1067  19.96  0.427 monolithic   finished  15.000        3.94      0                           18.7  0.375    -1.16%   2.1e-06
+EIx16       0.225     4267  39.93  1.707 partitioned  crashed    0.002       71.00      0            50.00/50/1      0.0 - -          
+EIx16       0.225     4267  39.93  1.707 monolithic   finished  15.000        3.96      0                           18.9  0.188    -0.77%         -
+EIx64       0.225 1.707e+04  79.85  6.827 partitioned  crashed    0.001       43.00      0               nan/0/0 - - -          
+EIx64       0.225 1.707e+04  79.85  6.827 monolithic   finished  15.000        3.97      0                           18.4  0.094    -0.82%         -
+
+wc: critical speed [rad/s]; stab: beta dt^2 EA/(L m_pin), m_pin =
+1/(1/m + a^2/J): partitioned coupling iterations converge only below about
+1; Newton/step: beam Newton iterations per time step; failed: steps
+where Newton did not converge;
+coupl mean/max/capped: partitioned coupling iterations per step, and steps
+that hit nCouplingIterations unconverged; w/wc: final spin rate over wc;
+whirl err: final tip radius against linear theory (- near resonance or
+not finished);
+part-mono: largest partitioned-monolithic tip separation over the largest
+tip radius (both finished only).
