@@ -89,6 +89,7 @@ Author
 
 #include "beamMomentumContribution.H"
 #include "meshSearch.H"
+#include "plane.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -140,8 +141,9 @@ private:
     //  getFluidVelocity)
     bool groundContactActive_;
 
-    //- Ground height used by the sampling routine
-    scalar groundZ_;
+    //- Ground plane used by the sampling routine: groundPoint and
+    //  groundNormal, or groundZ for the plane z = groundZ (default 0)
+    plane groundPlane_;
 
     //- Lazily constructed fluid mesh search engine
     mutable autoPtr<meshSearch> searchEnginePtr_;
