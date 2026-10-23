@@ -171,23 +171,15 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     // TO-DO: Make the ground contact not just for z-direction but any
     // user specified direction
 
-    // Create spline using current beam points and tangents data
-    // The 0 argument selects the 0th beam (beam index bI = 0).
-    HermiteSpline spline
-    (
-        bm.currentBeamPoints(0),
-        bm.currentBeamTangents(0)
-    );
-
-    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-    const vectorField& dRdScell = spline.midPointDerivatives();
+    // Unit tangents to beam centreline at beam CV cell-centres
+    const vectorField dRdScellHat(unitTangents(bm));
 
     // Tangential component of velocity vector
     vectorField Ut
     (
         (
-            (U.internalField() & dRdScell)
-            *dRdScell
+            (U.internalField() & dRdScellHat)
+            *dRdScellHat
         )
     );
 

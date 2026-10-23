@@ -122,11 +122,6 @@ private:
         //  Stops with an error unless it is Euler or Newmark
         static word d2dt2SchemeName(const fvMesh& mesh);
 
-        //- Return the unit tangents to the beam centreline at the beam
-        //  CV cell-centres. Stops with an error if the beam region holds
-        //  more than one beam
-        static tmp<vectorField> unitTangents(const beamModel& bm);
-
         //- Return the displaced fluid mass of each beam CV,
         //  rhoFluid*pi*R^2*L. Stops with an error unless the beam has a
         //  circular cross-section
@@ -155,6 +150,18 @@ public:
 
 
     // Member Functions
+
+        //- The tangents and the radius come from beam 0 alone
+        virtual bool requiresSingleBeam() const
+        {
+            return true;
+        }
+
+        //- R() is used as the radius
+        virtual bool requiresCircularSection() const
+        {
+            return true;
+        }
 
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix

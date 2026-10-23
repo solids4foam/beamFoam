@@ -53,6 +53,10 @@ Description
         Cdt  = tangential drag coefficient (Cdt_)
         D    = drag reference length (dragReferenceLength_, default 2*bm.R())
 
+    The defaults that use bm.R() (D, and the sampling reference length)
+    need a circular cross-section; for other sections, set both
+    almSamplingReferenceLength and almDragReferenceLength.
+
     The stored line force is under-relaxed against the previous estimate:
 
         almForce = w f + (1 - w) almForce_prev
@@ -142,9 +146,8 @@ private:
     //- Lazily constructed fluid mesh search engine
     mutable autoPtr<meshSearch> searchEnginePtr_;
 
-    //- Have the beam-region checks (single beam, decomposition) been run?
-    //  They are run once, on the first preEvolve, where the beam mesh is
-    //  available
+    //- Has the decomposition check been run? It is run once, on the first
+    //  preEvolve, where the beam mesh is available
     bool decompositionChecked_;
 
     //- Disallow default bitwise copy construct
@@ -176,6 +179,18 @@ public:
 
 
     // Member Functions
+
+        //- The tangents come from beam 0 alone
+        virtual bool requiresSingleBeam() const
+        {
+            return true;
+        }
+
+        //- R() is used as the radius when a reference length is not given
+        virtual bool requiresCircularSection() const
+        {
+            return samplingReferenceLength_ <= 0 || dragReferenceLength_ <= 0;
+        }
 
         //- Sample the fluid and update the cached almForce field
         virtual void preEvolve(const beamModel& bm);

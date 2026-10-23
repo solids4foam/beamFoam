@@ -31,6 +31,10 @@ Description
     which will be added to the beam solver governing eqns
     * For now, the seabed contact is only allowed in z-direction
 
+    Only valid for a circular cross-section (crossSectionModel circle),
+    as R is used as the radius. A beam region must hold a single beam.
+    Other cases stop with an error.
+
 SourceFiles
     groundContactContribution.C
 
@@ -109,6 +113,18 @@ public:
 
 
     // Member Functions
+
+        //- The tangents and the radius come from beam 0 alone
+        virtual bool requiresSingleBeam() const
+        {
+            return true;
+        }
+
+        //- R() is used as the radius
+        virtual bool requiresCircularSection() const
+        {
+            return true;
+        }
 
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
