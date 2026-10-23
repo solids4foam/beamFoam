@@ -22,7 +22,7 @@ boundaryField
 {
     left
     {
-        type fixedDisplacement;
+        type fixedBeamDisplacement;
         value uniform (0 0 0);
 
         displacementSeries

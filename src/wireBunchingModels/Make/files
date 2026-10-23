@@ -18,8 +18,8 @@ boundaryConditions = beamModels/fvPatchFields
 $(boundaryConditions)/momentBeamRotationNR/momentBeamRotationNRFvPatchVectorField.C
 $(boundaryConditions)/forceBeamDisplacementNR/forceBeamDisplacementNRFvPatchVectorField.C
 $(boundaryConditions)/followerForceBeamDisplacementNR/followerForceBeamDisplacementNRFvPatchVectorField.C
-$(boundaryConditions)/fixedDisplacement/fixedDisplacementFvPatchVectorField.C
-$(boundaryConditions)/fixedRotation/fixedRotationFvPatchVectorField.C
+$(boundaryConditions)/fixedBeamDisplacement/fixedBeamDisplacementFvPatchVectorField.C
+$(boundaryConditions)/fixedBeamRotation/fixedBeamRotationFvPatchVectorField.C
 $(boundaryConditions)/linearSpringForceBeamDisplacementNR/linearSpringForceBeamDisplacementNRFvPatchVectorField.C
 
 functionObjects/beamEnergyData/beamEnergyData.C

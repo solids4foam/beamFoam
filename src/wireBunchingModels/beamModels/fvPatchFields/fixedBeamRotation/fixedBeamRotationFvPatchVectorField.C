@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "fixedRotationFvPatchVectorField.H"
+#include "fixedBeamRotationFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
 
@@ -34,8 +34,8 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-fixedRotationFvPatchVectorField::
-fixedRotationFvPatchVectorField
+fixedBeamRotationFvPatchVectorField::
+fixedBeamRotationFvPatchVectorField
 (
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF
@@ -50,10 +50,10 @@ fixedRotationFvPatchVectorField
 }
 
 
-fixedRotationFvPatchVectorField::
-fixedRotationFvPatchVectorField
+fixedBeamRotationFvPatchVectorField::
+fixedBeamRotationFvPatchVectorField
 (
-    const fixedRotationFvPatchVectorField& tdpvf,
+    const fixedBeamRotationFvPatchVectorField& tdpvf,
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
     const fvPatchFieldMapper& mapper
@@ -66,8 +66,8 @@ fixedRotationFvPatchVectorField
 {}
 
 
-fixedRotationFvPatchVectorField::
-fixedRotationFvPatchVectorField
+fixedBeamRotationFvPatchVectorField::
+fixedBeamRotationFvPatchVectorField
 (
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
@@ -103,10 +103,10 @@ fixedRotationFvPatchVectorField
 }
 
 
-fixedRotationFvPatchVectorField::
-fixedRotationFvPatchVectorField
+fixedBeamRotationFvPatchVectorField::
+fixedBeamRotationFvPatchVectorField
 (
-    const fixedRotationFvPatchVectorField& tdpvf
+    const fixedBeamRotationFvPatchVectorField& tdpvf
 )
 :
     fixedValueFvPatchVectorField(tdpvf),
@@ -116,10 +116,10 @@ fixedRotationFvPatchVectorField
 {}
 
 
-fixedRotationFvPatchVectorField::
-fixedRotationFvPatchVectorField
+fixedBeamRotationFvPatchVectorField::
+fixedBeamRotationFvPatchVectorField
 (
-    const fixedRotationFvPatchVectorField& tdpvf,
+    const fixedBeamRotationFvPatchVectorField& tdpvf,
     const DimensionedField<vector, volMesh>& iF
 )
 :
@@ -132,7 +132,7 @@ fixedRotationFvPatchVectorField
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void fixedRotationFvPatchVectorField::autoMap
+void fixedBeamRotationFvPatchVectorField::autoMap
 (
     const fvPatchFieldMapper& m
 )
@@ -144,7 +144,7 @@ void fixedRotationFvPatchVectorField::autoMap
 
 
 // Reverse-map the given fvPatchField onto this fvPatchField
-void fixedRotationFvPatchVectorField::rmap
+void fixedBeamRotationFvPatchVectorField::rmap
 (
     const fvPatchVectorField& ptf,
     const labelList& addr
@@ -153,15 +153,15 @@ void fixedRotationFvPatchVectorField::rmap
     fixedValueFvPatchVectorField::rmap(ptf, addr);
     
     // SB uncommented this line
-    const fixedRotationFvPatchVectorField& dmptf =
-         refCast<const fixedRotationFvPatchVectorField>(ptf);
+    const fixedBeamRotationFvPatchVectorField& dmptf =
+         refCast<const fixedBeamRotationFvPatchVectorField>(ptf);
          
      totalTheta_.rmap(dmptf.totalTheta_, addr);
 }
 
 
 // Update the coefficients associated with the patch field
-void fixedRotationFvPatchVectorField::updateCoeffs()
+void fixedBeamRotationFvPatchVectorField::updateCoeffs()
 {
     if (updated())
     {
@@ -220,7 +220,7 @@ void fixedRotationFvPatchVectorField::updateCoeffs()
 }
 
 // Write
-void fixedRotationFvPatchVectorField::write(Ostream& os) const
+void fixedBeamRotationFvPatchVectorField::write(Ostream& os) const
 {
 	if (thetaSeries_.size())
     {
@@ -236,7 +236,7 @@ void fixedRotationFvPatchVectorField::write(Ostream& os) const
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-makePatchTypeField(fvPatchVectorField, fixedRotationFvPatchVectorField);
+makePatchTypeField(fvPatchVectorField, fixedBeamRotationFvPatchVectorField);
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

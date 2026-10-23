@@ -89,8 +89,8 @@ equivalent cylinder [Taran et al. (2025)]:
 
 - **`left` patch (anchor):** displacement `W` fixed to zero (`fixedValue`),
   i.e. the anchor is pinned to the seabed.
-- **`right` patch (fairlead):** `fixedDisplacement` with a `displacementSeries`
-  interpolated from `constant/timeVsDisplacement`.
+- **`right` patch (fairlead):** `fixedBeamDisplacement` with a
+  `displacementSeries` interpolated from `constant/timeVsDisplacement`.
 - **Rotation `Theta`:** `momentBeamRotationNR` on both ends with a zero moment
   series (`constant/timeVsMoment`), i.e. moment-free ends.
 
@@ -157,7 +157,7 @@ All three models are configured in
   is a few seconds on a single core.
 - The settled state (`2/` time directory) can be copied into a `moorFV` CFD
   case as the mooring-line initial condition. When doing so, change the `right`
-  patch of `W` from `fixedDisplacement` to a `fixedValue` condition (the
+  patch of `W` from `fixedBeamDisplacement` to a `fixedValue` condition (the
   fairlead is then driven by the coupled 6-DoF body motion instead of the
   prescribed series).
 
