@@ -49,7 +49,7 @@ namespace Foam
         const fvMesh& mesh,
         const vectorField& beamCellCenterCoord,
         labelList& seedCellIDs,
-        const scalar groundZ,
+        const plane& groundPlane,
         const bool groundContactActive,
         const vectorField& dRdScell,
         const scalar samplingReferenceLength,
@@ -144,6 +144,9 @@ namespace Foam
 
     labelList fluidCellIDs(beamCoords.size(), -1);
     labelList sampleCellIDs(beamCoords.size(), -1);
+    // Beam cells outside the fluid domain or below the ground, which get no
+    // fluid velocity
+    boolList noFluid(beamCoords.size(), false);
     boundBox bb = fluidMesh.bounds();
     bb.inflate(0.01);
     forAll(beamCoords, beamCellI)
@@ -151,6 +154,7 @@ namespace Foam
         if (!bb.contains(beamCoords[beamCellI]))
         {
             // if its not in the bounding box, return zero for fluid's U
+            noFluid[beamCellI] = true;
             resultVect[beamCellI] = vector::zero;
             seedCellIDs[beamCellI] = -1;
             // if its not within the bounding box, set the fluidCellID to -1
@@ -158,8 +162,13 @@ namespace Foam
             continue;
         }
         // This part only should activate when we have a mooring case!
-        if (beamCoords[beamCellI].z() <= groundZ && groundContactActive)
+        if
+        (
+            groundContactActive
+         && groundPlane.signedDistance(beamCoords[beamCellI]) <= 0
+        )
         {
+            noFluid[beamCellI] = true;
             seedCellIDs[beamCellI] = -1;
             resultVect[beamCellI] = vector::zero;
             continue;
@@ -244,6 +253,14 @@ namespace Foam
 
     forAll(Ps, pI)
     {
+        // A cell outside the fluid domain or below the ground keeps its zero
+        // fluid velocity, rather than the velocity at its upstream sampling
+        // point
+        if (noFluid[pI])
+        {
+            continue;
+        }
+
         label sampleCellID = -1;
         if (!fluidMesh.bounds().contains(Ps[pI]))
         {

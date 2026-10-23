@@ -36,6 +36,7 @@ Author
 #include "fvMesh.H"
 #include "volFields.H"
 #include "meshSearch.H"
+#include "plane.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -54,7 +55,7 @@ namespace Foam
             const fvMesh& mesh,
             const vectorField& beamCellCenterCoord,
             labelList& seedCellIDs,
-            const scalar groundZ,
+            const plane& groundPlane,
             const bool groundContactActive,
             const vectorField& dRdScell,
             const scalar samplingReferenceLength,
