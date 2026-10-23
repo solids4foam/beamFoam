@@ -13,7 +13,7 @@ beamFoam is a sister repository of
 Since [pull request #61][pr61], two beam boundary conditions have new names:
 
 | Old name | New name |
-|---|---|
+| --- | --- |
 | `fixedDisplacement` | `fixedBeamDisplacement` |
 | `fixedRotation` | `fixedBeamRotation` |
 
