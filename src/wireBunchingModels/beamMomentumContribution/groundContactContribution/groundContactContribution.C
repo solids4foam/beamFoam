@@ -195,33 +195,39 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (coord.z() < groundZ_)
         {
             cellsInContact++;
-            // Restoring (seabed) force must push the penetrating cell UP.
-            // With the solver's source convention (positive source(2,0) is
-            // downward, same as gravity), the normal force is negative when
-            // coord.z < groundZ_.
-            const scalar f_gc_normal =
-                (2*R*kNormal_*(coord.z() - groundZ_))
-              - (2*R*cNormal_*max(U[cellI].z(), 0));
+            // Seabed force on the cell: the spring pushes the penetrating
+            // cell up, and the damper resists its rebound (upward velocity).
+            // The seabed can only push, so a damper stronger than the spring
+            // does not pull the cell down
+            const scalar f_gc_normal = max
+            (
+                (2*R*kNormal_*(groundZ_ - coord.z()))
+              - (2*R*cNormal_*max(U[cellI].z(), 0)),
+                0
+            );
 
             vector f_gc_tangential(vector::zero);
 
             if
             (
                 kTangential_*2.0*R*mag(Ut[cellI])
-             >= muFriction_*mag(f_gc_normal)
+             >= muFriction_*f_gc_normal
             )
             {
                 // Max value of friction as per Coulomb's law
                 f_gc_tangential =
-                    -muFriction_*mag(f_gc_normal)*UtHat[cellI];
+                    -muFriction_*f_gc_normal*UtHat[cellI];
             }
             else
             {
                 f_gc_tangential = -2.0*R*kTangential_*Ut[cellI];
             }
-            result[cellI][vector::X] += f_gc_tangential.x();
-            result[cellI][vector::Y] += f_gc_tangential.y();
-            result[cellI][vector::Z] += (f_gc_normal + f_gc_tangential.z());
+
+            // The solver adds external forces to the source with a minus
+            // sign, as for gravity, so subtract the seabed force
+            result[cellI][vector::X] -= f_gc_tangential.x();
+            result[cellI][vector::Y] -= f_gc_tangential.y();
+            result[cellI][vector::Z] -= (f_gc_normal + f_gc_tangential.z());
 
         }
      }
