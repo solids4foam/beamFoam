@@ -1,0 +1,308 @@
+Layout of the monolithic beam + rigid body matrix
+=================================================
+
+This note explains where every coefficient of the monolithic beam + rigid
+body system sits in the matrix built by
+BlockEigenSolverOF::convertFoamMatrixToEigenMatrix, what each body
+coupling block means, and how the index expressions in the code map to
+rows and columns.
+
+For the order of calls that build and solve the matrix, see
+monolithicRigidBodyCodePath.txt. For how the PIMPLE loop reaches the
+solver, see pimpleToRigidBodySolverCallChain.txt.
+
+Files (line numbers are written as <letter>:<line>):
+  B = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+  R = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+  C = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+  D = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/RigidBodyCouplingData.H
+      (struct RigidBodyMonolithicCoupling, which holds all the body blocks)
+
+
+1. Blocks of six: translation first, then rotation
+---------------------------------------------------
+Every block of the matrix, for a beam cell or for the body, is 6 rows by
+6 columns, ordered translation first and then rotation:
+
+  Offset in the block   Beam cell rows / columns        Body rows / columns
+  --------------------  ------------------------------  ------------------------------
+  +0, +1, +2            force balance / DW  (x, y, z)    force balance / dx  (x, y, z)
+  +3, +4, +5            moment balance / DTheta (x,y,z)  moment balance / dtheta (x,y,z)
+
+The unknowns are Newton increments: DW and DTheta for every beam cell,
+and dx (body displacement) and dtheta (body step rotation vector) for
+the body. The body block comes after all the beam cells.
+
+Two starting indices are used in the code (B:100-101):
+
+    const label rbRow   = 6*d.size();            // first body row = first body column
+    const label beamRow = 6*c.attachmentCell;    // first row of the attachment cell
+
+So "+3" in an index always means "skip the three translation entries of
+this block and go to its three rotation entries".
+
+
+2. Naming of the coupling blocks: the name gives the ROWS
+----------------------------------------------------------
+The names of the beam-row coupling blocks describe the rows they sit in,
+not the columns. Their columns are always the body's columns.
+
+  Name                     Rows                                      Columns
+  -----------------------  ----------------------------------------  ----------------------------
+  beamWRowCoeff            attachment cell's force rows (+0..+2)     body translation (dx)
+  beamThetaRowCoeff        attachment cell's moment rows (+3..+5)    body translation (dx)
+  beamWRowRotCoeff         attachment cell's force rows (+0..+2)     body rotation (dtheta)
+  beamThetaRowRotCoeff     attachment cell's moment rows (+3..+5)    body rotation (dtheta)
+
+The body-row blocks are named after the body rows and the columns they
+multiply:
+
+  Name                     Rows                     Columns
+  -----------------------  -----------------------  ------------------------------------
+  bodyCoeff                body force rows          body translation (dx)
+  bodyTransRotCoeff        body force rows          body rotation (dtheta)
+  bodyWCoeff               body force rows          attachment cell DW
+  bodyThetaCoeff           body force rows          attachment cell DTheta
+  bodyRotTransCoeff        body moment rows         body translation (dx)
+  bodyRotCoeff             body moment rows         body rotation (dtheta)
+  bodyRotWCoeff            body moment rows         attachment cell DW
+  bodyRotThetaCoeff        body moment rows         attachment cell DTheta
+
+The beam's own blocks d, l and u only ever fill beam columns. The body
+columns are new, so nothing in the beam assembly overlaps the coupling
+blocks.
+
+
+3. The index expressions in convertFoamMatrixToEigenMatrix
+-----------------------------------------------------------
+Inside a double loop over rowI = 0..2 and colI = 0..2 (B:117-230), each
+block is entered with Eigen::Triplet(row, column, value). The four blocks
+of the attachment cell's rows use all four combinations of the two +3s:
+
+    (beamRow + rowI,     rbRow + colI)       beamWRowCoeff         force rows,  dx cols     (B:126)
+    (beamRow + 3 + rowI, rbRow + colI)       beamThetaRowCoeff     moment rows, dx cols     (B:134)
+    (beamRow + rowI,     rbRow + 3 + colI)   beamWRowRotCoeff      force rows,  dtheta cols (B:176)
+    (beamRow + 3 + rowI, rbRow + 3 + colI)   beamThetaRowRotCoeff  moment rows, dtheta cols (B:184)
+
+and the body rows:
+
+    (rbRow + rowI,       rbRow + colI)       bodyCoeff                                      (B:144)
+    (rbRow + rowI,       beamRow + colI)     bodyWCoeff                                     (B:152)
+    (rbRow + rowI,       beamRow + 3 + colI) bodyThetaCoeff                                 (B:160)
+    (rbRow + rowI,       rbRow + 3 + colI)   bodyTransRotCoeff                              (B:192)
+    (rbRow + 3 + rowI,   rbRow + colI)       bodyRotTransCoeff                              (B:202)
+    (rbRow + 3 + rowI,   rbRow + 3 + colI)   bodyRotCoeff                                   (B:210)
+    (rbRow + 3 + rowI,   beamRow + colI)     bodyRotWCoeff                                  (B:218)
+    (rbRow + 3 + rowI,   beamRow + 3 + colI) bodyRotThetaCoeff                              (B:226)
+
+Because rowI and colI each run over 0, 1, 2, every line fills a full 3x3
+block (all nine entries), not just three entries.
+
+No two coupling blocks share a position. Pairs such as beamThetaRowCoeff
+and beamThetaRowRotCoeff share their rows (the attachment cell's moment
+rows) but not their columns: the first uses rbRow + colI (dx), the second
+rbRow + 3 + colI (dtheta). For the example in section 4:
+
+  beamWRowCoeff          rows 12-14  cols 18-20
+  beamThetaRowCoeff      rows 15-17  cols 18-20
+  beamWRowRotCoeff       rows 12-14  cols 21-23
+  beamThetaRowRotCoeff   rows 15-17  cols 21-23
+  bodyCoeff              rows 18-20  cols 18-20
+  bodyWCoeff             rows 18-20  cols 12-14
+  bodyThetaCoeff         rows 18-20  cols 15-17
+  bodyTransRotCoeff      rows 18-20  cols 21-23
+  bodyRotTransCoeff      rows 21-23  cols 18-20
+  bodyRotCoeff           rows 21-23  cols 21-23
+  bodyRotWCoeff          rows 21-23  cols 12-14
+  bodyRotThetaCoeff      rows 21-23  cols 15-17
+
+(Had two triplets landed on the same position, A.setFromTriplets would
+add them together rather than overwrite one with the other.)
+
+The blocks whose rows depend on dtheta (all the ...Rot... ones) are only
+added when the body rotates (rotationActive): the loop does "continue"
+before them otherwise (B:164-167). Without rotation the body's rotation
+rows are set to the identity with a zero right-hand side instead
+(B:105-114), so dtheta = 0.
+
+
+4. The full matrix for a small example
+--------------------------------------
+Take a beam with 3 cells (0, 1, 2), the attachment patch next to cell 2,
+and internal faces 0 (owner 0, neighbour 1) and 1 (owner 1, neighbour 2).
+There are 3 x 6 = 18 beam rows plus 6 body rows: a 24 x 24 matrix, with
+beamRow = 6*2 = 12 and rbRow = 6*3 = 18.
+
+Each entry below is a 3x3 block. W means a cell's displacement increment
+(force-balance rows or columns) and Theta its rotation increment
+(moment-balance rows or columns). d2ThW means the moment-row / W-column
+part of cell 2's diagonal block, and so on.
+
+                cell 0             cell 1             cell 2 (attachment)         body
+                W0      Th0        W1      Th1        W2           Th2            x (dx)              th (dtheta)
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows  0- 2 W0| d0WW    d0WTh    | u0WW    u0WTh    |  0            0           |  0                   0                   |
+rows  3- 5 Th0| d0ThW  d0ThTh   | u0ThW   u0ThTh   |  0            0           |  0                   0                   |
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows  6- 8 W1| l0WW    l0WTh    | d1WW    d1WTh    |  u1WW         u1WTh       |  0                   0                   |
+rows  9-11 Th1| l0ThW  l0ThTh   | d1ThW   d1ThTh   |  u1ThW        u1ThTh      |  0                   0                   |
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows 12-14 W2|  0       0       | l1WW    l1WTh    |  d2WW         d2WTh       |  beamWRowCoeff       beamWRowRotCoeff    |
+rows 15-17 Th2|  0      0       | l1ThW   l1ThTh   |  d2ThW        d2ThTh      |  beamThetaRowCoeff   beamThetaRowRotCoeff|
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows 18-20 x |  0       0       |  0       0       |  bodyWCoeff   bodyThetaCoeff    |  bodyCoeff           bodyTransRotCoeff   |
+rows 21-23 th|  0       0       |  0       0       |  bodyRotWCoeff bodyRotThetaCoeff|  bodyRotTransCoeff   bodyRotCoeff        |
+             +------------------+------------------+---------------------------+------------------------------------------+
+                cols 0-5           cols 6-11          cols 12-17                  cols 18-20           cols 21-23
+
+  unknowns:         [ DW0, DTh0, DW1, DTh1, DW2, DTh2, dx, dtheta ]
+  right-hand side:  [ source0, source1, source2, bodySource, bodyRotSource ]
+
+Where the beam blocks go (B:61-87 and B:234-279):
+  d[c]  at rows 6c..6c+5,      columns 6c..6c+5        (cell c's own block)
+  u[f]  at rows 6*own..+5,     columns 6*nei..+5       (owner row, neighbour column)
+  l[f]  at rows 6*nei..+5,     columns 6*own..+5       (neighbour row, owner column)
+None of them reach the body columns 18-23.
+
+Examples of the index arithmetic for this matrix:
+  beamThetaRowCoeff    (beamRow + 3 + rowI, rbRow + colI)     -> rows 15-17, cols 18-20
+  beamThetaRowRotCoeff (beamRow + 3 + rowI, rbRow + 3 + colI) -> rows 15-17, cols 21-23
+  bodyRotCoeff         (rbRow + 3 + rowI,   rbRow + 3 + colI) -> rows 21-23, cols 21-23
+
+The beam-only system (no monolithic body) is the top-left 18 x 18 part
+alone: BlockEigenSolverOF only adds the body block when the coupling is
+active.
+
+
+5. What is on the diagonal, and what is not
+-------------------------------------------
+An entry is on the matrix diagonal only when its row equals its column.
+A block lies on the diagonal only when its rows and columns start from
+the same offset:
+
+  Block           Row               Column            Example rows / cols
+  --------------  ----------------  ----------------  --------------------------------
+  d[c]            6c + i            6c + j            12-17 / 12-17 for cell 2
+  bodyCoeff       rbRow + rowI      rbRow + colI      18-20 / 18-20
+  bodyRotCoeff    rbRow + 3 + rowI  rbRow + 3 + colI  21-23 / 21-23
+
+beamThetaRowRotCoeff, at (beamRow + 3 + rowI, rbRow + 3 + colI), looks
+symmetric because of the two +3s, but the +3s are added to different
+starting points: beamRow (= 12, the attachment cell) and rbRow (= 18, the
+body). Its rows are 15-17 and its columns 21-23, so it is never on the
+diagonal. It is an off-diagonal block: to the right of cell 2's diagonal
+block and above bodyRotCoeff.
+
+  The neighbourhood of the attachment cell and the body:
+
+                     cell 2 (cols 12-17)       body x (18-20)        body th (21-23)
+  row W2  (12-14)    d2 (diagonal block)       beamWRowCoeff         beamWRowRotCoeff
+  row Th2 (15-17)    d2 (diagonal block)       beamThetaRowCoeff     beamThetaRowRotCoeff
+  row x   (18-20)    bodyWCoeff ...            bodyCoeff (diag)      bodyTransRotCoeff
+  row th  (21-23)    bodyRotWCoeff ...         bodyRotTransCoeff     bodyRotCoeff (diag)
+
+
+6. Where the body columns come from: the attachment face
+---------------------------------------------------------
+The attachment patch has a fixedValue W condition. Its boundary
+contributions to cell 2 (C:360-397 for the force rows, C:1056-1086 for
+the moment rows) are:
+
+    d[fc[faceI]](0,0) += -pCQW[faceI].xx()/pDelta[faceI];    // force rows, cell W columns   (C:370)
+    source[fc[faceI]](0,0) -= WContrib.x();                  // WContrib = CQW.DW_b/pDelta    (C:395)
+
+    d[fc[faceI]](3,0) -= pCMQW[faceI].xx()/pDelta[faceI];    // moment rows, cell W columns  (C:1059)
+    source[fc[faceI]](3,0) -= curSource.x();                 // curSource = CMQW.DW_b/pDelta  (C:1084)
+
+So the force and moment balance of cell 2 depend on two displacement
+increments:
+  - the cell's own DW2, with coefficient -Kb (force rows) or -KbM (moment
+    rows). These go into d2WW and d2ThW, in cell 2's W columns;
+  - the attachment face's DW_b, with coefficient +Kb or +KbM, where
+        Kb  = CQW_b/pDelta     (R:581)
+        KbM = CMQW_b/pDelta    (R:582)
+In effect, the end-face force and moment depend on DW_b - DW2 across the
+half-cell from the cell centre to the face.
+
+Beam only: DW_b is known (prescribed), so its term is moved to the
+right-hand side. These are the source lines above.
+
+Monolithic:
+  1. setRigidBodyEndIterate (R:463, W_.storePrevIter()) stores the
+     boundary value as the previous iterate, so DW_b = 0 in the boundary
+     condition and those source terms vanish.
+  2. The face really moves with the body: DW_b = dx - Sr T dtheta (the
+     rotation moves the attachment point through the arm r).
+  3. So the +Kb and +KbM coefficients are moved from the source into
+     columns for dx and dtheta. These columns are the beam-row coupling
+     blocks:
+
+    coupling.beamWRowCoeff        = Kb;                       // R:633
+    coupling.beamThetaRowCoeff    = KbM;                      // R:634
+    coupling.beamWRowRotCoeff     = -(Kb & SrT);              // R:649
+    coupling.beamThetaRowRotCoeff = -(KbM & SrT);             // R:650
+
+The pairs therefore sit in the same rows but in different columns:
+  d2WW  (contains -Kb)   with  beamWRowCoeff     (+Kb)
+  d2ThW (contains -KbM)  with  beamThetaRowCoeff (+KbM)
+(d2WW also holds the internal-face and inertia terms of cell 2.)
+
+
+7. The rotation terms: arm r, Sr and T
+--------------------------------------
+When the body turns by dtheta, the attachment point moves, because it is
+at the end of the arm r from the centre of mass (R:625-627):
+
+    const vector r   = body.arm(rigidBodyEndTheta_);        // CoM -> attachment point
+    const tensor Sr  = *r;                                  // r x (.) as a matrix
+    const tensor SrT = (Sr & body.rotationJacobian(rigidBodyEndTheta_));
+
+T (rotationJacobian) turns a change of the step rotation vector into the
+spatial rotation of the body, T dtheta. The attachment point then moves
+by (T dtheta) x r = -Sr T dtheta. Multiplying by the face coefficients
+gives the rotation columns of the beam rows:
+  beamWRowRotCoeff     = -(Kb  & SrT)   the end cell's force balance per unit dtheta
+  beamThetaRowRotCoeff = -(KbM & SrT)   the end cell's moment balance per unit dtheta
+
+
+8. All the body coupling blocks
+-------------------------------
+Built in rigidBodyEndMonolithicCoupling (R:568 onwards). Qb is the
+attachment face force (the beam pushes on the body with -Qb), dcW and
+dcTheta are the attachment cell's boundary-only diagonal blocks (how the
+face force depends on the cell's DW and DTheta).
+
+  Block                  Value (pin joint)                                      Line
+  ---------------------  -----------------------------------------------------  -----
+  beamWRowCoeff          Kb                                                     R:633
+  beamThetaRowCoeff      KbM                                                    R:634
+  bodyCoeff              translationalJacobian*I + Kb                           R:639
+                         (= m/(beta dt^2) + damping, plus Kb)
+  bodyWCoeff             dcW                                                    R:640
+  bodyThetaCoeff         dcTheta                                                R:641
+  bodySource             -translationalResidual(x, -Qb)                         R:643
+  beamWRowRotCoeff       -(Kb & SrT)                                            R:649
+  beamThetaRowRotCoeff   -(KbM & SrT)                                           R:650
+  bodyTransRotCoeff      -(Kb & SrT)                                            R:651
+  bodyRotTransCoeff      Sr & Kb                                                R:656
+  bodyRotCoeff           rotationalInertiaJacobian + ((*Qb) & SrT)              R:657
+                         - (Sr & Kb & SrT)
+  bodyRotWCoeff          Sr & dcW                                               R:661
+  bodyRotThetaCoeff      Sr & dcTheta                                           R:662
+  bodyRotSource          -rotationalResidual(theta, -Qb)                        R:664
+
+Welded joint: the end face also turns with the body, so the end-face
+rotation's own coefficients are added to the rotation blocks, in the same
+positions (R:695-707):
+    beamWRowRotCoeff     += CF & T
+    beamThetaRowRotCoeff += CM & T
+    bodyTransRotCoeff    += CF & T
+    bodyRotCoeff         += (Sr & CF & T) + (CMb & T)
+    bodyRotThetaCoeff    -= CMTheta_b/pDelta
+and bodyRotSource includes the end-face moment Mb.
+
+Constraints: constrainRigidBodyEndCoupling (R:714 onwards) projects the
+body columns onto the free directions (on the right, & Pt or & Pr) and
+the body rows onto the free directions (on the left, Pt & or Pr &). It
+adds (I - P), scaled like the block, to bodyCoeff and bodyRotCoeff, so
+the constrained increments solve (I - P) dx = 0 and stay zero.
