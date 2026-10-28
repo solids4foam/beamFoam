@@ -15,6 +15,9 @@ License
     You should have received a copy of the GNU General Public License
     along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
+Description
+    Helper function for Actuator line model's upstream sampling
+
 Author
     Amirhossein Taran, UCD
 

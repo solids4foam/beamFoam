@@ -1,4 +1,6 @@
 /*---------------------------------------------------------------------------*\
+    Copyright (C) 2020 OpenCFD Ltd.
+-------------------------------------------------------------------------------
 License
     This file is part of beamFoam.
 
@@ -18,7 +20,8 @@ License
 Description
     Summary of mesh information (eg, after blockMesh)
 
-    Copied from printMeshSummary.H of PDRblockMesh in OpenFOAM-v2306.
+    Copied unchanged from printMeshSummary.H of PDRblockMesh in
+    OpenFOAM-v2306.
 
 \*---------------------------------------------------------------------------*/
 
