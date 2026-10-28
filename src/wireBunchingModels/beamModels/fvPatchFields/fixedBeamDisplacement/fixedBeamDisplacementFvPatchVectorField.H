@@ -16,21 +16,21 @@ License
     along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::fixedDisplacementFvPatchVectorField
+    Foam::fixedBeamDisplacementFvPatchVectorField
 
 Description
     Fixed displacement boundary condition for beams
 
 SourceFiles
-    fixedDisplacementFvPatchVectorField.C
+    fixedBeamDisplacementFvPatchVectorField.C
 
 Author
     Zeljko Tukovic, FSB Zagreb. All rights reserved.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fixedDisplacementFvPatchVectorField_H
-#define fixedDisplacementFvPatchVectorField_H
+#ifndef fixedBeamDisplacementFvPatchVectorField_H
+#define fixedBeamDisplacementFvPatchVectorField_H
 
 #include "fvPatchFields.H"
 #include "fixedValueFvPatchFields.H"
@@ -42,10 +42,10 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                 Class fixedDisplacementFvPatch Declaration
+                 Class fixedBeamDisplacementFvPatch Declaration
 \*---------------------------------------------------------------------------*/
 
-class fixedDisplacementFvPatchVectorField
+class fixedBeamDisplacementFvPatchVectorField
 :
     public fixedValueFvPatchVectorField
 {
@@ -62,40 +62,40 @@ class fixedDisplacementFvPatchVectorField
 public:
 
     //- Runtime type information
-    TypeName("fixedDisplacement");
+    TypeName("fixedBeamDisplacement");
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        fixedDisplacementFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        fixedDisplacementFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const dictionary&
         );
 
-        //- Construct by mapping given fixedDisplacementFvPatchVectorField
+        //- Construct by mapping given fixedBeamDisplacementFvPatchVectorField
         //  onto a new patch
-        fixedDisplacementFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedDisplacementFvPatchVectorField&,
+            const fixedBeamDisplacementFvPatchVectorField&,
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        fixedDisplacementFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedDisplacementFvPatchVectorField&
+            const fixedBeamDisplacementFvPatchVectorField&
         );
 
         //- Construct and return a clone
@@ -103,14 +103,14 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new fixedDisplacementFvPatchVectorField(*this)
+                new fixedBeamDisplacementFvPatchVectorField(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        fixedDisplacementFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedDisplacementFvPatchVectorField&,
+            const fixedBeamDisplacementFvPatchVectorField&,
             const DimensionedField<vector, volMesh>&
         );
 
@@ -122,7 +122,7 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new fixedDisplacementFvPatchVectorField(*this, iF)
+                new fixedBeamDisplacementFvPatchVectorField(*this, iF)
             );
         }
 

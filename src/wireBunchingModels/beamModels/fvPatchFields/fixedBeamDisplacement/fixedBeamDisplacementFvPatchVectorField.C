@@ -17,7 +17,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "fixedDisplacementFvPatchVectorField.H"
+#include "fixedBeamDisplacementFvPatchVectorField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "volFields.H"
 #include "surfaceFields.H"
@@ -35,7 +35,7 @@ namespace Foam
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
+fixedBeamDisplacementFvPatchVectorField::fixedBeamDisplacementFvPatchVectorField
 (
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF
@@ -47,9 +47,9 @@ fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
 {}
 
 
-fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
+fixedBeamDisplacementFvPatchVectorField::fixedBeamDisplacementFvPatchVectorField
 (
-    const fixedDisplacementFvPatchVectorField& ptf,
+    const fixedBeamDisplacementFvPatchVectorField& ptf,
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
     const fvPatchFieldMapper& mapper
@@ -61,7 +61,7 @@ fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
 {}
 
 
-fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
+fixedBeamDisplacementFvPatchVectorField::fixedBeamDisplacementFvPatchVectorField
 (
     const fvPatch& p,
     const DimensionedField<vector, volMesh>& iF,
@@ -87,9 +87,9 @@ fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
 }
 
 
-fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
+fixedBeamDisplacementFvPatchVectorField::fixedBeamDisplacementFvPatchVectorField
 (
-    const fixedDisplacementFvPatchVectorField& pivpvf
+    const fixedBeamDisplacementFvPatchVectorField& pivpvf
 )
 :
     fixedValueFvPatchVectorField(pivpvf),
@@ -98,9 +98,9 @@ fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
 {}
 
 
-fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
+fixedBeamDisplacementFvPatchVectorField::fixedBeamDisplacementFvPatchVectorField
 (
-    const fixedDisplacementFvPatchVectorField& pivpvf,
+    const fixedBeamDisplacementFvPatchVectorField& pivpvf,
     const DimensionedField<vector, volMesh>& iF
 )
 :
@@ -113,7 +113,7 @@ fixedDisplacementFvPatchVectorField::fixedDisplacementFvPatchVectorField
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 // Map from self
-void fixedDisplacementFvPatchVectorField::autoMap
+void fixedBeamDisplacementFvPatchVectorField::autoMap
 (
     const fvPatchFieldMapper& m
 )
@@ -125,7 +125,7 @@ void fixedDisplacementFvPatchVectorField::autoMap
 
 
 // Reverse-map the given fvPatchField onto this fvPatchField
-void fixedDisplacementFvPatchVectorField::rmap
+void fixedBeamDisplacementFvPatchVectorField::rmap
 (
     const fvPatchField<vector>& ptf,
     const labelList& addr
@@ -133,14 +133,14 @@ void fixedDisplacementFvPatchVectorField::rmap
 {
     fixedValueFvPatchVectorField::rmap(ptf, addr);
 
-    const fixedDisplacementFvPatchVectorField& dmptf =
-        refCast<const fixedDisplacementFvPatchVectorField>(ptf);
+    const fixedBeamDisplacementFvPatchVectorField& dmptf =
+        refCast<const fixedBeamDisplacementFvPatchVectorField>(ptf);
 
     totalDisp_.rmap(dmptf.totalDisp_, addr);
 }
 
 
-void fixedDisplacementFvPatchVectorField::updateCoeffs()
+void fixedBeamDisplacementFvPatchVectorField::updateCoeffs()
 {
     if (this->updated())
     {
@@ -189,7 +189,7 @@ void fixedDisplacementFvPatchVectorField::updateCoeffs()
     fixedValueFvPatchVectorField::updateCoeffs();
 }
 
-void fixedDisplacementFvPatchVectorField::write(Ostream& os) const
+void fixedBeamDisplacementFvPatchVectorField::write(Ostream& os) const
 {
     if (dispSeries_.size())
     {
@@ -208,7 +208,7 @@ void fixedDisplacementFvPatchVectorField::write(Ostream& os) const
 makePatchTypeField
 (
     fvPatchVectorField,
-    fixedDisplacementFvPatchVectorField
+    fixedBeamDisplacementFvPatchVectorField
 );
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

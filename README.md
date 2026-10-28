@@ -8,6 +8,38 @@ shear and torsion.
 beamFoam is a sister repository of
 [solids4foam](https://github.com/solids4foam/solids4foam).
 
+## Breaking change: beam boundary condition names
+
+Since [pull request #61][pr61], two beam boundary conditions have new names:
+
+| Old name | New name |
+| --- | --- |
+| `fixedDisplacement` | `fixedBeamDisplacement` |
+| `fixedRotation` | `fixedBeamRotation` |
+
+They were renamed because solids4foam has its own classes with the same names,
+and the two clashed when both libraries were loaded ([issue #56][issue56]).
+The old names are removed rather than kept as aliases, because an alias would
+bring the clash back. Only the names change; the conditions and their entries
+are the same.
+
+A case that still uses an old name stops at start-up with an error that names
+the patch and the new type. To update a case, run this from its top directory:
+
+```bash
+find . -type f \( -name W -o -name Theta \) -exec sed -i \
+    -e 's/\bfixedDisplacement\b/fixedBeamDisplacement/g' \
+    -e 's/\bfixedRotation\b/fixedBeamRotation/g' {} +
+```
+
+This changes only the beam fields `W` and `Theta`, including those in time
+directories and `processor*` directories, so restarts keep working. Do not run
+a find-and-replace over the whole case: solids4foam's own `fixedDisplacement`
+and `fixedRotation`, used on solid fields such as `D`, keep their names.
+
+[pr61]: https://github.com/solids4foam/beamFoam/pull/61
+[issue56]: https://github.com/solids4foam/beamFoam/issues/56
+
 ## Documentation
 
 The beamFoam user documentation is hosted on the solids4foam website:

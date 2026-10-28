@@ -23,14 +23,14 @@ boundaryField
 {
     left
      {
-        type fixedValue;//fixedDisplacement;
+        type fixedValue;//fixedBeamDisplacement;
         value uniform (0 0 0);
      }
 
 
     right
         {
-        type fixedDisplacement;
+        type fixedBeamDisplacement;
         value uniform (0 0 0);
        displacementSeries
        {

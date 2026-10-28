@@ -39,7 +39,7 @@ boundaryField
 
     // right
     // {
-    //     type fixedRotation;
+    //     type fixedBeamRotation;
     //     thetaSeries
     //     {
     //         "fileName|file"        "$FOAM_CASE/constant/timeVsTheta";
