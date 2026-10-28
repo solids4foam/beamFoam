@@ -1,39 +1,43 @@
 /*---------------------------------------------------------------------------*\
   =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | Copyright held by original author
+     \\/     M anipulation  |
 -------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of OpenFOAM.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    OpenFOAM is free software; you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation, either version 3 of the License, or (at your
+    Free Software Foundation; either version 2 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
-    WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    General Public License for more details.
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with OpenFOAM; if not, write to the Free Software Foundation,
+    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 Class
-    myFixedRotationFvPatchVectorField
+    Foam::fixedBeamDisplacementFvPatchVectorField
 
 Description
-    Specifying a beam rotation value at the patch
+    Fixed displacement boundary condition for beams
 
 SourceFiles
-    fixedRotationFvPatchVectorField.C
+    fixedBeamDisplacementFvPatchVectorField.C
+
+Author
+    Zeljko Tukovic, FSB Zagreb. All rights reserved.
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef fixedRotationFvPatchVectorField_H
-#define fixedRotationFvPatchVectorField_H
+#ifndef fixedBeamDisplacementFvPatchVectorField_H
+#define fixedBeamDisplacementFvPatchVectorField_H
 
 #include "fvPatchFields.H"
 #include "fixedValueFvPatchFields.H"
@@ -45,61 +49,60 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                   Class fixedRotationFvPatch Declaration
+                 Class fixedBeamDisplacementFvPatch Declaration
 \*---------------------------------------------------------------------------*/
 
-class fixedRotationFvPatchVectorField
+class fixedBeamDisplacementFvPatchVectorField
 :
     public fixedValueFvPatchVectorField
 {
     // Private Data
-        
-        //- Constant total rotation field
-        vectorField totalTheta_;
 
-        //- Theta time series
-        interpolationTable<vector> thetaSeries_;
-        
-        //- Current time index
-        label timeIndex_;
+        //- Constant total displacement field
+        vectorField totalDisp_;
+
+        //- Displacement time series
+        interpolationTable<vector> dispSeries_;
+
+    // Private Functions
 
 public:
 
     //- Runtime type information
-    TypeName("fixedRotation");
+    TypeName("fixedBeamDisplacement");
 
 
     // Constructors
 
         //- Construct from patch and internal field
-        fixedRotationFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&
         );
 
         //- Construct from patch, internal field and dictionary
-        fixedRotationFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const dictionary&
         );
 
-        //- Construct by mapping given
-        //  fixedRotationFvPatchVectorField onto a new patch
-        fixedRotationFvPatchVectorField
+        //- Construct by mapping given fixedBeamDisplacementFvPatchVectorField
+        //  onto a new patch
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedRotationFvPatchVectorField&,
+            const fixedBeamDisplacementFvPatchVectorField&,
             const fvPatch&,
             const DimensionedField<vector, volMesh>&,
             const fvPatchFieldMapper&
         );
 
         //- Construct as copy
-        fixedRotationFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedRotationFvPatchVectorField&
+            const fixedBeamDisplacementFvPatchVectorField&
         );
 
         //- Construct and return a clone
@@ -107,14 +110,14 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new fixedRotationFvPatchVectorField(*this)
+                new fixedBeamDisplacementFvPatchVectorField(*this)
             );
         }
 
         //- Construct as copy setting internal field reference
-        fixedRotationFvPatchVectorField
+        fixedBeamDisplacementFvPatchVectorField
         (
-            const fixedRotationFvPatchVectorField&,
+            const fixedBeamDisplacementFvPatchVectorField&,
             const DimensionedField<vector, volMesh>&
         );
 
@@ -126,21 +129,27 @@ public:
         {
             return tmp<fvPatchVectorField>
             (
-                new fixedRotationFvPatchVectorField(*this, iF)
+                new fixedBeamDisplacementFvPatchVectorField(*this, iF)
             );
         }
 
 
+
     // Member functions
 
-        // Access
+        // Access functions
 
         //- Update the coefficients associated with the patch field
-            virtual vectorField& totalTheta()
+            virtual vectorField& totalDisp()
             {
-                return totalTheta_;
+                return totalDisp_;
             }
-            
+
+        // Evaluation functions
+
+            //- Update the coefficients associated with the patch field
+            virtual void updateCoeffs();
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
@@ -152,20 +161,10 @@ public:
             //- Reverse map the given fvPatchField onto this fvPatchField
             virtual void rmap
             (
-                const fvPatchVectorField&,
+                const fvPatchField<vector>&,
                 const labelList&
             );
 
-
-        //- Update the coefficients associated with the patch field
-        virtual void updateCoeffs();
-
-        // //- Evaluate the patch field
-        // virtual void evaluate
-        // (
-        //     const Pstream::commsTypes commsType = Pstream::blocking
-        // );
-  
         //- Write
         virtual void write(Ostream&) const;
 };
