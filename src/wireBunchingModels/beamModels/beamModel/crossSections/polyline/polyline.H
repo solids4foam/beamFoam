@@ -19,7 +19,32 @@ Class
     polyline
 
 Description
-    Polyline cross-section model
+    Polyline cross-section model: an arbitrary closed cross-section given
+    by its boundary points in the local y-z plane (x = 0), e.g.
+
+        <name>CrossSectionModelDict
+        {
+            polyLinePoints ((0 y0 z0) (0 y1 z1) ...);
+        }
+
+    STATUS: INCOMPLETE - NOT COMPILED (not listed in Make/files).
+    The class compiles against OpenFOAM.com, but the section properties
+    used by beamModel are still stubs:
+      - area() returns 0, so A() = 0
+      - calcSecondMomentOfArea() returns 0, so Ixx() = Iyy() = IT() = 0
+      - radius(theta) returns 0
+      - the structured mesh points_ and quadFaces_ are never built (todo in
+        the constructor), so the stress-resultant functions are empty
+    A beam using it would have zero stiffness and a singular matrix.
+
+    To complete it:
+      - area, centroid and second moments from the boundary points
+        (shoelace/Green's theorem), about the centroid
+      - a Saint-Venant torsion constant for IT(); Ixx + Iyy (polar moment)
+        is exact only for circular sections
+      - add polyline.C to Make/files and a tutorial that checks it against
+        the circle and rectangle models
+    See https://github.com/solids4foam/beamFoam/issues/64
 
 SourceFiles
     polyline.C

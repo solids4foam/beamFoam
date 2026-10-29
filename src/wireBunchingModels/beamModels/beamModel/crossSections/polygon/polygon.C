@@ -18,6 +18,9 @@ License
 InClass
     polygon
 
+Description
+    Not compiled yet: see the Description in polygon.H.
+
 \*---------------------------------------------------------------------------*/
 
 #include "polygon.H"

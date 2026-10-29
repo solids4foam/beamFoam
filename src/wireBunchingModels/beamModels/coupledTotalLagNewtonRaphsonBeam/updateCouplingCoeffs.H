@@ -1,6 +1,66 @@
+/*---------------------------------------------------------------------------*\
+License
+    This file is part of beamFoam.
+
+    beamFoam is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
+
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
+
+Description
+    Processor (coupled) patch contribution to the coupled W-Theta block
+    matrix of coupledTotalLagNewtonRaphsonBeam, i.e. the parallel
+    counterpart of the internal-face loop in assembleMatrixCoefficients().
+    For each face of a coupled patch it adds, to the 6x6 blocks:
+      - W equation: CQW (Laplacian) and CQTheta (weight-interpolated)
+        coefficients and the explicitQ source
+      - Theta equation: CMTheta, CMTheta2, the (dr x Q) terms CMQW and
+        CMQTheta, and the explicitM and explicitMQ sources; the axial
+        (local x) component of explicitMQ is removed via Lambda/refLambda
+    The across-processor coefficients go to the interface (coupleUpper,
+    coupleLower), the owner-cell part to the diagonal d and source.
+
+    STATUS: REFERENCE ONLY - NOT COMPILED.
+    This is foam-extend code (fvBlockMatrix<vector6>, coupleUpper(),
+    coupleLower(), asSquare(), tensor6Field, unallocLabelList) and does not
+    compile against OpenFOAM.com. It was #include-d from the matrix
+    assembly in the foam-extend version (commit 8c38453,
+    coupledWThetaEqn_TLNR.H) and disabled in 1e34034 (2023-09-01) when the
+    solver was ported. It is kept as the derivation for parallel support.
+
+    Where it belongs:
+        coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C,
+        assembleBoundaryConditions(), in the "if (patch.coupled())" branch
+        that currently calls notImplemented("Not ported for parallel yet!")
+    The variables patchI, d and source are expected from that scope.
+
+    Before re-enabling, port it to the current assembly:
+      - d is Field<scalarSquareMatrix> (unchanged indexing) and source is
+        Field<scalarRectangularMatrix>: use source[c](i, 0)
+      - there is no storage for processor-interface coefficients (cu, cl):
+        d, l, u only cover internal faces and BlockEigenSolverOF is a
+        serial solver on local owner/neighbour addressing, so the linear
+        system needs global cell numbering and a parallel solver
+      - assembleMatrixCoefficients() has since gained a CQDTheta term in
+        the W equation, which is missing here
+      - assembleMatrixCoefficients() no longer removes the axial component
+        of explicitMQ; reconcile this treatment with the internal faces
+      - the final sign change follows the foam-extend convention for
+        interface coefficients; check it against the new solver
+
+\*---------------------------------------------------------------------------*/
+
 {
     // Pout << "Update coupling coeffs for patch: " << patch.name() << endl;
-    
+
     tensor6Field& cu = WThetaEqn.coupleUpper()[patchI].asSquare();
     cu = tensor6::zero;
     
