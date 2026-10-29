@@ -92,12 +92,6 @@ class beamModel
         //- Cell face shared with lower neighbour cell
         mutable labelList* lowerNeiCellFacesPtr_;
 
-        //- Upper neighbour cell
-        mutable labelList* upperNeiCellPtr_;
-
-        //- Lower neighbour cell
-        mutable labelList* lowerNeiCellPtr_;
-
         //- Flow properties dictionary
         dictionary beamProperties_;
 
@@ -176,9 +170,6 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
-        //- Steady state calculation
-        bool steadyState_;
-
         // //- Use objective interpolation for rotation
         // bool objectiveInterpolation_;
 
@@ -191,12 +182,6 @@ class beamModel
 
         // //- Toroidal pullys
         // mutable PtrList<toroidalPulley> toroidalPulleys_;
-
-        //- Time instance at which contact force will be relaxing
-        scalar startToRelaxTime_;
-
-        //- Time period over which contact force will be relaxed
-        scalar relaxationPeriod_;
 
         // //- Beam contact model
         // autoPtr<beamContactModel> contactPtr_;
@@ -317,18 +302,6 @@ public:
             // const PtrList<toroidalPulley>& toroidalPulleys() const
             // {
   	        // return toroidalPulleys_;
-            // }
-
-            // //- Return time instance when contact force relaxation will start
-            // const scalar& startToRelaxTime() const
-            // {
-            //     return startToRelaxTime_;
-            // }
-
-            // //- Return contact force relaxation period
-            // const scalar& relaxationPeriod() const
-            // {
-            //     return relaxationPeriod_;
             // }
 
             //- Return time
@@ -792,12 +765,6 @@ public:
             //- Write fields
             virtual void writeFields();
 
-            //- Steady state
-            bool steadyState() const
-            {
-                return steadyState_;
-            }
-
             //- Artificial scaling factor for changing the inertia
             //- tensor I_rho in the angular momentum tensor 
             scalar kCI() const
@@ -810,12 +777,6 @@ public:
 
             //- Get lower neighbour cell faces
             const labelList& lowerNeiCellFaces() const;
-
-            //- Get upper neighbour cell faces
-            const labelList& upperNeiCell() const;
-
-            //- Get lower neighbour cell faces
-            const labelList& lowerNeiCell() const;
 };
 
 

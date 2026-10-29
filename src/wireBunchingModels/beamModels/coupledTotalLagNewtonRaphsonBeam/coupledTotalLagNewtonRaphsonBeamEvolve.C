@@ -331,7 +331,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Omega_ = Angular Velocity
             // dotOmega_ = Angular Acceleration
 
-            // if (!steadyState())
             if (d2dt2SchemeName_ != "steadyState")
             {
                 // Throw error if rho is set to zero for transient case

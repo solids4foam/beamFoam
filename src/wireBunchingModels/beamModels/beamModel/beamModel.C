@@ -50,8 +50,7 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     // if the pointer is already set
     if
     (
-        upperNeiCellFacesPtr_ || lowerNeiCellFacesPtr_ ||
-        upperNeiCellPtr_ || lowerNeiCellPtr_
+        upperNeiCellFacesPtr_ || lowerNeiCellFacesPtr_
     )
     {
         FatalErrorIn
@@ -69,14 +68,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     // Allocate storage for addressing
     lowerNeiCellFacesPtr_ = new labelList(mesh().nCells(), -1);
     labelList& lowerNeiCellFaces = *lowerNeiCellFacesPtr_;
-
-    // Allocate storage for addressing
-    upperNeiCellPtr_ = new labelList(mesh().nCells(), -1);
-    labelList& upperNeiCell = *upperNeiCellPtr_;
-
-    // Allocate storage for addressing
-    lowerNeiCellPtr_ = new labelList(mesh().nCells(), -1);
-    labelList& lowerNeiCell = *lowerNeiCellPtr_;
 
     const cellList& cells = mesh().cells();
     const labelListList& cc = mesh().cellCells();
@@ -99,9 +90,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
                 upperNei = curNei;
             }
         }
-
-        lowerNeiCell[cellI] = lowerNei;
-        upperNeiCell[cellI] = upperNei;
 
         if (lowerNei != -1)
         {
@@ -226,8 +214,6 @@ Foam::beamModel::beamModel
     globalToLocalBeamPointsAddressing_(),
     upperNeiCellFacesPtr_(NULL),
     lowerNeiCellFacesPtr_(NULL),
-    upperNeiCellPtr_(NULL),
-    lowerNeiCellPtr_(NULL),
     beamProperties_(subDict(type + "Coeffs")),
     startPatchIndex_(),
     endPatchIndex_(),
@@ -298,29 +284,11 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
-    steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
     // objectiveInterpolation_
     // (
     //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
     // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
-
-    startToRelaxTime_
-    (
-        getOrDefault<scalar>
-        (
-            "startRelaxingTime",
-            GREAT
-        )
-    ),
-    relaxationPeriod_
-    (
-        getOrDefault<scalar>
-        (
-            "relaxingPeriod",
-            0
-        )
-    ),
     // contactPtr_(),
     deltaTseries_()
 {
@@ -1578,26 +1546,6 @@ const Foam::labelList& Foam::beamModel::lowerNeiCellFaces() const
     }
 
     return *lowerNeiCellFacesPtr_;
-}
-
-const Foam::labelList& Foam::beamModel::upperNeiCell() const
-{
-    if (!upperNeiCellPtr_)
-    {
-        makeUpperLowerNeiCellFaces();
-    }
-
-    return *upperNeiCellPtr_;
-}
-
-const Foam::labelList& Foam::beamModel::lowerNeiCell() const
-{
-    if (!lowerNeiCellPtr_)
-    {
-        makeUpperLowerNeiCellFaces();
-    }
-
-    return *lowerNeiCellPtr_;
 }
 
 
