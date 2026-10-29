@@ -35,7 +35,7 @@ defineTypeNameAndDebug(crossSectionModel, 0);
 defineRunTimeSelectionTable(crossSectionModel, dictionary);
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
-    
+
 crossSectionModel::crossSectionModel
 (
     const word& name,
@@ -45,7 +45,7 @@ crossSectionModel::crossSectionModel
     name_(name)
 {}
 
-    
+
 void crossSectionModel::tensorToMatrix
 (
     scalarRectangularMatrix& m,
@@ -109,7 +109,7 @@ void crossSectionModel::calcA
     // A[0][5] = -p.x();
     // A[1][3] = -p.y();
     // A[2][3] =  p.x();
-    
+
     A[0][4] =  p.x();
     A[0][5] = -p.y();
     A[1][3] = -p.x();

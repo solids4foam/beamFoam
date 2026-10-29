@@ -425,7 +425,7 @@ Foam::beamModel::beamModel
     //     R_ = scalarField(this->lookup("R"));
     //     U_ = scalarField(this->lookup("U"));
     // }
-    
+
     Info<< "Attempting to read global mechanical variables "
         << "from constant/beamProperties "
         << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
@@ -433,7 +433,7 @@ Foam::beamModel::beamModel
 
     dimensionedScalar globalE("E", dimPressure, 0.0);
     dimensionedScalar globalG("G", dimPressure, 0.0);
-    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);
 
     bool foundGlobalE = false;
     bool foundGlobalG = false;
@@ -456,7 +456,7 @@ Foam::beamModel::beamModel
         globalRho = dimensionedScalar("rho", beamProperties());
         foundGlobalRho = true;
     }
-    
+
     E_.setSize(nBeams, 0.0);
     G_.setSize(nBeams, 0.0);
     rho_.setSize(nBeams, 0.0);
@@ -488,11 +488,11 @@ Foam::beamModel::beamModel
             {
                 Info<< "Local mechanical properties specific to beam "
                     << beamI << " found!"  << endl;
-                
+
                 E_[beamI] = readScalar(bDict.lookup("E"));
                 G_[beamI] = readScalar(bDict.lookup("G"));
                 rho_[beamI] = bDict.getOrDefault<scalar>("rho", 0.0);
-            }            
+            }
         }
         else if (foundGlobalE || foundGlobalG || foundGlobalRho)
         {
@@ -551,12 +551,12 @@ Foam::beamModel::beamModel
         Info<< "EA: " << EA(bI) << endl;
         Info<< "GA: " << GA(bI) << endl;
     }
-    
+
     // word startPatchName(beamProperties_.lookup("startPatchName"));
     // word endPatchName(beamProperties_.lookup("endPatchName"));
     word startPatchName = "left";
     word endPatchName = "right";
-    
+
     label nCellZones = mesh().cellZones().size();
 
     // Check that there is at least one cell zone

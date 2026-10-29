@@ -58,10 +58,10 @@ class followerForceBeamDisplacementNRFvPatchVectorField
 
         //- Current follower force direction
         // vectorField followerForceDir_;
-    
+
         //- Follower force time series
 	interpolationTable<vector> followerForceSeries_;
-    
+
 public:
 
     //- Runtime type information
@@ -132,7 +132,7 @@ public:
     // Member functions
 
         // Access
-  
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object

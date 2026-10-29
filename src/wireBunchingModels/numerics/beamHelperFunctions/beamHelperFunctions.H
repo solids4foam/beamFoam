@@ -37,7 +37,7 @@ namespace Foam
 label sharedFace(const cell& c0,  const cell& c1);
 
 label neiPatchIndex(const cell& c, const fvMesh& mesh);
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

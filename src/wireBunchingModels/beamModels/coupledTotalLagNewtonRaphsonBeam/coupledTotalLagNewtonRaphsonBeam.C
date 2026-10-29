@@ -1073,12 +1073,12 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         runTime,
         IOobject::MUST_READ
     );
-    
+
     if (momentumContribHeader.typeHeaderOk<dictionary>(true))
     {
         Info<< "Found beamMomentumContributionProperties file: creating object"
             << endl;
-        
+
         // TO CHECK: maybe we should not register this dict
         IOdictionary beamMomentContribDict(momentumContribHeader);
 
@@ -1089,9 +1089,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
         const label nContrib = entries.size();
 
-        momentumContribPtr_.setSize(nContrib);        
+        momentumContribPtr_.setSize(nContrib);
         // dictionary& momentumContribDicts = dict.lookup("beamContributions");
-        
+
         forAll(entries, i)
         {
             momentumContribPtr_.set

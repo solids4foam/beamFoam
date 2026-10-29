@@ -188,7 +188,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::rmap
 
     const linearSpringForceBeamDisplacementNRFvPatchVectorField& dmptf =
         refCast<const linearSpringForceBeamDisplacementNRFvPatchVectorField>(ptf);
-    
+
     Ks_.rmap(dmptf.Ks_, addr);
     offsetForce_.rmap(dmptf.offsetForce_, addr);
 }
@@ -261,7 +261,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     // This is the old coefficient in force boundary condition
     // whose inverse was being multiplied
     const tensorField A(CQW/delta);
-    
+
     // This coefficent changes due to the spring
     // The sign is +ve infront of Ks because the spring force
     // acting on the beam is negative (opp) to that acting on
@@ -281,7 +281,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
       - (invAmodified & (CQTheta & DTheta))
       + (invAmodified & (A & DW.patchInternalField()))
     );
-    
+
     DW = newDW;
 
     // Setting W_ field

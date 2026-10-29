@@ -152,8 +152,8 @@ Foam::autoPtr<Foam::beamModel> Foam::beamModel::New
     }
 
     Info<< "Selecting beamModel " << beamModelTypeName << endl;
-    
-    // changes to be compiled with OFv23  
+
+    // changes to be compiled with OFv23
     auto* cstrIter = dictionaryConstructorTable(beamModelTypeName);
 
     if (!cstrIter)

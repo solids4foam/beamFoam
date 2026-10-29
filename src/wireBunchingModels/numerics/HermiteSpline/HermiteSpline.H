@@ -19,22 +19,22 @@ Class
     Foam::HermiteSpline
 
 Description
-    Hermite splines are cubic polynomials to interpolate between points 
+    Hermite splines are cubic polynomials to interpolate between points
     using the positions of the points plus their tangents (derivatives).
-    The basic form involves defining each segment of the spline by the start 
-    and end points (positions) and the tangents at these points. Here, 
+    The basic form involves defining each segment of the spline by the start
+    and end points (positions) and the tangents at these points. Here,
     for a line segment, the local parameter zeta [-1, 1] is used. zeta = -1 for left
-    point and zeta = 1 for right end point. 
+    point and zeta = 1 for right end point.
 
     Advantages:
     1. Control: over the slope of curve at control points, advantegeous
         for ensuring smooth transitions (C-1 derivatives).
-    2. Flexibility: Useful in applications where the derivative of the curve is known or 
+    2. Flexibility: Useful in applications where the derivative of the curve is known or
         needs to be controlled, such as in motion control paths in animation and robotics.
     3. Local Control: Adjusting the position or tangent at one point does not affect the entire
         curve, just the segment connected to that point.
 
-Author 
+Author
     Zeljko Tukovic, FSB Zagreb
     Seevani Bali, UCD.
 
@@ -119,9 +119,9 @@ protected:
             const scalar arcLength
         ) const;
 
-        //- Calculate the length of a line segment between interval [-1, zeta] 
-        // by integrating the first order derivatives of position vector using 
-        // composite Simpson's 1/3 rule 
+        //- Calculate the length of a line segment between interval [-1, zeta]
+        // by integrating the first order derivatives of position vector using
+        // composite Simpson's 1/3 rule
         // (https://en.wikipedia.org/wiki/Simpson%27s_rule#Composite_Simpson's_1/3_rule)
         scalar arcLength
         (
@@ -176,7 +176,7 @@ public:
         //- Return the number of line segments
         label nSegments() const;
 
-        //- Return the point position corresponding to the curve parameter 
+        //- Return the point position corresponding to the curve parameter
         point position(const scalar) const;
 
         //- Return the point position corresponding to the local parameter

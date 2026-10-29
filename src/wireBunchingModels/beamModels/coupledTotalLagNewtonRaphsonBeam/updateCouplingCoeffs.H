@@ -61,7 +61,7 @@ Description
 
     tensor6Field& cu = WThetaEqn.coupleUpper()[patchI].asSquare();
     cu = tensor6::zero;
-    
+
     tensor6Field& cl = WThetaEqn.coupleLower()[patchI].asSquare();
     cl = tensor6::zero;
 
@@ -82,7 +82,7 @@ Description
     const tensorField& LambdaI = Lambda_.internalField();
     const tensorField& refLambdaI = refLambda_.internalField();
     const unallocLabelList& fc = mesh().boundary()[patchI].faceCells();
-    
+
     forAll(cu, faceI)
     {
         ////// W equation
@@ -127,9 +127,9 @@ Description
         d[fc[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[fc[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
 
-        
+
         // Theta part
-        
+
         // upper
         cu[faceI](0,3) += (1-wf[faceI])*CQThetaI[faceI].xx();
         cu[faceI](0,4) += (1-wf[faceI])*CQThetaI[faceI].xy();
@@ -138,7 +138,7 @@ Description
         cu[faceI](1,3) += (1-wf[faceI])*CQThetaI[faceI].yx();
         cu[faceI](1,4) += (1-wf[faceI])*CQThetaI[faceI].yy();
         cu[faceI](1,5) += (1-wf[faceI])*CQThetaI[faceI].yz();
-        
+
         cu[faceI](2,3) += (1-wf[faceI])*CQThetaI[faceI].zx();
         cu[faceI](2,4) += (1-wf[faceI])*CQThetaI[faceI].zy();
         cu[faceI](2,5) += (1-wf[faceI])*CQThetaI[faceI].zz();
@@ -147,11 +147,11 @@ Description
         cl[faceI](0,3) += wf[faceI]*CQThetaI[faceI].xx();
         cl[faceI](0,4) += wf[faceI]*CQThetaI[faceI].xy();
         cl[faceI](0,5) += wf[faceI]*CQThetaI[faceI].xz();
-        
+
         cl[faceI](1,3) += wf[faceI]*CQThetaI[faceI].yx();
         cl[faceI](1,4) += wf[faceI]*CQThetaI[faceI].yy();
         cl[faceI](1,5) += wf[faceI]*CQThetaI[faceI].yz();
-        
+
         cl[faceI](2,3) += wf[faceI]*CQThetaI[faceI].zx();
         cl[faceI](2,4) += wf[faceI]*CQThetaI[faceI].zy();
         cl[faceI](2,5) += wf[faceI]*CQThetaI[faceI].zz();
@@ -160,11 +160,11 @@ Description
         d[fc[faceI]](0,3) += wf[faceI]*CQThetaI[faceI].xx();
         d[fc[faceI]](0,4) += wf[faceI]*CQThetaI[faceI].xy();
         d[fc[faceI]](0,5) += wf[faceI]*CQThetaI[faceI].xz();
-        
+
         d[fc[faceI]](1,3) += wf[faceI]*CQThetaI[faceI].yx();
         d[fc[faceI]](1,4) += wf[faceI]*CQThetaI[faceI].yy();
         d[fc[faceI]](1,5) += wf[faceI]*CQThetaI[faceI].yz();
-        
+
         d[fc[faceI]](2,3) += wf[faceI]*CQThetaI[faceI].zx();
         d[fc[faceI]](2,4) += wf[faceI]*CQThetaI[faceI].zy();
         d[fc[faceI]](2,5) += wf[faceI]*CQThetaI[faceI].zz();
@@ -183,7 +183,7 @@ Description
         cu[faceI](3,3) += CMThetaI[faceI].xx()/deltaf[faceI];
         cu[faceI](3,4) += CMThetaI[faceI].xy()/deltaf[faceI];
         cu[faceI](3,5) += CMThetaI[faceI].xz()/deltaf[faceI];
-        
+
         cu[faceI](4,3) += CMThetaI[faceI].yx()/deltaf[faceI];
         cu[faceI](4,4) += CMThetaI[faceI].yy()/deltaf[faceI];
         cu[faceI](4,5) += CMThetaI[faceI].yz()/deltaf[faceI];
@@ -200,7 +200,7 @@ Description
         cl[faceI](4,3) += -CMThetaI[faceI].yx()/deltaf[faceI];
         cl[faceI](4,4) += -CMThetaI[faceI].yy()/deltaf[faceI];
         cl[faceI](4,5) += -CMThetaI[faceI].yz()/deltaf[faceI];
-        
+
         cl[faceI](5,3) += -CMThetaI[faceI].zx()/deltaf[faceI];
         cl[faceI](5,4) += -CMThetaI[faceI].zy()/deltaf[faceI];
         cl[faceI](5,5) += -CMThetaI[faceI].zz()/deltaf[faceI];
@@ -213,7 +213,7 @@ Description
         d[fc[faceI]](4,3) += -CMThetaI[faceI].yx()/deltaf[faceI];
         d[fc[faceI]](4,4) += -CMThetaI[faceI].yy()/deltaf[faceI];
         d[fc[faceI]](4,5) += -CMThetaI[faceI].yz()/deltaf[faceI];
-        
+
         d[fc[faceI]](5,3) += -CMThetaI[faceI].zx()/deltaf[faceI];
         d[fc[faceI]](5,4) += -CMThetaI[faceI].zy()/deltaf[faceI];
         d[fc[faceI]](5,5) += -CMThetaI[faceI].zz()/deltaf[faceI];
@@ -260,7 +260,7 @@ Description
         d[fc[faceI]](5,5) += wf[faceI]*CMTheta2I[faceI].zz();
 
 
-        // Explicit part        
+        // Explicit part
         source[fc[faceI]](3) -= explicitMI[faceI].x();
         source[fc[faceI]](4) -= explicitMI[faceI].y();
         source[fc[faceI]](5) -= explicitMI[faceI].z();
@@ -309,7 +309,7 @@ Description
         d[fc[faceI]](5,1) += -CMQWI[faceI].zy()/deltaf[faceI];
         d[fc[faceI]](5,2) += -CMQWI[faceI].zz()/deltaf[faceI];
 
-        
+
         // Theta part
 
         // upper
@@ -320,7 +320,7 @@ Description
         cu[faceI](4,3) += (1-wf[faceI])*CMQThetaI[faceI].yx();
         cu[faceI](4,4) += (1-wf[faceI])*CMQThetaI[faceI].yy();
         cu[faceI](4,5) += (1-wf[faceI])*CMQThetaI[faceI].yz();
-        
+
         cu[faceI](5,3) += (1-wf[faceI])*CMQThetaI[faceI].zx();
         cu[faceI](5,4) += (1-wf[faceI])*CMQThetaI[faceI].zy();
         cu[faceI](5,5) += (1-wf[faceI])*CMQThetaI[faceI].zz();
@@ -329,11 +329,11 @@ Description
         cl[faceI](3,3) += wf[faceI]*CMQThetaI[faceI].xx();
         cl[faceI](3,4) += wf[faceI]*CMQThetaI[faceI].xy();
         cl[faceI](3,5) += wf[faceI]*CMQThetaI[faceI].xz();
-        
+
         cl[faceI](4,3) += wf[faceI]*CMQThetaI[faceI].yx();
         cl[faceI](4,4) += wf[faceI]*CMQThetaI[faceI].yy();
         cl[faceI](4,5) += wf[faceI]*CMQThetaI[faceI].yz();
-        
+
         cl[faceI](5,3) += wf[faceI]*CMQThetaI[faceI].zx();
         cl[faceI](5,4) += wf[faceI]*CMQThetaI[faceI].zy();
         cl[faceI](5,5) += wf[faceI]*CMQThetaI[faceI].zz();
@@ -374,6 +374,6 @@ Description
 
     // Info <<  WThetaEqn.coupleLower()[patchI].asSquare() << endl;
     // Info <<  WThetaEqn.coupleUpper()[patchI].asSquare() << endl;
-    
+
     // Pout << "cu: " << cu << endl;
 }

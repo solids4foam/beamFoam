@@ -111,7 +111,7 @@ public:
         {
             return timeSeries_;
         }
-    
+
         // Check
 
         // Edit
@@ -127,7 +127,7 @@ public:
         {
             return timeSeries_(t);
         }
-    
+
 
     // Friend Functions
 

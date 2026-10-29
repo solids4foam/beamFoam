@@ -56,7 +56,7 @@ class rectangle
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- Rectangle length
         scalar b_;
 
@@ -68,7 +68,7 @@ class rectangle
 
         //- Number of segments in y-direction
         scalar ny_;
-    
+
         //- Artificial area scaling factor which affects the mechanical
         //- properties of the beams
         scalar scalingArea_;
@@ -226,7 +226,7 @@ public:
         //     tensor& DMDGamma,
         //     tensor& DMDK
         // ) const;
-    
+
         // //- Write cross-section scalar field in VTK format
         // virtual void writeVTK
         // (

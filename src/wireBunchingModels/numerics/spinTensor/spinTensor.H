@@ -50,7 +50,7 @@ tmp<volVectorField> axialVector(const volTensorField& spinTensor);
 tmp<vectorField> axialVector(const tensorField& spintTensor);
 
 vector axialVector(const tensor& spinTensor);
-  
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam
