@@ -562,3 +562,73 @@ boundary conditions then add the boundary-face terms (file C). So the
 same face stiffnesses describe both beam-beam coupling between cells and
 beam-body coupling at the attachment face. The only difference is that
 at the attachment face, the "other side" is the body.
+
+
+10. Why the Newmark predictor has no beta dt^2 a_{n+1} term
+===========================================================
+
+predictor() (RB:430-435) returns
+
+    x_pred = x0 + dt v0 + dt^2 (1/2 - beta) a0
+
+which looks like Newmark-beta with the beta dt^2 a_{n+1} term left out.
+Nothing is left out: that term is the unknown that the Newton solve finds.
+
+10.1 Split the Newmark update into known and unknown parts
+
+    x_{n+1} = x0 + dt v0 + dt^2 (1/2 - beta) a0  +  beta dt^2 a_{n+1}
+              \_________ x_pred (known) ______/     \___ unknown __/
+
+Everything in x_pred comes from step n, so it is fixed before the step
+starts. The last term needs a_{n+1}, which depends on the beam force at
+n+1, which depends on x_{n+1}. That is the implicit part.
+
+Rearranging for the acceleration:
+
+    a_{n+1} = (x_{n+1} - x_pred)/(beta dt^2)
+
+which is exactly what the code uses (velocityAt, RB:168-174, and the
+residual):
+
+    translationalResidual(x, F) (RB:444-454)
+      =  inertiaCoefficient()*(x - predictor())    // m/(beta dt^2)(x - x_pred) = m a_{n+1}
+       + linearDamping_*velocityAt(x)              // c v_{n+1}
+       - totalForce(beamForce)                     // F_{n+1}
+
+So the residual is m a_{n+1} + c v_{n+1} - F_{n+1} = 0, with a_{n+1}
+written in terms of the unknown displacement x. The beta dt^2 a_{n+1}
+term is inside (x - x_pred). When Newton converges on x, the full Newmark
+equation, including that term, is satisfied.
+
+10.2 Why x_pred cannot contain beta dt^2 a_pred
+
+  - a_{n+1} is not known until x_{n+1} has been solved, so it cannot go
+    into a quantity evaluated before the solve.
+  - It would count the term twice. The residual divides (x - x_pred) by
+    beta dt^2 to recover a_{n+1}. If x_pred already held
+    beta dt^2 a_{n+1}, then (x - x_pred) would be zero at the solution
+    and the inertia would disappear.
+
+"Predictor" here has its standard meaning (Hughes' x-tilde): the
+position the body would reach if a_{n+1} were zero. It is not a guess
+of x_{n+1}.
+
+10.3 The same pattern elsewhere
+
+  - Rotation: angularPredictor() (RB:141-146)
+        theta_pred = dt omega0 + dt^2 (1/2 - beta) alpha0
+    and angularAcceleration(theta) = (theta - theta_pred)/(beta dt^2)
+    (RB:149-155).
+  - Partitioned path: newmarkDisplacement() (RB:407-427) freezes the
+    beam force, so a_{n+1} can be computed first from m a + c v = F and
+    then written out explicitly:
+        x0 + dt v0 + dt^2 ((1/2 - beta) a0 + beta aNew)
+    This is the "textbook" form. It is algebraically the same as the
+    monolithic form; the only difference is whether a_{n+1} is known
+    before x_{n+1} or solved together with it.
+
+Because the monolithic path solves for displacement and recovers the
+acceleration from it, the body's diagonal coefficient is
+    m/(beta dt^2)                  (inertiaCoefficient(), RB:438-441)
+plus c gamma/(beta dt) from the damping (translationalJacobian(),
+RB:457-462).
