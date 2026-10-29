@@ -151,9 +151,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQTheta_;
 
-        //- Coefficient in the force equilibrium equation
-        surfaceTensorField CQDTheta_;
-
         //- Coefficient in the moment equilibrium equation
         surfaceTensorField CMTheta_;
 
@@ -193,9 +190,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Beam cross-section constant
         surfaceTensorField CM_;
-
-        //- Beam cross-section constant
-        surfaceTensorField CDQDK_;
 
         // //- Beam momentum inertial term constant (single-beam)
         // dimensionedScalar ARho_;

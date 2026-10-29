@@ -709,9 +709,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
-    // SB - NOT USED
-    CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
-
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
 
     // CMTheta2_ = -spinTensor(Lambdaf & (CM_ & (K_ - KP_)))

@@ -253,9 +253,6 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     const tensorField& CQTheta =
         patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
 
-    // const tensorField& CQDTheta =
-    //     patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
-
     const vectorField explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 

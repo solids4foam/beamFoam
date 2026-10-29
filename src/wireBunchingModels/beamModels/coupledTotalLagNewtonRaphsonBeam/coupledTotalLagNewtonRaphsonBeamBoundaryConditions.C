@@ -78,7 +78,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
         {
             const tensorField& pCQW = CQW_.boundaryField()[patchI];
             const tensorField& pCQTheta = CQTheta_.boundaryField()[patchI];
-            const tensorField& pCQDTheta = CQDTheta_.boundaryField()[patchI];
             const tensorField& pCMTheta = CMTheta_.boundaryField()[patchI];
             const tensorField& pCMTheta2 = CMTheta2_.boundaryField()[patchI];
             const tensorField& pCMQW = CMQW_.boundaryField()[patchI];
@@ -483,32 +482,12 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             (
                                 pCQTheta[faceI]
                               & pThetaCorr[faceI]
-                            )
-                          + (
-                                pCQDTheta[faceI]
-                              & pThetaCorr[faceI]
-                            )/pDelta[faceI];
+                            );
                         // (pCQTheta[faceI] & pTheta[faceI]);
 
                         source[fc[faceI]](0,0) -= thetaContrib.x();
                         source[fc[faceI]](1,0) -= thetaContrib.y();
                         source[fc[faceI]](2,0) -= thetaContrib.z();
-                    }
-
-                    // Diag contribution
-                    forAll(pW, faceI)
-                    {
-                        d[fc[faceI]](0,0) += -pCQDTheta[faceI].xx()/pDelta[faceI];
-                        d[fc[faceI]](0,1) += -pCQDTheta[faceI].xy()/pDelta[faceI];
-                        d[fc[faceI]](0,2) += -pCQDTheta[faceI].xz()/pDelta[faceI];
-
-                        d[fc[faceI]](1,0) += -pCQDTheta[faceI].yx()/pDelta[faceI];
-                        d[fc[faceI]](1,1) += -pCQDTheta[faceI].yy()/pDelta[faceI];
-                        d[fc[faceI]](1,2) += -pCQDTheta[faceI].yz()/pDelta[faceI];
-
-                        d[fc[faceI]](2,0) += -pCQDTheta[faceI].zx()/pDelta[faceI];
-                        d[fc[faceI]](2,1) += -pCQDTheta[faceI].zy()/pDelta[faceI];
-                        d[fc[faceI]](2,2) += -pCQDTheta[faceI].zz()/pDelta[faceI];
                     }
                 }
             }

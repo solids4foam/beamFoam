@@ -410,19 +410,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea, tensor::zero)
     ),
-    CQDTheta_
-    (
-        IOobject
-        (
-            "CQDTheta",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor("0", dimForce*dimLength, tensor::zero)
-    ),
     CMTheta_
     (
         IOobject
@@ -588,24 +575,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                 0,            EIyy().value(), 0,
                 0,            0,              EIzz().value()
             )
-        )
-    ),
-    CDQDK_
-    (
-        IOobject
-        (
-            "CDQDK",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor
-        (
-            "CDQDK",
-            dimForce*dimLength,
-            tensor::zero
         )
     ),
     // ARho_

@@ -229,9 +229,6 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     const tensorField& CQTheta =
         patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
 
-    const tensorField& CQDTheta =
-        patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
-
     const vectorField explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
@@ -242,8 +239,7 @@ void forceBeamDisplacementNRFvPatchVectorField::evaluate
     const vectorField newDW
     (
         (invA & (force() - explicitQ)) -
-        (invA & (CQTheta & DTheta)) -
-        (invA & (CQDTheta & (DTheta - DTheta.patchInternalField())))/delta // usuly zero
+        (invA & (CQTheta & DTheta))
       + DW.patchInternalField()
     );
 
