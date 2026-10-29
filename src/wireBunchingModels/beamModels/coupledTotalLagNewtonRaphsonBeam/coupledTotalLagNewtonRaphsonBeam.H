@@ -164,7 +164,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceVectorField K_;
 
         //- Point mesh
-        pointMesh pMesh_;
+        const pointMesh& pMesh_;
 
         //- Mean line point displacement field
         pointVectorField pointW_;

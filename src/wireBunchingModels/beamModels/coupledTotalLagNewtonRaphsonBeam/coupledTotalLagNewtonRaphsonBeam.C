@@ -462,7 +462,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimless/dimLength, vector::zero)
     ),
-    pMesh_(mesh()),
+    pMesh_(pointMesh::New(mesh())),
     pointW_
     (
         IOobject

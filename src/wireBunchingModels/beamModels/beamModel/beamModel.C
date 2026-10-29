@@ -195,9 +195,12 @@ Foam::beamModel::beamModel
         )
     ),
     runTime_(runTime),
-    meshPtr_
+    meshOwnerPtr_
     (
-        dynamicFvMesh::New
+        // Use the region mesh if another model has already registered it
+        runTime.foundObject<dynamicFvMesh>(region)
+      ? autoPtr<dynamicFvMesh>()
+      : dynamicFvMesh::New
         (
             IOobject
             (
@@ -207,6 +210,12 @@ Foam::beamModel::beamModel
                 IOobject::MUST_READ
             )
         )
+    ),
+    meshPtr_
+    (
+        meshOwnerPtr_.valid()
+      ? &meshOwnerPtr_()
+      : &runTime.lookupObject<dynamicFvMesh>(region)
     ),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
