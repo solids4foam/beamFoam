@@ -1,7 +1,6 @@
 /*--------------------------------*- C++ -*----------------------------------*\
-| solids4foam: solid mechanics and fluid-solid interaction simulations        |
-| Version:     v2.0                                                           |
-| Web:         https://solids4foam.github.io                                  |
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
 | Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
 |              producer and distributor of the OpenFOAM software via          |
 |              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |

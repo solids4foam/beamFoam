@@ -1,0 +1,268 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     beamFoamUpdateHeaders
+#     adapted from solids4FoamChangeCopyright and
+#     solids4FoamUpdateCaseFileHeader in solids4foam
+#
+# Description
+#     Updates the header of beamFoam files to the solids4foam layout:
+#       - .C and .H files: the header comment up to the end of the GPL text
+#         (the OpenFOAM or foam-extend banner and License block) becomes the
+#         beamFoam License block. Copyright lines of their own (e.g. of code
+#         copied from OpenFOAM) are kept above it. Class, Description, etc.
+#         are kept. The #include-d code fragments listed below are skipped;
+#         any other file without a header is an error
+#       - OpenFOAM dictionaries: the banner above FoamFile
+#     Other files, scripts included, are skipped.
+#
+#     Update all files:
+#
+#     $ git ls-files -z | xargs -0 bin/beamFoamUpdateHeaders
+#
+#     Only report files with an outdated header (exits 1 if there are any):
+#
+#     $ git ls-files -z | xargs -0 bin/beamFoamUpdateHeaders -check
+#
+#------------------------------------------------------------------------------
+
+usage()
+{
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [OPTION] <file1> ... <fileN>
+
+options:
+  -check              report files with an outdated header, do not modify
+  -help               print the usage
+
+USAGE
+    exit 1
+}
+
+checkOnly=false
+
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+    -check)
+        checkOnly=true
+        ;;
+    -h | -help)
+        usage
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        usage "unknown option: '$1'"
+        ;;
+    *)
+        break
+        ;;
+    esac
+    shift
+done
+
+[ "$#" -ge 1 ] || usage "No files specified"
+
+
+# * * * * * * * * * * * * * * * * Headers  * * * * * * * * * * * * * * * * * //
+
+export sourceHeader='/*---------------------------------------------------------------------------*\
+License
+    This file is part of beamFoam.
+
+    beamFoam is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the
+    Free Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
+
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
+
+'
+
+export dictHeader='/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+'
+
+
+# * * * * * * * * * * * * * * * * Functions  * * * * * * * * * * * * * * * * //
+
+# Write the file $1 with an updated header to stdout.
+# Returns 3 if the file does not start with a comment (no header to update),
+# and 2 if it does but has no License block.
+#
+# The header comment is replaced from its first line to the last line of the
+# GPL text in its License block, and the match never runs past the closing
+# \*---*/ line. Copyright lines on a line of their own (e.g. those of a file
+# copied from OpenFOAM) are kept above License; those inside the old ASCII-art
+# banner and the "AUTHOR, AFFILIATION" template placeholders are dropped.
+updateSource()
+{
+    perl -0777 -ne '
+        exit 3 unless /\A\s*\/\*/;
+
+        s{
+            \A\s*/\*-[^\n]*\n
+            ((?:(?!License\n|\\\*-)[^\n]*\n)*)
+            License\n
+            (?:(?!\\\*-)[^\n]*\n)*?
+            (?!\\\*-)[^\n]*(?:licenses/>\.|USA|GPL-3\.0-or-later\.)[ \t]*\n
+            (?:[ \t]*\n)?
+        }{
+            my $preamble = $1;
+            my @copyright =
+                grep { !/AUTHOR,\s*AFFILIATION/ }
+                map  { /^\s*(Copyright \(C\).*?)\s*$/ ? ("    $1\n") : () }
+                split /^/m, $preamble;
+
+            my ($first, $rest) = split /\n/, $ENV{sourceHeader}, 2;
+
+            @copyright
+          ? "$first\n" . join("", @copyright) . ("-" x 79) . "\n$rest"
+          : $ENV{sourceHeader}
+        }mxe
+            or exit 2;
+        print;
+    ' "$1"
+}
+
+# Returns 2 if there is no FoamFile block after the (optional) banner and any
+# // comment lines
+updateDict()
+{
+    perl -0777 -ne '
+        s{\A(?:/\*[^\n]*\n(?:[^\n]*\n)*?\\\*-+\*/\n)?\s*((?://[^\n]*\n\s*)*)(?=FoamFile\b)}
+         {$ENV{dictHeader}$1}s
+            or exit 2;
+        print;
+    ' "$1"
+}
+
+
+# * * * * * * * * * * * * * * * * * * Main * * * * * * * * * * * * * * * * * //
+
+tmpFile="$(mktemp)" || exit 1
+trap 'rm -f "$tmpFile"' EXIT
+
+# #include-d code fragments, which have no header. Any other .C or .H file
+# without a header is an error, so that new files cannot skip the check
+fragments="
+applications/solvers/beamFoam/readBeamFoamControls.H
+applications/solvers/beamFoam/setDeltaT.H
+applications/utilities/setInitialPositionBeam/updateMeshPoints.H
+src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/updateCouplingCoeffs.H
+src/wireBunchingModels/numerics/BlockEigenSolvers/deprecated/implBeamsContactBlockEigenSparseLU/applyConicalPulleyContact.H
+"
+
+nChecked=0
+nOutdated=0
+nFailed=0
+nSkipped=0
+
+for file
+do
+    [ -f "$file" ] || continue
+
+    case "$file" in
+    *.C | *.H)
+        if echo "$fragments" | grep -qxF "${file#./}"
+        then
+            nSkipped=$((nSkipped + 1))
+            continue
+        fi
+        fileType=source
+        ;;
+    *)
+        if head -c 2 "$file" | grep -q '^#!'
+        then
+            continue
+        elif grep -q '^FoamFile' "$file"
+        then
+            fileType=dict
+        elif head -n 10 "$file" | grep -q 'F ield'
+        then
+            echo "Skipped, OpenFOAM banner but no FoamFile block: $file"
+            nSkipped=$((nSkipped + 1))
+            continue
+        else
+            continue
+        fi
+        ;;
+    esac
+
+    case "$fileType" in
+    source) updateSource "$file" > "$tmpFile" ;;
+    dict)   updateDict   "$file" > "$tmpFile" ;;
+    esac
+    status=$?
+
+    nChecked=$((nChecked + 1))
+
+    if [ "$status" -eq 3 ]
+    then
+        echo "No header (if this is an #include-d code fragment, add it to" \
+             "the fragments list in ${0##*/}): $file" 1>&2
+        nFailed=$((nFailed + 1))
+        continue
+    elif [ "$status" -ne 0 ] && [ "$fileType" = dict ]
+    then
+        echo "No FoamFile block after the header comment: $file" 1>&2
+        nFailed=$((nFailed + 1))
+        continue
+    elif [ "$status" -ne 0 ]
+    then
+        echo "No License block in the header comment: $file" 1>&2
+        nFailed=$((nFailed + 1))
+        continue
+    fi
+
+    if ! cmp -s "$file" "$tmpFile"
+    then
+        nOutdated=$((nOutdated + 1))
+
+        if "$checkOnly"
+        then
+            echo "Outdated header: $file"
+        else
+            echo "Updated header: $file"
+            # Use cat to keep the permissions and soft-links of the file
+            cat "$tmpFile" >| "$file"
+        fi
+    fi
+done
+
+echo "Checked $nChecked files: $nOutdated outdated, $nFailed without a header;" \
+     "skipped $nSkipped"
+
+if "$checkOnly" && [ "$nOutdated" -gt 0 ]
+then
+    echo "Update them with: bin/beamFoamUpdateHeaders <file1> ... <fileN>"
+fi
+
+if [ "$nFailed" -gt 0 ] || { "$checkOnly" && [ "$nOutdated" -gt 0 ]; }
+then
+    exit 1
+fi
+
+#------------------------------------------------------------------------------
