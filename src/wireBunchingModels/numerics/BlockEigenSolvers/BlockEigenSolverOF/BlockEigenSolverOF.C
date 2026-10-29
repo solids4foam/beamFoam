@@ -24,7 +24,6 @@ License
 // #include "addToRunTimeSelectionTable.H"
 // #include "fvMesh.H"
 // #include "beamModel.H"
-// #include "multibeamFvBlockMatrix.H"
 #include "denseMatrixHelperFunctions.H"
 
 #include <Eigen/Core>
