@@ -257,6 +257,22 @@ tensor rotationMatrix(const vector& rotationAngle)
     return R;
 }
 
+/*
+    NOTE: currently unused - kept for reference.
+
+    Objective cell-to-face interpolation: the face rotation is the owner
+    rotation followed by half of the relative rotation between the owner
+    and neighbour cells. Boundary faces take the boundary values of R.
+
+    objectiveInterpolation (beamProperties) updated the rotations after each
+    Newton correction as Lambda = rotationMatrix(DTheta) & Lambda, then
+    recalculated K = refLambdaf.T() & meanLineCurvature(Lambda) and
+    Lambdaf = interpolateRotationMatrix(Lambda). The option was removed from
+    the solver and the tutorials in the OpenFOAM.com port (1e2a795); the
+    original code marked both calls "this does not work". The last full
+    implementation is on the openfoam-v2306 branch
+    (coupledTotalLagNewtonRaphsonBeamEvolve.C) and in commit e54de7d.
+*/
 tmp<surfaceTensorField> interpolateRotationMatrix
 (
     const volTensorField& R
@@ -311,6 +327,22 @@ tmp<surfaceTensorField> interpolateRotationMatrix
 }
 
 
+/*
+    NOTE: currently unused - kept for reference.
+
+    Face curvature from the relative rotation vector between the owner and
+    neighbour cells divided by the cell-centre distance (local frame of the
+    owner cell). Used together with interpolateRotationMatrix(R) above.
+
+    objectiveInterpolation (beamProperties) updated the rotations after each
+    Newton correction as Lambda = rotationMatrix(DTheta) & Lambda, then
+    recalculated K = refLambdaf.T() & meanLineCurvature(Lambda) and
+    Lambdaf = interpolateRotationMatrix(Lambda). The option was removed from
+    the solver and the tutorials in the OpenFOAM.com port (1e2a795); the
+    original code marked both calls "this does not work". The last full
+    implementation is on the openfoam-v2306 branch
+    (coupledTotalLagNewtonRaphsonBeamEvolve.C) and in commit e54de7d.
+*/
 tmp<surfaceVectorField> meanLineCurvature
 (
     const volTensorField& R
@@ -379,6 +411,13 @@ tmp<surfaceVectorField> meanLineCurvature
     return tKf;
 }
 
+/*
+    NOTE: currently unused - kept for reference.
+
+    Combines interpolateRotationMatrix(R) and rotationAngleDerivative(R):
+    fills the face rotations Rf and the face rotation angle gradient in one
+    loop. No caller has been found in the history of beamFoam.
+*/
 void interpolateRotationMatrix
 (
     const volTensorField& R,
@@ -560,6 +599,13 @@ void interpolateRotationMatrix
     }
 }
 
+/*
+    NOTE: currently unused - kept for reference.
+
+    Face rotation angle gradient: the relative rotation vector between the
+    owner and neighbour cells (or the boundary value) multiplied by the
+    face deltaCoeffs. No caller has been found in the history of beamFoam.
+*/
 tmp<surfaceVectorField> rotationAngleDerivative
 (
     const volTensorField& rotMat

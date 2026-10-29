@@ -284,10 +284,6 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
-    // objectiveInterpolation_
-    // (
-    //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
-    // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
     // contactPtr_(),
     deltaTseries_()

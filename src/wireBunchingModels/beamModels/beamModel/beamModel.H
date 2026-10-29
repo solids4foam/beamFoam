@@ -167,9 +167,6 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
-        // //- Use objective interpolation for rotation
-        // bool objectiveInterpolation_;
-
         //- Artificial scaling factor for changing the inertia
         //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
