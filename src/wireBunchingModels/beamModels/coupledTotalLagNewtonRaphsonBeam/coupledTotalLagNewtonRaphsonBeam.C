@@ -84,19 +84,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh()
     ),
-    WIncrement_
-    (
-        IOobject
-        (
-            "WIncrement",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", W_.dimensions(), vector::zero)
-    ),
     U_
     (
         IOobject
@@ -202,19 +189,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", Theta_.dimensions(), vector::zero)
     ),
-    totW_
-    (
-        IOobject
-        (
-            "totW",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimLength, vector::zero)
-    ),
     Q_
     (
         IOobject
@@ -240,19 +214,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh(),
         dimensionedVector("0", dimForce, vector::zero)
-    ),
-    Qa_
-    (
-        IOobject
-        (
-            "Qa",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("0", dimForce, 0)
     ),
     M_
     (
@@ -409,19 +370,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea, tensor::zero)
-    ),
-    CQDTheta_
-    (
-        IOobject
-        (
-            "CQDTheta",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor("0", dimForce*dimLength, tensor::zero)
     ),
     CMTheta_
     (
@@ -590,24 +538,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             )
         )
     ),
-    CDQDK_
-    (
-        IOobject
-        (
-            "CDQDK",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor
-        (
-            "CDQDK",
-            dimForce*dimLength,
-            tensor::zero
-        )
-    ),
     // ARho_
     // (
     //         "ARho",
@@ -694,20 +624,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
     totalContactTime_(0),
-    totalSolutionTime_(),
-    proc_
-    (
-        IOobject
-        (
-            "proc",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("zero", dimless, 0)
-    )
+    totalSolutionTime_()
 {
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations

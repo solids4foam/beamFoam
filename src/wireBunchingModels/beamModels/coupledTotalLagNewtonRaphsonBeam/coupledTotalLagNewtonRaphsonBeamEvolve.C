@@ -331,7 +331,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // Omega_ = Angular Velocity
             // dotOmega_ = Angular Acceleration
 
-            // if (!steadyState())
             if (d2dt2SchemeName_ != "steadyState")
             {
                 // Throw error if rho is set to zero for transient case
@@ -709,9 +708,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
 
-    // SB - NOT USED
-    CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
-
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
 
     // CMTheta2_ = -spinTensor(Lambdaf & (CM_ & (K_ - KP_)))
@@ -786,9 +782,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
 
     W_.correctBoundaryConditions();
     W_.storePrevIter();
-
-    // Update displacement increment (for contact calculation of pulleys)
-    WIncrement_ = W_ - W_.oldTime();
 
     // Store U for optional field relaxation after updating it below
     U_.storePrevIter();
@@ -932,15 +925,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
         implicitM += (CMTheta2_ & fvc::interpolate(DTheta_));
         implicitM.setOriented(true);
         M_ = explicitM_ + implicitM;
-    }
-
-    // Calculate axial force
-    {
-        // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
-        // dRdS /= mag(dRdS);
-        // Qa_ = (dRdS & Q_);
-
-        Qa_ = (Lambdaf_.T() & Q_)().component(0);
     }
 }
 

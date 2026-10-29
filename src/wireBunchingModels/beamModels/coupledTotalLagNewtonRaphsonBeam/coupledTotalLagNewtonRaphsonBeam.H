@@ -70,9 +70,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line displacement field
         mutable volVectorField W_;
 
-        //- Mean line displacement field increment
-        mutable volVectorField WIncrement_;
-
         //- Mean line velocity field
         mutable volVectorField U_;
 
@@ -100,17 +97,11 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Cross-section rotation field increment
         volVectorField DTheta_;
 
-        //- Mean line displacement field
-        mutable volVectorField totW_;
-
         //- Cross-section force
         surfaceVectorField Q_;
 
         //- Explicit contribution to cross-section force
         surfaceVectorField explicitQ_;
-
-        //- Cross-section axial force
-        surfaceScalarField Qa_;
 
         //- Cross-section moment
         surfaceVectorField M_;
@@ -151,9 +142,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQTheta_;
 
-        //- Coefficient in the force equilibrium equation
-        surfaceTensorField CQDTheta_;
-
         //- Coefficient in the moment equilibrium equation
         surfaceTensorField CMTheta_;
 
@@ -193,9 +181,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Beam cross-section constant
         surfaceTensorField CM_;
-
-        //- Beam cross-section constant
-        surfaceTensorField CDQDK_;
 
         // //- Beam momentum inertial term constant (single-beam)
         // dimensionedScalar ARho_;
@@ -239,9 +224,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Total time spend on solution of equilibrium equation
         scalar totalSolutionTime_;
-
-        //- Processor index
-        volScalarField proc_;
 
     // Private Member Functions
 
@@ -365,14 +347,6 @@ public:
             {
                 // This model solves for W
                 return W_;
-            }
-
-            //- Each beamModel must indicate whether W or DW is the primary
-            //  solution variable
-            virtual volVectorField& solutionDW() const
-            {
-                // This model solves for W
-                return WIncrement_;
             }
 
             //- Each beamModel must indicate whether Theta or DTheta

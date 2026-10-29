@@ -154,34 +154,6 @@ void fixedBeamDisplacementFvPatchVectorField::updateCoeffs()
         disp = dispSeries_(this->db().time().timeOutputValue());
     }
 
-    const fvMesh& mesh = patch().boundaryMesh().mesh();
-    
-    // if
-    // (
-    //     (dimensionedInternalField().name() == "DW")
-    // )
-    // {
-    //     // Incremental approach, so we will set the increment of displacement
-    //     // Lookup the old displacement field and subtract it from the total
-    //     // displacement
-    //     const volVectorField& Wold =
-    //         db().lookupObject<volVectorField>("W").oldTime();
-
-    //     disp -= Wold.boundaryField()[patch().index()];
-    // }
-    // else if
-    
-    if
-    (
-        mesh.moving() // Updated lagrangian
-    )
-    {
-        const volVectorField& totW =
-            db().lookupObject<volVectorField>("totW");
-
-        disp -= totW.boundaryField()[patch().index()];
-    }
-
     // Info << patch().name() << ", " << disp << endl;
     
     fvPatchField<vector>::operator==(disp);

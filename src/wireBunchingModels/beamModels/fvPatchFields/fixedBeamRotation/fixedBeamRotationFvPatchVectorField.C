@@ -169,24 +169,6 @@ void fixedBeamRotationFvPatchVectorField::updateCoeffs()
         theta = thetaSeries_(this->db().time().timeOutputValue());
     }
     
-    // SB: Dont know how theta will be updated for Updated Lagrangian Formulation.
-    // Check with ZT
-    
-    const fvMesh& mesh = patch().boundaryMesh().mesh();
-    
-    if(mesh.moving())
-    {
-    	//const volVectorField& DTheta =
-           // db().lookupObject<volVectorField>("DTheta");
-
-      // theta = theta - thetaCurr.boundaryField()[patch().index()];
-      
-     // theta += DTheta;
-        
-      //  theta -= thetaCurr;
-        
-    }
-
 /*
     if (timeIndex_ < this->db().time().timeIndex())
     {
