@@ -49,8 +49,6 @@ Description
         d, l, u only cover internal faces and BlockEigenSolverOF is a
         serial solver on local owner/neighbour addressing, so the linear
         system needs global cell numbering and a parallel solver
-      - assembleMatrixCoefficients() has since gained a CQDTheta term in
-        the W equation, which is missing here
       - assembleMatrixCoefficients() no longer removes the axial component
         of explicitMQ; reconcile this treatment with the internal faces
       - the final sign change follows the foam-extend convention for
