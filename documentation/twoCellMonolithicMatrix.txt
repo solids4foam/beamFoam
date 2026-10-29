@@ -1,0 +1,276 @@
+The monolithic matrix for a two-cell beam, in physical terms
+============================================================
+
+This note writes out the full monolithic beam + rigid body system for a
+beam with only two cells, with every block given as the physical quantity
+it stands for rather than its code name, and explains each term.
+
+For where these terms are built in the code (and their code names), see
+monolithicMatrixLayout.txt, sections 6-9. For the order of calls that build
+and solve the system, see monolithicRigidBodyCodePath.txt.
+
+Assumptions: both ends pinned (fixed position, zero moment), as in the
+floatRigidBody cases, and a uniform mesh, so each internal face is midway
+between its cells (interpolation weight 1/2).
+
+
+Layout
+------
+  Cell 0   anchor end
+  Cell 1   attachment end
+  Face a   anchor face, on cell 0
+  Face 0   internal face, between cells 0 | 1
+  Face b   attachment face, on cell 1
+
+The unknowns are Newton increments: DW and DTheta (displacement and
+rotation) of each cell, and dx and dtheta (displacement and step rotation)
+of the body:
+
+  [ DW0, DTheta0, DW1, DTheta1, dx, dtheta ]
+
+That is 6 x 6 blocks, 18 x 18 scalars. Each entry below is a 3 x 3 block.
+In code terms beamRow = 6*1 = 6 (cell 1 is the attachment cell) and
+rbRow = 6*2 = 12.
+
+[v]x is the cross-product matrix of v: [v]x a = v x a.
+
+
+The matrix
+----------
+
+            W0              Th0             W1               Th1               x               th
+     +                                                                                                    +   +       +     +       +
+ W0  | -k0-ka-mu0       1/2 g0+ga.Ba     k0               1/2 g0           0               0              |   | DW0   |     | -F0   |
+ Th0 | -1/2 KM0-KMa     a0               1/2 KM0          kap0+1/2 gam0    0               0              |   | DTh0  |     | -M0   |
+     |                                                    +1/2 eta0                                       |   |       |     |       |
+     |                                                                                                    |   |       |     |       |
+ W1  |  k0             -1/2 g0          -k0-kb-mu1       -1/2 g0+gb.Bb     kb             -kb.A           | . | DW1   |  =  | -F1   |
+ Th1 | -1/2 KM0         kap0-1/2 gam0    1/2 KM0-KMb      a1               KMb            -KMb.A          |   | DTh1  |     | -M1   |
+     |                  +1/2 eta0                                                                         |   |       |     |       |
+     |                                                                                                    |   |       |     |       |
+ x   |  0               0               -kb               gb.Bb            muB+kb         -kb.A           |   | dx    |     | -Rx   |
+ th  |  0               0               -[r]x kb          [r]x gb.Bb       [r]x kb         iotaB          |   | dth   |     | -Rth  |
+     |                                                                                     +[Qb]x A       |   |       |     |       |
+     |                                                                                     -[r]x kb.A     |   |       |     |       |
+     +                                                                                                    +   +       +     +       +
+
+ a0 = -kap0 + 1/2 gam0 + 1/2 eta0 + etaa.Ba - iota0
+ a1 = -kap0 - 1/2 gam0 + 1/2 eta0 + etab.Bb - iota1
+ A  = [r]x T
+
+(KM is K^M in the text below; kap, gam, eta, mu, iota are kappa, gamma,
+eta, mu and iota.)
+
+
+What each symbol is
+-------------------
+
+Face quantities (f = a, 0, b)
+
+  k_f     Stretch and shear spring of face f [N/m]. The cross-section's
+          axial and shear stiffness (EA along the beam, GA across it),
+          turned into global axes and divided by the spring length. The
+          spring length is the cell-centre spacing for face 0, and the
+          cell-centre-to-face distance for a and b. It gives the change in
+          face force when the two sides of the face move apart.
+
+  kappa_f Bending and torsion spring of face f [N m]. The bending and
+          torsion stiffness (EI, GJ) divided by the same length. It gives
+          the change in face moment when the two sides rotate relative to
+          each other.
+
+  g_f     Force-rotation coupling [N]. How the face force changes when the
+          cross-section rotates. It has two parts: rotating the section
+          changes the strain it sees (the stiffness acting on the tangent),
+          and the force already on the face turns with the section.
+
+  gamma_f Geometric moment term [N m]. The moment already on the face turns
+          with the section. It matters when the face carries a large
+          moment.
+
+  K^M_f   Lever-arm moment per displacement [N]. A segment of beam carrying
+          force Q along a tangent R' produces a moment R' x Q, the "moment
+          of the force about the segment". K^M is how that moment changes
+          when the face moves: the tangent changes, and the force changes.
+
+  eta_f   Lever-arm moment per rotation [N m]. The same R' x Q moment,
+          changing because the section rotates and so changes the force.
+
+  B_f     Pin rotation factor (anchor a and attachment b only). At a pinned
+          end the face moment must stay zero, so the end face rotates
+          freely. B_f is how much the end face turns for a given rotation of
+          its cell so that this holds. Every end-face term that depends on
+          rotation goes through B_f.
+
+Cell quantities
+
+  mu_c    Translational inertia of cell c, = rho A L_c/(beta dt^2). Mass per
+          unit acceleration, as seen through the Newmark scheme.
+
+  iota_c  Rotational inertia of cell c. The cell's rotary inertia
+          (rho I L_c) divided by beta dt^2, plus gyroscopic terms from the
+          cell's spin.
+
+  F_c,    Force and moment balance of cell c at the current iterate.
+  M_c       F_c = face forces + distributed load + weight
+                  - mass x acceleration
+            M_c = face moments + lever-arm moments + distributed moment
+                  - rotary inertia terms
+          The right-hand side is minus these: the out-of-balance that Newton
+          removes.
+
+Body quantities
+
+  mu_B    Body inertia and damping, = m/(beta dt^2) + c gamma/(beta dt).
+
+  iota_B  Body rotational inertia, = J/(beta dt^2) plus gyroscopic
+          (omega x J omega), damping, and "inertia tensor turning with the
+          body" terms.
+
+  r       The arm: the vector from the body's centre of mass to the
+          attachment point.
+
+  [r]x    Cross product with the arm: [r]x F = r x F, the moment of a force
+          F applied at the attachment point.
+
+  T       Rotation Jacobian. A change dtheta of the step rotation vector
+          turns the body by T dtheta.
+
+  A       = [r]x T: how body rotation moves the attachment point. Turning
+          the body by dtheta moves the attachment point by -A dtheta.
+
+  Q_b     The line force on the attachment face at the current iterate. The
+          line pulls on the body with -Q_b.
+
+  R_x,    The body's force and moment out-of-balance:
+  R_th      R_x  = m a + c v - (fluid force + weight + other restraints) + Q_b
+            R_th = J alpha + omega x J omega + c_r omega - (fluid moment)
+                   + r x Q_b
+
+
+What each entry means
+---------------------
+
+Row W0: force balance of cell 0
+  W0   -k0 - ka - mu0     Moving cell 0 stretches the springs to cell 1 (k0)
+                          and to the anchor (ka), and must accelerate its
+                          mass (mu0).
+  Th0  1/2 g0 + ga.Ba     Rotating cell 0 changes face 0's force (shared
+                          half and half with cell 1) and the anchor face's
+                          force (through the pin).
+  W1   k0                 Moving cell 1 stretches face 0's spring and pulls
+                          on cell 0.
+  Th1  1/2 g0             Rotating cell 1 changes face 0's force (cell 1's
+                          half).
+  x,th 0                  The body doesn't touch cell 0 directly.
+
+Row Th0: moment balance of cell 0
+  W0   -1/2 KM0 - KMa     Moving cell 0 changes the lever-arm moments R' x Q
+                          of face 0 (half) and of the anchor face (whole).
+  Th0  a0                 Rotating cell 0: -kap0 bends face 0's spring;
+                          1/2 gam0 is face 0's moment turning; 1/2 eta0 is
+                          face 0's lever-arm moment from rotation; etaa.Ba is
+                          the anchor face's lever-arm moment, through the
+                          pin; -iota0 is rotary inertia. There is no bending
+                          spring to the anchor because it's a pin.
+  W1   1/2 KM0            Moving cell 1 changes face 0's lever-arm moment.
+  Th1  kap0 + 1/2 gam0    Rotating cell 1 bends face 0's spring, turns face
+       + 1/2 eta0         0's moment, and changes its lever-arm moment.
+  x,th 0                  No direct link to the body.
+
+Row W1: force balance of cell 1 (the attachment cell)
+  W0   k0                 Moving cell 0 pulls on cell 1 through face 0's
+                          spring.
+  Th0  -1/2 g0            Rotating cell 0 changes face 0's force. The sign
+                          is opposite to row W0 because cell 1 is on the
+                          other side of the face (Newton's third law).
+  W1   -k0 - kb - mu1     Moving cell 1 stretches the springs to cell 0 (k0)
+                          and to the attachment face (kb), and accelerates
+                          its mass.
+  Th1  -1/2 g0 + gb.Bb    Rotating cell 1 changes face 0's force (its half)
+                          and the attachment face's force (through the pin).
+  x    kb                 The body moving drags the attachment face,
+                          stretching the half-cell spring and pulling on
+                          cell 1.
+  th   -kb.A              The body rotating moves the attachment point along
+                          the arm (-A dtheta), which stretches the same
+                          spring.
+
+Row Th1: moment balance of cell 1
+  W0   -1/2 KM0           Moving cell 0 changes face 0's lever-arm moment.
+  Th0  kap0 - 1/2 gam0    Rotating cell 0 bends face 0's spring (a shared
+       + 1/2 eta0         moment, so its sign flips relative to row Th0) and
+                          changes face 0's lever-arm moment (not flipped).
+  W1   1/2 KM0 - KMb      Moving cell 1 changes the lever-arm moments of
+                          face 0 (half) and of the attachment face (whole).
+  Th1  a1                 Rotating cell 1: -kap0 bends face 0's spring;
+                          -1/2 gam0 is face 0's moment turning; 1/2 eta0 is
+                          face 0's lever-arm moment; etab.Bb is the
+                          attachment face's lever-arm moment, through the
+                          pin; -iota1 is rotary inertia. There is no bending
+                          spring to the body because it's a pin.
+  x    KMb                The body moving tilts the half-cell to the
+                          attachment face and changes its force, which
+                          changes the lever-arm moment on cell 1.
+  th   -KMb.A             The same, with the attachment point moved by the
+                          body's rotation.
+
+Row x: force balance of the body
+  W0,Th0 0                The body only feels cell 1.
+  W1   -kb                Moving cell 1 changes the line force on the body:
+                          the same spring as in row W1, seen from the other
+                          end.
+  Th1  gb.Bb              Rotating cell 1 changes the attachment face's
+                          force, so the body feels it.
+  x    muB + kb           Moving the body accelerates its mass, overcomes
+                          damping, and stretches the line's end spring.
+  th   -kb.A              Rotating the body moves the attachment point and
+                          stretches that spring.
+
+Row th: moment balance of the body, about its centre of mass
+  W0,Th0 0                No direct link.
+  W1   -[r]x kb           Cell 1 moving changes the line force, and that
+                          force acts at the end of the arm r, so it changes
+                          the moment on the body.
+  Th1  [r]x gb.Bb         Cell 1 rotating changes the line force, again
+                          acting through the arm.
+  x    [r]x kb            The body moving changes the line force, which
+                          gives a moment through the arm.
+  th   iotaB + [Qb]x A    Rotating the body: iotaB is its rotational inertia
+       - [r]x kb.A        and damping. [Qb]x A is the existing line force
+                          acting on an arm that has turned (the lever
+                          changes direction). -[r]x kb.A is the line force
+                          changing because the attachment point moved,
+                          acting through the arm.
+
+
+The whole matrix in one sentence
+--------------------------------
+The top-left 4 x 4 blocks are the two-cell beam: two mass/inertia cells
+joined by face 0's stretch, bending and geometric springs, and held at the
+anchor by a pinned spring. The bottom-right 2 x 2 blocks are the rigid
+body's mass and rotational inertia. The rest of the matrix joins cell 1 to
+the body through one spring (kb, the half-cell from cell 1's centre to the
+attachment face), acting at the end of the arm r. The kb, gb, KMb and A
+entries are that spring and its lever arm seen from each side.
+
+
+Notes
+-----
+- Sign conventions: the beam rows are written as "forces = 0", so inertia
+  appears as -mu. The body rows are written as "inertia - forces = 0", so
+  inertia appears as +muB. Each row is only compared with itself, so the
+  two conventions don't conflict.
+- The matrix is not symmetric: besides the sign conventions, the geometric
+  terms (g, gamma, K^M, eta, [Qb]x A) are not symmetric in general. The code
+  uses a sparse LU solve, so symmetry is not needed.
+- A welded joint would add a bending link between cell 1 and the body: the
+  end face turns with the body, adding terms like kappa_b T and g_b T to the
+  dtheta column, replacing B_b, and adding the end-face moment to the
+  body's moment equation.
+- Motion constraints (e.g. surge, heave and pitch only) are applied on top:
+  the body's rows and columns are projected onto the free directions, so
+  the constrained components of dx and dtheta stay zero.
+- For any number of cells the beam part is block-tridiagonal, the anchor
+  adds terms only to the first cell's diagonal blocks, and the body adds
+  one block row and column that connect only to the attachment (last) cell.
