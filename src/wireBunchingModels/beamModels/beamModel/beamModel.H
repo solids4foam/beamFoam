@@ -754,7 +754,7 @@ public:
             virtual void writeFields();
 
             //- Artificial scaling factor for changing the inertia
-            //- tensor I_rho in the angular momentum tensor 
+            //- tensor I_rho in the angular momentum tensor
             scalar kCI() const
             {
                 return kCI_;
