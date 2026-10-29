@@ -632,10 +632,6 @@ public:
             //  solution variable
             virtual volVectorField& solutionW() const = 0;
 
-            //- Each beamModel must indicate whether W or DW is the primary
-            //  solution variable
-            virtual volVectorField& solutionDW() const = 0;
-
             //- Each beamModel must indicate whether Theta or DTheta
             //  is the primary solution variable
             virtual volVectorField& solutionTheta() const = 0;
