@@ -53,6 +53,16 @@ functions
         type            beamForcesMoments;
         historyPatch    left;
     }
+
+    // Solver work per time step, for comparing monolithic and partitioned
+    // coupling (postProcessing/0/beamSolverIterations.dat): evolve calls
+    // (1 here), beam Newton loops (> 1 with partitioned coupling
+    // iterations), Newton iterations and their running total
+    beamSolverIterations
+    {
+        type            beamSolverIterations;
+        libs            ("libwireBunchingModels.so");
+    }
 }
 
 // ************************************************************************* //

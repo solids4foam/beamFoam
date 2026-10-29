@@ -56,6 +56,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 {
     beamModel::evolve();
 
+    countBeamSolve();
+
     const int nCorr
     (
         beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
@@ -573,6 +575,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             );
 
             currentResidualNorm = eigenSolver.solve(solVec, source);
+            countNewtonIteration();
 
             if (iOuterCorr() == 0)
             {

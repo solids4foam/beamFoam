@@ -270,6 +270,8 @@ bool coupledTotalLagNewtonRaphsonBeam::getRigidBodyEndState
 
 scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
+    countEvolveCall();
+
     if (rigidBodyEndPtr_.valid())
     {
         if (rigidBodyCoupling_ == "monolithic")

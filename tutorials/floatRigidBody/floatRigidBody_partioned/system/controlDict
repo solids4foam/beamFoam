@@ -112,8 +112,17 @@ functions
         libs            ("libwireBunchingModels.so");
         region          beamone;
     }
-	      
 
+    // Solver work per time step, for comparing monolithic and partitioned
+    // coupling (postProcessing/0/<name>.dat): PIMPLE loops that solved the
+    // beam, beam Newton loops, Newton iterations (BlockEigenSolverOF::solve
+    // calls) and the running total of Newton iterations
+    beamSolverIterations
+    {
+        type            beamSolverIterations;
+        libs            ("libwireBunchingModels.so");
+        region          beamone;
+    }
 }
 
 // ************************************************************************* //

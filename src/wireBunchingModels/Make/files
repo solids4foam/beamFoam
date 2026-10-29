@@ -28,6 +28,7 @@ functionObjects/beamEnergyData/beamEnergyData.C
 functionObjects/beamConvergenceData/beamConvergenceData.C
 functionObjects/beamDisplacements/beamDisplacements.C
 functionObjects/beamForcesMoments/beamForcesMoments.C
+functionObjects/beamSolverIterations/beamSolverIterations.C
 
 beamMomentumContribution/beamMomentumContribution.C
 beamMomentumContribution/morisonDragContribution/morisonDragContribution.C

@@ -10,16 +10,26 @@ Run from Spyder or from the beamFoam/tutorials directory after both cases have
 completed and contain log.interFoam files. With several PIMPLE outer
 correctors, the beam Newton iterations of all beam solves in a time step are
 added up.
+
+The Newton iterations per time step are taken from
+postProcessing/*/beamSolverIterations.dat (beamSolverIterations function
+object, nNewton) where a case has it, else from beamConvergenceData.dat, else
+from the log. beamConvergenceData holds only the last beam solve of a time
+step, so with several outer correctors it undercounts.
 """
 
 import glob
 import os
 import re
+import sys
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import AutoMinorLocator, MaxNLocator
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from read_beam_solver_iterations import read_beam_solver_iterations  # noqa: E402
 
 
 # =============================================================
@@ -111,6 +121,17 @@ PIMPLE_PATTERN = re.compile(r"^\s*PIMPLE:\s*iteration\s+(\d+)")
 
 
 def read_optional_beam_convergence(case_dir):
+    solver = read_beam_solver_iterations(case_dir)
+    if solver is not None and solver["time"].size:
+        return {
+            "filename": glob.glob(os.path.join(
+                case_dir, "postProcessing", "*", "beamSolverIterations.dat"
+            ))[0],
+            "time": solver["time"],
+            "newton_iterations": solver["n_newton"],
+        }
+
+    # Last beam solve of each time step only (see the module docstring)
     pattern = os.path.join(
         case_dir,
         "postProcessing",
@@ -342,6 +363,11 @@ def add_derived_metrics(case_data):
     case_data["cumulative_newton_iterations"] = np.cumsum(
         np.nan_to_num(newton_iterations, nan=0.0)
     )
+    with np.errstate(divide="ignore", invalid="ignore"):
+        case_data["running_mean_newton_iterations"] = (
+            case_data["cumulative_newton_iterations"]
+           /np.cumsum(np.isfinite(newton_iterations))
+        )
     case_data["cumulative_step_execution_time"] = np.cumsum(
         step_execution_time
     )
@@ -800,6 +826,37 @@ def plot_cumulative_newton_iterations():
     )
 
 
+def plot_running_mean_newton_iterations():
+    plot_line_comparison(
+        "running_mean_newton_iterations",
+        "Average Newton iterations per time step",
+        "running_average_newton_iterations.png",
+        title="Running average of the Newton iterations per time step",
+        bottom=0,
+    )
+
+
+def plot_average_newton_bars():
+    labels = [OLD_LABEL, NEW_LABEL]
+    values = [
+        finite_mean(old_data["newton_iterations"]),
+        finite_mean(new_data["newton_iterations"]),
+    ]
+
+    plt.figure(figsize=(7, 4))
+    ax = plt.gca()
+    bars = ax.bar(labels, values, width=0.5, color=["b", "r"])
+    for bar, value in zip(bars, values):
+        ax.text(
+            bar.get_x() + bar.get_width()/2, value, f"{value:.3g}",
+            ha="center", va="bottom",
+        )
+    ax.set_ylabel("Average Newton iterations per time step")
+    finish_plot(ax, np.asarray(values), bottom=0)
+    plt.tight_layout()
+    save_current_figure("average_newton_iterations.png")
+
+
 def plot_total_time_bars():
     labels = [OLD_LABEL, NEW_LABEL]
     execution_values = [
@@ -918,6 +975,8 @@ plot_newton_iterations()
 plot_newton_iterations_by_time_step_number()
 plot_newton_iterations_by_fixed_interval()
 plot_cumulative_newton_iterations()
+plot_running_mean_newton_iterations()
+plot_average_newton_bars()
 plot_runtime_subplots()
 plot_cumulative_runtime_subplots()
 plot_line_comparison(

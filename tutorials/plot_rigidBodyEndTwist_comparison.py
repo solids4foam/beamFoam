@@ -23,6 +23,14 @@ torsional oscillation against theory for FvBeamNewmark (partitioned, with
 3, 8 and 20 outer correctors where run) and beamFoamCoupled (monolithic), and
 the peak twist in each half period.
 
+Beam Newton iterations (nNewton, BlockEigenSolverOF::solve calls per time
+step, summed over outer correctors and coupling iterations) come from
+postProcessing/0/beamSolverIterations.dat (beamSolverIterations function
+object) where a case has it, else from the log. Plotted for both:
+    - nNewton per time step against time, one panel per sweep case
+    - average nNewton per time step against the sweep parameter
+    - moorFV: nNewton per time step and its running average against time
+
 Run from Spyder or from the beamFoam/tutorials directory after the cases have
 completed. Uses the readers in rigidBodyEndTwist/summarise.py and
 rigidBodyEndTwist/moorFV/compare.py.
@@ -46,10 +54,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TWIST_DIR = os.path.join(SCRIPT_DIR, "rigidBodyEndTwist")
 MOORFV_DIR = os.path.join(TWIST_DIR, "moorFV")
 
+sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, TWIST_DIR)
 sys.path.insert(0, MOORFV_DIR)
 import summarise  # noqa: E402  (rigidBodyEndTwist/summarise.py)
 import compare    # noqa: E402  (rigidBodyEndTwist/moorFV/compare.py)
+from read_beam_solver_iterations import read_beam_solver_iterations  # noqa: E402
 
 COUPLINGS = ["partitioned", "monolithic"]
 
@@ -91,6 +101,16 @@ def sweep_labels(sweep):
     )
 
 
+def newton_counts(case, log):
+    """beamSolverIterations output (or None), total and average nNewton per
+    time step: from the function object if the case has it, else the log"""
+    solver = read_beam_solver_iterations(case)
+    if solver is not None and solver["time"].size:
+        return solver, solver["n_newton"].sum(), solver["n_newton"].mean()
+    steps = log["steps"]
+    return None, log["newton"], log["newton"]/steps if steps else math.nan
+
+
 def load_sweep(sweep):
     """List of {label, partitioned, monolithic, difference} for a sweep"""
     rows = []
@@ -104,11 +124,10 @@ def load_sweep(sweep):
                 s["time"] = np.array([r[0] for r in body])
                 s["twist"] = np.array([r[1] for r in body])
                 s["coupling_iterations"] = np.array([r[5] for r in body])
-                log = s["log"]
-                s["newton_per_step"] = (
-                    log["newton"]/log["steps"] if log["steps"] else math.nan
+                s["solver"], s["newton_total"], s["newton_per_step"] = (
+                    newton_counts(case, s["log"])
                 )
-                s["finished"] = log["status"] == "finished"
+                s["finished"] = s["log"]["status"] == "finished"
                 row[coupling] = s
         if all(c in row for c in COUPLINGS):
             row["difference"] = (
@@ -136,12 +155,17 @@ def load_moorfv():
         if not twist:
             continue
         time = np.array(sorted(twist))
+        log = compare.read_log(case)
+        solver, newton_total, newton_per_step = newton_counts(case, log)
         cases.append({
             "label": label,
             "coupling": coupling,
             "time": time,
             "twist": np.array([twist[t] for t in time]),
-            "log": compare.read_log(case),
+            "log": log,
+            "solver": solver,
+            "newton_total": newton_total,
+            "newton_per_step": newton_per_step,
         })
     return cases
 
@@ -406,7 +430,7 @@ def plot_newton_bars(rows, sweep, x_of, xlabel, average=False):
     for offset, coupling in zip((-width/2, width/2), ("monolithic", "partitioned")):
         values = [
             row[coupling]["newton_per_step"] if average
-            else row[coupling]["log"]["newton"]
+            else row[coupling]["newton_total"]
             for row in rows
         ]
         bars = ax.bar(
@@ -436,6 +460,90 @@ def plot_newton_bars(rows, sweep, x_of, xlabel, average=False):
     save_or_show(f"{sweep}_newton_{metric}_bars.png")
 
 
+def plot_newton_histories(rows, sweep, title_of, filename):
+    """nNewton per time step against time, one panel per case (cases without
+    beamSolverIterations output are left out)"""
+    rows = [
+        row for row in rows
+        if all(row[c]["solver"] is not None for c in COUPLINGS)
+    ]
+    if not rows:
+        return
+    ncols = 3
+    nrows = math.ceil(len(rows)/ncols)
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(11, 2.8*nrows), sharex=True, squeeze=False
+    )
+
+    for ax, row in zip(axes.flat, rows):
+        for coupling in ["partitioned", "monolithic"]:
+            solver = row[coupling]["solver"]
+            ax.step(
+                solver["time"], solver["n_newton"], where="post",
+                color=COLOURS[coupling], linewidth=1.0,
+                label=coupling_label(coupling),
+            )
+            if not row[coupling]["finished"]:
+                ax.plot(
+                    solver["time"][-1], solver["n_newton"][-1], marker="x",
+                    markersize=9, markeredgewidth=2, color=COLOURS[coupling],
+                    clip_on=False,
+                )
+        ax.set_ylim(bottom=0)
+        ax.set_title(title_of(row), fontsize=10)
+        ax.grid(which="major", ls="--", lw=0.6, alpha=0.75)
+
+    for ax in axes.flat[len(rows):]:
+        ax.set_visible(False)
+    for ax in axes[-1]:
+        ax.set_xlabel("Time (s)")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("nNewton per time step")
+
+    axes.flat[0].legend(fontsize=8)
+    fig.suptitle(
+        f"{sweep.capitalize()} sweep: beam Newton iterations per time step "
+        "(x: crashed)"
+    )
+    fig.tight_layout()
+    save_or_show(filename)
+
+
+def plot_average_newton(rows, x, xlabel, log_x, sweep, filename, stability_line=False):
+    """Average nNewton per time step against the sweep parameter"""
+    plt.figure(figsize=(7, 4.5))
+    ax = plt.gca()
+
+    for coupling in COUPLINGS:
+        y = [row[coupling]["newton_per_step"] for row in rows]
+        plot_finished(
+            ax, x, y, rows, coupling, color=COLOURS[coupling], marker="o",
+            markersize=6, linewidth=1.6, label=coupling_label(coupling),
+        )
+        mark_crashes(ax, x, y, rows, coupling)
+        for xi, yi, row in zip(x, y, rows):
+            if row[coupling]["finished"]:
+                ax.annotate(
+                    f"{yi:.3g}", (xi, yi), xytext=(0, 6),
+                    textcoords="offset points", fontsize=7, ha="center",
+                    color=COLOURS[coupling],
+                )
+
+    if stability_line:
+        ax.axvline(1, color=THEORY_COLOUR, ls=":", lw=1.0)
+    if log_x:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+    else:
+        ax.set_ylim(bottom=0)
+    ax.set_title(
+        f"{sweep.capitalize()} sweep: average beam Newton iterations per time step"
+        "\n(x: crashed; its average up to the crash)", fontsize=10,
+    )
+    finish_plot(ax, "Average nNewton per time step", xlabel, log_y=log_x)
+    save_or_show(filename)
+
+
 def plot_sweep(rows, sweep, x_of, xlabel, log_x, title_of, stability_line=False):
     if not rows:
         print(f"No {sweep} sweep results: run rigidBodyEndTwist/Allrun {sweep}")
@@ -447,6 +555,11 @@ def plot_sweep(rows, sweep, x_of, xlabel, log_x, title_of, stability_line=False)
     )
     plot_accuracy(rows, x, xlabel, log_x, sweep, f"{sweep}_accuracy.png")
     plot_runtime(rows, x, xlabel, log_x, sweep, f"{sweep}_runtime.png")
+    plot_newton_histories(rows, sweep, title_of, f"{sweep}_newton_per_step.png")
+    plot_average_newton(
+        rows, x, xlabel, log_x, sweep, f"{sweep}_newton_average.png",
+        stability_line,
+    )
 
 
 plot_sweep(
@@ -556,10 +669,7 @@ if moorfv:
     # Cost: beam Newton iterations per time step and run time per simulated second
     labels = [c["label"] for c in moorfv]
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
-    newton = [
-        c["log"]["newton"]/c["log"]["steps"] if c["log"]["steps"] else math.nan
-        for c in moorfv
-    ]
+    newton = [c["newton_per_step"] for c in moorfv]
     runtime = [
         c["log"]["runtime"]/c["log"]["time"] if c["log"]["time"] else math.nan
         for c in moorfv
@@ -586,5 +696,35 @@ if moorfv:
     fig.suptitle("moorFV: cost", fontsize=11)
     fig.tight_layout()
     save_or_show("moorFV_cost.png")
+
+    # nNewton per time step and its running average
+    solver_cases = [c for c in moorfv if c["solver"] is not None]
+    for key, ylabel, title, filename in (
+        (
+            "n_newton", "nNewton per time step",
+            "moorFV: beam Newton iterations per time step (all outer correctors)",
+            "moorFV_newton_per_step.png",
+        ),
+        (
+            "running_mean_newton", "Average nNewton per time step",
+            "moorFV: running average of the beam Newton iterations per time step",
+            "moorFV_newton_running_average.png",
+        ),
+    ):
+        if not solver_cases:
+            break
+        plt.figure(figsize=(8, 4.5))
+        ax = plt.gca()
+        for case in solver_cases:
+            ls, lw = styles[case["label"]]
+            ax.plot(
+                case["solver"]["time"], case["solver"][key],
+                color=COLOURS[case["coupling"]], ls=ls, lw=lw,
+                label=case["label"],
+            )
+        ax.set_ylim(bottom=0)
+        ax.set_title(title, fontsize=10)
+        finish_plot(ax, ylabel, "Time (s)")
+        save_or_show(filename)
 else:
     print("No moorFV results: run rigidBodyEndTwist/moorFV/Allrun")

@@ -25,6 +25,13 @@ plotted separately as the end force.
 
 Differences are plotted against REFERENCE_CASE.
 
+Solver work: Newton iterations of the beam (BlockEigenSolverOF::solve calls,
+summed over the PIMPLE outer correctors of a time step) per time step, their
+running average and the average per time step and per outer corrector, from
+postProcessing/0/beamSolverIterations.dat (beamSolverIterations function
+object; runs from before 29 Oct 2026 do not have it and are left out of
+these plots).
+
 Run from Spyder or from the beamFoam/tutorials directory after the cases have
 been run with ./Allrun. Cases that have not been run are skipped, and a case
 that is still running is plotted up to its latest output.
@@ -32,10 +39,16 @@ that is still running is plotted up to its latest output.
 
 import os
 import re
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import AutoMinorLocator, MaxNLocator
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from read_beam_solver_iterations import (  # noqa: E402
+    read_beam_solver_iterations, window,
+)
 
 
 # =============================================================
@@ -224,6 +237,9 @@ def load_case(case_dir, label, colour, style):
             height_time, height[:, [0, 2]]
         )
 
+    # Beam solver work per time step (None if the function object was off)
+    case["solver"] = window(read_beam_solver_iterations(path), T_START, T_END)
+
     return case
 
 
@@ -357,6 +373,21 @@ for name, unit, _, _ in SPLIT_QUANTITIES:
             f"    {case['label']:<32} mean {np.mean(drift[steady]): .4e}, "
             f"amplitude {0.5*np.ptp(oscillation[steady]):.4e}"
         )
+
+print("")
+print("Beam Newton iterations (beamSolverIterations)")
+for case in cases:
+    solver = case["solver"]
+    if solver is None or len(solver["time"]) == 0:
+        print(f"  {case['label']:<32} no beamSolverIterations.dat")
+        continue
+    steps = len(solver["time"])
+    print(
+        f"  {case['label']:<32} {steps} steps, total {solver['n_newton'].sum():.0f}, "
+        f"average {solver['n_newton'].mean():.3f} per time step, "
+        f"{solver['n_newton'].sum()/solver['n_pimple'].sum():.3f} per outer "
+        f"corrector, max {solver['n_newton'].max():.0f}"
+    )
 
 print("")
 print("Peak line tension at the box")
@@ -565,3 +596,77 @@ for name, ylabel in (
     ax.set_title("Drift removed")
     finish_plot(ax, ylabel)
     save_or_show(f"{name}_oscillation_zoom.png")
+
+
+# =============================================================
+# SOLVER WORK
+# =============================================================
+
+solver_cases = [
+    case for case in cases
+    if case["solver"] is not None and len(case["solver"]["time"]) > 0
+]
+
+if solver_cases:
+    # nNewton per time step
+    plt.figure(figsize=(7, 4.5))
+    ax = plt.gca()
+    for case in solver_cases:
+        ax.plot(
+            case["solver"]["time"], case["solver"]["n_newton"],
+            color=case["colour"], linestyle=case["style"], linewidth=0.8,
+            label=case["label"],
+        )
+    ax.set_ylim(bottom=0)
+    ax.set_title("Beam Newton iterations per time step (all outer correctors)")
+    finish_plot(ax, "nNewton per time step")
+    save_or_show("newton_per_time_step.png")
+
+    # Running average of nNewton per time step
+    plt.figure(figsize=(7, 4.5))
+    ax = plt.gca()
+    for case in solver_cases:
+        ax.plot(
+            case["solver"]["time"], case["solver"]["running_mean_newton"],
+            color=case["colour"], linestyle=case["style"], linewidth=1.4,
+            label=case["label"],
+        )
+    ax.set_ylim(bottom=0)
+    ax.set_title("Running average of the beam Newton iterations per time step")
+    finish_plot(ax, "Average nNewton per time step")
+    save_or_show("newton_running_average.png")
+
+    # Average nNewton per time step and per outer corrector
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    y = np.arange(len(solver_cases))
+    colours = [case["colour"] for case in solver_cases]
+    for ax, values, xlabel in (
+        (
+            axes[0],
+            [case["solver"]["n_newton"].mean() for case in solver_cases],
+            "Average nNewton per time step",
+        ),
+        (
+            axes[1],
+            [
+                case["solver"]["n_newton"].sum()/case["solver"]["n_pimple"].sum()
+                for case in solver_cases
+            ],
+            "Average nNewton per outer corrector",
+        ),
+    ):
+        ax.barh(y, values, color=colours, height=0.6)
+        for yi, value in zip(y, values):
+            ax.text(value, yi, f" {value:.3g}", va="center", fontsize=9)
+        ax.set_yticks(y)
+        ax.set_yticklabels([case["label"] for case in solver_cases])
+        ax.invert_yaxis()
+        ax.set_xlim(0, 1.2*max(values))
+        ax.set_xlabel(xlabel)
+        ax.grid(axis="x", ls="--", lw=0.6, alpha=0.75)
+    axes[1].set_yticklabels([])
+    fig.suptitle("Average beam Newton iterations")
+    fig.tight_layout()
+    save_or_show("newton_average.png")
+else:
+    print("No beamSolverIterations.dat: solver-work plots skipped")

@@ -183,6 +183,24 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
+        //- Time index of the solver work counters below
+        label solverCountsTimeIndex_;
+
+        //- Calls to evolve() in the current time step. In a coupled
+        //  interFoam run there is one per PIMPLE outer corrector that
+        //  moves the mesh
+        label nEvolveCalls_;
+
+        //- Beam Newton loops in the current time step (more than
+        //  nEvolveCalls_ with partitioned rigidBodyEnd coupling iterations)
+        label nBeamSolves_;
+
+        //- Linear solves (Newton iterations) in the current time step
+        label nNewtonIterations_;
+
+        //- Linear solves (Newton iterations) since the start of the run
+        label totalNewtonIterations_;
+
         //- Steady state calculation
         bool steadyState_;
 
@@ -633,6 +651,64 @@ public:
             const label& iOuterCorr() const
             {
                 return iOuterCorr_;
+            }
+
+            //- Count a call to evolve(); the first call of a time step
+            //  resets the per time step counters
+            void countEvolveCall()
+            {
+                if (solverCountsTimeIndex_ != runTime_.timeIndex())
+                {
+                    solverCountsTimeIndex_ = runTime_.timeIndex();
+                    nEvolveCalls_ = 0;
+                    nBeamSolves_ = 0;
+                    nNewtonIterations_ = 0;
+                }
+
+                ++nEvolveCalls_;
+            }
+
+            //- Count a beam Newton loop
+            void countBeamSolve()
+            {
+                ++nBeamSolves_;
+            }
+
+            //- Count a linear solve (Newton iteration)
+            void countNewtonIteration()
+            {
+                ++nNewtonIterations_;
+                ++totalNewtonIterations_;
+            }
+
+            //- Time index of the solver work counters
+            label solverCountsTimeIndex() const
+            {
+                return solverCountsTimeIndex_;
+            }
+
+            //- Calls to evolve() in the current time step
+            label nEvolveCalls() const
+            {
+                return nEvolveCalls_;
+            }
+
+            //- Beam Newton loops in the current time step
+            label nBeamSolves() const
+            {
+                return nBeamSolves_;
+            }
+
+            //- Linear solves (Newton iterations) in the current time step
+            label nNewtonIterations() const
+            {
+                return nNewtonIterations_;
+            }
+
+            //- Linear solves (Newton iterations) since the start of the run
+            label totalNewtonIterations() const
+            {
+                return totalNewtonIterations_;
             }
 
             //- Each beamModel must indicate whether W or DW is the primary
