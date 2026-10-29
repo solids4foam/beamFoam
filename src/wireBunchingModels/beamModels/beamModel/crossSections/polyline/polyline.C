@@ -18,6 +18,9 @@ License
 InClass
     polyline
 
+Description
+    Incomplete and not compiled: see the Description in polyline.H.
+
 \*---------------------------------------------------------------------------*/
 
 #include "polyline.H"

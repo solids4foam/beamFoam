@@ -19,7 +19,25 @@ Class
     polygon
 
 Description
-    Polygon cross-section model
+    Polygon cross-section model: a regular polygon with optionally
+    filleted corners, e.g.
+
+        <name>CrossSectionModelDict
+        {
+            nSides            6;
+            minRadius         0.01;   // inscribed radius (apothem)
+            filletAngleDeg    0;
+            nSegmentsPerSide  4;
+            nRadialSegments   4;
+        }
+
+    STATUS: NOT COMPILED (not listed in Make/files) and without a tutorial.
+    Area and second moments are implemented and the class compiles against
+    OpenFOAM.com. To enable it, add polygon.C to Make/files and a tutorial
+    that checks it against the circle (large nSides) and rectangle
+    (nSides 4) models. Note that IT() = Ixx + Iyy is the polar moment,
+    which overestimates the torsional stiffness of non-circular sections.
+    See https://github.com/solids4foam/beamFoam/issues/65
 
 SourceFiles
     polygon.C

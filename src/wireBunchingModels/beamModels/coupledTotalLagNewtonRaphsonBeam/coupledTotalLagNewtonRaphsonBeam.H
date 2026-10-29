@@ -326,18 +326,6 @@ class coupledTotalLagNewtonRaphsonBeam
             const bool writeConvergedReason = true
         );
 
-        //- Apply line contact force
-        // void applyLineContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply point contact force
-        // void applyPointContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply conical pulleys contact force
-        // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply conical pulleys contact force
-        // void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
-
         // //- Apply conical pulleys contact force
         // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
 

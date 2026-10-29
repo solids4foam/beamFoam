@@ -171,8 +171,6 @@ fragments="
 applications/solvers/beamFoam/readBeamFoamControls.H
 applications/solvers/beamFoam/setDeltaT.H
 applications/utilities/setInitialPositionBeam/updateMeshPoints.H
-src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/updateCouplingCoeffs.H
-src/wireBunchingModels/numerics/BlockEigenSolvers/deprecated/implBeamsContactBlockEigenSparseLU/applyConicalPulleyContact.H
 "
 
 nChecked=0

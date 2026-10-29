@@ -71,9 +71,6 @@ class beamModel
         //- Mesh
         autoPtr<dynamicFvMesh> meshPtr_;
 
-        //- Compressed sparse row addressing
-        // fvMeshCsrAddressing csrAddressing_;
-
         //- Local to global cell addressing
         labelList localToGlobalCellAddressing_;
 
@@ -300,12 +297,6 @@ public:
             {
                 return mesh().cellZones()[bI].size();
             }
-
-            //- Return CSR addressing
-            // const fvMeshCsrAddressing& csrAddr() const
-            // {
-            //     return csrAddressing_;
-            // }
 
             // //- Return list of conical pulleys
             // const PtrList<conicalPulley>& conicalPulleys() const
