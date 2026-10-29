@@ -4,8 +4,13 @@ else
     DISABLE_WARNING_FLAGS = -Wno-old-style-cast
 endif
 
+# -D__restrict__= : OpenFOAM's field loops (ListLoopM.H) mark their pointers
+# __restrict__, but expressions such as tmp(A) & B reuse A's storage for the
+# result, so input and output alias. GCC 11+ then miscompiles Tensor::inner
+# at -O3 (v2412+ masks this with no-tree-vectorize in TensorI.H; v2312 does
+# not), corrupting the Jacobian and making the tutorials diverge.
 EXE_INC = \
-    $(DISABLE_WARNING_FLAGS) \
+    $(DISABLE_WARNING_FLAGS) -D__restrict__= \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
     -I$(FOAM_SRC)/finiteVolume/lnInclude  \
