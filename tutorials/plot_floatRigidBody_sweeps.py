@@ -14,6 +14,9 @@ For each sweep (stiffness: the line's E; period: the wave period):
     - the largest partitioned-monolithic heave difference, relative to the
       monolithic heave amplitude
     - run time and total beam Newton iterations
+    - bar charts, one pair of bars (monolithic, partitioned) per case, of
+      the total, average and largest nNewton per time step and the
+      execution time per simulated second (hatched: crashed run)
 Beam Newton iterations (nNewton, BlockEigenSolverOF::solve calls per time
 step over all PIMPLE outer correctors) from postProcessing/0/
 beamSolverIterations.dat:
@@ -21,7 +24,7 @@ beamSolverIterations.dat:
       per case
     - average nNewton per time step against the sweep parameter
 Animation cases (base, written every 0.05 s for ParaView): motion and
-nNewton histories.
+nNewton histories, and bars of the same four costs.
 
 A cross marks a run that crashed, at the last value it reached.
 
@@ -34,6 +37,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 import numpy as np
 
@@ -347,6 +351,90 @@ def plot_average_newton(rows, x, xlabel, log_x, sweep, filename):
     save_or_show(filename)
 
 
+# (key, value of one run, y label, title, file suffix) for the bar charts
+BAR_METRICS = [
+    (
+        "total", lambda s: s["newton_total"], "Total beam Newton iterations",
+        "total beam Newton iterations", "newton_total_bars",
+    ),
+    (
+        "average", lambda s: s["newton_mean"],
+        "Average beam Newton iterations per time step",
+        "average beam Newton iterations per time step", "newton_average_bars",
+    ),
+    (
+        "max", lambda s: s["newton_max"],
+        "Most beam Newton iterations in a time step",
+        "most beam Newton iterations in a time step", "newton_max_bars",
+    ),
+    (
+        "runtime",
+        lambda s: s["log"]["runtime"]/s["log"]["time"] if s["log"]["time"] else math.nan,
+        "Execution time per simulated second (s)",
+        "execution time per simulated second", "runtime_bars",
+    ),
+]
+
+
+def plot_bars(rows, name, tick_of, xlabel, value_of, ylabel, title, filename):
+    """Two bars per case, monolithic and partitioned, labelled with their
+    values. Categories keep every case readable despite the uneven parameter
+    spacing; hatched bars are runs that crashed, counted up to the crash"""
+    if not rows:
+        return
+
+    fig, ax = plt.subplots(figsize=(max(8, 1.1*len(rows)), 4.8))
+    positions = np.arange(len(rows))
+    width = 0.36
+    crashed = False
+    for offset, coupling in zip((-width/2, width/2), ("monolithic", "partitioned")):
+        values = [value_of(row[coupling]) for row in rows]
+        bars = ax.bar(
+            positions + offset, values, width, color=COLOURS[coupling],
+            label=coupling_label(coupling), zorder=3,
+        )
+        for bar, row, value in zip(bars, rows, values):
+            if row[coupling]["log"]["status"] == "crashed":
+                crashed = True
+                bar.set_hatch("///")
+                bar.set_edgecolor("0.25")
+            if not math.isnan(value):
+                ax.annotate(
+                    f"{value:.3g}" if value < 1000 else f"{value:.0f}",
+                    (bar.get_x() + bar.get_width()/2, value), xytext=(0, 3),
+                    textcoords="offset points", ha="center", fontsize=7,
+                    rotation=90 if len(rows) > 4 else 0,
+                )
+
+    ax.set_xticks(positions)
+    ax.set_xticklabels([tick_of(row) for row in rows])
+    ax.set_ylim(0, ax.get_ylim()[1]*1.12)
+    ax.set_title(f"{name}: {title}", fontsize=11)
+    finish_plot(ax, ylabel, xlabel, legend=False)
+    # Plain patches: the bars' own handles carry the first bar's hatching
+    ax.legend(handles=[
+        Patch(color=COLOURS[c], label=coupling_label(c))
+        for c in ("monolithic", "partitioned")
+    ])
+    # Vertical grid lines have no quantitative meaning on a categorical axis
+    ax.xaxis.grid(False, which="both")
+    if crashed:
+        fig.text(
+            0.5, 0.01, "Hatched bars: run crashed; values cover the run up to the crash.",
+            ha="center", fontsize=8, color="0.35",
+        )
+        fig.tight_layout(rect=(0, 0.05, 1, 1))
+    save_or_show(filename)
+
+
+def plot_sweep_bars(rows, sweep, tick_of, xlabel):
+    for _, value_of, ylabel, title, suffix in BAR_METRICS:
+        plot_bars(
+            rows, f"{sweep.capitalize()} sweep", tick_of, xlabel, value_of,
+            ylabel, title, f"{sweep}_{suffix}.png",
+        )
+
+
 def plot_sweep(rows, sweep, x_of, xlabel, log_x, title_of):
     if not rows:
         print(f"No {sweep} sweep results: run floatRigidBody_sweeps/Allrun {sweep}")
@@ -399,6 +487,18 @@ plot_sweep(
     ),
 )
 
+plot_sweep_bars(
+    stiffness, "stiffness",
+    tick_of=lambda row: f"x{row['label'][2:]}\n{row['monolithic']['p']['kAxial']:.3g}",
+    xlabel="Line E relative to base, and axial stiffness EA/L (N/m)",
+)
+
+plot_sweep_bars(
+    period, "period",
+    tick_of=lambda row: f"{row['monolithic']['p']['period']:g}",
+    xlabel="Wave period (s)",
+)
+
 
 # =============================================================
 # ANIMATION CASES
@@ -420,5 +520,24 @@ if animation is not None:
     )
     fig.tight_layout()
     save_or_show("animation_histories.png")
+
+    # Cost of the two couplings for the base case: one panel per metric
+    fig, axes = plt.subplots(1, len(BAR_METRICS), figsize=(13, 2.6), sharey=True)
+    y = np.arange(len(COUPLINGS))
+    for ax, (_, value_of, xlabel, _, _) in zip(axes, BAR_METRICS):
+        values = [value_of(animation[c]) for c in COUPLINGS]
+        ax.barh(y, values, color=[COLOURS[c] for c in COUPLINGS], height=0.6, zorder=3)
+        for yi, v in zip(y, values):
+            ax.text(v, yi, f" {v:.3g}" if v < 1000 else f" {v:.0f}",
+                    va="center", fontsize=9)
+        ax.set_xlim(0, max(values)*1.3)
+        ax.set_xlabel(xlabel, fontsize=9)
+        ax.grid(axis="x", ls="--", lw=0.6, alpha=0.75, zorder=0)
+    axes[0].set_yticks(y)
+    axes[0].set_yticklabels([coupling_label(c) for c in COUPLINGS])
+    axes[0].invert_yaxis()
+    fig.suptitle("Animation cases (base): cost", fontsize=11)
+    fig.tight_layout()
+    save_or_show("animation_cost_bars.png")
 else:
     print("No animation results: run floatRigidBody_sweeps/Allrun animation")
