@@ -255,6 +255,93 @@ attachment face), acting at the end of the arm r. The kb, gb, KMb and A
 entries are that spring and its lever arm seen from each side.
 
 
+Where the action-reaction balance is (and why transposes don't match)
+---------------------------------------------------------------------
+(W1,x) = kb and (x,W1) = -kb look equal and opposite, but that is a side
+effect of the sign conventions. Transposed pairs are not meant to balance.
+The action-reaction balance runs down the COLUMNS.
+
+1. The two kinds of rows have opposite signs
+
+  Beam rows (W1, Th1)  derivative of +(force balance) = forces - inertia
+                       (-mu1 on the diagonal)
+  Body rows (x, th)    derivative of the residual R = inertia - forces
+                       (translationalResidual; +muB on the diagonal)
+
+  The face pushes the beam with +Q_b and the body with -Q_b. The body row
+  is minus its force balance, so it holds -(-Q_b) = +Q_b. Both the W1 row
+  and the x row therefore hold +dQ_b: Newton's third law appears as
+  IDENTICAL entries in the same column of those two rows.
+
+2. Every coupling entry comes from one linearised face force
+
+  At a pin:
+      dQ_b = kb (du_b - DW1) + gb.Bb DTh1,     du_b = dx - A dth
+  where du_b is the movement of the attachment point (body translation
+  plus rotation acting on the arm; the pin makes it the same for the beam
+  end and the body).
+
+  Each coupling entry is dQ_b passed through a row operator (the body
+  inertia and the face-0 terms are left out):
+
+  Row  Operator                    W1         Th1         x          th
+  W1   dQ_b (force on cell 1)      -kb        gb.Bb       kb         -kb.A
+  x    dQ_b (force on body,        -kb        gb.Bb       kb         -kb.A
+         sign flipped)
+  Th1  lever-arm moment of dQ_b    -KMb       etab.Bb     KMb        -KMb.A
+         about cell 1's centre
+  th   r x dQ_b + dr x Qb          -[r]x kb   [r]x gb.Bb  [r]x kb    -[r]x kb.A
+         about the body's CoM                                        +[Qb]x A
+
+  So for the pairs that look unbalanced:
+  - (W1,th) = -kb.A pairs with (x,th) = -kb.A: a body rotation moves the
+    attachment point by -A dth and stretches the face spring.
+  - (th,W1) = -[r]x kb is [r]x applied to (x,W1) = -kb: the moment about
+    the CoM of the x row's force change.
+  - (Th1,x) = KMb pairs with (th,x) = [r]x kb: both are the moment of the
+    same force change kb dx. The beam takes it about its cell centre (arm
+    from cell centre to face), the body about its CoM (arm r). The arms
+    differ, so the coefficients differ.
+  - (x,Th1) = gb.Bb pairs with the gb.Bb part of (W1,Th1): the face force
+    changes when cell 1 rotates, equally on both sides.
+  - (Th1,th) = -KMb.A is (Th1,x) times -A: body rotation only reaches the
+    beam through the attachment point's movement.
+  - (th,Th1) = [r]x gb.Bb is [r]x applied to (x,Th1).
+
+  There is no balance between the Th1 and th rows. A pin passes no moment
+  across the joint. Each side only feels the moment of the shared force
+  about its own reference point: K^M for the beam, [r]x for the body.
+
+  The code builds the rows this way (R:631-666):
+  - the x row uses dcW and dcTheta, with Kb on the body diagonal;
+  - the th row is Sr applied to the x row blocks
+    (bodyRotWCoeff = Sr & dcW, bodyRotTransCoeff = Sr & Kb), plus
+    (*Qb) & SrT for the turning arm;
+  - the beam rows use Kb and KbM, times -SrT in the rotation column.
+
+3. Why the transposes don't match
+
+  If the body rows were written with the beam's sign convention (sign
+  flipped):
+  - Translation: (x,W1) becomes +kb = (W1,x). It is symmetric, as a
+    linear spring should be.
+  - Rotation: (th,W1) becomes +[r]x kb. The transpose of (W1,th) is
+    -A^T kb = T^T [r]x kb (using [r]x^T = -[r]x and a symmetric kb).
+    The two agree only when T = I, i.e. a zero step rotation.
+  - Other terms: gb.Bb and KMb are different physics (force per rotation
+    vs lever-arm moment per displacement), with different arms, and Bb
+    only on one side. [Qb]x A is a geometric stiffness term with no
+    transpose partner, and the gyroscopic terms in iotaB are not
+    symmetric either.
+
+  So even with consistent signs the matrix is not symmetric. That is
+  expected for a geometrically nonlinear Newton Jacobian, and is one
+  reason the solver uses SparseLU rather than a symmetric solver.
+
+  (R = coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C, see
+  monolithicMatrixLayout.txt for the full path.)
+
+
 Notes
 -----
 - Sign conventions: the beam rows are written as "forces = 0", so inertia
