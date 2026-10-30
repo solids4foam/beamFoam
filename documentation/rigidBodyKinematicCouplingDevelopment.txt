@@ -1,0 +1,217 @@
+Rigid-body / beam kinematic coupling development
+================================================
+
+Context
+-------
+
+The rigidBodyAndBeam case previously had two possible owners for the beam
+attachment kinematics:
+
+1. The moorFV finiteVolumeBeam restraint directly prescribed the beam end
+   displacement from the rigid-body attachment displacement before beam.evolve().
+2. The beamFoam BlockEigen path could also assemble kinematic coupling terms
+   that solve the beam attachment displacement together with the rigid-body
+   unknowns.
+
+Enabling both paths at the same time over-constrains the attachment. The
+observed symptom was non-convergence in the rigidBodyAndBeam tutorial after
+enabling blockEigenKinematicCoupling: the beam Newton loop reached its maximum
+number of iterations and the residual stagnated instead of converging.
+
+
+Completed steps
+---------------
+
+1. Added an explicit ownership switch to the rigidBodyAndBeam tutorial case.
+
+   File:
+     tutorials/rigidBodyAndBeam/constant/dynamicMeshDict
+
+   Switch:
+     beamAttachmentKinematics prescribedByRigidBody;
+
+   Valid intended values are:
+     prescribedByRigidBody
+     solvedByBlockEigen
+
+2. Added the ownership setting to the moorFV finiteVolumeBeam restraint.
+
+   Files:
+     ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.H
+     ../sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+
+   The default is prescribedByRigidBody, preserving the old behaviour for
+   existing cases.
+
+3. Gated the direct boundary prescription in finiteVolumeBeam.
+
+   With:
+     beamAttachmentKinematics prescribedByRigidBody;
+
+   finiteVolumeBeam still applies:
+     W.boundaryFieldRef()[patchID_] == attachmentDisp + initialW_;
+
+   With:
+     beamAttachmentKinematics solvedByBlockEigen;
+
+   finiteVolumeBeam does not directly prescribe W at the attachment. The
+   attachment kinematics are left for the BlockEigen solve.
+
+4. Passed the ownership mode into beamFoam through RigidBodyStepData.
+
+   File:
+     src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/RigidBodyCouplingData.H
+
+   Added:
+     bool solveAttachmentKinematicsInBlockEigen;
+
+   Default:
+     false
+
+   finiteVolumeBeam sets this true only when:
+     beamAttachmentKinematics == "solvedByBlockEigen"
+
+5. Used the ownership flag in the beam evolve loop.
+
+   File:
+     src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+
+   Added an effective kinematic coupling flag:
+
+     blockEigenKinematicCouplingActive =
+         blockEigenKinematicCoupling
+      && rigidBodyDataValid_
+      && localRigidBodyData.solveAttachmentKinematicsInBlockEigen;
+
+   This active flag now gates:
+     kinematic coupling coefficient assembly
+     the rigid-body BlockEigen constructor path for kinematic coupling
+     the attachment DW boundary overwrite
+
+6. Confirmed the DW boundary overwrite is gated by the same active flag.
+
+   The update:
+     DW_.boundaryFieldRef()[patchI][0] =
+         rigidBodySolution.displacement
+       - W_.prevIter().boundaryField()[patchI][0];
+
+   only runs when BlockEigen actually owns the attachment kinematics.
+
+7. Fixed BlockEigenSolverOF constructor semantics.
+
+   Files:
+     src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.H
+     src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+
+   The rigid-body constructor now takes an explicit rigidBodyKinematicCoupling
+   bool instead of setting rigidBodyKinematicCoupling_(true) whenever the
+   rigid-body constructor is used.
+
+   This keeps force-only rigid-body coupling from accidentally adding the
+   kinematic beam-to-rigid-body matrix blocks.
+
+8. Added runtime sanity checks in the beam evolve loop.
+
+   File:
+     src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+
+   The solver now:
+     aborts if beamAttachmentKinematics is solvedByBlockEigen but
+       blockEigenKinematicCoupling is false
+     warns if blockEigenKinematicCoupling is true but no rigid-body data exists
+     warns if blockEigenKinematicCoupling is true but attachment kinematics are
+       still owned by the finiteVolumeBeam restraint
+
+
+Build validation completed
+--------------------------
+
+The beamFoam side has been rebuilt with:
+
+  ./Allwmake
+
+The moorFV finiteVolumeBeam restraint side has been rebuilt with:
+
+  BEAMFOAM_DIR=/Users/colmmcalister/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam wmake libso
+
+The builds completed without errors. The remaining warnings are existing Eigen
+and OpenFOAM compiler warnings.
+
+
+Next steps
+----------
+
+1. Test the stable/default ownership mode.
+
+   Use:
+     beamAttachmentKinematics prescribedByRigidBody;
+     blockEigenKinematicCoupling false;
+
+   Expected result:
+     the rigidBodyAndBeam tutorial should reproduce the previous stable
+     behaviour. No BlockEigen kinematic coupling terms should be assembled.
+
+2. Test the warning-only ignored-coupling mode.
+
+   Use:
+     beamAttachmentKinematics prescribedByRigidBody;
+     blockEigenKinematicCoupling true;
+
+   Expected result:
+     the case should run with a warning that BlockEigen kinematic coupling is
+     disabled because the finiteVolumeBeam restraint owns the attachment
+     kinematics.
+
+3. Test the fatal invalid-ownership mode.
+
+   Use:
+     beamAttachmentKinematics solvedByBlockEigen;
+     blockEigenKinematicCoupling false;
+
+   Expected result:
+     the case should abort immediately with a clear configuration error. This
+     prevents a setup where neither path owns the attachment kinematics.
+
+4. Test the experimental BlockEigen-owned kinematic mode.
+
+   Use:
+     beamAttachmentKinematics solvedByBlockEigen;
+     blockEigenKinematicCoupling true;
+     blockEigenForceCoupling true;
+
+   Expected result:
+     BlockEigen should assemble the beam-to-rigid-body kinematic coefficients,
+     solve the rigid-body update in the same system, and set the attachment DW
+     boundary from the rigid-body solution.
+
+   First diagnostic checks:
+     confirm "BlockEigen kinematic coupling prepared" appears in log.interFoam
+     confirm "BlockEigen kinematic coupling terms added" appears in log.interFoam
+     compare rigid-body displacement history against the old coupled case
+     inspect beam convergence residuals for stagnation or divergence
+
+5. If the experimental mode still fails to converge, inspect the matrix and
+   residual formulation.
+
+   Priority checks:
+     confirm the attachment patch face/cell index is correct
+     confirm momentArm is non-zero when rotational coupling is expected
+     confirm signs of reciprocal force/torque blocks are consistent with the
+       rigid-body residual convention
+     compare attachmentForcebeam.dat with BlockEigenSolve_rigidBodyForceCoupling.dat
+     inspect whether the WSourceReplacement term is consistent with removing the
+       fixed-value boundary source from the beam equation
+
+6. Add a small regression test case once the experimental mode is stable.
+
+   Suggested coverage:
+     default prescribedByRigidBody mode runs cleanly
+     invalid solvedByBlockEigen/blockEigenKinematicCoupling false mode aborts
+     solvedByBlockEigen/blockEigenKinematicCoupling true mode reaches at least
+       the first few time steps without Newton stagnation
+
+7. Clean up diagnostics before committing, if appropriate.
+
+   Review whether the verbose Info messages for the BlockEigen DOF map and
+   coefficient assembly should remain unconditional, become debug-switch
+   controlled, or be removed after validation.

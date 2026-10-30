@@ -1,0 +1,28 @@
+#!/bin/sh
+# Generate and run the floatRigidBody sweeps and animation cases, several
+# cases at once (each in serial, on one core), then summarise them.
+# Usage: ./Allrun [sweep ...]     NJOBS (default 10) sets how many run at once
+cd "${0%/*}" || exit 1
+
+./makeCases "$@" || exit 1
+
+if [ $# -eq 0 ]
+then
+    set -- animation stiffness period
+fi
+
+cases=""
+for sweep in "$@"
+do
+    if [ "$sweep" = animation ]
+    then
+        cases="$cases $(ls -d animation/*)"
+    else
+        cases="$cases $(ls -d "$sweep"/*/*)"
+    fi
+done
+
+echo $cases | tr ' ' '\n' | OMP_NUM_THREADS=1 xargs -P "${NJOBS:-10}" -I{} \
+    sh -c 'cd {} && ./Allrun > Allrun.out 2>&1; echo "{} finished"'
+
+./summarise.py

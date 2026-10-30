@@ -1,0 +1,77 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     |                                                 |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dynamicFvMesh      dynamicMotionSolverFvMesh;
+motionSolverLibs   ("libfiniteVolumeBeamMooring");
+motionSolver       sixDoFRigidBodyMotionFvBeam;
+
+sixDoFRigidBodyMotionFvBeamCoeffs
+{
+    patches          (floatingObject);
+    innerDistance    0.0;
+    outerDistance    0.5;
+
+    containOuterDistance 1;
+    xDistance        0.8;
+    yDistance        0.8;
+
+    // Fluid forces are ignored: the body moves under gravity (zero here)
+    // and the beam only
+    test             true;
+
+    // Body centred on the beam end, which is welded to it
+    mass             1;
+    centreOfMass     (2.6565 0 0);
+    orientation      (1 0 0 0 1 0 0 0 1);
+    momentOfInertia  (0.05 0.05 0.05);
+
+    // Initial spin about the rod axis, J*Omega0 with Omega0 = 7.86 rad/s:
+    // free torsional oscillation with amplitude Omega0/omega = 0.2 rad
+    angularMomentum  (0.393 0 0);
+
+    solver
+    {
+        type            SOLVER;
+        jacobianCheck   2;
+    }
+
+    // Partitioned (FvBeamNewmark) only: under-relaxation of the body
+    // acceleration between outer correctors
+    accelerationRelaxation RELAX;
+
+    constraints
+    {
+    }
+
+    restraints
+    {
+        beam
+        {
+            sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+
+            attachmentPatch  right;
+            anchorPatch      left;
+            beamRegion       "beam";
+            refAttachmentPt  (2.6565 0 0);
+
+            // The beam end turns with the body and passes its end moment
+            joint            welded;
+        }
+    }
+}
+
+// ************************************************************************* //

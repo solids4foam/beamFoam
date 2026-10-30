@@ -1,0 +1,49 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | foam-extend: Open Source CFD                    |
+|  \\    /   O peration     | Version:     4.0                                |
+|   \\  /    A nd           | Web:         http://www.foam-extend.org         |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      W;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Bottom edge (clamped)
+    left
+    {
+        type fixedValue;
+        value uniform (0 0 0);
+    }
+    // Top edge (free)
+    right
+    {
+        type forceBeamDisplacementNR;
+
+        forceSeries
+        {
+            "fileName|file"        "$FOAM_CASE/constant/timeVsForce";
+            outOfBounds     clamp;
+        }
+    }
+
+    beam
+    {
+        type empty;
+    }
+}
+
+
+// ************************************************************************* //
+

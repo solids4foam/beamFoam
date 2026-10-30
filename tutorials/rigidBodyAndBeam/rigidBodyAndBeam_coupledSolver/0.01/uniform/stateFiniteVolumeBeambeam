@@ -1,0 +1,36 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2312                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       dictionary;
+    location    "0.01/uniform";
+    object      stateFiniteVolumeBeambeam;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+refAttachmentPt ( 2.6565 0 0 );
+
+attachmentPatch right;
+
+anchorPatch     left;
+
+patchID         1;
+
+anchorPatchID   0;
+
+initialQ        ( 0 0 0 );
+
+initialW        ( 0 0 0 );
+
+storeInitialW   0;
+
+
+// ************************************************************************* //

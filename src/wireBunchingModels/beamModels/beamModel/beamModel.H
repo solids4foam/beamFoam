@@ -29,6 +29,7 @@ Description
 
 Author
     Zeljko Tukovic, FSB Zagreb.  All rights reserved.
+    Seevani Bali, UCD.
 
 SourceFiles
     beamModel.C
@@ -40,7 +41,6 @@ SourceFiles
 #define beamModel_H
 
 #include "fvMesh.H"
-//#include "fvMeshCsrAddressing.H"
 #include "IOdictionary.H"
 #include "autoPtr.H"
 #include "runTimeSelectionTables.H"
@@ -50,15 +50,10 @@ SourceFiles
 #include "labelScalarVector.H"
 #include "labelScalarTimeVaryingVector.H"
 #include "interpolationTable.H"
-
-//#include "crossSectionModel.H"
-
-// #include "conicalPulley.H"
-// #include "toroidalPulley.H"
-
-// #include "beamContactModel.H"
+#include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
+#include "RigidBodyCouplingData.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -126,22 +121,26 @@ class beamModel
         labelList nBeamCells_;
 
         //- Beam cross-section model
-        //mutable PtrList<crossSectionModel> crossSections_;
+        mutable PtrList<crossSectionModel> crossSections_;
 
         //- Beam cross-section radius
         scalarField R_;
 
         //- Beam convection velocity
-        scalarField U_;
+        // scalarField U_;
 
         //- Young modulus
-        dimensionedScalar E_;
+        // dimensionedScalar E_;
+        scalarList E_;
 
         //- Shear modulus
-        dimensionedScalar G_;
+        // dimensionedScalar G_;
+        scalarList G_;
 
         //- Beam Density
-        dimensionedScalar rho_;
+        // dimensionedScalar rho_;
+        scalarList rho_;
+
         //- Fluid density on Morrison's Equation
         dimensionedScalar rhof_;
 
@@ -184,11 +183,32 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
+        //- Time index of the solver work counters below
+        label solverCountsTimeIndex_;
+
+        //- Calls to evolve() in the current time step. In a coupled
+        //  interFoam run there is one per PIMPLE outer corrector that
+        //  moves the mesh
+        label nEvolveCalls_;
+
+        //- Beam Newton loops in the current time step (more than
+        //  nEvolveCalls_ with partitioned rigidBodyEnd coupling iterations)
+        label nBeamSolves_;
+
+        //- Linear solves (Newton iterations) in the current time step
+        label nNewtonIterations_;
+
+        //- Linear solves (Newton iterations) since the start of the run
+        label totalNewtonIterations_;
+
         //- Steady state calculation
         bool steadyState_;
 
-        //- Use objective interpolation for rotation
-        bool objectiveInterpolation_;
+        // //- Use objective interpolation for rotation
+        // bool objectiveInterpolation_;
+
+        //- Artificial scaling factor for changing the inertia
+        //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
 
         //- Conical pullys
@@ -399,10 +419,10 @@ public:
             label globalCellIndex(const label localCellIndex) const;
 
             //- Beam cross-section model
-            //  const PtrList<crossSectionModel>& crossSections() const
-            //  {
-            //      return crossSections_;
-            //  }
+             const PtrList<crossSectionModel>& crossSections() const
+             {
+                 return crossSections_;
+             }
 
             //- Return beam cross-section radius
             const scalar& R(label bI = 0) const
@@ -411,74 +431,92 @@ public:
             }
 
             //- Return beam convection velocity
-            const scalar& U(label bI = 0) const
-            {
-                return U_[bI];
-            }
+            // const scalar& U(label bI = 0) const
+            // {
+            //     return U_
+            //     [bI];
+            // }
 
             inline dimensionedScalar A(label bI = 0) const
             {
-            //    if (crossSections_.size())
-            //    {
-            //        return dimensionedScalar("A", dimArea, crossSections_[bI].A());
-            //    }
+                if (crossSections_.size())
+                {
+                    return
+                        dimensionedScalar
+                        (
+                            "A", dimArea, crossSections_[bI].A()
+                        );
+                }
 
                 return dimensionedScalar("A", dimArea, M_PI*sqr(R(bI)));
-                // return A_;
             }
 
             inline dimensionedScalar I(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("I", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "I", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("I", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Iyy(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Iyy", dimArea*dimArea, crossSections_[bI].Iyy());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Iyy", dimArea*dimArea, crossSections_[bI].Iyy()
+                       );
+                }
 
                 return dimensionedScalar("Iyy", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar Izz(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("Izz", dimArea*dimArea, crossSections_[bI].Ixx());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "Izz", dimArea*dimArea, crossSections_[bI].Ixx()
+                       );
+                }
 
                 return dimensionedScalar("Izz", dimArea*dimArea, M_PI*pow(R(bI), 4)/4);
-                // return I_;
             }
 
             inline dimensionedScalar J(label bI = 0) const
             {
-                //if (crossSections_.size())
-                //{
-                //    return dimensionedScalar("J", dimArea*dimArea, crossSections_[bI].IT());
-                //}
+                if (crossSections_.size())
+                {
+                   return
+                       dimensionedScalar
+                       (
+                           "J", dimArea*dimArea, crossSections_[bI].IT()
+                       );
+                }
 
                 return dimensionedScalar("J", dimArea*dimArea, M_PI*pow(R(bI), 4)/2);
-                // return J_;
             }
 
-            const dimensionedScalar& rho() const
+            const dimensionedScalar rho(label bI = 0) const
             {
-                return rho_;
+                return dimensionedScalar("rhoBeam" + Foam::name(bI), dimDensity, rho_[bI]);
             }
+
             const dimensionedScalar& rhoFluid() const
             {
                 return rhof_;
             }
+
             //- Return const reference to the gravitational acceleration
             UniformDimensionedField<vector>& g()
             {
@@ -491,65 +529,74 @@ public:
                 return gPtr_();
             }
 
-            const dimensionedScalar& E() const
+            // const dimensionedScalar& E() const
+            // {
+            //     return E_;
+            // }
+            const dimensionedScalar E(label bI = 0) const
             {
-                return E_;
+                return dimensionedScalar("EBeam" + Foam::name(bI), dimPressure, E_[bI]);
             }
 
-            const dimensionedScalar& G() const
+            // const dimensionedScalar& G() const
+            // {
+            //     return G_;
+            // }
+
+            const dimensionedScalar G(label bI = 0) const
             {
-                return G_;
+                return dimensionedScalar("GBeam" + Foam::name(bI), dimPressure, G_[bI]);
             }
 
             inline dimensionedScalar GA(label bI = 0) const
             {
-                return G_*A(bI);
+                return G(bI)*A(bI);
             }
 
             inline dimensionedScalar GJ(label bI = 0) const
             {
-                return G_*J(bI);
+                return G(bI)*J(bI);
             }
 
             inline dimensionedScalar EA(label bI = 0) const
             {
-                return E_*A(bI);
+                return E(bI)*A(bI);
             }
 
             inline dimensionedScalar EI(label bI = 0) const
             {
-                return E_*I(bI);
+                return E(bI)*I(bI);
             }
 
             inline dimensionedScalar EIyy(label bI = 0) const
             {
-                return E_*Iyy(bI);
+                return E(bI)*Iyy(bI);
             }
 
             inline dimensionedScalar EIzz(label bI = 0) const
             {
-                return E_*Izz(bI);
+                return E(bI)*Izz(bI);
             }
             // Additional member functions added fo mass and rotation
  	          // inertia tensors for dynamics calculation
             inline dimensionedScalar ARho(label bI = 0) const
             {
-                return A(bI)*rho();
+                return A(bI)*rho(bI);
             }
 
             inline dimensionedScalar IyyRho(label bI = 0) const
             {
-                return rho()*Iyy(bI);
+                return rho(bI)*Iyy(bI);
             }
 
  	        inline dimensionedScalar IzzRho(label bI = 0) const
             {
-                return rho()*Izz(bI);
+                return rho(bI)*Izz(bI);
             }
 
  	        inline dimensionedScalar JRho(label bI = 0) const
             {
-                return rho()*J(bI);
+                return rho(bI)*J(bI);
             }
 
             //- Return segment length
@@ -604,6 +651,64 @@ public:
             const label& iOuterCorr() const
             {
                 return iOuterCorr_;
+            }
+
+            //- Count a call to evolve(); the first call of a time step
+            //  resets the per time step counters
+            void countEvolveCall()
+            {
+                if (solverCountsTimeIndex_ != runTime_.timeIndex())
+                {
+                    solverCountsTimeIndex_ = runTime_.timeIndex();
+                    nEvolveCalls_ = 0;
+                    nBeamSolves_ = 0;
+                    nNewtonIterations_ = 0;
+                }
+
+                ++nEvolveCalls_;
+            }
+
+            //- Count a beam Newton loop
+            void countBeamSolve()
+            {
+                ++nBeamSolves_;
+            }
+
+            //- Count a linear solve (Newton iteration)
+            void countNewtonIteration()
+            {
+                ++nNewtonIterations_;
+                ++totalNewtonIterations_;
+            }
+
+            //- Time index of the solver work counters
+            label solverCountsTimeIndex() const
+            {
+                return solverCountsTimeIndex_;
+            }
+
+            //- Calls to evolve() in the current time step
+            label nEvolveCalls() const
+            {
+                return nEvolveCalls_;
+            }
+
+            //- Beam Newton loops in the current time step
+            label nBeamSolves() const
+            {
+                return nBeamSolves_;
+            }
+
+            //- Linear solves (Newton iterations) in the current time step
+            label nNewtonIterations() const
+            {
+                return nNewtonIterations_;
+            }
+
+            //- Linear solves (Newton iterations) since the start of the run
+            label totalNewtonIterations() const
+            {
+                return totalNewtonIterations_;
             }
 
             //- Each beamModel must indicate whether W or DW is the primary
@@ -683,11 +788,67 @@ public:
                 vectorField& tangents
             ) const = 0;
 
-            //- Return current mean line displacement increment
-            virtual tmp<vectorField> currentDisplacementIncrement() const = 0;
+            //- Create a rigidBodyEnd from a caller's body description and
+            //  solve it monolithically with the beam (e.g. from moorFV)
+            virtual void initialiseRigidBodyEnd
+            (
+                const dictionary&,
+                const vector& gravity
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support rigidBodyEnd"
+                    << abort(FatalError);
+            }
 
-            //- Return current cross-section rotation matrix increment
-            virtual tmp<tensorField> currentRotationIncrement() const = 0;
+            //- Set the rigidBodyEnd's applied force and moment for the next
+            //  evolve (global axes, moment about the centre of mass)
+            virtual void setRigidBodyEndExternalLoad
+            (
+                const vector& force,
+                const vector& moment
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support rigidBodyEnd"
+                    << abort(FatalError);
+            }
+
+            //- Set the rigidBodyEnd's translation and rotation constraint
+            //  projections for the next evolve (global axes)
+            virtual void setRigidBodyEndConstraints
+            (
+                const tensor& tConstraints,
+                const tensor& rConstraints
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support rigidBodyEnd"
+                    << abort(FatalError);
+            }
+
+            //- Accepted rigidBodyEnd state after evolve; false if there is
+            //  no rigidBodyEnd
+            virtual bool getRigidBodyEndState(RigidBodyEndState&) const
+            {
+                return false;
+            }
+
+            //- Welded end driven by a caller (e.g. moorFV's partitioned
+            //  coupling): turn the end face of patch patchI with a body
+            //  that has turned by the spatial rotation R since the start
+            //  of the time step. Applied by the next evolve; needs a
+            //  fixedValue Theta condition on the patch
+            virtual void setEndStepRotation
+            (
+                const label patchI,
+                const tensor& R
+            )
+            {
+                FatalErrorInFunction
+                    << "This beam model does not support welded ends"
+                    << abort(FatalError);
+            }
 
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;
@@ -786,16 +947,12 @@ public:
                 return steadyState_;
             }
 
-            //- Steady state
-            bool objectiveInterpolation() const
+            //- Artificial scaling factor for changing the inertia
+            //- tensor I_rho in the angular momentum tensor 
+            scalar kCI() const
             {
-                return objectiveInterpolation_;
+                return kCI_;
             }
-            //- Rotation inertia tensor scaling
- 	          scalar kCI() const
- 	          {
- 		            return kCI_;
- 	          }
 
             //- Get upper neighbour cell faces
             const labelList& upperNeiCellFaces() const;
