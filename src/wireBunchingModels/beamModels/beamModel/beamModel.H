@@ -68,8 +68,11 @@ class beamModel
         //- Reference to the master time object
         Time& runTime_;
 
-        //- Mesh
-        autoPtr<dynamicFvMesh> meshPtr_;
+        //- Mesh, set only when this model constructs its own mesh
+        autoPtr<dynamicFvMesh> meshOwnerPtr_;
+
+        //- Mesh used by this model: owned, or borrowed from the registry
+        const dynamicFvMesh* meshPtr_;
 
         //- Local to global cell addressing
         labelList localToGlobalCellAddressing_;
@@ -265,7 +268,7 @@ public:
             //- Return mesh
             const dynamicFvMesh& mesh() const
             {
-                return meshPtr_();
+                return *meshPtr_;
             }
 
             //- Return number of beams

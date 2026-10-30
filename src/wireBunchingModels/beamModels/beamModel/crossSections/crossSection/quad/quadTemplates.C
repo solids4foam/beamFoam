@@ -97,7 +97,7 @@ Type Foam::quadrilateral::integral
 
     // Info << gXi << endl;
     // Info << gEta << endl;
-    
+
     Field<Type> gFld0(4, pTraits<Type>::zero);
     forAll(gFld0, gpI)
     {
@@ -117,7 +117,7 @@ Type Foam::quadrilateral::integral
                 fld1[operator[](pI)]*Ni(pI, gXi[gpI], gEta[gpI]);
         }
     }
-    
+
     Field<scalar> gMagJacob(4, 0);
     forAll(gMagJacob, gpI)
     {
@@ -131,7 +131,7 @@ Type Foam::quadrilateral::integral
 
         // Info << gFld[gpI] << ", " << gMagJacob[gpI] << endl;
     }
-    
+
     return integ;
 }
 

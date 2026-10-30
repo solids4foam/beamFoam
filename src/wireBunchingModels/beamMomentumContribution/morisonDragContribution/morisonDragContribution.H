@@ -120,7 +120,7 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U,
-            const volVectorField& Accl            
+            const volVectorField& Accl
         );
 
         //- Return the contribution to the linear momentum source
@@ -131,7 +131,7 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U,
-            const volVectorField& Accl            
+            const volVectorField& Accl
         );
 
         //- Return the contribution to the angular momentum source

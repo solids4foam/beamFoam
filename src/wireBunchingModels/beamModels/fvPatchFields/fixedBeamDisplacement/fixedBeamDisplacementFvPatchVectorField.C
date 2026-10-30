@@ -155,7 +155,7 @@ void fixedBeamDisplacementFvPatchVectorField::updateCoeffs()
     }
 
     // Info << patch().name() << ", " << disp << endl;
-    
+
     fvPatchField<vector>::operator==(disp);
 
     fixedValueFvPatchVectorField::updateCoeffs();

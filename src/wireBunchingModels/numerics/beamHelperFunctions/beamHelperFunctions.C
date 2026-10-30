@@ -38,7 +38,7 @@ label sharedFace(const cell& c0, const cell& c1)
     {
         return sharedFaceIndex;
     }
-    
+
     forAll(c0, f0I)
     {
         forAll(c1, f1I)
@@ -58,7 +58,7 @@ label sharedFace(const cell& c0, const cell& c1)
 
     return sharedFaceIndex;
 }
-  
+
 label neiPatchIndex(const cell& c, const fvMesh& mesh)
 {
     label patchIndex = -1;
@@ -79,7 +79,7 @@ label neiPatchIndex(const cell& c, const fvMesh& mesh)
 
     return patchIndex;
 }
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

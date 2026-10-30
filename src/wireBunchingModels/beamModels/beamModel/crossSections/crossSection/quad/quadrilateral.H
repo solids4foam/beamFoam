@@ -81,7 +81,7 @@ public:
 
         //- Construct from four points
         quadrilateral(const labelList& pts);
-    
+
         // //- Construct from Istream
         // inline quadrilateral(Istream&);
 
@@ -107,7 +107,7 @@ public:
             const Field<Type>&,
             const Field<scalar>&
         ) const;
-    
+
         // Access
 
             // //- Return first vertex
@@ -126,7 +126,7 @@ public:
 
             //- Return the points corresponding to this face
             inline pointField points(const pointField& points) const;
-    
+
             // //- Return centre (centroid)
             // inline Point centre() const;
 
@@ -141,7 +141,7 @@ public:
 
             //- Evaluate shape function at a given point
             scalar dNidEta(label i, scalar xi, scalar eta) const;
-    
+
             //- Evaluate shape function at a given point
             scalar dNidXi(label i, scalar xi, scalar eta) const;
 

@@ -57,7 +57,7 @@ namespace Foam
 {
 
 tmp<volVectorField> pseudoVector(const volTensorField& rotationMatrix);
-    
+
 tmp<vectorField> pseudoVector(const tensorField& rotationMatrix);
 
 vector pseudoVector(const tensor& R);
@@ -103,7 +103,7 @@ tmp<surfaceVectorField> rotationAngleDerivative
 (
     const volTensorField& rotatioMatrix
 );
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

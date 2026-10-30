@@ -56,7 +56,7 @@ class annularSector
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- inner radius of the sector
         scalar innerRadius_;
 
@@ -65,22 +65,22 @@ class annularSector
 
         //- angle of the sector
         scalar sectorAngle_;
-        
+
         //- Number of segments of the sector in radial direction
     	label nRadialSegmentsSector_;
-    	
+
     	//- Cross-section area
         scalar A_;
 
         //- Cross-section second moment of area
         scalar Ixx_;
-    
+
         //- Cross-section second moment of area
         scalar Iyy_;
-        
+
         //- Number of circumferential points
         label nCircumferentialPoints_;
-          	
+
         //- Local mesh points
         vectorField points_;
 
@@ -88,15 +88,15 @@ class annularSector
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Calculate cross-section area
         scalar area() const;
-    
+
         //- Calculate second moment of area
         void calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy);
-        
+
         //- Disallow copy construct
         annularSector(const annularSector&);
 
@@ -132,32 +132,32 @@ public:
         {
             return innerRadius_;   //Verify this!
         }
-    
+
         //- Return cross-section radius
         virtual scalar R() const
         {			     // What does this do!
             return (outerRadius_ - innerRadius_);     //verify this with ZT!!
         }
- 
- 
+
+
         //- Return cross-section area
         virtual scalar A() const
         {
             return A_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
             return Ixx_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const
         {
             return Iyy_;
         }
-   
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -173,13 +173,13 @@ public:
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
-            
+
         //- Number of circumferential points
         virtual label nCircumferentialPoints() const
         {
             return nCircumferentialPoints_;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {
@@ -215,7 +215,7 @@ public:
         //     tensor& DMDGamma,
         //     tensor& DMDK
         // ) const;
-    
+
         // //- Write cross-section scalar field in VTK format
         // virtual void writeVTK
         // (
@@ -224,7 +224,7 @@ public:
         //     const scalarField& sf1,
         //     const vectorField& vf
         // ) const;
-        
+
 
 };
 

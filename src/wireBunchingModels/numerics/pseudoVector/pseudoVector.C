@@ -206,7 +206,7 @@ tmp<volTensorField> rotationMatrix(const volVectorField& rotationAngle)
         I + (Foam::sin(magAngle)/magAngle)*angleHat
           + ((1.0-Foam::cos(magAngle))/sqr(magAngle))
             *(angleHat & angleHat);
-    
+
     return tRotMat;
 }
 

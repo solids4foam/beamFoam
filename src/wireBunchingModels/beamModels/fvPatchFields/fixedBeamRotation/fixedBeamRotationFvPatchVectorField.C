@@ -81,7 +81,7 @@ fixedBeamRotationFvPatchVectorField
     // {
     //     fvPatchVectorField::operator==(patchInternalField());
     // }
-    
+
     // Check if rotation is time-varying
     if (dict.found("thetaSeries"))
     {
@@ -132,7 +132,7 @@ void fixedBeamRotationFvPatchVectorField::autoMap
 )
 {
     fixedValueFvPatchVectorField::autoMap(m);
-    
+
     totalTheta_.autoMap(m);
 }
 
@@ -145,11 +145,11 @@ void fixedBeamRotationFvPatchVectorField::rmap
 )
 {
     fixedValueFvPatchVectorField::rmap(ptf, addr);
-    
+
     // SB uncommented this line
     const fixedBeamRotationFvPatchVectorField& dmptf =
          refCast<const fixedBeamRotationFvPatchVectorField>(ptf);
-         
+
      totalTheta_.rmap(dmptf.totalTheta_, addr);
 }
 
@@ -161,35 +161,35 @@ void fixedBeamRotationFvPatchVectorField::updateCoeffs()
     {
         return;
     }
-    
+
     vectorField theta = totalTheta_;
 
     if (thetaSeries_.size())
     {
         theta = thetaSeries_(this->db().time().timeOutputValue());
     }
-    
+
 /*
     if (timeIndex_ < this->db().time().timeIndex())
     {
         timeIndex_ = this->db().time().timeIndex();
-        
+
         vectorField theta = this->patchInternalField();
         forAll(theta, faceI)
         {
             // Prevent torsion
             theta[faceI].x() = 0;
-            
+
             // Prevent bending
             // theta[faceI].y() = 0;
             // theta[faceI].z() = 0;
         }
 
         // Info << theta << endl;
-        
+
         fvPatchField<vector>::operator==(theta);
     }
-    
+
 */
     fvPatchField<vector>::operator==(theta);
     fixedValueFvPatchVectorField::updateCoeffs();
@@ -205,7 +205,7 @@ void fixedBeamRotationFvPatchVectorField::write(Ostream& os) const
         thetaSeries_.write(os);
         os << token::END_BLOCK << nl;
     }
-    
+
     fixedValueFvPatchVectorField::write(os);
 }
 

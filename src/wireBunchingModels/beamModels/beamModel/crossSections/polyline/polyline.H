@@ -81,31 +81,31 @@ class polyline
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- Circumferential points
         vectorField circumferentialPoints_;
 
         //- Minimal cross-section radius
         scalar minRadius_;
-    
+
         //- Cross-section area
         scalar A_;
 
         //- Cross-section second moment of area
         scalar Ixx_;
-    
+
         //- Cross-section second moment of area
         scalar Iyy_;
-    
+
         //- Number of circumferential points
         label nCircumferentialPoints_;
-    
+
         //- Number of segments per side
         label nSegmentsPerSide_;
 
         //- Number of segments in radial direction
         label nRadialSegments_;
-    
+
         //- Local mesh points
         vectorField points_;
 
@@ -113,18 +113,18 @@ class polyline
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Calculate cross-section area
         scalar area() const;
-    
+
         //- Calculate second moment of area
         void calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy);
-    
+
         //- Calculate second moment of area
         scalar IYY() const;
-    
+
         //- Disallow copy construct
         polyline(const polyline&);
 
@@ -157,20 +157,20 @@ public:
         //- Definitian of the coross-section
         //  boundry line in polar coordinates
         virtual scalar radius(const scalar theta) const;
-    
+
         //- Return cross-section radius
         virtual scalar R() const
         {
             return minRadius_;
         }
-    
+
         //- Return cross-section area
         virtual scalar A() const
         {
             // return M_PI*sqr(minRadius_);
             return A_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
@@ -184,7 +184,7 @@ public:
             // return M_PI*pow(minRadius_, 4)/4;
             return Iyy_;
         }
-    
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -201,13 +201,13 @@ public:
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
-            
+
         //- Number of circumferential points
         virtual label nCircumferentialPoints () const
         {
             return nCircumferentialPoints_;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {
@@ -227,7 +227,7 @@ public:
         (
             const vectorField& S
         ) const;
-    
+
         //- Return cross-section resultant force
         virtual vector resultantForce(const vectorField& S) const;
 
@@ -244,7 +244,7 @@ public:
             tensor& DMDGamma,
             tensor& DMDK
         ) const;
-    
+
         //- Write cross-section scalar field in VTK format
         virtual void writeVTK
         (

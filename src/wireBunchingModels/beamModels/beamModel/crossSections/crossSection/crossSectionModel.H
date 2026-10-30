@@ -130,35 +130,35 @@ public:
             scalarRectangularMatrix& m,
             const diagTensor& t
         ) const;
-    
+
         //- Calculate matrix A
         void calcA
         (
             scalarRectangularMatrix& A,
             const vector& p
         ) const;
-    
+
         //- Return cross-section radius
         virtual scalar radius(const scalar theta) const = 0;
-    
+
         //- Return polar angel for given point in cartesion coordinates
         scalar polarAngle(const scalar x, const scalar y) const;
-    
+
         //- Return cross-section equivalent radius
         virtual scalar R() const = 0;
-    
+
         //- Return cross-section area
         virtual scalar A() const = 0;
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const = 0;
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const = 0;
-    
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const = 0;
-    
+
         // //- Return cross-section coefficient of proportionality
         // //  between fully plastic axial force and fully plastic moment
         // virtual scalar CNM() const = 0;
@@ -179,17 +179,17 @@ public:
         //     const vector& Gamma,
         //     const vector& K
         // ) const = 0;
-    
+
         // //- Return cross-section resultant force
         // virtual tmp<scalarField> resultantTotalForce
         // (const vectorField& S) const = 0;
 
         // //- Return cross-section resultant force
         // virtual vector resultantForce(const vectorField& S) const = 0;
-    
+
         // //- Return cross-section resultant moment
         // virtual vector resultantMoment(const vectorField& S) const = 0;
-    
+
         // //- Return cross-section resultant tangent matrices
         // virtual void resultantTangentMatrices
         // (
@@ -200,7 +200,7 @@ public:
         //     tensor& DMDGamma,
         //     tensor& DMDK
         // ) const = 0;
-    
+
         // //- Write cross-section scalar field in VTK format
         // virtual void writeVTK
         // (

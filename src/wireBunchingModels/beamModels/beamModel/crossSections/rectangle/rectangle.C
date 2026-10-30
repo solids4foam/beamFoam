@@ -117,7 +117,7 @@ rectangle::rectangle
             fpts[0] = j*npx + i;
             fpts[1] = fpts[0] + 1;
             fpts[3] = (j+1)*npx + i;
-            fpts[2] = fpts[3] + 1; 
+            fpts[2] = fpts[3] + 1;
         }
     }
 
@@ -125,7 +125,7 @@ rectangle::rectangle
 }
 
 // * * * * * * * * * * * * * * Member Functions * * * * * * * * * * * * * * * //
-    
+
 // tmp<vectorField> rectangle::greenLagrangianStrain
 // (
 //     const vector& Gamma,
@@ -182,18 +182,18 @@ rectangle::rectangle
 //     //     label i1 = fpts[1];
 //     //     label i2 = fpts[2];
 //     //     label i3 = fpts[3];
-        
+
 //     //     fS = scalarField(3, 0);
 //     //     A = scalarRectangularMatrix(3, 6, 0);
 
 //     //     fS
-        
+
 //     //     trF() += quadFaces_[faceI].integrate(points_, AT, fldS)
 //     // }
-    
+
 //     return trF;
 // }
-    
+
 // vector rectangle::resultantForce(const vectorField& S) const
 // {
 //     vector rF = vector::zero;
@@ -202,7 +202,7 @@ rectangle::rectangle
 //     {
 //         rF += quadFaces_[faceI].integral(points_, S);
 //     }
-    
+
 //     return rF;
 // }
 
@@ -224,10 +224,10 @@ rectangle::rectangle
 
 //     List<scalarRectangularMatrix> CT(4);
 //     // CT = scalarRectangularMatrix(3, 3, 0);
-    
+
 //     // List<scalarRectangularMatrix> ACA(4);
 //     // ACA = scalarRectangularMatrix(6, 6, 0);
-    
+
 //     // scalarRectangularMatrix ACA(6, 6, 0);
 
 //     scalarRectangularMatrix DSDE(6, 6, 0);
@@ -273,15 +273,15 @@ rectangle::rectangle
 //         DSDE = DSDE + fpts.integral(points_, A, CT);
 
 //         // DSDE = DSDE + fpts.integral(points_, ACA);
-//         // DSDE = DSDE + dA*ACAm;        
+//         // DSDE = DSDE + dA*ACAm;
 //     }
-    
+
 //     // for (label j=0; j<ny_; j++)
 //     // {
 //     //     for (label i=0; i<nx_; i++)
 //     //     {
 //     //         const quadrilateral& fpts = quadFaces_[fI++];
-            
+
 //     //         label i0 = j*npx + i;
 //     //         label i1 = i0 + 1;
 //     //         label i3 = (j+1)*npx + i;
@@ -290,22 +290,22 @@ rectangle::rectangle
 //     //         scalarRectangularMatrix ACAm(6, 6, 0);
 
 //     //         calcA(A, points_[i0]);
-//     //         tensorToMatrix(CT, dSdE[i0]);    
+//     //         tensorToMatrix(CT, dSdE[i0]);
 //     //         multiply(ACA, A.T(), CT, A);
 //     //         ACAm = ACAm + 0.25*ACA;
 
 //     //         calcA(A, points_[i1]);
-//     //         tensorToMatrix(CT, dSdE[i1]);    
+//     //         tensorToMatrix(CT, dSdE[i1]);
 //     //         multiply(ACA, A.T(), CT, A);
 //     //         ACAm = ACAm + 0.25*ACA;
 
 //     //         calcA(A, points_[i2]);
-//     //         tensorToMatrix(CT, dSdE[i2]);    
+//     //         tensorToMatrix(CT, dSdE[i2]);
 //     //         multiply(ACA, A.T(), CT, A);
 //     //         ACAm = ACAm + 0.25*ACA;
 
 //     //         calcA(A, points_[i3]);
-//     //         tensorToMatrix(CT, dSdE[i3]);    
+//     //         tensorToMatrix(CT, dSdE[i3]);
 //     //         multiply(ACA, A.T(), CT, A);
 //     //         ACAm = ACAm + 0.25*ACA;
 
@@ -318,11 +318,11 @@ rectangle::rectangle
 //     DQDGamma.xx() = DSDE[0][0];
 //     DQDGamma.xy() = DSDE[0][1];
 //     DQDGamma.xz() = DSDE[0][2];
-    
+
 //     DQDGamma.yx() = DSDE[1][0];
 //     DQDGamma.yy() = DSDE[1][1];
 //     DQDGamma.yz() = DSDE[1][2];
-    
+
 //     DQDGamma.zx() = DSDE[2][0];
 //     DQDGamma.zy() = DSDE[2][1];
 //     DQDGamma.zz() = DSDE[2][2];
@@ -331,11 +331,11 @@ rectangle::rectangle
 //     DQDK.xx() = DSDE[0][3];
 //     DQDK.xy() = DSDE[0][4];
 //     DQDK.xz() = DSDE[0][5];
-    
+
 //     DQDK.yx() = DSDE[1][3];
 //     DQDK.yy() = DSDE[1][4];
 //     DQDK.yz() = DSDE[1][5];
-    
+
 //     DQDK.zx() = DSDE[2][3];
 //     DQDK.zy() = DSDE[2][4];
 //     DQDK.zz() = DSDE[2][5];
@@ -346,11 +346,11 @@ rectangle::rectangle
 //     DMDGamma.xx() = DSDE[3][0];
 //     DMDGamma.xy() = DSDE[3][1];
 //     DMDGamma.xz() = DSDE[3][2];
-    
+
 //     DMDGamma.yx() = DSDE[4][0];
 //     DMDGamma.yy() = DSDE[4][1];
 //     DMDGamma.yz() = DSDE[4][2];
-    
+
 //     DMDGamma.zx() = DSDE[5][0];
 //     DMDGamma.zy() = DSDE[5][1];
 //     DMDGamma.zz() = DSDE[5][2];
@@ -361,11 +361,11 @@ rectangle::rectangle
 //     DMDK.xx() = DSDE[3][3];
 //     DMDK.xy() = DSDE[3][4];
 //     DMDK.xz() = DSDE[3][5];
-    
+
 //     DMDK.yx() = DSDE[4][3];
 //     DMDK.yy() = DSDE[4][4];
 //     DMDK.yz() = DSDE[4][5];
-    
+
 //     DMDK.zx() = DSDE[5][3];
 //     DMDK.zy() = DSDE[5][4];
 //     DMDK.zz() = DSDE[5][5];
@@ -390,7 +390,7 @@ rectangle::rectangle
 
 //         rM.y() += quadFaces_[faceI].integral(points_, Sx, Px);
 
-//         rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);            
+//         rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);
 //     }
 
 //     return rM;
@@ -424,7 +424,7 @@ rectangle::rectangle
 //                 << points_[i].z() << endl;
 //     }
 
-    
+
 //     // Write cells
 //     label nCells = quadFaces_.size();
 //     vtkFile << "\nPOLYGONS " << nCells << " " << 5*nCells << endl;
@@ -433,8 +433,8 @@ rectangle::rectangle
 //     {
 //         vtkFile << quadFaces_[i].size() << " "
 //                 << quadFaces_[i][0] << " "
-//                 << quadFaces_[i][1] << " " 
-//                 << quadFaces_[i][2] << " " 
+//                 << quadFaces_[i][1] << " "
+//                 << quadFaces_[i][2] << " "
 //                 << quadFaces_[i][3] << endl;
 //     }
 
@@ -446,7 +446,7 @@ rectangle::rectangle
 //     //     vtkFile << 9 << endl;
 //     // }
 
-    
+
 //     //Write data
 //     vtkFile << "\nPOINT_DATA " << points_.size() << endl;
 //     vtkFile << "SCALARS eqEP float 1" << endl;
@@ -478,7 +478,7 @@ rectangle::rectangle
 //     }
 // }
 
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

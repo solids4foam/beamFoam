@@ -47,13 +47,13 @@ class fixedBeamRotationFvPatchVectorField
     public fixedValueFvPatchVectorField
 {
     // Private Data
-        
+
         //- Constant total rotation field
         vectorField totalTheta_;
 
         //- Theta time series
         interpolationTable<vector> thetaSeries_;
-        
+
         //- Current time index
         label timeIndex_;
 
@@ -134,7 +134,7 @@ public:
             {
                 return totalTheta_;
             }
-            
+
         // Mapping functions
 
             //- Map (and resize as needed) from self given a mapping object
@@ -159,7 +159,7 @@ public:
         // (
         //     const Pstream::commsTypes commsType = Pstream::blocking
         // );
-  
+
         //- Write
         virtual void write(Ostream&) const;
 };

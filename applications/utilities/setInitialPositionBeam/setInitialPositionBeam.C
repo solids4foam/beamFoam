@@ -26,11 +26,11 @@ Description
     - Beam mesh when created always lies such that the length direction of beam is aligned to x-axis.
     - The tangents at the face centres of the beam cells are set to (1 0 0) direction.
 
-    2. Initial Configuration of beam: 
+    2. Initial Configuration of beam:
     - To start with any other orientation of the beam, one needs to set the position vector of the beam curve.
     - The tangents at the face centres of the beam need to be set from (1 0 0) to the cross-section orientation
         of the beam spatial curve.
-    
+
     * valid arguments are:
     * -cellZone : this command grabs the specififed subset of mesh cells
     * -translate vector
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     argList::validOptions.insert("cellZone", "name");
     argList::validOptions.insert("translate", "vector");
     argList::validOptions.insert("rotateAngle", "(vector angleInDegree)");
-    argList::validOptions.insert("rotate", "(vector vector)"); 
+    argList::validOptions.insert("rotate", "(vector vector)");
 
     #include "setRootCase.H"
     #include "createTime.H"

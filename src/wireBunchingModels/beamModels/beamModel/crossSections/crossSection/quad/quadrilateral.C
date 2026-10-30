@@ -54,13 +54,13 @@ quadrilateral::quadrilateral()
     FixedList<label, 4>()
     // FixedList<label, 4>(pts)
 {}
-    
+
 quadrilateral::quadrilateral(const labelList& pts)
 :
     // face(4)
     FixedList<label, 4>(pts)
 {}
-    
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 inline pointField quadrilateral::points(const pointField& points) const
@@ -85,10 +85,10 @@ scalar quadrilateral::area(const pointField& pts) const
     vector n1 =  0.5*((pt[2] - pt[0])^(pt[3] - pt[0]));
 
     A = mag(n0) + mag(n1);
-    
+
     return A;
 }
-    
+
 // inline const vector& quadrilateral::a() const
 // {
 //     return a_;
@@ -168,7 +168,7 @@ scalar quadrilateral::dNidXi(label i, scalar xi, scalar eta) const
     return dN;
 }
 
-    
+
 scalar quadrilateral::dNidEta(label i, scalar xi, scalar eta) const
 {
     scalar dN = 0.0;
@@ -265,7 +265,7 @@ scalarRectangularMatrix quadrilateral::integral
     gCT = scalarRectangularMatrix(3, 3, 0);
 
     // pointField lp = points(pts);
-    
+
     // pointField gp(4, vector::zero);
     // forAll(gCT, gpI)
     // {
@@ -316,7 +316,7 @@ scalarRectangularMatrix quadrilateral::integral
 
     // Note: dA = (dXi*dEta)*detJacob, dXi*dEta = 2
     // Info << "xxxxxxx: " << area(points) << ", " << A << endl;
-    
+
     return integ;
 }
 

@@ -64,11 +64,11 @@ class linearSpringForceBeamDisplacementNRFvPatchVectorField
 
     //- Offset force at spring BC end of beam
     vectorField offsetForce_;
-    
+
     //- Offset Force time series if present
     interpolationTable<vector> offsetForceSeries_;
 
-    
+
 public:
 
     //- Runtime type information
