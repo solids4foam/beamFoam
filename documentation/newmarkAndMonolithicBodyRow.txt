@@ -138,20 +138,61 @@ x^{k+1} = x^k + dx.
 4. Showing the two are equivalent
 ---------------------------------
 
-Linearise the face force:
+Q_b^{k+1} is not substituted into the row from outside. It appears when
+the terms of the row are regrouped. Step by step:
 
-    Q_b^{k+1} = Q_b^k + k_b (dx - DW1)
+Step 1: start from the x row
 
-Substitute it into the row, using
+    (m/(beta dt^2) + k_b) dx - k_b DW1 = -R_x(x^k)
+
+Step 2: write out the residual at the current iterate
 
     R_x(x^k) = m (x^k - x_pred)/(beta dt^2) - F_ext + Q_b^k
 
-and the row becomes
+Step 3: move everything to the left-hand side
 
-    m (x^{k+1} - x_pred)/(beta dt^2) = F_ext - Q_b^{k+1}
+    m/(beta dt^2) dx + k_b dx - k_b DW1
+  + m (x^k - x_pred)/(beta dt^2) - F_ext + Q_b^k = 0
 
-The left side is m a_{n+1}, using the Newmark expression for a_{n+1}. The
-right side is the total force on the body. Rearranging:
+Step 4: group the inertia terms
+
+    m/(beta dt^2) dx + m (x^k - x_pred)/(beta dt^2)
+      = m (x^k + dx - x_pred)/(beta dt^2)
+      = m (x^{k+1} - x_pred)/(beta dt^2)       since x^{k+1} = x^k + dx
+
+Step 5: group the force terms. This is where Q_b^{k+1} appears.
+
+    Q_b^k + k_b dx - k_b DW1 = Q_b^k + k_b (dx - DW1)
+
+  The k_b terms come from the matrix coefficients (x,x) containing k_b
+  and (x,W1) = -k_b. Together they are the first-order change in the face
+  force when the body moves by dx and the cell moves by DW1:
+
+    Delta Q_b ~ k_b (dx - DW1)
+
+  So Q_b^k + k_b (dx - DW1) is the linearised face force at the new
+  iterate. That is what Q_b^{k+1} means here: a name for these grouped
+  terms, not something brought in from outside.
+
+    Q_b^{k+1} = Q_b^k + k_b (dx - DW1)
+
+Step 6: put the groups back together
+
+    m (x^{k+1} - x_pred)/(beta dt^2) - F_ext + Q_b^{k+1} = 0
+
+    =>  m (x^{k+1} - x_pred)/(beta dt^2) = F_ext - Q_b^{k+1}
+
+So the matrix row is just the body's equation of motion at the new
+iterate, with the face force linearised. The left side is m a_{n+1},
+using the Newmark expression for a_{n+1}. The right side is the total
+force on the body.
+
+Q_b^{k+1} is only the first-order estimate of the face force. After the
+solve, the code recomputes the true Q_b from the new beam state. If it
+differs from the estimate, R_x is not zero and Newton takes another
+iteration.
+
+Rearranging step 6:
 
     x^{k+1} = x_pred + beta dt^2 (F_ext - Q_b^{k+1})/m
             = x_n + dt v_n + dt^2 [(1/2 - beta) a_n + beta a_{n+1}]
