@@ -57,6 +57,52 @@ Two details:
     =>  a_{n+1} = (x_{n+1} - x_pred) / (beta dt^2)
 
 
+1a. What x_pred is
+------------------
+
+x_pred is the Newmark predictor: the part of the Newmark update that can
+be computed from the previous step alone, before anything is solved.
+
+    x_pred = x_n + dt v_n + dt^2 (1/2 - beta) a_n
+
+Physical meaning: where the body would be at the end of the step if its
+new acceleration a_{n+1} were zero. It "coasts" on its old position, old
+velocity and old acceleration (weighted by 1/2 - beta).
+
+Role in the scheme: the full update splits into a known and an unknown
+part,
+
+    x_{n+1} = x_pred  +  beta dt^2 a_{n+1}
+              known      unknown (depends on the force at n+1)
+
+so x_pred is the fixed starting point and beta dt^2 a_{n+1} is the
+correction from the force at the new step. Rearranged, it gives the
+acceleration in terms of the unknown position,
+
+    a_{n+1} = (x_{n+1} - x_pred) / (beta dt^2)
+
+which is how the code turns "solve for x" into "satisfy m a = F" (the
+residual m (x - x_pred)/(beta dt^2) - F_ext + Q_b in section 2).
+
+What it is not: it is not a first guess at x_{n+1}, and it has no
+beta dt^2 a term in it; it is only the part already known. The name is
+the standard one (Hughes writes it x-tilde).
+
+In the code: predictor(), RB:430-435,
+
+    return x0_ + deltaT*v0_ + sqr(deltaT)*(0.5 - beta_)*a0_;
+
+It is fixed for the whole time step, because x0_, v0_ and a0_ only change
+in newTimeStep() (RB:387).
+
+The rotational version is angularPredictor() (RB:141-146),
+
+    theta_pred = dt omega_n + dt^2 (1/2 - beta) alpha_n
+
+It has no theta_n term because theta is the rotation within the step,
+which starts at zero.
+
+
 2. Put it into the body's equation of motion at n+1
 ---------------------------------------------------
 
