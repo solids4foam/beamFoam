@@ -1,0 +1,319 @@
+Outline for a numerical methods paper on the monolithic beam + rigid body solver
+================================================================================
+
+This is a suggested layout for writing up the monolithic beam + rigid body
+coupling as a paper for a numerical methods journal (for example Int. J.
+Numer. Meth. Engng, Comput. Methods Appl. Mech. Engrg, J. Comput. Phys.,
+Computers & Structures). For each section it says what should go in it,
+and which file in this folder already holds the material.
+
+Material files (all in this folder):
+  CP  = monolithicRigidBodyCodePath.txt
+  PC  = pimpleToRigidBodySolverCallChain.txt
+  ML  = monolithicMatrixLayout.txt
+  TC  = twoCellMonolithicMatrix.txt
+  NB  = newmarkAndMonolithicBodyRow.txt
+  OC  = outerCorrectorsAndNewmark.pdf (source/outerCorrectorsAndNewmark.html,
+        source/model.py, source/order.py)
+  MP  = monolithicCouplingPlan.pdf
+  TR  = monolithicSolverTestProgressReport.pdf
+  P5  = phase5MultiLinePlan.md
+
+Literature references are not listed here: each claim about prior work
+needs a source checked by hand before it goes in.
+
+
+Working title
+-------------
+
+  "A monolithic Newton-Raphson coupling of a finite-volume geometrically
+   exact beam and a rigid body, for moored floating bodies"
+
+Alternatives: "Monolithic finite-volume beam-rigid body coupling with
+Newmark integration in displacement form"; "Removing the partitioned
+stability limit in beam-moored rigid body simulations".
+
+
+Abstract (150-250 words)
+------------------------
+
+  - Problem: a floating rigid body moored by flexible lines, inside a CFD
+    simulation. The body and lines are usually coupled by partitioned
+    iteration.
+  - Difficulty: partitioned coupling becomes unstable for light bodies and
+    stiff, short lines (the limit beta dt^2 EA/(L m_pin) > ~1).
+  - Method: the body's Newton-Euler equations, integrated with Newmark-beta
+    in displacement form, are added as 6 extra rows and columns to the
+    finite-volume beam's Newton system. The joint compatibility is
+    eliminated, so beam and body are advanced together by one Newton
+    iteration.
+  - Results: agrees with analytic and partitioned reference solutions;
+    second-order in time; stable where the partitioned scheme diverges;
+    one PIMPLE outer corrector is enough, which reduces cost.
+  - Implementation in OpenFOAM (beamFoam / moorFV), with a single switch
+    between partitioned and monolithic coupling.
+
+
+1. Introduction
+---------------
+
+  - Motivation: floating offshore structures (wave energy converters,
+    floating wind, aquaculture) moored by lines that bend, twist and go
+    slack. CFD of the body needs a mooring model that is both accurate and
+    robust.
+  - Mooring models: quasi-static, lumped-mass (e.g. MoorDyn), finite
+    element and finite volume beam models.
+  - Coupling: partitioned (body solver and line solver take turns) versus
+    monolithic (one system). Partitioned stability problems for light
+    bodies and stiff connections (added-mass-like instability).
+  - Gap: no finite-volume geometrically exact beam with the rigid body in
+    the same Newton system (check this claim against the literature).
+  - Contributions, as a numbered list:
+      1. Monolithic formulation: body residuals in force units, Newmark-beta
+         in displacement form, rotations by a step rotation vector.
+      2. Elimination of the joint (pin and welded) so the attachment
+         displacement is not an unknown.
+      3. Block structure of the coupled Jacobian, and its physical
+         interpretation (action-reaction in the columns, non-symmetry).
+      4. Stability analysis of the partitioned scheme on a linear model,
+         giving the limit the monolithic scheme removes.
+      5. Verification and application to moored floating bodies in waves.
+  - Paper layout paragraph.
+
+
+2. Governing equations
+----------------------
+
+2.1 Geometrically exact beam
+  - Total Lagrangian, Simo-Reissner type: displacement W, rotation
+    tensor Lambda (incremental rotation Theta), internal force Q and
+    moment M.
+  - Balance of linear and angular momentum per unit length, including the
+    lever-arm term R' x Q.
+  - Constitutive law: CQ = diag(EA, GA, GA), CM = diag(GJ, EIyy, EIzz) in
+    section axes. J is the torsion constant (pi R^4/2 for a solid circle).
+  - Loads: gravity, distributed hydrodynamic load (if any), ground contact.
+  Sources: ML section 9 (coefficient origins), TC "What each symbol is".
+
+2.2 Rigid body
+  - Newton-Euler about the centre of mass: m a + c v = F_ext + F_beam,
+    J alpha + omega x J omega + c_r omega = M_ext + r x F_beam (+ M_beam).
+  - Orientation R = exp(theta) R_0, inertia J = R J_body R^T.
+  - Fluid force and moment from the CFD as external loads; motion
+    constraints (e.g. surge-heave-pitch only) as projections.
+  Sources: ML 9.4, CP section 4.
+
+2.3 Joint between beam end and body
+  - Compatibility: attachment point u_b = x + (R - I) r_0.
+  - Pin: force passes, no moment (zero-moment end condition).
+  - Welded: end section rotates with the body; force and moment pass.
+  - Action-reaction: the body receives -Q_b (and -M_b if welded).
+  Sources: TC (layout, B_b), ML section 6.
+
+
+3. Discretisation
+-----------------
+
+3.1 Finite-volume beam in space
+  - Cell-centred unknowns, face fluxes of force and moment.
+  - Newton linearisation of the face force and moment: the face
+    coefficients k, kappa, g, gamma, K^M, eta (definitions and physical
+    meaning). Boundary faces, half-cell distance pDelta.
+  - Pin end factor B = (kappa + gamma)^-1 kappa: the end face rotation
+    eliminated by the zero-moment condition.
+  Sources: ML sections 9.1-9.3, TC "What each symbol is" and "Notation".
+
+3.2 Time integration
+  - Beam: Newmark (as implemented) with its predictor.
+  - Body: Newmark-beta in displacement form. Predictor
+        x~ = x_n + dt v_n + dt^2 (1/2 - beta) a_n,
+        a_{n+1} = (x_{n+1} - x~)/(beta dt^2),
+    and the same for the step rotation vector theta. Explain why the
+    predictor has no beta dt^2 a_{n+1} term.
+  - Rotation Jacobian T(theta) and its closed form.
+  Sources: ML sections 9.4 and 10, NB sections 1 and 1a.
+
+
+4. Monolithic coupling
+----------------------
+
+  The core of the paper.
+
+4.1 Unknowns and residuals
+  - [DW, DTheta per cell; dx, dtheta for the body], 6 x 6 blocks.
+  - Body residuals in force units:
+        R_x  = m (x - x~)/(beta dt^2) + c v - F_ext + Q_b
+        R_th = J alpha + omega x J omega + c_r omega - M_ext + r x Q_b
+  - Statement and short proof that a converged Newton iterate satisfies
+    the Newmark-beta update exactly (the linearisation of Q_b is the only
+    approximation per iteration).
+  Sources: NB sections 2-4.
+
+4.2 Eliminating the joint
+  - du_b = dx - A dtheta, A = [r]x T.
+  - How the attachment-face source term K_b (W_b - W_b,prev) becomes the
+    body columns of the matrix.
+  Sources: MP section 2, ML section 6.
+
+4.3 Linearisation and block structure
+  - The coupling blocks (table), and the body diagonal including the
+    turning-arm term [Q_b]x A and the gyroscopic terms.
+  - Physical reading: every coupling entry is the linearised face force
+    dQ_b passed through a row operator (I, I, lever arm K^M, [r]x).
+    Action-reaction appears down the columns, not across transposes.
+  - Why the Jacobian is not symmetric even with consistent signs.
+  - Pin versus welded: extra blocks for the welded joint.
+  - Motion constraints as projections of the body rows and columns.
+  Sources: ML sections 1-8, TC "Where the action-reaction balance is".
+
+4.4 Solution of the linear system
+  - Assembly into one sparse matrix; sparse LU (non-symmetric).
+  - Sparsity: block tridiagonal beam plus one bordering block row and
+    column at the attachment cell. Cost relative to the beam alone.
+  Sources: ML sections 3-4, CP sections 5-6.
+
+4.5 Algorithm
+  - Pseudo-code for one time step: new time step (store state, reset
+    theta), Newton loop (assemble beam, add body blocks, solve, update
+    beam and body, check convergence), accept (update v, a, omega, alpha).
+  Sources: CP, NB section 3.
+
+
+5. The partitioned scheme and its stability limit
+-------------------------------------------------
+
+  - The partitioned algorithm used for comparison (FvBeamNewmark): body
+    Newmark step against the frozen beam force, then the beam with the
+    end prescribed, repeated in the outer correctors.
+  - Linear body-spring model: amplification matrices for the partitioned
+    loop and the monolithic update. Show the partitioned iteration
+    diverges when beta dt^2 k/m_pin > ~1, with
+    m_pin = 1/(1/m + a^2/J) for an off-centre attachment.
+  - One outer corrector: partitioned is explicit, first order and
+    unstable; monolithic is implicit and second order.
+  Sources: OC (figures growth.png, newton.png), source/model.py,
+  source/order.py, memory notes on the partitioned limit, the
+  rigidBodyEndWhirl sweeps.
+
+
+6. Coupling with the flow solver
+--------------------------------
+
+  Keep this short: it is context, not the contribution.
+  - interFoam PIMPLE loop, mesh motion with moveMeshOuterCorrectors.
+  - Fluid force held fixed during the beam + body Newton loop and
+    updated at each outer corrector (the fluid stays partitioned).
+  - Run-time selection of partitioned or monolithic coupling.
+  Sources: PC, OC section 1-2.
+
+
+7. Verification
+---------------
+
+  Each test: setup, what it checks, the result, a figure or table.
+  - Translation only: body on a beam spring, against an analytic
+    spring-mass solution.
+  - Rotation: off-centre attachment and twist (rigidBodyEndTwist), pin
+    and welded joints.
+  - Order of accuracy in time (expect second order), for both
+    translation and rotation.
+  - Newton convergence: quadratic convergence of the residual norm
+    (show the exact Jacobian pays off).
+  - Monolithic vs converged partitioned on cases where both run: they
+    should agree to the iteration tolerance.
+  - Robustness: rigidBodyEndWhirl sweeps of moment and EI; the
+    partitioned limit seen numerically, matching section 5.
+  Sources: TR, tutorials/rigidBodyEnd*, rigidBodyAndBeam_loop and
+  _beamFoamCoupled, the regression check of 2026-10-20 (agreement to
+  ~2e-6 with identical Newton counts after the legacy removal).
+
+
+8. Application: moored floating bodies in waves
+-----------------------------------------------
+
+  - floatRigidBody: floating box with a mooring line in waves; motion and
+    line force, monolithic vs partitioned vs MoorDyn.
+  - Slack line (floatRigidBody_slackLine): snap loads and compression,
+    where line bending and ground contact matter.
+  - Two lines (floatRigidBody_twoLine), if Phase 5 is complete.
+  - Sweeps of line stiffness and wave period (floatRigidBody_sweeps):
+    where the partitioned scheme fails, and cost.
+  - Cost: Newton iterations per step (beamSolverIterations function
+    object), outer correctors needed, wall time split fluid / beam.
+  Sources: tutorials/floatRigidBody*, plot_floatRigidBody_sweeps.py,
+  plot_monolithic_vs_partitioned_*.py.
+
+
+9. Discussion
+-------------
+
+  - When monolithic coupling matters (the stability number) and when
+    partitioned is good enough.
+  - Cost: the extra rows are cheap; the saving comes from fewer outer
+    correctors and fewer failed runs.
+  - Limitations:
+      - one line per body today (Phase 5 plan for several lines);
+      - the fluid stays partitioned (no fluid added mass in the
+        monolithic system);
+      - non-symmetric Jacobian, so a direct sparse LU; scaling to long
+        lines and many lines;
+      - geometric terms that are only first order in theta (T = I limit).
+  - Extensions: several lines on one body, several bodies, implicit
+    fluid added mass, iterative solvers with block preconditioners.
+  Sources: P5, OC.
+
+
+10. Conclusions
+---------------
+
+  - Restate the contributions and the main quantitative results (the
+    stability number, order of accuracy, cost).
+
+
+Appendices
+----------
+
+  A. The full two-cell matrix in physical terms, with the meaning of every
+     entry. (TC)
+  B. Derivation of the face coefficients k, kappa, g, gamma, K^M, eta and
+     of the pin factor B. (ML section 9, TC "Notation")
+  C. Rotation: exponential map, rotation Jacobian T(theta), and the
+     rotational inertia Jacobian. (ML 9.4)
+  D. Linear stability model of the partitioned and monolithic schemes.
+     (OC, source/model.py)
+  E. Implementation notes and code availability (repositories, branch,
+     tutorial cases to reproduce each figure). (CP, PC)
+
+
+Figures and tables to prepare
+-----------------------------
+
+  Fig. 1  Sketch: body, joint, beam cells and faces, with r, Q_b, x, theta.
+  Fig. 2  Sparsity pattern of the coupled Jacobian (beam blocks + bordered
+          body block).
+  Fig. 3  Linear model: spectral radius vs beta dt^2 k/m_pin, partitioned
+          and monolithic (growth.png).
+  Fig. 4  Order of accuracy in time.
+  Fig. 5  Newton residual vs iteration (quadratic convergence).
+  Fig. 6  Verification time histories against analytic/reference.
+  Fig. 7  Robustness map: where partitioned diverges, monolithic runs.
+  Fig. 8  floatRigidBody motion and line force: monolithic, partitioned,
+          MoorDyn.
+  Fig. 9  Cost: Newton iterations and wall time per step, sweeps.
+  Tab. 1  Notation.
+  Tab. 2  Coupling blocks and their physical meaning.
+  Tab. 3  Case parameters.
+
+
+Gaps to fill before writing
+---------------------------
+
+  - A clean order-of-accuracy study in the full code (not only the linear
+    model), for translation and rotation.
+  - A Newton convergence plot from the code showing quadratic
+    convergence, with and without the welded terms.
+  - Wall-time measurements on the same machine for monolithic vs
+    partitioned with the outer corrector count each needs.
+  - A literature review to support the "gap" claim in the introduction
+    and to place the method against monolithic FSI and mooring coupling
+    work.
