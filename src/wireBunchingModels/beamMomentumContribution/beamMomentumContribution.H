@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     Foam::beamMomentumContribution
@@ -79,6 +72,24 @@ private:
     //- Disallow default bitwise assignment
     void operator=(const beamMomentumContribution&);
 
+    //- Stop with an error if the beam region holds more than one beam.
+    //  Multi-beam support is tracked in issue #46
+    void checkSingleBeam(const beamModel& bm) const;
+
+    //- Stop with an error unless the beam has a circular cross-section,
+    //  for contributions that use R() as the radius. R() of the other
+    //  cross-section models is not a radius (issue #34)
+    void checkCircularSection(const beamModel& bm) const;
+
+protected:
+
+    // Protected Member Functions
+
+    //- Return the unit tangents to the beam centreline at the beam
+    //  CV cell-centres. They are built from beam 0 alone, so a contribution
+    //  that uses them must return true from requiresSingleBeam()
+    tmp<vectorField> unitTangents(const beamModel& bm) const;
+
 public:
 
     //- Runtime type information
@@ -124,6 +135,32 @@ public:
 
 
     // Member Functions
+
+        //- Whether the contribution supports only a single beam per region.
+        //  Default: false
+        virtual bool requiresSingleBeam() const
+        {
+            return false;
+        }
+
+        //- Whether the contribution uses R() as the radius of a circular
+        //  cross-section. Default: false
+        virtual bool requiresCircularSection() const
+        {
+            return false;
+        }
+
+        //- Stop with an error if the beam does not suit the contribution,
+        //  as declared by requiresSingleBeam() and requiresCircularSection().
+        //  Called once by the beam model, after it creates the contributions
+        void checkBeam(const beamModel& bm) const;
+
+        //- Hook called once per beam evolve() before the NR loop.
+        //  Default no-op.  Contributions that need to perform work that
+        //  must remain frozen across the inner NR iterations (e.g. external
+        //  fluid sampling) should do it here.
+        virtual void preEvolve(const beamModel& bm)
+        {}
 
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix

@@ -1,32 +1,43 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     polygon
 
 Description
-    Polygon cross-section model
+    Polygon cross-section model: a regular polygon with optionally
+    filleted corners, e.g.
+
+        <name>CrossSectionModelDict
+        {
+            nSides            6;
+            minRadius         0.01;   // inscribed radius (apothem)
+            filletAngleDeg    0;
+            nSegmentsPerSide  4;
+            nRadialSegments   4;
+        }
+
+    STATUS: NOT COMPILED (not listed in Make/files) and without a tutorial.
+    Area and second moments are implemented and the class compiles against
+    OpenFOAM.com. To enable it, add polygon.C to Make/files and a tutorial
+    that checks it against the circle (large nSides) and rectangle
+    (nSides 4) models. Note that IT() = Ixx + Iyy is the polar moment,
+    which overestimates the torsional stiffness of non-circular sections.
+    See https://github.com/solids4foam/beamFoam/issues/65
 
 SourceFiles
     polygon.C
@@ -63,7 +74,7 @@ class polygon
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- Number of sides
         scalar nSides_;
 
@@ -78,19 +89,19 @@ class polygon
 
         //- Cross-section second moment of area
         scalar Ixx_;
-    
+
         //- Cross-section second moment of area
         scalar Iyy_;
-    
+
         //- Number of circumferential points
         label nCircumferentialPoints_;
-    
+
         //- Number of segments per side
         label nSegmentsPerSide_;
 
         //- Number of segments in radial direction
         label nRadialSegments_;
-    
+
         //- Local mesh points
         vectorField points_;
 
@@ -98,18 +109,18 @@ class polygon
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Calculate cross-section area
         scalar area() const;
-    
+
         //- Calculate second moment of area
         void calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy);
-    
+
         //- Calculate second moment of area
         scalar IYY() const;
-    
+
         //- Disallow copy construct
         polygon(const polygon&);
 
@@ -142,20 +153,20 @@ public:
         //- Definitian of the coross-section
         //  boundry line in polar coordinates
         virtual scalar radius(const scalar theta) const;
-    
+
         //- Return cross-section radius
         virtual scalar R() const
         {
             return minRadius_;
         }
-    
+
         //- Return cross-section area
         virtual scalar A() const
         {
             // return M_PI*sqr(minRadius_);
             return A_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
@@ -169,7 +180,7 @@ public:
             // return M_PI*pow(minRadius_, 4)/4;
             return Iyy_;
         }
-    
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -186,13 +197,13 @@ public:
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
-            
+
         //- Number of circumferential points
         virtual label nCircumferentialPoints () const
         {
             return nCircumferentialPoints_;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {
@@ -212,7 +223,7 @@ public:
         (
             const vectorField& S
         ) const;
-    
+
         //- Return cross-section resultant force
         virtual vector resultantForce(const vectorField& S) const;
 
@@ -229,7 +240,7 @@ public:
             tensor& DMDGamma,
             tensor& DMDK
         ) const;
-    
+
         //- Write cross-section scalar field in VTK format
         virtual void writeVTK
         (

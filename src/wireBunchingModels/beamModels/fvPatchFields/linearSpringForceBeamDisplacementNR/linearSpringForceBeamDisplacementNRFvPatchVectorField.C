@@ -1,25 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -194,7 +188,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::rmap
 
     const linearSpringForceBeamDisplacementNRFvPatchVectorField& dmptf =
         refCast<const linearSpringForceBeamDisplacementNRFvPatchVectorField>(ptf);
-    
+
     Ks_.rmap(dmptf.Ks_, addr);
     offsetForce_.rmap(dmptf.offsetForce_, addr);
 }
@@ -259,9 +253,6 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     const tensorField& CQTheta =
         patch().lookupPatchField<surfaceTensorField, tensor>("CQTheta");
 
-    // const tensorField& CQDTheta =
-    //     patch().lookupPatchField<surfaceTensorField, tensor>("CQDTheta");
-
     const vectorField explicitQ =
         patch().lookupPatchField<surfaceVectorField, vector>("explicitQ");
 
@@ -270,7 +261,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
     // This is the old coefficient in force boundary condition
     // whose inverse was being multiplied
     const tensorField A(CQW/delta);
-    
+
     // This coefficent changes due to the spring
     // The sign is +ve infront of Ks because the spring force
     // acting on the beam is negative (opp) to that acting on
@@ -290,7 +281,7 @@ void linearSpringForceBeamDisplacementNRFvPatchVectorField::evaluate
       - (invAmodified & (CQTheta & DTheta))
       + (invAmodified & (A & DW.patchInternalField()))
     );
-    
+
     DW = newDW;
 
     // Setting W_ field

@@ -1,0 +1,24 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Get application name
+application=`getApplication`
+
+# Step 1: create the straight beam mesh along the x-axis
+# (length and number of segments read from constant/beamProperties)
+runApplication createBeamMesh
+
+# Step 2: rigidly rotate the beam from the x-axis onto the anchor-fairlead
+# chord and translate its first end onto the anchor point on the seabed
+runApplication setInitialPositionBeam -cellZone beam_0 \
+    -translate '(-1.385 -0.423 -0.5)' \
+    -rotate '((1 0 0) (0.904021961167074 0.276102014132615 0.326361718832879))'
+
+# Step 3: dynamic settling under gravity, buoyancy, seabed contact and
+# Morison drag, while the fairlead end is ramped to its target position
+runApplication $application
+
+touch case.foam

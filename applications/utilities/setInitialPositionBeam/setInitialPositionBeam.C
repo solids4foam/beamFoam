@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Application
     setInitialPositionBeam
@@ -33,11 +26,11 @@ Description
     - Beam mesh when created always lies such that the length direction of beam is aligned to x-axis.
     - The tangents at the face centres of the beam cells are set to (1 0 0) direction.
 
-    2. Initial Configuration of beam: 
+    2. Initial Configuration of beam:
     - To start with any other orientation of the beam, one needs to set the position vector of the beam curve.
     - The tangents at the face centres of the beam need to be set from (1 0 0) to the cross-section orientation
         of the beam spatial curve.
-    
+
     * valid arguments are:
     * -cellZone : this command grabs the specififed subset of mesh cells
     * -translate vector
@@ -74,7 +67,7 @@ int main(int argc, char *argv[])
     argList::validOptions.insert("cellZone", "name");
     argList::validOptions.insert("translate", "vector");
     argList::validOptions.insert("rotateAngle", "(vector angleInDegree)");
-    argList::validOptions.insert("rotate", "(vector vector)"); 
+    argList::validOptions.insert("rotate", "(vector vector)");
 
     #include "setRootCase.H"
     #include "createTime.H"

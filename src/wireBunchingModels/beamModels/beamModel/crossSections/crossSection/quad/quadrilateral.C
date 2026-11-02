@@ -1,25 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.1
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -60,13 +54,13 @@ quadrilateral::quadrilateral()
     FixedList<label, 4>()
     // FixedList<label, 4>(pts)
 {}
-    
+
 quadrilateral::quadrilateral(const labelList& pts)
 :
     // face(4)
     FixedList<label, 4>(pts)
 {}
-    
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 inline pointField quadrilateral::points(const pointField& points) const
@@ -91,10 +85,10 @@ scalar quadrilateral::area(const pointField& pts) const
     vector n1 =  0.5*((pt[2] - pt[0])^(pt[3] - pt[0]));
 
     A = mag(n0) + mag(n1);
-    
+
     return A;
 }
-    
+
 // inline const vector& quadrilateral::a() const
 // {
 //     return a_;
@@ -174,7 +168,7 @@ scalar quadrilateral::dNidXi(label i, scalar xi, scalar eta) const
     return dN;
 }
 
-    
+
 scalar quadrilateral::dNidEta(label i, scalar xi, scalar eta) const
 {
     scalar dN = 0.0;
@@ -271,7 +265,7 @@ scalarRectangularMatrix quadrilateral::integral
     gCT = scalarRectangularMatrix(3, 3, 0);
 
     // pointField lp = points(pts);
-    
+
     // pointField gp(4, vector::zero);
     // forAll(gCT, gpI)
     // {
@@ -322,7 +316,7 @@ scalarRectangularMatrix quadrilateral::integral
 
     // Note: dA = (dXi*dEta)*detJacob, dXi*dEta = 2
     // Info << "xxxxxxx: " << area(points) << ", " << A << endl;
-    
+
     return integ;
 }
 

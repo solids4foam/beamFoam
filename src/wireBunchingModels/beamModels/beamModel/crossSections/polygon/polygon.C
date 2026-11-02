@@ -1,29 +1,25 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 InClass
     polygon
+
+Description
+    Not compiled yet: see the Description in polygon.H.
 
 \*---------------------------------------------------------------------------*/
 
@@ -81,7 +77,7 @@ scalar polygon::area() const
     A = Aper*nSides_;
 
     // Info << "A = " << A << endl;
-    
+
     return A;
 }
 
@@ -90,31 +86,31 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
 {
     Ixx = 0;
     Iyy = 0;
-            
+
     if (filletAngle_ < SMALL)
-    {    
+    {
         scalar DTheta = 2*M_PI/nSides_;
         scalar halfDTheta = DTheta/2;
         scalar sideLength = 2*minRadius_*::tan(halfDTheta);
-            
+
         // Area of isoscales triangles
         scalar A = minRadius_*sideLength/2;
-            
+
         // Second moment of area for isoscales triangle
         // whose symmetry axis is aligned with the global x-axis
         scalar IxC0 = minRadius_*::pow(sideLength,3)/48;
         scalar IyC0 = sideLength*::pow(minRadius_,3)/36;
-            
+
         for (label i=0; i<nSides_; i++)
         {
             // Centroid of rotated isoscales triangle
             scalar thetaC = halfDTheta + i*DTheta;
             scalar rC = radius(thetaC);
             rC *= 2.0/3.0;
-        
+
             scalar xC = rC*::cos(thetaC);
             scalar yC = rC*::sin(thetaC);
-        
+
             // Coordinate rotation angle
             scalar rotAngle = -thetaC;
 
@@ -133,28 +129,28 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
         {
             scalar DTheta = 2*M_PI/nSides_ - filletAngle_;
             scalar halfDTheta = DTheta/2;
-            
+
             scalar sideLength =
                 2*minRadius_*::tan(halfDTheta);
-        
+
             // Area of isoscales triangles
             scalar A = minRadius_*sideLength/2;
-            
+
             // Second moment of area for isoscales triangle
             // whose symmetry axis is aligned with the global x-axis
             scalar IxC0 = minRadius_*::pow(sideLength,3)/48;
             scalar IyC0 = sideLength*::pow(minRadius_,3)/36;
-            
+
             for (label i=0; i<nSides_; i++)
             {
                 // Centroid of rotated isoscales triangle
                 scalar thetaC = halfDTheta + i*DTheta;
                 scalar rC = radius(thetaC);
                 rC *= 2.0/3.0;
-        
+
                 scalar xC = rC*::cos(thetaC);
                 scalar yC = rC*::sin(thetaC);
-        
+
                 // Coordinate rotation angle
                 scalar rotAngle = -thetaC;
 
@@ -172,12 +168,12 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
         // Circular sector (fillet) parts
         {
             scalar DTheta = 2*M_PI/nSides_;
-            
+
             scalar halfFilletAngle = filletAngle_/2;
-            
+
             // Fillet radius
             scalar filletRadius = radius(filletAngle_/2);
-            
+
             // Area of circular sector
             scalar A = sqr(filletRadius)*halfFilletAngle;
 
@@ -187,7 +183,7 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
             scalar IxC0 =
                 ::pow(filletRadius, 4)
                *(halfFilletAngle - ::sin(2*halfFilletAngle)/2)/4;
-            scalar IyC0 = 
+            scalar IyC0 =
                 ::pow(filletRadius, 4)
                *(halfFilletAngle + ::sin(2*halfFilletAngle)/2)/4
               - 4*::pow(filletRadius, 4)*pow(::sin(halfFilletAngle),2)
@@ -200,10 +196,10 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
                 scalar rC =
                     filletRadius
                    *(2.0/3.0)*(::sin(halfFilletAngle)/halfFilletAngle);
-        
+
                 scalar xC = rC*::cos(thetaC);
                 scalar yC = rC*::sin(thetaC);
-        
+
                 // Coordinate rotation angle
                 scalar rotAngle = -thetaC;
 
@@ -216,9 +212,9 @@ void polygon::calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy)
                 Ixx += IxC + A*sqr(yC);
                 Iyy += IyC + A*sqr(xC);
             }
-        }        
+        }
     }
-    
+
     // test
     if (false)
     {
@@ -282,7 +278,7 @@ polygon::polygon
     points_((nSegmentsPerSide_*nSides_+1)*(nRadialSegments_+1), vector::zero),
     quadFaces_(nSegmentsPerSide_*nRadialSegments_*nSides_, quadrilateral())
 {
-    
+
     // Set number of circumferential points
     if (filletAngle_<SMALL)
     {
@@ -304,7 +300,7 @@ polygon::polygon
 
     label nr = nRadialSegments_;
     label nphi = nSegmentsPerSide_*nSides_;
-    
+
     label npr = nr+1;
     label npphi = nphi+1;
 
@@ -316,7 +312,7 @@ polygon::polygon
         scalar phi = j*dphi;
         scalar R = radius(phi);
         scalar dr = R/nr;
-        
+
         for (label i=0; i<npr; i++)
         {
             scalar r = i*dr;
@@ -341,16 +337,16 @@ polygon::polygon
             fpts[0] = j*npr + i;
             fpts[1] = fpts[0] + 1;
             fpts[3] = (j+1)*npr + i;
-            fpts[2] = fpts[3] + 1; 
+            fpts[2] = fpts[3] + 1;
         }
     }
-    
+
     // scalarField sf0(points_.size(), 0);
     // scalarField sf1(points_.size(), 0);
     // vectorField vf(points_.size(), vector::zero);
     // fileName fn("test.vtk");
     // writeVTK(fn, sf0, sf1, vf);
-    
+
     // primitiveFacePatch patch(quadFaces_, points_);
 }
 
@@ -360,7 +356,7 @@ scalar polygon::radius(scalar theta) const
 {
     // Polygon entral angel
     scalar DTheta = 2*M_PI/nSides_; //32;
-    
+
     // Half of central angle
     scalar DPhi = DTheta/2;
 
@@ -371,7 +367,7 @@ scalar polygon::radius(scalar theta) const
     // Angle inside periodic patern
     label nPerPatern = floor(theta/DTheta);
     scalar thetaPer = theta - nPerPatern*DTheta;
-    
+
     // Polar equation of line (first side)
     // (http://www.nabla.hr/Z_MemoHU-015.htm)
     scalar r = p/::cos(thetaPer-DPhi);
@@ -395,7 +391,7 @@ scalar polygon::radius(scalar theta) const
 }
 
 
-   
+
 tmp<vectorField> polygon::circumferentialPoints() const
 {
     tmp<vectorField> tCircumPoints
@@ -447,7 +443,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar y = r*::sin(theta);
                 tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
             }
-            
+
             // 3rd point
             {
                 scalar theta = i*DTheta - 0.5*filletAngle_;
@@ -456,7 +452,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar y = r*::sin(theta);
                 tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
             }
-            
+
             // 4th point
             {
                 scalar theta = (i+1)*DTheta + 0.5*filletAngle_;
@@ -465,7 +461,7 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar y = r*::sin(theta);
                 tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
             }
-            
+
             // 5th point
             {
                 scalar theta = (i+1)*DTheta + 0.25*filletAngle_;
@@ -474,16 +470,16 @@ tmp<vectorField> polygon::circumferentialPoints() const
                 scalar y = r*::sin(theta);
                 tCircumPoints.ref()[gPointI++] = vector(x, y, 0);
             }
-        }        
+        }
     }
 
     // Info << tCircumPoints() << endl;
-    
+
     return tCircumPoints;
 }
 
 
-    
+
 tmp<vectorField> polygon::greenLagrangianStrain
 (
     const vector& Gamma,
@@ -538,7 +534,7 @@ vector polygon::resultantForce(const vectorField& S) const
     {
         rF += quadFaces_[faceI].integral(points_, S);
     }
-    
+
     return rF;
 }
 
@@ -559,7 +555,7 @@ void polygon::resultantTangentMatrices
     // label npphi = nphi+1;
 
     // scalar dphi = 2*M_PI/nphi;
-    
+
     scalarRectangularMatrix A(3, 6, 0);
     scalarRectangularMatrix CT(3, 3, 0);
     scalarRectangularMatrix ACA(6, 6, 0);
@@ -579,7 +575,7 @@ void polygon::resultantTangentMatrices
             label i3 = fpts[3];
 
             scalar dA = fpts.area(points_);
-            
+
             // label i0 = j*npr + i;
             // label i1 = i0 + 1;
             // label i3 = (j+1)*npr + i;
@@ -593,22 +589,22 @@ void polygon::resultantTangentMatrices
             scalarRectangularMatrix ACAm(6, 6, 0);
 
             calcA(A, points_[i0]);
-            tensorToMatrix(CT, dSdE[i0]);    
+            tensorToMatrix(CT, dSdE[i0]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i1]);
-            tensorToMatrix(CT, dSdE[i1]);    
+            tensorToMatrix(CT, dSdE[i1]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i2]);
-            tensorToMatrix(CT, dSdE[i2]);    
+            tensorToMatrix(CT, dSdE[i2]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i3]);
-            tensorToMatrix(CT, dSdE[i3]);    
+            tensorToMatrix(CT, dSdE[i3]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
@@ -647,7 +643,7 @@ void polygon::resultantTangentMatrices
     DMDGamma.zx() = DSDE[5][0];
     DMDGamma.zy() = DSDE[5][1];
     DMDGamma.zz() = DSDE[5][2];
-    
+
     DMDK.xx() = DSDE[3][3];
     // DMDK.xy() = DSDE[3][4];
     // DMDK.xz() = DSDE[3][5];
@@ -670,7 +666,7 @@ vector polygon::resultantMoment(const vectorField& S) const
 
     scalarField Px(points_.component(0));
     scalarField Py(points_.component(1));
-    
+
     forAll(quadFaces_, faceI)
     {
         rM.x() += quadFaces_[faceI].integral(points_, Sz, Py);
@@ -678,7 +674,7 @@ vector polygon::resultantMoment(const vectorField& S) const
 
         rM.y() += quadFaces_[faceI].integral(points_, Sx, Px);
 
-        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);            
+        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);
     }
 
     return rM;
@@ -712,7 +708,7 @@ void polygon::writeVTK
                 << points_[i].z() << endl;
     }
 
-    
+
     // Write cells
     label nCells = quadFaces_.size();
     vtkFile << "\nPOLYGONS " << nCells << " " << 5*nCells << endl;
@@ -721,8 +717,8 @@ void polygon::writeVTK
     {
         vtkFile << quadFaces_[i].size() << " "
                 << quadFaces_[i][0] << " "
-                << quadFaces_[i][1] << " " 
-                << quadFaces_[i][2] << " " 
+                << quadFaces_[i][1] << " "
+                << quadFaces_[i][2] << " "
                 << quadFaces_[i][3] << endl;
     }
 
@@ -734,7 +730,7 @@ void polygon::writeVTK
     //     vtkFile << 9 << endl;
     // }
 
-    
+
     //Write data
     vtkFile << "\nPOINT_DATA " << points_.size() << endl;
     vtkFile << "SCALARS eqEP float 1" << endl;
@@ -766,7 +762,7 @@ void polygon::writeVTK
     }
 }
 
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

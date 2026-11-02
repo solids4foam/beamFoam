@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -45,6 +38,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "samplingFluid.H"
 
 // #include "beamHelperFunctions.H"
 
@@ -90,19 +84,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh()
     ),
-    WIncrement_
-    (
-        IOobject
-        (
-            "WIncrement",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", W_.dimensions(), vector::zero)
-    ),
     U_
     (
         IOobject
@@ -111,11 +92,24 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         // fvc::ddt(W_)
         dimensionedVector("0", W_.dimensions()/dimTime, vector::zero)
+    ),
+    almForce_
+    (
+        IOobject
+        (
+            "almForce",
+            mesh().time().timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        mesh(),
+        dimensionedVector("0", dimForce/dimLength, vector::zero)
     ),
     Accl_
     (
@@ -125,7 +119,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("0", U_.dimensions()/dimTime, vector::zero)
@@ -163,7 +157,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         //fvc::ddt(Theta_)
@@ -177,7 +171,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("0", Omega_.dimensions()/dimTime, vector::zero)
@@ -194,19 +188,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh(),
         dimensionedVector("0", Theta_.dimensions(), vector::zero)
-    ),
-    totW_
-    (
-        IOobject
-        (
-            "totW",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedVector("0", dimLength, vector::zero)
     ),
     Q_
     (
@@ -233,19 +214,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh(),
         dimensionedVector("0", dimForce, vector::zero)
-    ),
-    Qa_
-    (
-        IOobject
-        (
-            "Qa",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("0", dimForce, 0)
     ),
     M_
     (
@@ -324,7 +292,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -337,7 +305,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("zero", dimLength, vector::zero)
@@ -350,7 +318,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -363,7 +331,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedTensor("I", dimless, tensor::I)
@@ -376,7 +344,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh(),
         dimensionedVector("x-axis", dimless, vector(1, 0, 0))
@@ -406,19 +374,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         ),
         mesh(),
         dimensionedTensor("0", dimPressure*dimArea, tensor::zero)
-    ),
-    CQDTheta_
-    (
-        IOobject
-        (
-            "CQDTheta",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedTensor("0", dimForce*dimLength, tensor::zero)
     ),
     CMTheta_
     (
@@ -511,7 +466,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimless/dimLength, vector::zero)
     ),
-    pMesh_(mesh()),
+    pMesh_(pointMesh::New(mesh())),
     pointW_
     (
         IOobject
@@ -587,39 +542,68 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
             )
         )
     ),
-    CDQDK_
+    // ARho_
+    // (
+    //         "ARho",
+    //         A().dimensions()*rho().dimensions(),
+    //         scalar(ARho().value())
+    // ),
+    // CIRho_
+    // (
+    //     "CIRho",
+    //     I().dimensions()*rho().dimensions(),
+    //     tensor
+    //     (
+    //         kCI()*JRho().value(),  0,           0,
+    //         0,            kCI()*IyyRho().value(), 0,
+    //         0,            0,           kCI()*IzzRho().value()
+    //     )
+    // ),
+    ARho_
     (
         IOobject
         (
-            "CDQDK",
+            "ARho",
             runTime.timeName(),
             mesh(),
             IOobject::READ_IF_PRESENT,
             IOobject::NO_WRITE
         ),
-        mesh(),
-        dimensionedTensor
+        fvc::average
         (
-            "CDQDK",
-            dimForce*dimLength,
-            tensor::zero
+            indicator(0)
+           *dimensionedScalar
+            (
+                "ARho",
+                ARho(0).dimensions(),
+                scalar(ARho(0).value())
+            )
         )
-    ),
-    ARho_
-    (
-            "ARho",
-            A().dimensions()*rho().dimensions(),
-            scalar(ARho().value())
     ),
     CIRho_
     (
-        "CIRho",
-        I().dimensions()*rho().dimensions(),
-        tensor
+        IOobject
         (
-            kCI()*JRho().value(),  0,           0,
-            0,            kCI()*IyyRho().value(), 0,
-            0,            0,           kCI()*IzzRho().value()
+            "CIRho",
+            runTime.timeName(),
+            mesh(),
+            IOobject::READ_IF_PRESENT,
+            IOobject::NO_WRITE
+        ),
+        fvc::average
+        (
+            indicator(0)
+           *dimensionedTensor
+            (
+                "CIRho",
+                I().dimensions()*rho().dimensions(),
+                tensor
+                (
+                    kCI()*JRho(0).value(),  0,                      0,
+                    0,                       kCI()*IyyRho(0).value(), 0,
+                    0,                       0,                      kCI()*IzzRho(0).value()
+                )
+            )
         )
     ),
     ddtSchemeName_
@@ -644,20 +628,7 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
     totalContactTime_(0),
-    totalSolutionTime_(),
-    proc_
-    (
-        IOobject
-        (
-            "proc",
-            runTime.timeName(),
-            mesh(),
-            IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
-        ),
-        mesh(),
-        dimensionedScalar("zero", dimless, 0)
-    )
+    totalSolutionTime_()
 {
   newmarkPredictorTimeIndex_ = -1;
   rigidBodyEndPatchIndex_ = -1;
@@ -775,6 +746,35 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                         GJ(i).value(), 0, 0,
                         0, EIyy(i).value(), 0,
                         0, 0, EIzz(i).value()
+                    )
+                );
+
+            ARho_ +=
+                fvc::average
+                (
+                    indicator(i)
+                   *dimensionedScalar
+                    (
+                        "ARho",
+                        ARho(i).dimensions(),
+                        scalar(ARho(i).value())
+                    )
+                );
+
+            CIRho_ +=
+                fvc::average
+                (
+                    indicator(i)
+                   *dimensionedTensor
+                    (
+                        "CIRho",
+                        I().dimensions()*rho().dimensions(),
+                        tensor
+                        (
+                            kCI()*JRho(i).value(),    0,                      0,
+                            0,                        kCI()*IyyRho(i).value(), 0,
+                            0,                        0,                      kCI()*IzzRho(i).value()
+                        )
                     )
                 );
         }
@@ -1071,19 +1071,26 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     M_.setOriented(true);
 
     // Create momentumContributions
+    // In beam-fluid interaction cases, beams are separate regions within the
+    // fluid domain (e.g. constant/beam_0/). We use runTime.caseConstant()/regionName
+    // to read from the main case's constant directory, not the processor's.
+    // This mirrors the pattern used for beamProperties in newBeamModel.C.
+    const word& regionName = mesh().name();
     IOobject momentumContribHeader
     (
         "beamMomentumContributionProperties",
-        runTime.constant(),
+        (regionName == polyMesh::defaultRegion)
+          ? fileName(runTime.caseConstant())
+          : fileName(runTime.caseConstant()/regionName),
         runTime,
         IOobject::MUST_READ
     );
-    
+
     if (momentumContribHeader.typeHeaderOk<dictionary>(true))
     {
         Info<< "Found beamMomentumContributionProperties file: creating object"
             << endl;
-        
+
         // TO CHECK: maybe we should not register this dict
         IOdictionary beamMomentContribDict(momentumContribHeader);
 
@@ -1094,9 +1101,9 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
 
         const label nContrib = entries.size();
 
-        momentumContribPtr_.setSize(nContrib);        
+        momentumContribPtr_.setSize(nContrib);
         // dictionary& momentumContribDicts = dict.lookup("beamContributions");
-        
+
         forAll(entries, i)
         {
             momentumContribPtr_.set
@@ -1108,6 +1115,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
                     entries[i].dict()
                 )
             );
+
+            // Stop before the first time step if the beam does not suit the
+            // contribution
+            momentumContribPtr_[i].checkBeam(*this);
         }
     }
     else

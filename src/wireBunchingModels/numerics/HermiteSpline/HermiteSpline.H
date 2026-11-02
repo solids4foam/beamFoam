@@ -1,46 +1,40 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     Foam::HermiteSpline
 
 Description
-    Hermite splines are cubic polynomials to interpolate between points 
+    Hermite splines are cubic polynomials to interpolate between points
     using the positions of the points plus their tangents (derivatives).
-    The basic form involves defining each segment of the spline by the start 
-    and end points (positions) and the tangents at these points. Here, 
+    The basic form involves defining each segment of the spline by the start
+    and end points (positions) and the tangents at these points. Here,
     for a line segment, the local parameter zeta [-1, 1] is used. zeta = -1 for left
-    point and zeta = 1 for right end point. 
+    point and zeta = 1 for right end point.
 
     Advantages:
     1. Control: over the slope of curve at control points, advantegeous
         for ensuring smooth transitions (C-1 derivatives).
-    2. Flexibility: Useful in applications where the derivative of the curve is known or 
+    2. Flexibility: Useful in applications where the derivative of the curve is known or
         needs to be controlled, such as in motion control paths in animation and robotics.
     3. Local Control: Adjusting the position or tangent at one point does not affect the entire
         curve, just the segment connected to that point.
 
-Author 
+Author
     Zeljko Tukovic, FSB Zagreb
     Seevani Bali, UCD.
 
@@ -125,9 +119,9 @@ protected:
             const scalar arcLength
         ) const;
 
-        //- Calculate the length of a line segment between interval [-1, zeta] 
-        // by integrating the first order derivatives of position vector using 
-        // composite Simpson's 1/3 rule 
+        //- Calculate the length of a line segment between interval [-1, zeta]
+        // by integrating the first order derivatives of position vector using
+        // composite Simpson's 1/3 rule
         // (https://en.wikipedia.org/wiki/Simpson%27s_rule#Composite_Simpson's_1/3_rule)
         scalar arcLength
         (
@@ -182,7 +176,7 @@ public:
         //- Return the number of line segments
         label nSegments() const;
 
-        //- Return the point position corresponding to the curve parameter 
+        //- Return the point position corresponding to the curve parameter
         point position(const scalar) const;
 
         //- Return the point position corresponding to the local parameter

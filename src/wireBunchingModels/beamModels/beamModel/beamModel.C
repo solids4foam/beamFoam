@@ -1,25 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -56,8 +50,7 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     // if the pointer is already set
     if
     (
-        upperNeiCellFacesPtr_ || lowerNeiCellFacesPtr_ ||
-        upperNeiCellPtr_ || lowerNeiCellPtr_
+        upperNeiCellFacesPtr_ || lowerNeiCellFacesPtr_
     )
     {
         FatalErrorIn
@@ -75,14 +68,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
     // Allocate storage for addressing
     lowerNeiCellFacesPtr_ = new labelList(mesh().nCells(), -1);
     labelList& lowerNeiCellFaces = *lowerNeiCellFacesPtr_;
-
-    // Allocate storage for addressing
-    upperNeiCellPtr_ = new labelList(mesh().nCells(), -1);
-    labelList& upperNeiCell = *upperNeiCellPtr_;
-
-    // Allocate storage for addressing
-    lowerNeiCellPtr_ = new labelList(mesh().nCells(), -1);
-    labelList& lowerNeiCell = *lowerNeiCellPtr_;
 
     const cellList& cells = mesh().cells();
     const labelListList& cc = mesh().cellCells();
@@ -105,9 +90,6 @@ void Foam::beamModel::makeUpperLowerNeiCellFaces() const
                 upperNei = curNei;
             }
         }
-
-        lowerNeiCell[cellI] = lowerNei;
-        upperNeiCell[cellI] = upperNei;
 
         if (lowerNei != -1)
         {
@@ -213,9 +195,12 @@ Foam::beamModel::beamModel
         )
     ),
     runTime_(runTime),
-    meshPtr_
+    meshOwnerPtr_
     (
-        dynamicFvMesh::New
+        // Use the region mesh if another model has already registered it
+        runTime.foundObject<dynamicFvMesh>(region)
+      ? autoPtr<dynamicFvMesh>()
+      : dynamicFvMesh::New
         (
             IOobject
             (
@@ -226,14 +211,18 @@ Foam::beamModel::beamModel
             )
         )
     ),
+    meshPtr_
+    (
+        meshOwnerPtr_.valid()
+      ? &meshOwnerPtr_()
+      : &runTime.lookupObject<dynamicFvMesh>(region)
+    ),
     localToGlobalCellAddressing_(),
     globalToLocalCellAddressing_(),
     localToGlobalBeamPointsAddressing_(),
     globalToLocalBeamPointsAddressing_(),
     upperNeiCellFacesPtr_(NULL),
     lowerNeiCellFacesPtr_(NULL),
-    upperNeiCellPtr_(NULL),
-    lowerNeiCellPtr_(NULL),
     beamProperties_(subDict(type + "Coeffs")),
     startPatchIndex_(),
     endPatchIndex_(),
@@ -309,29 +298,7 @@ Foam::beamModel::beamModel
     nBeamSolves_(0),
     nNewtonIterations_(0),
     totalNewtonIterations_(0),
-    steadyState_(beamProperties_.getOrDefault<bool>("steadyState", true)),
-    // objectiveInterpolation_
-    // (
-    //     beamProperties_.getOrDefault<bool>("objectiveInterpolation", false)
-    // ),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
-
-    startToRelaxTime_
-    (
-        getOrDefault<scalar>
-        (
-            "startRelaxingTime",
-            GREAT
-        )
-    ),
-    relaxationPeriod_
-    (
-        getOrDefault<scalar>
-        (
-            "relaxingPeriod",
-            0
-        )
-    ),
     // contactPtr_(),
     deltaTseries_()
 {
@@ -378,9 +345,6 @@ Foam::beamModel::beamModel
         Info<< "g is set for gravitational body force: "
             << g()
             << endl;
-
-        // The beam density is checked after the per-beam properties are
-        // read below: rho_ is not filled yet at this point
 
         // To check whether density of fluid is specified to calculate
         // buoyant body force
@@ -475,7 +439,7 @@ Foam::beamModel::beamModel
     //     R_ = scalarField(this->lookup("R"));
     //     U_ = scalarField(this->lookup("U"));
     // }
-    
+
     Info<< "Attempting to read global mechanical variables "
         << "from constant/beamProperties "
         << "coupledTotalLagNetwonRaphsonBeamCoeffs() dictionary!"
@@ -483,7 +447,7 @@ Foam::beamModel::beamModel
 
     dimensionedScalar globalE("E", dimPressure, 0.0);
     dimensionedScalar globalG("G", dimPressure, 0.0);
-    dimensionedScalar globalRho("rho", dimDensity, 0.0);    
+    dimensionedScalar globalRho("rho", dimDensity, 0.0);
 
     bool foundGlobalE = false;
     bool foundGlobalG = false;
@@ -506,7 +470,7 @@ Foam::beamModel::beamModel
         globalRho = dimensionedScalar("rho", beamProperties());
         foundGlobalRho = true;
     }
-    
+
     E_.setSize(nBeams, 0.0);
     G_.setSize(nBeams, 0.0);
     rho_.setSize(nBeams, 0.0);
@@ -538,11 +502,11 @@ Foam::beamModel::beamModel
             {
                 Info<< "Local mechanical properties specific to beam "
                     << beamI << " found!"  << endl;
-                
+
                 E_[beamI] = readScalar(bDict.lookup("E"));
                 G_[beamI] = readScalar(bDict.lookup("G"));
                 rho_[beamI] = bDict.getOrDefault<scalar>("rho", 0.0);
-            }            
+            }
         }
         else if (foundGlobalE || foundGlobalG || foundGlobalRho)
         {
@@ -560,12 +524,23 @@ Foam::beamModel::beamModel
 
     }
 
-    if (mag(g().value()) > SMALL && max(rho_) < SMALL)
+    const bool gravityBodyForce =
+        mag(g().component(0).value()) > SMALL
+     || mag(g().component(1).value()) > SMALL
+     || mag(g().component(2).value()) > SMALL;
+
+    if (gravityBodyForce)
     {
-        WarningInFunction
-            << "g is set but rho = 0 for all beams "
-            << "--> gravitational body force = 0"
-            << nl << endl;
+        forAll(rho_, beamI)
+        {
+            if (mag(rho_[beamI]) < SMALL)
+            {
+                WarningInFunction
+                    << "rho for beam " << beamI << " = zero"
+                    << " --> gravitational body force = 0 for this beam"
+                    << nl << endl;
+            }
+        }
     }
 
     // Write beam cross-section properties
@@ -574,6 +549,7 @@ Foam::beamModel::beamModel
         Info<< "\n\n Writing mechanical properties of beam no: " << bI << endl;
         Info<< "E " << E(bI) << endl;
         Info<< "G " << G(bI) << endl;
+        Info<< "rho " << rho(bI) << endl;
 
         Info<< "A: " << A(bI) << endl;
 
@@ -589,12 +565,12 @@ Foam::beamModel::beamModel
         Info<< "EA: " << EA(bI) << endl;
         Info<< "GA: " << GA(bI) << endl;
     }
-    
+
     // word startPatchName(beamProperties_.lookup("startPatchName"));
     // word endPatchName(beamProperties_.lookup("endPatchName"));
     word startPatchName = "left";
     word endPatchName = "right";
-    
+
     label nCellZones = mesh().cellZones().size();
 
     // Check that there is at least one cell zone
@@ -1589,26 +1565,6 @@ const Foam::labelList& Foam::beamModel::lowerNeiCellFaces() const
     }
 
     return *lowerNeiCellFacesPtr_;
-}
-
-const Foam::labelList& Foam::beamModel::upperNeiCell() const
-{
-    if (!upperNeiCellPtr_)
-    {
-        makeUpperLowerNeiCellFaces();
-    }
-
-    return *upperNeiCellPtr_;
-}
-
-const Foam::labelList& Foam::beamModel::lowerNeiCell() const
-{
-    if (!lowerNeiCellPtr_)
-    {
-        makeUpperLowerNeiCellFaces();
-    }
-
-    return *lowerNeiCellPtr_;
 }
 
 

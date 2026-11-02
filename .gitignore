@@ -128,8 +128,10 @@ doc/[Dd]oxygen/man
 *.orig
 *.rej
 
-# but keep the initial-condition directories of the tutorial cases
-!0.orig
+# ...but keep OpenFOAM initial-field templates (0.orig/), except for the beam
+# fields that tutorial Allrun scripts stage into them
+!0.orig/
+**/0.orig/beam_*/
 
 # pyFoam-stuff
 PlyParser_FoamFileParser_parsetab.py

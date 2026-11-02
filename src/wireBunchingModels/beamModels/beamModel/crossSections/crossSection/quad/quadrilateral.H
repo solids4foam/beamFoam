@@ -1,25 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.1
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     Foam::quadrilateral
@@ -87,7 +81,7 @@ public:
 
         //- Construct from four points
         quadrilateral(const labelList& pts);
-    
+
         // //- Construct from Istream
         // inline quadrilateral(Istream&);
 
@@ -113,7 +107,7 @@ public:
             const Field<Type>&,
             const Field<scalar>&
         ) const;
-    
+
         // Access
 
             // //- Return first vertex
@@ -132,7 +126,7 @@ public:
 
             //- Return the points corresponding to this face
             inline pointField points(const pointField& points) const;
-    
+
             // //- Return centre (centroid)
             // inline Point centre() const;
 
@@ -147,7 +141,7 @@ public:
 
             //- Evaluate shape function at a given point
             scalar dNidEta(label i, scalar xi, scalar eta) const;
-    
+
             //- Evaluate shape function at a given point
             scalar dNidXi(label i, scalar xi, scalar eta) const;
 

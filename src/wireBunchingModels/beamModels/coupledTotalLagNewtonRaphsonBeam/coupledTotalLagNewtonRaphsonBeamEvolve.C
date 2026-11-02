@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -37,6 +30,7 @@ License
 #include "scalarMatrices.H"
 #include "denseMatrixHelperFunctions.H"
 #include "BlockEigenSolverOF.H"
+#include "samplingFluid.H"
 #include "IOmanip.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -58,44 +52,65 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
     countBeamSolve();
 
+    const dictionary& beamDict = beamProperties();
+
     const int nCorr
     (
-        beamProperties().lookupOrDefault<int>("nCorrectors", 1000)
+        beamDict.lookupOrDefault<int>("nCorrectors", 1000)
     );
 
     // Tolerance for equation (force) residuals (R = Ax - B)
-    const scalar residualTol
-    (
-        beamProperties().lookupOrDefault<scalar>("residualTol", 1e-8)
-    );
+    scalar residualTol = beamDict.lookupOrDefault<scalar>("residualTol", -1);
+
+    if (residualTol < 0)
+    {
+        if (beamDict.found("convergenceTol"))
+        {
+            residualTol = readScalar(beamDict.lookup("convergenceTol"));
+        }
+        else
+        {
+            residualTol = 1e-8;
+        }
+    }
 
     // Tolerance - displacement (DW) & rotation (DTheta_) correction variables
     const scalar solutionTol
     (
-        beamProperties().lookupOrDefault<scalar>("solutionTol", 1e-10)
+        beamDict.lookupOrDefault<scalar>("solutionTol", 1e-10)
     );
 
     // Absolute tolerance
     const scalar absoluteTol
     (
-        beamProperties().lookupOrDefault<scalar>("absoluteTol", 1e-30)
+        beamDict.lookupOrDefault<scalar>("absoluteTol", 1e-30)
     );
 
     // Tolerance to check of the solver has diverged
     const scalar divTol
     (
-        beamProperties().lookupOrDefault<scalar>("divergenceTol", 1e4)
+        beamDict.lookupOrDefault<scalar>("divergenceTol", 1e6)
     );
 
     const label writeResidualFrequency
     (
-        beamProperties().lookupOrDefault<scalar>("infoFrequency", 1)
+        beamDict.lookupOrDefault<scalar>("infoFrequency", 1)
     );
 
     scalar initialResidualNorm = 1;
     scalar currentResidualNorm = GREAT;
     scalar deltaXNorm = GREAT;
     scalar XNorm = GREAT;
+
+    // Let momentum contributions (e.g. almDrag) do any once-per-evolve work
+    // such as external fluid sampling.  The result is frozen for the
+    // duration of the inner NR loop below to avoid the 2-cycle that arose
+    // when sampling was repeated each NR iteration and the sample point
+    // drifted across fluid cell boundaries.
+    forAll(momentumContribPtr_, i)
+    {
+        momentumContribPtr_[i].preEvolve(*this);
+    }
 
     iOuterCorr() = 0;
     do
@@ -212,12 +227,27 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                 source[cellI](2,0) -= q()[cellI].z()*L()[cellI];
             }
 
+            // Add self-weight of the beam
             forAll(source, cellI)
             {
-                source[cellI](0,0) -= rho().value()*L()[cellI]*A().value()*g().component(0).value();
-                source[cellI](1,0) -= rho().value()*L()[cellI]*A().value()*g().component(1).value();
-                source[cellI](2,0) -= rho().value()*L()[cellI]*A().value()*g().component(2).value();
+                // Beam index from the local cellZone: parallel-safe, unlike
+                // globalCellIndex() whose localToGlobalCellAddressing_ is
+                // never populated (segfaults in parallel runs)
+                label bI = mesh().cellZones().whichZone(cellI);
+                if (bI < 0)
+                {
+                    bI = 0;
+                }
+                // Effective density accounts for buoyancy when beam is submerged.
+                // TODO: use rhoFluid(bI) if beams can be in different fluids.
+                const scalar rhoEff = rho(bI).value() - rhoFluid().value();
+                const scalar beamWeight = rhoEff*L()[cellI]*A(bI).value();
+
+                source[cellI](0,0) -= beamWeight*g().component(0).value();
+                source[cellI](1,0) -= beamWeight*g().component(1).value();
+                source[cellI](2,0) -= beamWeight*g().component(2).value();
             }
+
             // Add point forces
             forAll(pointForces(), pfI)
             {
@@ -327,7 +357,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             // Omega_ = Angular Velocity
             // dotOmega_ = Angular Acceleration
 
-            // if (!steadyState())
             if (d2dt2SchemeName_ != "steadyState")
             {
                 // Throw error if rho is set to zero for transient case
@@ -347,7 +376,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
                 // The EXPLICIT inertial contributions to source
                 // 1. Initialise explicit inertial force contribution to zero
-                vectorField QRho(W_.size(), vector(0,0,0));
+                // vectorField QRho(W_.size(), vector(0,0,0));
+                volVectorField QRho
+                (
+                    IOobject
+                    (
+                        "QRho",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedVector("zero", dimForce, vector::zero)
+                );
 
                 // 2. Initialise explicit inertial moment contribution to zero
                 volVectorField MRho
@@ -418,7 +460,25 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 
                 // The IMPLICIT inertial contributions to source
                 // 1. Initialise implicit inertial force contribution to zero
-                scalarField QRhoCoeff(W_.size(), 0.0);
+                // scalarField QRhoCoeff(W_.size(), 0.0);
+                volScalarField QRhoCoeff
+                (
+                    IOobject
+                    (
+                        "QRhoCoeff",
+                        runTime().timeName(),
+                        mesh(),
+                        IOobject::NO_READ,
+                        IOobject::NO_WRITE
+                    ),
+                    mesh(),
+                    dimensionedScalar
+                    (
+                        "zero",
+                        L().dimensions()*ARho_.dimensions(),
+                        0
+                    )
+                );
 
                 // 2. Initialise implicit inertial moment contribution to zero
                 volTensorField MRhoCoeff
@@ -547,14 +607,9 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                          momentumContribPtr_[i].diagCoeff(*this, U_, Accl_)
                     );
 
-                    d += diagCoeff;   
+                    d += diagCoeff;
                 }
             }
-	    
-	    // Amir
-	    // const fvMesh& fluidMesh = mesh().time().db().parent().lookupObject<fvMesh>("region0");
-	    //	    Info<< "available objects = " << fluidMesh.names() << endl;
-
             // Block coupled solver call
             BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
 
@@ -574,7 +629,10 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                 mesh().nCells(), scalarRectangularMatrix(6, 1, 0.0)
             );
 
-            currentResidualNorm = eigenSolver.solve(solVec, source);
+            // Solve the linear system
+            // currentResidualNorm is the imbalance vector
+            currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
+            reduce(currentResidualNorm, sumOp<scalar>());
             countNewtonIteration();
 
             if (iOuterCorr() == 0)
@@ -653,6 +711,8 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
                     sum(magSqr(W_.primitiveFieldRef()))
                   + sum(magSqr(Theta_.primitiveFieldRef()))
                 );
+            reduce(deltaXNorm, sumOp<scalar>());
+            reduce(XNorm, sumOp<scalar>());
 
             if (iOuterCorr() == 0)
             {
@@ -678,7 +738,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
             initialResidualNorm,
             deltaXNorm,
             XNorm,
-            ++iOuterCorr(),
+            iOuterCorr()++,
             nCorr,
             residualTol,
             absoluteTol,
@@ -721,9 +781,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateEqnCoefficients()
     )
     - spinTensor(Q_);
     // - spinTensor(explicitQ_);
-
-    // SB - NOT USED
-    CQDTheta_ = (Lambdaf & (CDQDK_ & Lambdaf.T())); // Check for Kirchhoff beam
 
     CMTheta_ = (Lambdaf & (CM_ & Lambdaf.T()));
 
@@ -800,8 +857,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
     W_.correctBoundaryConditions();
     W_.storePrevIter();
 
-    // Update displacement increment (for contact calculation of pulleys)
-    WIncrement_ = W_ - W_.oldTime();
+    // Store U for optional field relaxation after updating it below
+    U_.storePrevIter();
 
     // Update mean line linear velocity and acceleration fields
     if (d2dt2SchemeName_ == "steadyState")
@@ -829,6 +886,9 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
             << "Valid choices are steadyState, Euler, Newmark"
             << abort(FatalError);
     }
+
+    // Apply U relaxation if configured in fvSolution
+    U_.relax();
 
     const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
@@ -940,15 +1000,6 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
         implicitM.setOriented(true);
         M_ = explicitM_ + implicitM;
     }
-
-    // Calculate axial force
-    {
-        // surfaceVectorField t = (Lambdaf_ & dR0Ds_);
-        // dRdS /= mag(dRdS);
-        // Qa_ = (dRdS & Q_);
-
-        Qa_ = (Lambdaf_.T() & Q_)().component(0);
-    }
 }
 
 //- Function to check convergence of the outer (Newton) loop
@@ -971,11 +1022,10 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     // Precompute tolerances
     const scalar relativeResidualTol = rtol*initialResidualNorm;
     const scalar stepTolerance = stol*xNorm;
-
     // Log residuals if enabled
     if (writeResidualFrequency > 0)
     {
-        if (iteration == 1)
+        if (iteration == 0)
         {
             // Print the header with fixed widths
             Info<< setw(10) << "Iteration"
@@ -1029,11 +1079,13 @@ bool coupledTotalLagNewtonRaphsonBeam::checkConvergence
     }
 
     // 4. Check Divergence
-    if (currentResidualNorm >= divtol*initialResidualNorm)
+    if (currentResidualNorm >= divtol*initialResidualNorm && iteration > 1)
     {
         FatalErrorInFunction
             << "Iteration " << iteration
             << setw(20) << ": Diverged - Residual grew excessively."
+            << "\nYou can try setting the `divergenceTol` in `constant/beamProperties` "
+            << "to a different value. The default value is: " << divtol
             << abort(FatalError);
         return false;
     }

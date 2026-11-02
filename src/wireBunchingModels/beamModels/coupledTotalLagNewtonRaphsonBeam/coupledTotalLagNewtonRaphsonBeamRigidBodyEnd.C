@@ -676,9 +676,7 @@ coupledTotalLagNewtonRaphsonBeam::rigidBodyEndMonolithicCoupling()
         // rows
         const tensor T = body.rotationJacobian(rigidBodyEndTheta_);
 
-        const tensor CF =
-            CQTheta_.boundaryField()[patchI][faceI]
-          + CQDTheta_.boundaryField()[patchI][faceI]/pDelta;
+        const tensor CF = CQTheta_.boundaryField()[patchI][faceI];
 
         // End-face moment: M_b = explicitM
         //   + CMTheta (DTheta_b - DTheta_c)/pDelta + CMTheta2 DTheta_b

@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     coupledTotalLagNewtonRaphsonBeam
@@ -80,11 +73,14 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Mean line displacement field
         mutable volVectorField W_;
 
-        //- Mean line displacement field increment
-        mutable volVectorField WIncrement_;
-
         //- Mean line velocity field
         mutable volVectorField U_;
+
+        //- ALM line force acting on each beam cell (populated by an
+        //  almDrag beamMomentumContribution if one is configured; otherwise
+        //  remains zero).  Kept on the beam model so that external consumers
+        //  (e.g. moorFV's beamActuatorLine fvOption) can look it up by name.
+        mutable volVectorField almForce_;
 
         //- Mean line acceleration field
         mutable volVectorField Accl_;
@@ -104,17 +100,11 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Cross-section rotation field increment
         volVectorField DTheta_;
 
-        //- Mean line displacement field
-        mutable volVectorField totW_;
-
         //- Cross-section force
         surfaceVectorField Q_;
 
         //- Explicit contribution to cross-section force
         surfaceVectorField explicitQ_;
-
-        //- Cross-section axial force
-        surfaceScalarField Qa_;
 
         //- Cross-section moment
         surfaceVectorField M_;
@@ -155,9 +145,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Coefficient in the force equilibrium equation
         surfaceTensorField CQTheta_;
 
-        //- Coefficient in the force equilibrium equation
-        surfaceTensorField CQDTheta_;
-
         //- Coefficient in the moment equilibrium equation
         surfaceTensorField CMTheta_;
 
@@ -180,7 +167,7 @@ class coupledTotalLagNewtonRaphsonBeam
         surfaceVectorField K_;
 
         //- Point mesh
-        pointMesh pMesh_;
+        const pointMesh& pMesh_;
 
         //- Mean line point displacement field
         pointVectorField pointW_;
@@ -198,20 +185,17 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant
         surfaceTensorField CM_;
 
-        //- Beam cross-section constant
-        surfaceTensorField CDQDK_;
+        // //- Beam momentum inertial term constant (single-beam)
+        // dimensionedScalar ARho_;
 
-        //- Beam momentum inertial term constant
-        dimensionedScalar ARho_;
+        // //- Beam cross-section constant (single-beam)
+        // dimensionedTensor CIRho_;
 
-        //- Beam cross-section constant
-        dimensionedTensor CIRho_;
+        //- Beam momentum inertial term constant (supports multi-beam)
+        volScalarField ARho_;
 
-
-        // Colm
-
-        //- Processor index
-        volScalarField proc_;
+        //- Beam cross-section constant (supports multi-beam)
+        volTensorField CIRho_;
 
         //- Rigid body owned by beamFoam, attached to the end patch
         autoPtr<rigidBodyEnd> rigidBodyEndPtr_;
@@ -270,9 +254,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Total time spend on solution of equilibrium equation
         scalar totalSolutionTime_;
-
-        //- Processor index
-        // volScalarField proc_;
 
     // Private Member Functions
 
@@ -446,18 +427,6 @@ class coupledTotalLagNewtonRaphsonBeam
         // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
         void checkRigidBodyEndJacobian();
 
-        //- Apply line contact force
-        // void applyLineContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply point contact force
-        // void applyPointContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply conical pulleys contact force
-        // void applyConicalPulleysContact(multibeamFvBlockMatrix& eqn);
-
-        // //- Apply conical pulleys contact force
-        // void applyConicalPulleysContactNew(multibeamFvBlockMatrix& eqn);
-
         // //- Apply conical pulleys contact force
         // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
 
@@ -529,14 +498,6 @@ public:
             {
                 // This model solves for W
                 return W_;
-            }
-
-            //- Each beamModel must indicate whether W or DW is the primary
-            //  solution variable
-            virtual volVectorField& solutionDW() const
-            {
-                // This model solves for W
-                return WIncrement_;
             }
 
             //- Each beamModel must indicate whether Theta or DTheta

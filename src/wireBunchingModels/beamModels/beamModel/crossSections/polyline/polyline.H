@@ -1,32 +1,50 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     polyline
 
 Description
-    Polyline cross-section model
+    Polyline cross-section model: an arbitrary closed cross-section given
+    by its boundary points in the local y-z plane (x = 0), e.g.
+
+        <name>CrossSectionModelDict
+        {
+            polyLinePoints ((0 y0 z0) (0 y1 z1) ...);
+        }
+
+    STATUS: INCOMPLETE - NOT COMPILED (not listed in Make/files).
+    The class compiles against OpenFOAM.com, but the section properties
+    used by beamModel are still stubs:
+      - area() returns 0, so A() = 0
+      - calcSecondMomentOfArea() returns 0, so Ixx() = Iyy() = IT() = 0
+      - radius(theta) returns 0
+      - the structured mesh points_ and quadFaces_ are never built (todo in
+        the constructor), so the stress-resultant functions are empty
+    A beam using it would have zero stiffness and a singular matrix.
+
+    To complete it:
+      - area, centroid and second moments from the boundary points
+        (shoelace/Green's theorem), about the centroid
+      - a Saint-Venant torsion constant for IT(); Ixx + Iyy (polar moment)
+        is exact only for circular sections
+      - add polyline.C to Make/files and a tutorial that checks it against
+        the circle and rectangle models
+    See https://github.com/solids4foam/beamFoam/issues/64
 
 SourceFiles
     polyline.C
@@ -63,31 +81,31 @@ class polyline
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- Circumferential points
         vectorField circumferentialPoints_;
 
         //- Minimal cross-section radius
         scalar minRadius_;
-    
+
         //- Cross-section area
         scalar A_;
 
         //- Cross-section second moment of area
         scalar Ixx_;
-    
+
         //- Cross-section second moment of area
         scalar Iyy_;
-    
+
         //- Number of circumferential points
         label nCircumferentialPoints_;
-    
+
         //- Number of segments per side
         label nSegmentsPerSide_;
 
         //- Number of segments in radial direction
         label nRadialSegments_;
-    
+
         //- Local mesh points
         vectorField points_;
 
@@ -95,18 +113,18 @@ class polyline
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Calculate cross-section area
         scalar area() const;
-    
+
         //- Calculate second moment of area
         void calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy);
-    
+
         //- Calculate second moment of area
         scalar IYY() const;
-    
+
         //- Disallow copy construct
         polyline(const polyline&);
 
@@ -139,20 +157,20 @@ public:
         //- Definitian of the coross-section
         //  boundry line in polar coordinates
         virtual scalar radius(const scalar theta) const;
-    
+
         //- Return cross-section radius
         virtual scalar R() const
         {
             return minRadius_;
         }
-    
+
         //- Return cross-section area
         virtual scalar A() const
         {
             // return M_PI*sqr(minRadius_);
             return A_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
@@ -166,7 +184,7 @@ public:
             // return M_PI*pow(minRadius_, 4)/4;
             return Iyy_;
         }
-    
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -183,13 +201,13 @@ public:
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
-            
+
         //- Number of circumferential points
         virtual label nCircumferentialPoints () const
         {
             return nCircumferentialPoints_;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {
@@ -209,7 +227,7 @@ public:
         (
             const vectorField& S
         ) const;
-    
+
         //- Return cross-section resultant force
         virtual vector resultantForce(const vectorField& S) const;
 
@@ -226,7 +244,7 @@ public:
             tensor& DMDGamma,
             tensor& DMDK
         ) const;
-    
+
         //- Write cross-section scalar field in VTK format
         virtual void writeVTK
         (

@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -71,13 +64,43 @@ groundContactContribution::groundContactContribution
     (
         readScalar(beamMomentumContribDict_.lookup("muFriction"))
     ),
-    groundZ_
-    (
-        readScalar(beamMomentumContribDict_.lookup("groundZ"))
-    ),
+    groundPlane_(readGroundPlane(beamMomentumContribDict_)),
     contactStiffness_()
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
+}
+
+
+// * * * * * * * * * * * * * * Static Member Functions * * * * * * * * * * * //
+
+plane groundContactContribution::readGroundPlane(const dictionary& dict)
+{
+    const bool pointAndNormal =
+        dict.found("groundPoint") || dict.found("groundNormal");
+
+    if (dict.found("groundZ") == pointAndNormal)
+    {
+        FatalIOErrorInFunction(dict)
+            << "Specify the ground plane either with groundZ, or with"
+            << " groundPoint and groundNormal" << exit(FatalIOError);
+    }
+
+    if (pointAndNormal)
+    {
+        // The plane normalises the normal, and stops if it is zero
+        return plane
+        (
+            dict.get<point>("groundPoint"),
+            dict.get<vector>("groundNormal")
+        );
+    }
+
+    // Short form: the horizontal plane z = groundZ
+    return plane
+    (
+        point(0, 0, readScalar(dict.lookup("groundZ"))),
+        vector(0, 0, 1)
+    );
 }
 
 
@@ -108,15 +131,25 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
     // The diagonal holds the derivative of the residual (internal plus
     // external force minus inertia) with respect to W, like the implicit
     // inertia coefficient. The normal contact force is
-    // 2*R*kNormal*(groundZ - z)*L, so its derivative with respect to W.z is
-    // -2*R*kNormal*L. The damping and friction terms stay explicit.
+    // -2*R*kNormal*d*L along the ground normal n, d being the signed distance
+    // from the ground, so its derivative with respect to W is
+    // -2*R*kNormal*L*(n n). The damping and friction terms stay explicit.
     // contactStiffness_ is set by linearMomentumSource, which the beam model
     // calls first in the same Newton iteration
     if (contactStiffness_.size() == mesh.nCells())
     {
+        const vector& n = groundPlane_.normal();
+
         forAll(result, cellI)
         {
-            result[cellI](2, 2) -= contactStiffness_[cellI];
+            for (direction i = 0; i < vector::nComponents; ++i)
+            {
+                for (direction j = 0; j < vector::nComponents; ++j)
+                {
+                    result[cellI](i, j) -=
+                        contactStiffness_[cellI]*n[i]*n[j];
+                }
+            }
         }
     }
 
@@ -135,47 +168,18 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     // Take a reference to the mesh
     const fvMesh& mesh = W.mesh();
 
-    IOobject refWHeader
+    // Current position of the beam CV cell-centres: the mesh cell-centres
+    // plus the reference displacement (registered by the beam model) and the
+    // displacement
+    const vectorField coord
     (
-        "refW",
-        "0",
-        mesh,
-        IOobject::MUST_READ
+        mesh.C().internalField()
+      + mesh.lookupObject<volVectorField>("refW").internalField()
+      + W.internalField()
     );
 
-    autoPtr<volVectorField> refWPtr;
-
-    if (refWHeader.typeHeaderOk<volVectorField>(true))
-    {
-        // Info<< "Reading refW from 0/" << endl;
-
-        refWPtr.reset
-        (
-            new volVectorField(refWHeader, mesh)
-        );
-    }
-    else
-    {
-        // Info<< "refW not found → using default zero field" << endl;
-
-        refWPtr.reset
-        (
-            new volVectorField
-            (
-                IOobject
-                (
-                    "refW",
-                    mesh,
-                    IOobject::NO_READ,
-                    IOobject::NO_WRITE
-                ),
-                mesh,
-                dimensionedVector("refW", dimLength, vector::zero)
-            )
-        );
-    }
-
-    volVectorField& refW = refWPtr();
+    // Unit normal of the ground plane, pointing from the ground into the fluid
+    const vector& n = groundPlane_.normal();
 
     // Beam Radius
     const scalar R = bm.R();
@@ -184,25 +188,18 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     tmp<vectorField> tresult(new vectorField(mesh.nCells(), vector::zero));
     vectorField& result = tresult.ref();
 
-    // TO-DO: Make the ground contact not just for z-direction but any
-    // user specified direction
+    // TO-DO: The friction below only resists sliding along the beam, not
+    // sliding across it on the ground
 
-    // Create spline using current beam points and tangents data
-    HermiteSpline spline
-    (
-        bm.currentBeamPoints(),
-        bm.currentBeamTangents()
-    );
-
-    // Evaluate dRdS - tangents to beam centreline at beam CV cell-centres
-    const vectorField& dRdScell = spline.midPointDerivatives();
+    // Unit tangents to beam centreline at beam CV cell-centres
+    const vectorField dRdScellHat(unitTangents(bm));
 
     // Tangential component of velocity vector
     vectorField Ut
     (
         (
-            (U.internalField() & dRdScell)
-            *dRdScell
+            (U.internalField() & dRdScellHat)
+            *dRdScellHat
         )
     );
 
@@ -219,19 +216,23 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     forAll(result, cellI)
     {
-        const vector coord = refW[cellI] + W[cellI];
-        // Info<< "coord " << coord << endl;
-        if (coord.z() < groundZ_)
+        // Signed distance of the cell-centre from the ground plane,
+        // negative below the ground
+        const scalar d = groundPlane_.signedDistance(coord[cellI]);
+
+        if (d < 0)
         {
             cellsInContact++;
             contactStiffness_[cellI] = 2*R*kNormal_*L[cellI];
 
-            // Spring plus damper, damping motion in both directions; the
-            // ground can push but not pull
+            // Seabed force on the cell, along the ground normal: the spring
+            // pushes the penetrating cell out, and the damper resists its
+            // rebound (velocity along the normal). The seabed can only push,
+            // so a damper stronger than the spring does not pull the cell in
             const scalar f_gc_normal = max
             (
-                (2*R*kNormal_*(groundZ_ - coord.z()))
-              - (2*R*cNormal_*U[cellI].component(2)),
+                (2*R*kNormal_*(-d))
+              - (2*R*cNormal_*max(U[cellI] & n, 0)),
                 0
             );
 
@@ -240,26 +241,22 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
             if
             (
                 kTangential_*2.0*R*mag(Ut[cellI])
-             >= muFriction_*mag(f_gc_normal)
+             >= muFriction_*f_gc_normal
             )
             {
                 // Max value of friction as per Coulomb's law
                 f_gc_tangential =
-                    -muFriction_*mag(f_gc_normal)*UtHat[cellI];
+                    -muFriction_*f_gc_normal*UtHat[cellI];
             }
             else
             {
                 f_gc_tangential = -2.0*R*kTangential_*Ut[cellI];
             }
-            // The beam model adds this to its source, which holds minus the
-            // external force on each cell (as for gravity and the
-            // distributed load q), so store minus the force times the
-            // cell length
-            result[cellI][vector::X] -= f_gc_tangential.x()*L[cellI];
-            result[cellI][vector::Y] -= f_gc_tangential.y()*L[cellI];
-            result[cellI][vector::Z] -=
-                (f_gc_normal + f_gc_tangential.z())*L[cellI];
 
+            // The solver adds external forces to the source with a minus
+            // sign, as for gravity, so subtract the seabed force. The forces
+            // above are per unit length, so multiply by the cell length
+            result[cellI] -= (f_gc_normal*n + f_gc_tangential)*L[cellI];
         }
      }
 

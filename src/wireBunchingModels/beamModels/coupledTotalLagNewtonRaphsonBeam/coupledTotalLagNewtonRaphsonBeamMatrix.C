@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -61,7 +54,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
 )
 {
     const tensorField& CQWI = CQW_.internalField();
-    const tensorField& CQDThetaI = CQDTheta_.internalField();
     const tensorField& CQThetaI = CQTheta_.internalField();
     const tensorField& CMThetaI = CMTheta_.internalField();
     const tensorField& CMTheta2I = CMTheta2_.internalField();
@@ -128,57 +120,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleMatrixCoefficients
         d[nei[faceI]](2,0) += -CQWI[faceI].zx()/deltaf[faceI];
         d[nei[faceI]](2,1) += -CQWI[faceI].zy()/deltaf[faceI];
         d[nei[faceI]](2,2) += -CQWI[faceI].zz()/deltaf[faceI];
-
-        //- Theta part: Laplacian
-
-        u[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
-        u[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
-        u[faceI](0,5) += CQDThetaI[faceI].xz()/deltaf[faceI];
-
-        u[faceI](1,3) += CQDThetaI[faceI].yx()/deltaf[faceI];
-        u[faceI](1,4) += CQDThetaI[faceI].yy()/deltaf[faceI];
-        u[faceI](1,5) += CQDThetaI[faceI].yz()/deltaf[faceI];
-
-        u[faceI](2,3) += CQDThetaI[faceI].zx()/deltaf[faceI];
-        u[faceI](2,4) += CQDThetaI[faceI].zy()/deltaf[faceI];
-        u[faceI](2,5) += CQDThetaI[faceI].zz()/deltaf[faceI];
-
-        d[own[faceI]](0,3) += -CQDThetaI[faceI].xx()/deltaf[faceI];
-        d[own[faceI]](0,4) += -CQDThetaI[faceI].xy()/deltaf[faceI];
-        d[own[faceI]](0,5) += -CQDThetaI[faceI].xz()/deltaf[faceI];
-
-        d[own[faceI]](1,3) += -CQDThetaI[faceI].yx()/deltaf[faceI];
-        d[own[faceI]](1,4) += -CQDThetaI[faceI].yy()/deltaf[faceI];
-        d[own[faceI]](1,5) += -CQDThetaI[faceI].yz()/deltaf[faceI];
-
-        d[own[faceI]](2,3) += -CQDThetaI[faceI].zx()/deltaf[faceI];
-        d[own[faceI]](2,4) += -CQDThetaI[faceI].zy()/deltaf[faceI];
-        d[own[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
-
-        l[faceI](0,3) += CQDThetaI[faceI].xx()/deltaf[faceI];
-        l[faceI](0,4) += CQDThetaI[faceI].xy()/deltaf[faceI];
-        l[faceI](0,5) += CQDThetaI[faceI].xz()/deltaf[faceI];
-
-        l[faceI](1,3) += CQDThetaI[faceI].yx()/deltaf[faceI];
-        l[faceI](1,4) += CQDThetaI[faceI].yy()/deltaf[faceI];
-        l[faceI](1,5) += CQDThetaI[faceI].yz()/deltaf[faceI];
-
-        l[faceI](2,3) += CQDThetaI[faceI].zx()/deltaf[faceI];
-        l[faceI](2,4) += CQDThetaI[faceI].zy()/deltaf[faceI];
-        l[faceI](2,5) += CQDThetaI[faceI].zz()/deltaf[faceI];
-
-        d[nei[faceI]](0,3) += -CQDThetaI[faceI].xx()/deltaf[faceI];
-        d[nei[faceI]](0,4) += -CQDThetaI[faceI].xy()/deltaf[faceI];
-        d[nei[faceI]](0,5) += -CQDThetaI[faceI].xz()/deltaf[faceI];
-
-        d[nei[faceI]](1,3) += -CQDThetaI[faceI].yx()/deltaf[faceI];
-        d[nei[faceI]](1,4) += -CQDThetaI[faceI].yy()/deltaf[faceI];
-        d[nei[faceI]](1,5) += -CQDThetaI[faceI].yz()/deltaf[faceI];
-
-        d[nei[faceI]](2,3) += -CQDThetaI[faceI].zx()/deltaf[faceI];
-        d[nei[faceI]](2,4) += -CQDThetaI[faceI].zy()/deltaf[faceI];
-        d[nei[faceI]](2,5) += -CQDThetaI[faceI].zz()/deltaf[faceI];
-
 
         //- Theta part
         u[faceI](0,3) += (1 - wf[faceI])*CQThetaI[faceI].xx();

@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     annularSector
@@ -63,7 +56,7 @@ class annularSector
 
         //- Cross-section model dictionary
         dictionary crossSectionModelDict_;
-    
+
         //- inner radius of the sector
         scalar innerRadius_;
 
@@ -72,22 +65,22 @@ class annularSector
 
         //- angle of the sector
         scalar sectorAngle_;
-        
+
         //- Number of segments of the sector in radial direction
     	label nRadialSegmentsSector_;
-    	
+
     	//- Cross-section area
         scalar A_;
 
         //- Cross-section second moment of area
         scalar Ixx_;
-    
+
         //- Cross-section second moment of area
         scalar Iyy_;
-        
+
         //- Number of circumferential points
         label nCircumferentialPoints_;
-          	
+
         //- Local mesh points
         vectorField points_;
 
@@ -95,15 +88,15 @@ class annularSector
         // faceList quadFaces_;
         List<quadrilateral> quadFaces_;
         // faceList faces_;
-    
+
     // Private Member Functions
 
         //- Calculate cross-section area
         scalar area() const;
-    
+
         //- Calculate second moment of area
         void calcSecondMomentOfArea(scalar& Ixx, scalar& Iyy);
-        
+
         //- Disallow copy construct
         annularSector(const annularSector&);
 
@@ -139,32 +132,32 @@ public:
         {
             return innerRadius_;   //Verify this!
         }
-    
+
         //- Return cross-section radius
         virtual scalar R() const
         {			     // What does this do!
             return (outerRadius_ - innerRadius_);     //verify this with ZT!!
         }
- 
- 
+
+
         //- Return cross-section area
         virtual scalar A() const
         {
             return A_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Ixx() const
         {
             return Ixx_;
         }
-    
+
         //- Return cross-section moment of inertia
         virtual scalar Iyy() const
         {
             return Iyy_;
         }
-   
+
         //- Return cross-section Saint-Venant torsion constant
         virtual scalar IT() const
         {
@@ -180,13 +173,13 @@ public:
 
         //- Circumferential points
         virtual tmp<vectorField> circumferentialPoints() const;
-            
+
         //- Number of circumferential points
         virtual label nCircumferentialPoints() const
         {
             return nCircumferentialPoints_;
         }
-    
+
         //- Structured mesh points
         virtual const vectorField& points() const
         {
@@ -222,7 +215,7 @@ public:
         //     tensor& DMDGamma,
         //     tensor& DMDK
         // ) const;
-    
+
         // //- Write cross-section scalar field in VTK format
         // virtual void writeVTK
         // (
@@ -231,7 +224,7 @@ public:
         //     const scalarField& sf1,
         //     const vectorField& vf
         // ) const;
-        
+
 
 };
 

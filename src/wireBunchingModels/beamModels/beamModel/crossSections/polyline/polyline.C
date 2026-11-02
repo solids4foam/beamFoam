@@ -1,29 +1,25 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright (C) 2004-2007 Hrvoje Jasak
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 InClass
     polyline
+
+Description
+    Incomplete and not compiled: see the Description in polyline.H.
 
 \*---------------------------------------------------------------------------*/
 
@@ -53,7 +49,7 @@ scalar polyline::area() const
     scalar A=0;
 
     // Calculate cross-section area
-    
+
     return A;
 }
 
@@ -97,7 +93,7 @@ polyline::polyline
     quadFaces_(0, quadrilateral())
 {
     Info << circumferentialPoints_ << endl;
-    
+
     // Set number of circumferential points
     nCircumferentialPoints_ = circumferentialPoints_.size();
 
@@ -107,9 +103,9 @@ polyline::polyline
 	(
             "polyline::polyline(const word& name,const dictionary& dict)"
 	)
-            << "Zero size polyline" << abort(FatalError);	            
+            << "Zero size polyline" << abort(FatalError);
     }
-    
+
     // Calculate minimal radius
     minRadius_ = 0;
     forAll(circumferentialPoints_, faceI)
@@ -117,7 +113,7 @@ polyline::polyline
         minRadius_ += mag(circumferentialPoints_[faceI]);
     }
     minRadius_ /= nCircumferentialPoints_;
-    
+
     // Calculate cross-section area
     A_ = area();
 
@@ -138,7 +134,7 @@ scalar polyline::radius(scalar theta) const
 }
 
 
-   
+
 tmp<vectorField> polyline::circumferentialPoints() const
 {
     tmp<vectorField> tCircumPoints
@@ -150,7 +146,7 @@ tmp<vectorField> polyline::circumferentialPoints() const
 }
 
 
-    
+
 tmp<vectorField> polyline::greenLagrangianStrain
 (
     const vector& Gamma,
@@ -205,7 +201,7 @@ vector polyline::resultantForce(const vectorField& S) const
     {
         rF += quadFaces_[faceI].integral(points_, S);
     }
-    
+
     return rF;
 }
 
@@ -246,7 +242,7 @@ void polyline::resultantTangentMatrices
             label i3 = fpts[3];
 
             scalar dA = fpts.area(points_);
-            
+
             // label i0 = j*npr + i;
             // label i1 = i0 + 1;
             // label i3 = (j+1)*npr + i;
@@ -260,22 +256,22 @@ void polyline::resultantTangentMatrices
             scalarRectangularMatrix ACAm(6, 6, 0);
 
             calcA(A, points_[i0]);
-            tensorToMatrix(CT, dSdE[i0]);    
+            tensorToMatrix(CT, dSdE[i0]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i1]);
-            tensorToMatrix(CT, dSdE[i1]);    
+            tensorToMatrix(CT, dSdE[i1]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i2]);
-            tensorToMatrix(CT, dSdE[i2]);    
+            tensorToMatrix(CT, dSdE[i2]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
             calcA(A, points_[i3]);
-            tensorToMatrix(CT, dSdE[i3]);    
+            tensorToMatrix(CT, dSdE[i3]);
             multiply(ACA, A.T(), CT, A);
             ACAm = ACAm + 0.25*ACA;
 
@@ -314,7 +310,7 @@ void polyline::resultantTangentMatrices
     DMDGamma.zx() = DSDE[5][0];
     DMDGamma.zy() = DSDE[5][1];
     DMDGamma.zz() = DSDE[5][2];
-    
+
     DMDK.xx() = DSDE[3][3];
     // DMDK.xy() = DSDE[3][4];
     // DMDK.xz() = DSDE[3][5];
@@ -337,7 +333,7 @@ vector polyline::resultantMoment(const vectorField& S) const
 
     scalarField Px(points_.component(0));
     scalarField Py(points_.component(1));
-    
+
     forAll(quadFaces_, faceI)
     {
         rM.x() += quadFaces_[faceI].integral(points_, Sz, Py);
@@ -345,7 +341,7 @@ vector polyline::resultantMoment(const vectorField& S) const
 
         rM.y() += quadFaces_[faceI].integral(points_, Sx, Px);
 
-        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);            
+        rM.z() -= quadFaces_[faceI].integral(points_, Sx, Py);
     }
 
     return rM;
@@ -379,7 +375,7 @@ void polyline::writeVTK
                 << points_[i].z() << endl;
     }
 
-    
+
     // Write cells
     label nCells = quadFaces_.size();
     vtkFile << "\nPOLYGONS " << nCells << " " << 5*nCells << endl;
@@ -388,8 +384,8 @@ void polyline::writeVTK
     {
         vtkFile << quadFaces_[i].size() << " "
                 << quadFaces_[i][0] << " "
-                << quadFaces_[i][1] << " " 
-                << quadFaces_[i][2] << " " 
+                << quadFaces_[i][1] << " "
+                << quadFaces_[i][2] << " "
                 << quadFaces_[i][3] << endl;
     }
 
@@ -401,7 +397,7 @@ void polyline::writeVTK
     //     vtkFile << 9 << endl;
     // }
 
-    
+
     //Write data
     vtkFile << "\nPOINT_DATA " << points_.size() << endl;
     vtkFile << "SCALARS eqEP float 1" << endl;
@@ -433,7 +429,7 @@ void polyline::writeVTK
     }
 }
 
-    
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

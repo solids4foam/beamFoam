@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     Foam::beamMomentumContribution::morisonDragContribution
@@ -28,6 +21,10 @@ Class
 Description
     Derived class to evaluate the (explicit) Morison drag force
     contributions which will be added to the beam solver governing eqns
+
+    Only valid for a circular cross-section (crossSectionModel circle),
+    as R is used as the radius. A beam region must hold a single beam.
+    Other cases stop with an error.
 
 SourceFiles
     morisonDragContribution.C
@@ -102,6 +99,18 @@ public:
 
     // Member Functions
 
+        //- The tangents and the radius come from beam 0 alone
+        virtual bool requiresSingleBeam() const
+        {
+            return true;
+        }
+
+        //- R() is used as the radius
+        virtual bool requiresCircularSection() const
+        {
+            return true;
+        }
+
         //- Return the contribution to the block diagonal of the Jacobian matrix
         //  Each block should be a 6x6 matrix
         //  U     : the current cell-centred velocity field
@@ -111,7 +120,7 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U,
-            const volVectorField& Accl            
+            const volVectorField& Accl
         );
 
         //- Return the contribution to the linear momentum source
@@ -122,7 +131,7 @@ public:
         (
             const beamModel& bm,
             const volVectorField& U,
-            const volVectorField& Accl            
+            const volVectorField& Accl
         );
 
         //- Return the contribution to the angular momentum source

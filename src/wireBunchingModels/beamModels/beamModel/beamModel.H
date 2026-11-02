@@ -1,25 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
     beamModel
@@ -75,11 +69,11 @@ class beamModel
         //- Reference to the master time object
         Time& runTime_;
 
-        //- Mesh
-        autoPtr<dynamicFvMesh> meshPtr_;
+        //- Mesh, set only when this model constructs its own mesh
+        autoPtr<dynamicFvMesh> meshOwnerPtr_;
 
-        //- Compressed sparse row addressing
-        // fvMeshCsrAddressing csrAddressing_;
+        //- Mesh used by this model: owned, or borrowed from the registry
+        const dynamicFvMesh* meshPtr_;
 
         //- Local to global cell addressing
         labelList localToGlobalCellAddressing_;
@@ -98,12 +92,6 @@ class beamModel
 
         //- Cell face shared with lower neighbour cell
         mutable labelList* lowerNeiCellFacesPtr_;
-
-        //- Upper neighbour cell
-        mutable labelList* upperNeiCellPtr_;
-
-        //- Lower neighbour cell
-        mutable labelList* lowerNeiCellPtr_;
 
         //- Flow properties dictionary
         dictionary beamProperties_;
@@ -201,12 +189,6 @@ class beamModel
         //- Linear solves (Newton iterations) since the start of the run
         label totalNewtonIterations_;
 
-        //- Steady state calculation
-        bool steadyState_;
-
-        // //- Use objective interpolation for rotation
-        // bool objectiveInterpolation_;
-
         //- Artificial scaling factor for changing the inertia
         //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
@@ -216,12 +198,6 @@ class beamModel
 
         // //- Toroidal pullys
         // mutable PtrList<toroidalPulley> toroidalPulleys_;
-
-        //- Time instance at which contact force will be relaxing
-        scalar startToRelaxTime_;
-
-        //- Time period over which contact force will be relaxed
-        scalar relaxationPeriod_;
 
         // //- Beam contact model
         // autoPtr<beamContactModel> contactPtr_;
@@ -311,7 +287,7 @@ public:
             //- Return mesh
             const dynamicFvMesh& mesh() const
             {
-                return meshPtr_();
+                return *meshPtr_;
             }
 
             //- Return number of beams
@@ -326,12 +302,6 @@ public:
                 return mesh().cellZones()[bI].size();
             }
 
-            //- Return CSR addressing
-            // const fvMeshCsrAddressing& csrAddr() const
-            // {
-            //     return csrAddressing_;
-            // }
-
             // //- Return list of conical pulleys
             // const PtrList<conicalPulley>& conicalPulleys() const
             // {
@@ -342,18 +312,6 @@ public:
             // const PtrList<toroidalPulley>& toroidalPulleys() const
             // {
   	        // return toroidalPulleys_;
-            // }
-
-            // //- Return time instance when contact force relaxation will start
-            // const scalar& startToRelaxTime() const
-            // {
-            //     return startToRelaxTime_;
-            // }
-
-            // //- Return contact force relaxation period
-            // const scalar& relaxationPeriod() const
-            // {
-            //     return relaxationPeriod_;
             // }
 
             //- Return time
@@ -458,7 +416,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "I", dimArea*dimArea, crossSections_[bI].Iyy()
+                           "I", dimArea*dimArea, crossSections_[bI].Ixx()
                        );
                 }
 
@@ -472,7 +430,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "Iyy", dimArea*dimArea, crossSections_[bI].Iyy()
+                           "Iyy", dimArea*dimArea, crossSections_[bI].Ixx()
                        );
                 }
 
@@ -486,7 +444,7 @@ public:
                    return
                        dimensionedScalar
                        (
-                           "Izz", dimArea*dimArea, crossSections_[bI].Ixx()
+                           "Izz", dimArea*dimArea, crossSections_[bI].Iyy()
                        );
                 }
 
@@ -715,10 +673,6 @@ public:
             //  solution variable
             virtual volVectorField& solutionW() const = 0;
 
-            //- Each beamModel must indicate whether W or DW is the primary
-            //  solution variable
-            virtual volVectorField& solutionDW() const = 0;
-
             //- Each beamModel must indicate whether Theta or DTheta
             //  is the primary solution variable
             virtual volVectorField& solutionTheta() const = 0;
@@ -941,14 +895,8 @@ public:
             //- Write fields
             virtual void writeFields();
 
-            //- Steady state
-            bool steadyState() const
-            {
-                return steadyState_;
-            }
-
             //- Artificial scaling factor for changing the inertia
-            //- tensor I_rho in the angular momentum tensor 
+            //- tensor I_rho in the angular momentum tensor
             scalar kCI() const
             {
                 return kCI_;
@@ -959,12 +907,6 @@ public:
 
             //- Get lower neighbour cell faces
             const labelList& lowerNeiCellFaces() const;
-
-            //- Get upper neighbour cell faces
-            const labelList& upperNeiCell() const;
-
-            //- Get lower neighbour cell faces
-            const labelList& lowerNeiCell() const;
 };
 
 

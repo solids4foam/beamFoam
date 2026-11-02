@@ -1,26 +1,19 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -85,7 +78,6 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
         {
             const tensorField& pCQW = CQW_.boundaryField()[patchI];
             const tensorField& pCQTheta = CQTheta_.boundaryField()[patchI];
-            const tensorField& pCQDTheta = CQDTheta_.boundaryField()[patchI];
             const tensorField& pCMTheta = CMTheta_.boundaryField()[patchI];
             const tensorField& pCMTheta2 = CMTheta2_.boundaryField()[patchI];
             const tensorField& pCMQW = CMQW_.boundaryField()[patchI];
@@ -490,32 +482,12 @@ void coupledTotalLagNewtonRaphsonBeam::assembleBoundaryConditions
                             (
                                 pCQTheta[faceI]
                               & pThetaCorr[faceI]
-                            )
-                          + (
-                                pCQDTheta[faceI]
-                              & pThetaCorr[faceI]
-                            )/pDelta[faceI];
+                            );
                         // (pCQTheta[faceI] & pTheta[faceI]);
 
                         source[fc[faceI]](0,0) -= thetaContrib.x();
                         source[fc[faceI]](1,0) -= thetaContrib.y();
                         source[fc[faceI]](2,0) -= thetaContrib.z();
-                    }
-
-                    // Diag contribution
-                    forAll(pW, faceI)
-                    {
-                        d[fc[faceI]](0,0) += -pCQDTheta[faceI].xx()/pDelta[faceI];
-                        d[fc[faceI]](0,1) += -pCQDTheta[faceI].xy()/pDelta[faceI];
-                        d[fc[faceI]](0,2) += -pCQDTheta[faceI].xz()/pDelta[faceI];
-
-                        d[fc[faceI]](1,0) += -pCQDTheta[faceI].yx()/pDelta[faceI];
-                        d[fc[faceI]](1,1) += -pCQDTheta[faceI].yy()/pDelta[faceI];
-                        d[fc[faceI]](1,2) += -pCQDTheta[faceI].yz()/pDelta[faceI];
-
-                        d[fc[faceI]](2,0) += -pCQDTheta[faceI].zx()/pDelta[faceI];
-                        d[fc[faceI]](2,1) += -pCQDTheta[faceI].zy()/pDelta[faceI];
-                        d[fc[faceI]](2,2) += -pCQDTheta[faceI].zz()/pDelta[faceI];
                     }
                 }
             }

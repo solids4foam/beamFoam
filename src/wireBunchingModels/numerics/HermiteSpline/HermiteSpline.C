@@ -1,26 +1,19 @@
-
-/*---------------------------------------------------------------------------* \
-  =========                 |
-  \\      /  F ield         | foam-extend: Open Source CFD
-   \\    /   O peration     | Version:     4.0
-    \\  /    A nd           | Web:         http://www.foam-extend.org
-     \\/     M anipulation  | For copyright notice see file Copyright
--------------------------------------------------------------------------------
+/*---------------------------------------------------------------------------*\
 License
-    This file is part of foam-extend.
+    This file is part of beamFoam.
 
-    foam-extend is free software: you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
     Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    foam-extend is distributed in the hope that it will be useful, but
+    beamFoam is distributed in the hope that it will be useful, but
     WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with foam-extend.  If not, see <http://www.gnu.org/licenses/>.
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 \*---------------------------------------------------------------------------*/
 
@@ -350,11 +343,11 @@ Foam::scalar Foam::HermiteSpline::arcLength
         return 0;
     }
 
-    // Dividing the arc length integral into further 
+    // Dividing the arc length integral into further
     // subsegments
     label n(12*(zeta+1)/2);
 
-    // n must be even number for Simpson's 1/3 rule to apply 
+    // n must be even number for Simpson's 1/3 rule to apply
     if ( (n % 2) > 0)
     {
         n += 1;
@@ -366,7 +359,7 @@ Foam::scalar Foam::HermiteSpline::arcLength
     }
 
     // Setting the length of step size between left end point
-    // and zeta, i.e., [-1, zeta] 
+    // and zeta, i.e., [-1, zeta]
     const scalar h = (zeta + 1)/n;
 
     // Composite Simpson's 1/3 rule
@@ -866,10 +859,10 @@ Foam::HermiteSpline::checkPointContact
 
     if (contactAngle > lowerContactAngleLimit)
     {
-        // Find initial solution point contact pair [zetaC,neiZetaC] using the 
+        // Find initial solution point contact pair [zetaC,neiZetaC] using the
         // assumption of linear interpolation between points p0 and p1.
         // See Eq. 10 of the paper, Wriggers, P. and Zavarise, G., 1997. On contact between
-        // three‐dimensional beams undergoing large deflections. 
+        // three‐dimensional beams undergoing large deflections.
         // Communications in numerical methods in engineering, 13(6), pp.429-438.
 
         const vector& p0 = points()[segI];

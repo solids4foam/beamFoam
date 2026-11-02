@@ -16,6 +16,3 @@ runApplication $application
 
 # Plotting displacement and energy plots
 gnuplot allPlots.gnuplot
-
-open displacementPlot.pdf
-open energyPlot.pdf
