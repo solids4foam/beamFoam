@@ -161,4 +161,9 @@ PlyParser_FoamFileParser_parsetab.py
 /.tags
 #ignore vscode introductory files
 .vscode
+# rigidBodyAndBeam_coupledSolver is a results-only reference: keep its logs and
+# postProcessing histories, not its fields or mesh
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/0.*/
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/constant/polyMesh/
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/case.foam
 # end-of-file
