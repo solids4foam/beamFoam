@@ -1,47 +1,28 @@
 /*---------------------------------------------------------------------------*\
-  =========                 |
-  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
-   \\    /   O peration     |
-    \\  /    A nd           | Copyright held by original author
-     \\/     M anipulation  |
--------------------------------------------------------------------------------
 License
-    This file is part of OpenFOAM.
+    This file is part of beamFoam.
 
-    OpenFOAM is free software; you can redistribute it and/or modify it
+    beamFoam is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by the
-    Free Software Foundation; either version 2 of the License, or (at your
+    Free Software Foundation, either version 3 of the License, or (at your
     option) any later version.
 
-    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+    beamFoam is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with OpenFOAM; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
-
-Class
-    coupledTotalLagNewtonRaphsonBeam
+    along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Description
-    This code is the total Lagrangian formulation to solve displacements (W)
-    and rotations (Theta) implemented in a coupled Newton-Raphson approach for
-    geometrically exact Simo-Reissner beams
-
-    More details on the implementation can be found in the paper:
-    https://doi.org/10.1002/nme.6994
+    Data passed between coupledTotalLagNewtonRaphsonBeam and its rigidBodyEnd:
+    RigidBodyMonolithicCoupling holds the body rows and columns of the
+    monolithic beam + rigid body Newton system, and RigidBodyEndState the
+    accepted body state for a caller such as a sixDoF motion solver.
 
 Author
-    Zeljko Tukovic, FSB Zagreb.  All rights reserved.
-    Seevani Bali, UCD.
-
-SourceFiles
-    coupledTotalLagNewtonRaphsonBeam.C
-    coupledTotalLagNewtonRaphsonBeamEvolve.C
-    coupledTotalLagNewtonRaphsonBeamMatrix.C
-    coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+    Colm Mc Alister, UCD.
 
 \*---------------------------------------------------------------------------*/
 
