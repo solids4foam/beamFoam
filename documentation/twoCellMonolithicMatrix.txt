@@ -148,6 +148,118 @@ Body quantities
                    + r x Q_b
 
 
+Notation
+--------
+
+Plain-text conventions (as in TeX)
+
+  ^   superscript.  ^ followed by a letter is a label; ^ followed by a
+      number is a power:  dt^2 = dt squared,  A^T = transpose of A.
+  _   subscript: which face, cell or body a quantity belongs to,
+      or a label such as x_pred.
+  [v]x   the cross-product matrix of v: [v]x a = v x a.
+  x   (between vectors) cross product. The docs never use ^ for this.
+
+  K^M_b is read as (K^M)_b: the quantity K^M at face b. M is part of the
+  name (M for "moment", to tell it apart from the force spring k), not a
+  power, and b is the face index (K^M_a, K^M_0, K^M_b). It is not
+  K^(M_b). The other face quantities follow the same pattern: k_b,
+  kappa_b, g_b and B_b are a quantity with a face index. In the code the
+  name and the index are fused: KbM.
+
+Greek letters (spelled out in this file because it is ASCII)
+
+  mu     (μ)  translational inertia: mu_c (cell), mu_B (body)
+  iota   (ι)  rotational inertia, the rotational partner of mu:
+              iota_c = rho I L_c/(beta dt^2) + gyroscopic terms,
+              iota_B = J/(beta dt^2) + gyroscopic, damping and
+              "inertia tensor turning with the body" terms.
+              Documentation notation only; in the code it is
+              rotationalInertiaJacobian() for the body and the rotary
+              inertia terms added in evolveBeam for the cells.
+  kappa  (κ)  bending/torsion spring of a face
+  gamma  (γ)  geometric moment term of a face. Also the Newmark gamma;
+              which one is meant is clear from the context.
+  eta    (η)  lever-arm moment per rotation
+  beta   (β)  Newmark beta
+  theta  (θ)  body step rotation vector (th in the matrix)
+
+More on some of the symbols
+
+  B_b   The pin rotation factor at the attachment face (B_a at the
+        anchor). It comes from the end-face moment
+            M_b = explicitM + kappa_b (DTheta_b - DTheta_cell)
+                + gamma_b DTheta_b
+        (code comment at R:684). A pin carries no moment, so M_b = 0 gives
+            DTheta_b = (kappa_b + gamma_b)^-1 kappa_b DTheta_cell + const
+            B_b      = (kappa_b + gamma_b)^-1 kappa_b
+        a 3 x 3 tensor. With no moment on the face, gamma_b = 0 and B_b = I:
+        the end face turns with its cell. B_b is not a constant: kappa_b
+        depends on the current section rotation and gamma_b on the current
+        face moment, so it is rebuilt at every Newton iteration. Within one
+        linear solve it is fixed. In the code it sits inside
+            dcTheta = CQTheta inv(CMTheta/pDelta + CMTheta2) CMTheta/pDelta
+        (C:414-435). A welded joint does not use it.
+
+  K^M_b The change in cell 1's moment per unit movement of the attachment
+        point [N]. Cell 1's moment balance holds the moment of the face-b
+        force about the cell centre, roughly d x Q_b, where d is the
+        half-cell segment from the cell centre to face b. Moving the
+        attachment point changes the force (k_b du_b) and tilts the arm d.
+        Code: KbM = CMQW_b/pDelta (R:582). Not the same as kappa, which
+        gives moment per rotation.
+
+  A     = [r]x T, how body rotation moves the attachment point. A body
+        rotation dtheta turns the body by w = T dtheta, which moves the
+        attachment point by w x r = -[r]x T dtheta = -A dtheta. So
+            du_b = dx - A dtheta
+        and each body-rotation column is the translation column times -A
+        (e.g. W1 row: k_b and -k_b A; Th1 row: K^M_b and -K^M_b A).
+        Code: SrT = Sr & body.rotationJacobian(theta), Sr = *r (R:625-627).
+
+  J     Two different things:
+        - In GJ (torsional stiffness) it is the cross-section's torsion
+          constant [m^4]: pi R^4/2 for a solid circular section (the polar
+          second moment, = 2I), or crossSections_[bI].IT() when a
+          cross-section model is given (beamModel.H:496-508). G is the
+          shear modulus. The section stiffness is
+              CM = diag(GJ, EIyy, EIzz)
+          (coupledTotalLagNewtonRaphsonBeam.C:584), with the first axis
+          along the beam. Turned into global axes and divided by the spring
+          length it gives kappa. rho J (JRho()) is the beam's polar mass
+          moment per unit length, used in iota_c.
+        - In the body equations (J alpha, omega x J omega) it is the rigid
+          body's inertia tensor [kg m^2].
+
+OpenFOAM operators in the code
+
+  a & b    (vectors)          dot product -> scalar
+  T & v    (tensor, vector)   matrix times vector
+  T & S    (tensors)          matrix product; chains go left to right
+  T && S                      double inner product sum_ij T_ij S_ij
+  a ^ b                       cross product a x b (only in the code)
+  a * b    (vectors)          outer product a b^T
+  *v       (unary)            Hodge dual: the skew tensor [v]x
+  s * T                       scaling
+  T.T()                       transpose
+  cmptMultiply(a, b)          element-wise product (& is NOT element-wise)
+
+  So, in rigidBodyEndMonolithicCoupling (R:568-):
+    Sr = *r                       [r]x
+    SrT = Sr & rotationJacobian   [r]x T = A
+    -(Kb & SrT)                   -k_b A
+    -(KbM & SrT)                  -K^M_b A
+    Sr & Kb                       [r]x k_b
+    Sr & dcW                      [r]x dcW
+    (*Qb) & SrT                   [Q_b]x A
+    Sr & Kb & SrT                 [r]x k_b A
+  (Kb in the code is k_b in this file.)
+
+  R = coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C and
+  C = coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C; the full paths
+  are in the header of monolithicMatrixLayout.txt.
+
+
 What each entry means
 ---------------------
 
