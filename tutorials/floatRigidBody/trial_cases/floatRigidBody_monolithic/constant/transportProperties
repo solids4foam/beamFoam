@@ -1,0 +1,38 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      transportProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+phases (water air);
+
+water
+{
+    transportModel  Newtonian;
+    nu              1e-06;
+    rho             998.2;
+}
+
+air
+{
+    transportModel  Newtonian;
+    nu              1.48e-05;
+    rho             1;
+}
+
+sigma           0;
+
+
+// ************************************************************************* //

@@ -1,0 +1,107 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       volScalarField;
+    location    "2";
+    object      L;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   nonuniform List<scalar> 
+60
+(
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.044275
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+0.04427
+0.04428
+)
+;
+
+boundaryField
+{
+    left
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    right
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+    beam
+    {
+        type            empty;
+    }
+}
+
+
+// ************************************************************************* //

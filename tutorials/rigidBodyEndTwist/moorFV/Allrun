@@ -1,0 +1,48 @@
+#!/bin/sh
+# Mesh once, then run the welded twist case with moorFV's partitioned
+# (FvBeamNewmark) and monolithic (beamFoamCoupled) coupling side by side, each
+# in serial, and compare them
+cd "${0%/*}" || exit 1
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Fluid mesh (snappyHexMesh around the box) and beam mesh, made once
+if [ ! -d mesh/constant/polyMesh ]
+then
+    rm -rf mesh
+    mkdir mesh
+    /bin/cp -R base/0 base/constant base/system mesh/
+    (cd mesh && runApplication blockMesh && runApplication snappyHexMesh -overwrite) \
+        || exit 1
+
+    # createBeamMesh in a beamFoam-only copy of the beam set-up
+    mkdir -p mesh/beam/constant mesh/beam/system
+    /bin/cp base/constant/beam/beamProperties base/constant/beam/dynamicMeshDict \
+        mesh/beam/constant/
+    /bin/cp base/system/beam/* mesh/beam/system/
+    (cd mesh/beam && runApplication createBeamMesh) || exit 1
+fi
+
+for coupling in partitioned monolithic
+do
+    case $coupling in
+        partitioned) solver=FvBeamNewmark;  relax=0.4 ;;
+        monolithic)  solver=beamFoamCoupled; relax=1 ;;
+    esac
+
+    rm -rf $coupling
+    mkdir $coupling
+    /bin/cp -R mesh/0 base/constant base/system $coupling/
+    /bin/cp -R mesh/constant/polyMesh $coupling/constant/
+    /bin/cp -R mesh/beam/constant/polyMesh $coupling/constant/beam/
+    sed -i -e "s/SOLVER/$solver/" -e "s/RELAX/$relax/" \
+        $coupling/constant/dynamicMeshDict
+    touch $coupling/case.foam
+done
+
+for coupling in partitioned monolithic
+do
+    (cd $coupling && interFoam > log.interFoam 2>&1; echo "$coupling finished") &
+done
+wait
+
+./compare.py

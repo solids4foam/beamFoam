@@ -1,0 +1,12 @@
+Free torsional oscillation: Omega0 = 7.86 rad/s, omega = 39.3 rad/s, amplitude 0.2 rad
+
+coupling     status         t  steps  runtime Newton/step amplitude  max |theta - theory|
+partitioned  finished   0.500    250    175.3        6.00    1.3796              3.84e-01
+monolithic   finished   0.500    250    169.6        6.00    0.9998              9.72e-03
+
+Largest partitioned - monolithic twist difference: 3.83e-01 of the amplitude
+
+amplitude and max |theta - theory| are relative to the theoretical
+amplitude Omega0/omega. The trapezoidal rule lengthens the period by
+about (omega dt)^2/12, which accounts for a phase error that grows
+with time.

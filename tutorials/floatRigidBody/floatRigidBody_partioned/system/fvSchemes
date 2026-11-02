@@ -1,0 +1,64 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default         Euler;
+}
+
+d2dt2Schemes
+{
+    default         Euler;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+}
+
+divSchemes
+{
+    div(rhoPhi,U)  Gauss vanLeerV;
+    div(rhoPhi,Utmp)  Gauss vanLeerV;
+    div(phi,alpha)  Gauss vanLeer;
+    div(phirb,alpha) Gauss linear;
+    div(((rho*nuEff)*dev2(T(grad(U))))) Gauss linear;
+
+    div((rhoPhi|interpolate(porosity)),U)  Gauss limitedLinearV 1;
+    div(rhoPhiPor,UPor)  Gauss limitedLinearV 1;
+    div(rhoPhi,UPor)  Gauss limitedLinearV 1;
+    div(rhoPhiPor,U)   Gauss limitedLinearV 1;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+
+// ************************************************************************* //

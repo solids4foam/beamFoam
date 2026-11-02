@@ -1,0 +1,72 @@
+{
+  "1ae0db4": {
+    "summary": "Saves local work: the finiteVolumeBeam restraint now writes the beam's anchor-end displacement to a history file each step. Bumps the beamFoam submodule to 3deff39 ('Remove old files'), which predates the 6DOF commits.",
+    "details": [
+      "finiteVolumeBeam.C/.H: displacementFilePtr_ writes displacement<name>.dat (W on the anchor patch)",
+      "sDoFRGBFvBeam/Make/options: hard-coded /Users/... include path for beamModel",
+      "src/beamFoam -> 3deff39"
+    ]
+  },
+  "d72ed0a": {
+    "summary": "Passes the body's previous and current state (displacement, orientation, velocity, angular momentum, acceleration, torque) to the beam before each beam solve. Bumps beamFoam to 6c25265.",
+    "details": [
+      "finiteVolumeBeam::restrain fills RigidBodyStepData and calls beam.setRigidBodyStepData",
+      "sixDoFRigidBodyMotionFvBeam: new state0() accessor; initialCentreOfRotation() declaration moved",
+      "Make/options adds the coupledTotalLagNewtonRaphsonBeam include path",
+      "src/beamFoam -> 6c25265"
+    ]
+  },
+  "1e5809f": {
+    "summary": "Adds debug printouts of the attachment displacement, beam W values and attachment/anchor forces around the beam evolve call. Bumps beamFoam to a94db8d (the rigidBodyAndBeam tutorial).",
+    "details": [
+      "finiteVolumeBeam.C: 'finiteVolumeBeam debug' Info lines before and after evolve",
+      "src/beamFoam -> a94db8d"
+    ]
+  },
+  "3dc0bb1": {
+    "summary": "With blockEigenAuthoritativeMotion on, copies the BlockEigen rigid-body result into the motion state and returns zero restraint force and moment. FvBeamNewmark then recomputes velocity, position and orientation after restrain(), so the coupling stays partitioned. Bumps beamFoam to c78419b.",
+    "details": [
+      "New sixDoFRigidBodyMotionFvBeam::applyBlockEigenSolution sets centreOfRotation, v, a, pi, tau and Q",
+      "finiteVolumeBeam::restrain takes a non-const motion; sends mass, inertia, centre of rotation and attachment point; reads blockEigenAuthoritativeMotion",
+      "sixDoFRigidBodyMotionFvBeamRestraint::restrain signature made non-const",
+      "sDoFRGBState/Make/options adds BEAMFOAM_DIR include paths; src/beamFoam -> c78419b"
+    ]
+  },
+  "ffa51e3": {
+    "summary": "Adds the beamAttachmentKinematics keyword. With solvedByBlockEigen the restraint stops fixing the beam-end W and leaves it to beamFoam's staged mode. Also writes an attachment-force history file. No submodule bump.",
+    "details": [
+      "finiteVolumeBeam: beamAttachmentKinematics_ (prescribedByRigidBody default, or solvedByBlockEigen), stored in the restraint state",
+      "Sets rbData.solveAttachmentKinematicsInBlockEigen",
+      "attachmentForceFilePtr_ writes attachmentForce<name>.dat",
+      "Pairs with beamFoam 6bc4d04"
+    ]
+  },
+  "8b99fd5": {
+    "summary": "Moves the beamFoam submodule pointer from c78419b to 778e43d, picking up de010c8 through 778e43d (staged/fullyImplicit modes, coefficient scaling, efficiency scripts).",
+    "details": ["src/beamFoam: c78419b -> 778e43d"]
+  },
+  "74005ba": {
+    "summary": "Replaces the hard-coded /Users/... and WM_PROJECT_USER_DIR beamFoam include paths in sDoFRGBFvBeam with $(BEAMFOAM_DIR), as sDoFRGBState and CI already use.",
+    "details": ["src/sDoFRGBFvBeam/Make/options"]
+  },
+  "f024a62": {
+    "summary": "Moves the beamFoam submodule pointer to fb5d6c1, which adds codexLogs/ and the rigidBodyAndBeam_monolithic and rigidBodyAndBeam_loop cases.",
+    "details": ["src/beamFoam: 778e43d -> fb5d6c1 (includes bda04a6)"]
+  },
+  "2dc4bfd": {
+    "summary": "Moves the beamFoam submodule pointer to f84a03a, the corrected PR summary PDF.",
+    "details": ["src/beamFoam: fb5d6c1 -> f84a03a"]
+  },
+  "d79b8b0": {
+    "summary": "Moves the beamFoam submodule pointer to a2dcb75 (Phase 0: rigidBodyEnd and standalone beam / rigid-body tests), which also includes the 4ab6dc8 plan PDF.",
+    "details": ["src/beamFoam: f84a03a -> a2dcb75"]
+  },
+  "70e8053": {
+    "summary": "Moves the beamFoam submodule pointer to 359e651 (Phase 1: monolithic beam / rigid-body translation coupling).",
+    "details": ["src/beamFoam: a2dcb75 -> 359e651"]
+  },
+  "1312fc5": {
+    "summary": "Moves the beamFoam submodule pointer to 03bbd7d (Phase 2: monolithic rigid-body rotation coupling).",
+    "details": ["src/beamFoam: 359e651 -> 03bbd7d"]
+  }
+}

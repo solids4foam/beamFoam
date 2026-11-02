@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      decomposeParDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+numberOfSubdomains 4;
+
+
+method          scotch;
+
+coeffs
+{
+    n           (2 2 1);
+}
+
+
+// method manual;
+
+// manualCoeffs
+// {
+//     processor0
+//     {
+//       regions (beamone beamtwo);
+//     }
+//     processor1 {};
+//     processor2 {};
+//     processor3 {};
+// }
+
+// numberOfSubdomains 4;
+
+// method manual;
+
+// manualCoeffs
+// {
+//     dataFile "cellDecomposition.beams";  // Path to your decomposition data file
+// }
+
+// ************************************************************************* //

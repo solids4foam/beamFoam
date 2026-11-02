@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Monolithic beam / rigid-body coupling — development plan</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root {
+    --ink: #1c1f24; --muted: #5b6270; --rule: #d9dde3; --accent: #1f5f8b;
+    --soft: #f3f6f9; --warn: #9a5b00; --warnbg: #fdf6ea; --ok: #2d6a3e; --okbg: #eef6f0;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 10.2pt/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; }
+  h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 4pt; letter-spacing: -0.01em; }
+  h2 { font-size: 12.5pt; color: var(--accent); margin: 18pt 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule); break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 11pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt; padding-left: 15pt; }
+  li { margin-bottom: 2.5pt; }
+  code { font: 8.8pt/1.3 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); padding: 0.5pt 3pt; border-radius: 2pt; }
+  pre { font: 8.6pt/1.5 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); border-left: 3px solid var(--accent); padding: 6pt 9pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 4pt 0 9pt; font-size: 9.2pt; break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 4pt 6pt; border-bottom: 1px solid var(--rule); }
+  th { background: var(--soft); font-weight: 600; }
+  .meta { color: var(--muted); font-size: 9.2pt; margin-bottom: 10pt; }
+  .lede { font-size: 10.6pt; background: var(--soft); border-radius: 3pt; padding: 8pt 11pt; margin: 8pt 0 4pt; }
+  .callout { border-radius: 3pt; padding: 7pt 10pt; margin: 6pt 0 9pt; break-inside: avoid; }
+  .warn { background: var(--warnbg); border-left: 3px solid var(--warn); }
+  .phase { border: 1px solid var(--rule); border-radius: 3pt; padding: 7pt 11pt 4pt; margin: 8pt 0; break-inside: avoid; }
+  .phase h3 { margin-top: 0; }
+  .pass { background: var(--okbg); border-radius: 2pt; padding: 3pt 7pt; margin: 3pt 0 5pt; font-size: 9.4pt; }
+  .small { font-size: 8.8pt; color: var(--muted); }
+  .status { background: var(--okbg); border-left: 3px solid var(--ok); border-radius: 3pt; padding: 6pt 10pt; margin: 6pt 0 4pt; font-size: 9.4pt; }
+  .status ul { margin: 3pt 0 0; }
+  .tag { display: inline-block; font-size: 7.8pt; font-weight: 600; padding: 0.5pt 6pt; border-radius: 8pt; vertical-align: 1pt; background: var(--okbg); color: var(--ok); margin-left: 4pt; }
+  .ref { font-size: 8.4pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Monolithic beam / rigid-body coupling: development plan</h1>
+<div class="meta">
+  30 September 2026 · Colm Mc Alister · beamFoam <code>colm_6DOF_solver</code>, moorFV <code>feature-beamFoamCoupling-colm</code><br>
+  Companion to <code>rigidBodyCouplingPRSummary.pdf</code>, which describes what the code does today.<br>
+  <b>Progress:</b> Phase 0 completed 30 September 2026 (beamFoam <code>a2dcb75</code>). Phase 1 completed 30 September 2026. Phase 2 completed 30 September 2026. Phase 3 completed 30 September 2026. Phase 4 completed 1 October 2026.
+</div>
+
+<div class="lede">
+  <b>Aim.</b> Solve the motion of a rigid body attached to a beam end inside beamFoam's BlockEigen system, so beam
+  and body are advanced together by one Newton iteration, instead of taking turns between beamFoam and
+  <code>sixDoFRigidBodyMotion</code>.
+  <br><br>
+  <b>Approach.</b> Write the body's equation of motion as a residual in force units, eliminate the attachment
+  displacement using the pin compatibility condition, and let the body state come entirely from the converged
+  solve. Build it in phases, starting with a fast test setup and translation only, and verify each phase against
+  analytic cases and a converged partitioned reference.
+</div>
+
+<h2>1. Why the current code isn't coupled</h2>
+<ol>
+  <li><b>Staged mode leaves the body rows uncoupled.</b> The attachment target stays fixed at the last accepted
+    body state, so the body block is an identity and the solve is the partitioned loop.</li>
+  <li><b><code>fullyImplicit</code> mixes variables.</b> The body rows are scaled to displacement units, and the
+    right-hand side subtracts the <i>beam-end</i> displacement from the previous iterate. That value includes
+    <code>initialW</code> and is not the body's centre-of-rotation displacement, so attachment-point and
+    centre-of-rotation quantities get mixed. This probably explains its convergence problems.</li>
+  <li><b>Velocity and acceleration come from the explicit force</b>, not from the solved displacement.</li>
+  <li><b>moorFV's <code>FvBeamNewmark</code> recomputes the body state</b> after <code>restrain()</code>,
+    discarding the solve.</li>
+</ol>
+<p>Two facts from the code make the job smaller:</p>
+<ul>
+  <li><b>The attachment is a pin.</b> <code>Theta</code> has a zero-moment BC on the attachment patch, so only force
+    passes between beam and body. That leaves 3 compatibility equations.</li>
+  <li><b>The beam equations are already incremental.</b> A <code>fixedValue</code> <code>W</code> boundary enters as
+    <code>source −= K_b·(W_b − W_b,prevIter)</code> with <code>K_b = CQW/pDelta</code>. That source term is
+    what becomes a matrix column.
+    <span class="ref">coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C:339–420</span></li>
+</ul>
+
+<h2>2. Target formulation</h2>
+<p>Each Newton iteration <i>k</i> solves for increments of all unknowns together.</p>
+<pre>Unknowns
+  beam:  ΔW, ΔΘ in every cell          body:  Δx (CoR translation), Δφ (rotation)
+
+Compatibility (eliminated, not solved for)
+  W_b = x + (R − I)·r0 + W_b,0    →    ΔW_b ≈ Δx + Δφ × r
+
+Beam rows
+  existing assembly; the attachment's K_b·ΔW_b source term moves to the
+  left-hand side as blocks on the Δx and Δφ columns
+
+Body translation rows (force units)
+  R_x = m·(x^k − x̃)/(β·Δt²) − F_fluid − F_beam(W^k, Θ^k, x^k)
+  x̃   = x_n + Δt·v_n + (½ − β)·Δt²·a_n
+  ∂R_x/∂x      = m/(β·Δt²)·I + K_b
+  ∂R_x/∂W_cell = −K_b
+  ∂R_x/∂Θ_cell = from CQTheta (already computed, currently unused)
+
+Body rotation rows
+  R_φ = inertia term − τ_fluid − r × F_beam
+  Jacobian: inertia term, r × K_b(…) terms, geometric term from the arm rotating
+
+After convergence (same for rotation)
+  a = (x − x̃)/(β·Δt²)        v = v_n + Δt·[(1 − γ)·a_n + γ·a]
+  → complete body state handed to moorFV, which only stores it</pre>
+<ul>
+  <li><b>Residual exact, Jacobian may be approximate.</b> The converged answer depends only on the residual. An
+    approximate Jacobian slows convergence but doesn't change the result.</li>
+  <li><b>Set <code>W_b</code> from the current body iterate</b> every Newton iteration, not from the last accepted state.</li>
+  <li><b>Compute <code>F_beam</code> from the same discrete boundary flux the beam matrix uses</b>, so action and
+    reaction match exactly.</li>
+  <li><b>Include the body's residual and increment in the convergence check.</b></li>
+</ul>
+
+<h3>Design choices</h3>
+<table>
+  <tr><th style="width:26%">Choice</th><th style="width:30%">Recommendation</th><th>Reason</th></tr>
+  <tr><td>Attachment constraint</td><td>Eliminate <code>W_b</code></td><td>Keeps the matrix square (6N + 6) and fits the existing coefficient code. Lagrange multipliers would give the attachment force directly, but make a saddle-point system.</td></tr>
+  <tr><td>Units of body rows</td><td>Force</td><td>Same units as the beam rows. The coupling appears as <code>−K_b</code> in both off-diagonal blocks, which gives a symmetry check.</td></tr>
+  <tr><td>Who owns the body state</td><td>beamFoam during the step, moorFV stores it</td><td>A beamFoam-side body object also works in standalone beamFoam, which makes fast tests possible.</td></tr>
+  <tr><td>Time scheme</td><td>Same for beam and body</td><td>The beam currently uses <code>Euler</code> for <code>d2dt2</code>, the body Newmark (β = 0.25, γ = 0.5). Run the beam with Newmark for validation.</td></tr>
+  <tr><td>Rotation update</td><td><code>Q = exp(φ)·Q_n</code>, inertia in global axes</td><td>Simple to linearise. It won't match moorFV's symplectic <code>rotate()</code> bit for bit, so validate by convergence.</td></tr>
+</table>
+
+<h2>3. Phases</h2>
+
+<div class="phase">
+  <h3>Phase 0: a fast test setup <span class="tag">completed</span></h3>
+  <p>An interFoam run takes about 6 minutes, which is too slow to debug with.</p>
+  <ul>
+    <li>A <code>rigidBodyEnd</code> object in beamFoam that owns mass, inertia, state and the Newmark update, usable
+      from standalone beamFoam and from moorFV.</li>
+    <li>Three beam-plus-point-mass cases with no fluid: static hanging mass, axial oscillation, small-angle pendulum.</li>
+    <li>One switch, <code>rigidBodyCoupling partitioned | monolithic</code>, in place of the five current ones.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> the partitioned standalone cases run in seconds and match the analytic results
+    (hanging mass: end force = mg; oscillation: frequency within expected accuracy; pendulum: small-angle period).</div>
+  <div class="status">
+    <b>Completed successfully</b> on 30 September 2026 (beamFoam <code>a2dcb75</code>). All 7 analytic checks in
+    <code>tutorials/rigidBodyEnd/checkRigidBodyEnd.py</code> pass, and the whole set runs in about 25 s:
+    <ul>
+      <li>Hanging mass: end force and static stretch within 1.4e-6.</li>
+      <li>Axial oscillation: period within 5e-8 of the exact rod-plus-mass mode; mean and peak within 3e-4.</li>
+      <li>Pendulum: period within 1.2e-3, peak angle within 9e-4.</li>
+      <li><code>rigidBodyAndBeam_loop</code> and <code>_monolithic</code> reproduce their previous logs.</li>
+    </ul>
+    <p class="small" style="margin:4pt 0 0">Notes: the body is a point mass (rotation is Phase 2). The legacy
+    switches remain for the moorFV path; they go when Phase 1 replaces staged mode. The pendulum rod is clamped at the
+    top because a rod pinned at both ends can twist freely. Two existing bugs were fixed: the Newmark predictor was
+    re-applied on repeated solves within a step, and the gravity density check ran before <code>rho</code> was read.
+    One coupling pass per step is unstable (amplitude +15% per period in the axial case), so the partitioned
+    reference iterates to convergence.</p>
+  </div>
+</div>
+
+<div class="phase">
+  <h3>Phase 1: translation only (body rotation constrained) <span class="tag">completed</span></h3>
+  <ul>
+    <li>Body rows in residual form, <code>W_b</code> eliminated, the attachment source term turned into matrix
+      columns, and state recovery after convergence.</li>
+    <li>A <b>finite-difference Jacobian check</b> behind a debug switch: perturb each body unknown and compare with
+      the assembled column. This catches sign errors, which the Codex notes flag as unaudited.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> near-quadratic Newton convergence; the analytic tests match; the result equals the
+    partitioned scheme iterated to convergence. Both should converge to the same answer.</div>
+  <div class="status">
+    <b>Completed successfully</b> on 30 September 2026. <code>rigidBodyCoupling monolithic</code> solves the body's
+    translation in the same Newton iteration as the beam. All 24 checks in <code>tutorials/rigidBodyEnd</code> pass:
+    <ul>
+      <li>Analytic checks pass with monolithic coupling, to the same accuracy as partitioned.</li>
+      <li>Jacobian: assembled body columns match finite differences to 1e-9 or better on all significant entries.</li>
+      <li>Monolithic equals converged partitioned to within 3e-5 of peak values, time step by time step.</li>
+      <li>Newton converges near-quadratically (e.g. residual 7.4e3 &rarr; 1.5e-2 &rarr; 1.3e-5), with about a third of
+        the beam Newton iterations of converged partitioned coupling (3.0 vs 8.9, 2.0 vs 6.1, 3.5 vs 9.3 per step).</li>
+      <li>Stable with one solve per step, where one partitioned pass grows 15% per period.</li>
+      <li><code>rigidBodyAndBeam_loop</code> and <code>_monolithic</code> reproduce their previous logs.</li>
+    </ul>
+    <p class="small" style="margin:4pt 0 0">How it works: the attachment <code>W</code> holds the current body iterate
+    with a zero boundary increment, so the beam's <code>fixedValue</code> increment terms vanish and the body column
+    carries them instead (<code>+CQW/pDelta</code> on the end cell's force rows, <code>+CMQW/pDelta</code> on its moment
+    rows). The body row's dependence on the end cell and the attachment force come from assembling the boundary terms
+    alone, so action and reaction match the beam's own discretisation. Body rotation rows stay identity (Phase 2).
+    Found on the way: <code>explicitQ_</code> uses the strain from the last <code>updateSolutionVariables()</code>, not
+    the current boundary value, which is why the standard <code>fixedValue</code> path adds the boundary increment
+    explicitly.</p>
+  </div>
+</div>
+
+<div class="phase">
+  <h3>Phase 2: rotation <span class="tag">completed</span></h3>
+  <ul>
+    <li><code>Δφ</code> rows with the moment of inertia in global axes, the <code>r × F</code> coupling and the
+      geometric term; orientation updated as <code>Q = exp(φ)·Q_n</code>.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> pendulum and tilted-arm cases match the converged partitioned reference; the
+    finite-difference check passes for the rotation columns.</div>
+  <div class="status">
+    <b>Completed successfully</b> on 30 September 2026. The body now has a moment of inertia, a centre of mass away
+    from the attachment, and optional linear and angular damping; its rotation is solved in the same Newton iteration
+    as the beam. All 54 checks in <code>tutorials/rigidBodyEnd</code> pass, including three new rotating cases:
+    <ul>
+      <li><code>hangingBody</code>: the body swings 90&deg; and settles with its centre of mass below the attachment
+        (misalignment 1.6e-6 rad, force within 0.4% of mg).</li>
+      <li><code>freeRotation</code>: torque-free spin conserves global angular momentum to 1e-6 and energy to 3e-8.</li>
+      <li><code>compoundPendulum</code>: both mode frequencies of the rod + body double pendulum match the analytic
+        values (8e-4 and 4e-3).</li>
+      <li>Jacobian: rotation columns match finite differences to 1e-7 on significant entries.</li>
+      <li>Monolithic equals converged partitioned to within 1e-4 of peak values (5e-4 for the compound pendulum), with
+        2.3&ndash;4.4&times; fewer beam Newton iterations.</li>
+      <li><code>rigidBodyAndBeam_loop</code> and <code>_monolithic</code> reproduce their previous logs.</li>
+    </ul>
+    <p class="small" style="margin:4pt 0 0">How it works: the orientation is <code>exp(&theta;)&middot;Q<sub>n</sub></code>
+    with &theta; the step rotation vector, integrated with the same Newmark parameters as translation. The attachment
+    displacement is <code>x + (R &minus; I)&middot;r<sub>0</sub></code>. The rotation rows are the moment balance about the
+    centre of mass (inertia, gyroscopic, damping, <code>r &times; F</code>), and the rotation columns include the
+    geometric term and the SO(3) left Jacobian of &theta;. Differences from the plan: rotation uses the global inertia
+    <code>R&middot;J&middot;R<sup>T</sup></code> as planned, and damping was added so a large-rotation case can settle
+    physically. Known small omission: the end cell's moment rows depend on the attachment displacement slightly beyond
+    <code>CMQW/pDelta</code> (about 1e-9 of the column). In <code>compoundPendulum</code> the rod's undamped axial mode
+    pumps energy into the body mode in beats; the mode frequencies are unaffected.</p>
+  </div>
+</div>
+
+<div class="phase">
+  <h3>Phase 3: moorFV integration <span class="tag">completed</span></h3>
+  <ul>
+    <li>A new <code>sixDoFFvBeamSolvers</code> type (e.g. <code>beamFoamCoupled</code>) that computes the fluid
+      force, calls the restraint and accepts beamFoam's state as is: no Newmark recomputation, no acceleration
+      relaxation on the beam's part.</li>
+    <li>Pass <code>F_fluid</code> and <code>τ_fluid</code> explicitly in <code>RigidBodyStepData</code> instead of
+      hiding them in <code>curr.acceleration</code>; add any other restraints to that external force.</li>
+    <li>Settle the <code>restrain()</code> interface. It could return to <code>const</code> if the new solver owns
+      the state update.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> the body state written by moorFV equals the state beamFoam solved for.</div>
+  <div class="status">
+    <b>Completed successfully</b> on 30 September 2026. The moorFV sixDoF solver <code>type beamFoamCoupled</code>
+    hands the fluid force and moment (with the weight) and any other restraints to the <code>finiteVolumeBeam</code>
+    restraint as an applied load; beamFoam solves the beam and the body's translation and rotation in one Newton
+    iteration, and moorFV copies the accepted state as it is (no Newmark recomputation, no acceleration relaxation).
+    <ul>
+      <li>New interFoam case <code>tutorials/rigidBodyAndBeam_beamFoamCoupled</code> (the loop case with only the
+        solver type changed): the body state moorFV stores equals beamFoam's solved state at all 25 write times, to
+        about 2e-10 (the history files' precision). Its trajectory stays within 2.5e-4 of peak displacement of the loop
+        case; run time 338 s against 351 s.</li>
+      <li><code>rigidBodyAndBeam_loop</code> and <code>_monolithic</code> reproduce their previous logs; all 54
+        standalone checks still pass.</li>
+    </ul>
+    <p class="small" style="margin:4pt 0 0">How it works: new <code>beamModel</code> interface
+    (<code>initialiseRigidBodyEnd</code>, <code>setRigidBodyEndExternalLoad</code>, <code>getRigidBodyEndState</code>);
+    on the first call the restraint sets up beamFoam's body from the moorFV body (mass, inertia, orientation, centre of
+    mass, velocities; Newmark and damping from the solver dictionary), with no gravity in beamFoam because moorFV's load
+    already contains the weight. <code>rigidBodyEnd</code> gained an initial orientation, with inertia and arm in body
+    axes. The <code>restrain()</code> interface is unchanged (the new solver does not use it for the beam). Limits: the
+    centre of rotation must be the centre of mass; one <code>finiteVolumeBeam</code> restraint; no constraints; no
+    restarts yet; other restraints and the fluid force are explicit. The Jacobian check now uses central differences;
+    it shows one small omitted term in the interFoam case (end-cell moment rows against the attachment displacement,
+    about 4e-5 of the moment rows).</p>
+  </div>
+</div>
+
+<div class="phase">
+  <h3>Phase 4: validation in interFoam</h3>
+  <ul>
+    <li><code>rigidBodyAndBeam</code>: monolithic against the loop with outer iterations converged.</li>
+    <li>Stress test with a lighter body, stiffer line or larger Δt, where the loop needs many outer iterations or
+      diverges. Report stability and cost.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> close agreement on the base case; monolithic stable where the one-pass loop is not,
+    at a competitive cost.</div>
+  <div class="status">
+    <b>Completed</b> on 1 October 2026, with one caveat: the one-pass loop did not diverge within the 0.25 s runs.
+    Its error grew steadily instead. All runs are compared with the monolithic solver at 8 PIMPLE outer correctors
+    (<code>moveMeshOuterCorrectors yes</code>); errors are maxima as a fraction of the reference peak.
+    <ul>
+      <li><b>Base case</b> (<code>rigidBodyAndBeam_*</code>, against the converged loop): monolithic with 1 corrector is within
+        2.7e-4 (displacement) and 5.4e-4 (force), the loop with 1 corrector within 5.2e-4 and 2.0e-2. Monolithic with 8 correctors
+        matches the converged loop to 2e-6.</li>
+      <li><b>Stress tests</b> (<code>tutorials/rigidBodyAndBeam_stress</code>), maximum force error with 1 corrector:
+        <ul>
+          <li><code>stiffLine</code> (E × 100): loop 4.3e-2, monolithic 4.6e-4.</li>
+          <li><code>stiffLight</code> (E × 100, m ÷ 10): loop 1.2e-1, monolithic 3.4e-3.</li>
+          <li><code>stiffLargeDt</code> (E × 100, maxCo 1): loop 1.5e-1, monolithic 5.1e-4.</li>
+          <li><code>lightBody</code> (m ÷ 10): loop 7.2e-3, monolithic 6.9e-3. This one is limited by the explicit fluid force, which both share.</li>
+        </ul>
+        The loop's force error with 1 corrector grows 15–115× over each stiff run. This is the negative damping predicted in
+        <code>outerCorrectorsAndNewmark.pdf</code>.</li>
+      <li><b>Cost.</b> The fluid sets the run time: at equal correctors the two frameworks take the same time. With 1 corrector,
+        monolithic needs 18–37% fewer beam Newton iterations than the loop; with 8, it needs 35–38% fewer. Against the loop with 8 correctors,
+        monolithic with 1 corrector takes about one fifth of the run time, with a force error 0.8× to 16× as large (4.6e-4 against 1.9e-4,
+        3.4e-3 against 2.2e-4, 5.1e-4 against 6.2e-4).</li>
+    </ul>
+    <p class="small" style="margin:4pt 0 0">Setup note: the tutorials' <code>0/beam/CQ</code> and <code>CM</code> override E and G from
+    <code>beamProperties</code>; <code>makeCases</code> removes them in the stiff variants.</p>
+  </div>
+</div>
+
+<div class="phase">
+  <h3>Phase 5: several mooring lines and parallel runs</h3>
+  <ul>
+    <li><code>mooringCase-H12T20</code> has 4 lines, each solved by its own restraint. Rather than one giant matrix,
+      use <b>static condensation</b>: condense each line's tangent onto its attachment point (3×3) and add them all
+      to the body rows.</li>
+    <li>Check parallel behaviour; restraints currently run on the master process only.</li>
+  </ul>
+  <div class="pass"><b>Pass:</b> the 4-line case runs monolithically and matches a converged partitioned run.</div>
+</div>
+
+<h2>4. Limitation</h2>
+<div class="callout warn">
+  The fluid force is still taken from the start of the step. This work removes the splitting error between beam
+  and body, but not between fluid and body. For light bodies in water, added-mass instability can still require
+  interFoam outer correctors, so Phase 4 should test with that in mind.
+</div>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+#!/bin/sh
+# Generate and run the rigidBodyEndTwist sweeps, several cases at once (each
+# in serial), then summarise them.
+# Usage: ./Allrun [sweep ...]     NJOBS (default 6) sets how many run at once
+cd "${0%/*}" || exit 1
+
+./makeCases "$@" || exit 1
+
+if [ $# -eq 0 ]
+then
+    set -- moment stiffness
+fi
+
+cases=""
+for sweep in "$@"
+do
+    cases="$cases $(ls -d "$sweep"/*/*)"
+done
+
+echo $cases | tr ' ' '\n' | xargs -P "${NJOBS:-6}" -I{} \
+    sh -c 'cd {} && ./Allrun > Allrun.out 2>&1; echo "{} finished"'
+
+./summarise.py "$@"

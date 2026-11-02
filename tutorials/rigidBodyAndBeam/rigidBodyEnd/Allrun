@@ -1,0 +1,26 @@
+#!/bin/sh
+# Run the rigidBodyEnd test cases with partitioned and with monolithic
+# coupling, and compare them with analytic results and with each other
+cd "${0%/*}" || exit 1
+
+for case in hangingMass axialOscillation pendulum hangingBody freeRotation compoundPendulum
+do
+    echo "Running $case (partitioned)"
+    (cd "$case" && ./Allclean > /dev/null 2>&1 && ./Allrun > Allrun.out 2>&1)
+
+    # Monolithic copy: same case with rigidBodyCoupling monolithic
+    echo "Running $case (monolithic)"
+    rm -rf "monolithic/${case:?}"
+    mkdir -p monolithic
+    cp -R "$case" "monolithic/$case"
+    (
+        cd "monolithic/$case" \
+     && ./Allclean > /dev/null 2>&1 \
+     && sed 's/^\( *rigidBodyCoupling\) partitioned;/\1 monolithic;/' \
+            constant/beamProperties > beamProperties.tmp \
+     && mv beamProperties.tmp constant/beamProperties \
+     && ./Allrun > Allrun.out 2>&1
+    )
+done
+
+python3 checkRigidBodyEnd.py
