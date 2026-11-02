@@ -1,16 +1,16 @@
 # floatRigidBody_monolithic_nOuter8
 
-floatRigidBody_monolithic with 8 PIMPLE outer correctors (`nOuterCorrectors 8` in
-`system/fvSolution`) instead of 3, to check how far the coupling has
-converged within each time step. Everything else is as in floatRigidBody_monolithic.
+floatRigidBody_monolithic with 8 PIMPLE outer correctors (`nOuterCorrectors 8`
+in `system/fvSolution`) instead of 3, to check how far the coupling has
+converged within each time step. Everything else is as in
+floatRigidBody_monolithic.
 
-floatRigidBody_partioned with the box and its mooring line solved monolithically:
-moorFV solver `beamFoamCoupled` instead of the partitioned `FvBeamNewmark`.
-Everything else (mesh, line, waves, `nOuterCorrectors 3`) is the same, so the
-two cases can be compared with
+floatRigidBody_partioned with the box and its mooring line solved
+monolithically: moorFV solver `beamFoamCoupled` instead of the partitioned
+`FvBeamNewmark`. Everything else (mesh, line, waves, `nOuterCorrectors 3`) is
+the same, so the two cases can be compared with
 `../../plot_monolithic_vs_partitioned_floatRigidBody.py` (motion, line forces,
-free surface) and `../../plot_monolithic_vs_partitioned_cost.py`
-(cost).
+free surface) and `../../plot_monolithic_vs_partitioned_cost.py` (cost).
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
@@ -56,14 +56,14 @@ which put the arm 0.3 m off and gave spurious roll and yaw; it now uses
 
 ## Geometry
 
-| Item            | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)     |
-| Water depth     | 0.15 m (`system/setFieldsDict`)                            |
-| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width   |
-| Box draft       | 0.025 m (half submerged)                                   |
-| Line anchor     | (0.25 0.025 0)                                             |
-| Line attachment | box bottom-left corner (0.45 0.025 0.125)                  |
+| Item            | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)  |
+| Water depth     | 0.15 m (`system/setFieldsDict`)                          |
+| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width |
+| Box draft       | 0.025 m (half submerged)                                 |
+| Line anchor     | (0.25 0.025 0)                                           |
+| Line attachment | box bottom-left corner (0.45 0.025 0.125)                |
 
 The box is cut out of the blockMesh with `topoSet` + `subsetMesh`; the
 exposed faces go into the (initially empty) `floatingObject` wall patch. It

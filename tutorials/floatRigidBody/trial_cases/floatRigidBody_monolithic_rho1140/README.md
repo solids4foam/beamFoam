@@ -1,29 +1,28 @@
 # floatRigidBody_monolithic_rho1140
 
-floatRigidBody_monolithic with the full nylon density for the line, rho = 1140 kg/m3
-(`beamInit/template/constant/beamProperties`), instead of the submerged
-density 141.8. The beam model applies no buoyancy, so the line now weighs
-its full weight in water (about 8 times its real submerged weight) but has
-the correct inertia. Its initial pull on the box is (0.0265 0 0.0208) N.
-The box `mass` (0.124316) and `momentOfInertia` are those of the MoorDyn
-reference case (foamMooring/floatRigidBody_moorDyn), so the box is the same
-in both; it is therefore not in vertical equilibrium at t = 0 (the extra
-0.016 N of line pull sinks it about 0.3 mm). See `constant/dynamicMeshDict`.
+floatRigidBody_monolithic with the full nylon density for the line, rho = 1140
+kg/m3 (`beamInit/template/constant/beamProperties`), instead of the submerged
+density 141.8. The beam model applies no buoyancy, so the line now weighs its
+full weight in water (about 8 times its real submerged weight) but has the
+correct inertia. Its initial pull on the box is (0.0265 0 0.0208) N. The box
+`mass` (0.124316) and `momentOfInertia` are those of the MoorDyn reference case
+(foamMooring/floatRigidBody_moorDyn), so the box is the same in both; it is
+therefore not in vertical equilibrium at t = 0 (the extra 0.016 N of line pull
+sinks it about 0.3 mm). See `constant/dynamicMeshDict`.
 
-The whole case is also shifted down 0.15 m to match the MoorDyn case's
-vertical datum: floor z = -0.15, still water z = 0, box centre
-(0.5 0.025 0), attachment (0.45 0.025 -0.025), anchor (0.25 0.025 -0.15),
-free-surface probes at z = 0 (blockMeshDict, topoSetDict, setFieldsDict,
-controlDict, beamInit/makeBeams, dynamicMeshDict). The z values in the
-tables below are those of the unshifted case. Everything else is as in floatRigidBody_monolithic.
+The whole case is also shifted down 0.15 m to match the MoorDyn case's vertical
+datum: floor z = -0.15, still water z = 0, box centre (0.5 0.025 0), attachment
+(0.45 0.025 -0.025), anchor (0.25 0.025 -0.15), free-surface probes at z = 0
+(blockMeshDict, topoSetDict, setFieldsDict, controlDict, beamInit/makeBeams,
+dynamicMeshDict). The z values in the tables below are those of the unshifted
+case. Everything else is as in floatRigidBody_monolithic.
 
-floatRigidBody_partioned with the box and its mooring line solved monolithically:
-moorFV solver `beamFoamCoupled` instead of the partitioned `FvBeamNewmark`.
-Everything else (mesh, line, waves, `nOuterCorrectors 3`) is the same, so the
-two cases can be compared with
+floatRigidBody_partioned with the box and its mooring line solved
+monolithically: moorFV solver `beamFoamCoupled` instead of the partitioned
+`FvBeamNewmark`. Everything else (mesh, line, waves, `nOuterCorrectors 3`) is
+the same, so the two cases can be compared with
 `../../plot_monolithic_vs_partitioned_floatRigidBody.py` (motion, line forces,
-free surface) and `../../plot_monolithic_vs_partitioned_cost.py`
-(cost).
+free surface) and `../../plot_monolithic_vs_partitioned_cost.py` (cost).
 
     ./Allrun      # beams, mesh, setFields, interFoam
     ./Allclean
@@ -45,12 +44,12 @@ both finish stably at 10 s with no beam Newton failures. Their authored
 numerical inputs are identical apart from the rigid-body/beam solver and the
 use of acceleration relaxation by the partitioned solver.
 
-| Quantity at 10 s | Monolithic | Partitioned | Partitioned - monolithic |
-|------------------|------------|-------------|----------------------------|
-| Surge            | -73.303 mm | -86.344 mm  | -13.041 mm                 |
-| Heave            | +5.632 mm  | +6.352 mm   | +0.720 mm                  |
-| Pitch            | +2.908 deg | +2.793 deg  | -0.115 deg                 |
-| Attachment tension | 0.7550 mN | 0.7508 mN | -0.0042 mN                 |
+| Quantity at 10 s   | Monolithic | Partitioned | Partitioned - monolithic |
+| ------------------ | ---------- | ----------- | ------------------------ |
+| Surge              | -73.303 mm | -86.344 mm  | -13.041 mm               |
+| Heave              | +5.632 mm  | +6.352 mm   | +0.720 mm                |
+| Pitch              | +2.908 deg | +2.793 deg  | -0.115 deg               |
+| Attachment tension | 0.7550 mN  | 0.7508 mN   | -0.0042 mN               |
 
 Over the full histories, the largest differences are 14.09 mm in surge,
 0.868 mm in heave and 0.489 deg in pitch. Sway, roll and yaw remain exactly
@@ -62,12 +61,12 @@ The peak attachment tension is 0.0921 N at 1.230 s for the monolithic case
 and 0.0964 N at 1.206 s for the partitioned case. The peak magnitudes differ
 by 4.6%, with a small phase shift during the transient.
 
-| Cost metric | Monolithic | Partitioned |
-|-------------|------------|-------------|
-| Time steps | 5001 | 5012 |
-| Mean summed beam Newton iterations per time step | 12.758 | 11.827 |
-| Execution time | 3214.52 s | 3189.63 s |
-| Wall time | 3234 s | 3191 s |
+| Cost metric                                      | Monolithic | Partitioned |
+| ------------------------------------------------ | ---------- | ----------- |
+| Time steps                                       | 5001       | 5012        |
+| Mean summed beam Newton iterations per time step | 12.758     | 11.827      |
+| Execution time                                   | 3214.52 s  | 3189.63 s   |
+| Wall time                                        | 3234 s     | 3191 s      |
 
 The monolithic case is 0.78% slower by OpenFOAM execution time and 1.35%
 slower by wall time in these runs. At three outer correctors the schemes are
@@ -112,14 +111,14 @@ which put the arm 0.3 m off and gave spurious roll and yaw; it now uses
 
 ## Geometry
 
-| Item            | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)     |
-| Water depth     | 0.15 m (`system/setFieldsDict`)                            |
-| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width   |
-| Box draft       | 0.025 m (half submerged)                                   |
-| Line anchor     | (0.25 0.025 0)                                             |
-| Line attachment | box bottom-left corner (0.45 0.025 0.125)                  |
+| Item            | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)  |
+| Water depth     | 0.15 m (`system/setFieldsDict`)                          |
+| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width |
+| Box draft       | 0.025 m (half submerged)                                 |
+| Line anchor     | (0.25 0.025 0)                                           |
+| Line attachment | box bottom-left corner (0.45 0.025 0.125)                |
 
 The box is cut out of the blockMesh with `topoSet` + `subsetMesh`; the
 exposed faces go into the (initially empty) `floatingObject` wall patch. It

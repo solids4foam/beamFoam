@@ -8,11 +8,11 @@ motion solved inside `BlockEigenSolverOF`.
 
 ## Objective
 
-The original coupled case let `sixDoFRigidBodyMotionFvBeam` update the rigid-body
-state, while beamFoam supplied a restraint force back to that solver. The newer
-work added six rigid-body rows to the beamFoam `BlockEigenSolverOF`, so the next
-goal was to make that BlockEigen rigid-body solution usable by the moorFV
-rigid-body solver.
+The original coupled case let `sixDoFRigidBodyMotionFvBeam` update the
+rigid-body state, while beamFoam supplied a restraint force back to that solver.
+The newer work added six rigid-body rows to the beamFoam `BlockEigenSolverOF`,
+so the next goal was to make that BlockEigen rigid-body solution usable by the
+moorFV rigid-body solver.
 
 The immediate milestone was:
 
@@ -151,9 +151,9 @@ the BlockEigen rotational correction.
 
 Reason:
 
-The rigid-body solver owns the authoritative motion state. Therefore the cleanest
-place to apply the BlockEigen state is inside `sixDoFRigidBodyMotionFvBeam`, not
-inside beamFoam.
+The rigid-body solver owns the authoritative motion state. Therefore the
+cleanest place to apply the BlockEigen state is inside
+`sixDoFRigidBodyMotionFvBeam`, not inside beamFoam.
 
 ### 5. Added A Switch To Make BlockEigen Authoritative
 
@@ -190,7 +190,8 @@ Changed in moorFV:
 ../sDoFRGBState/Make/options
 ```
 
-The `sDoFRGBState` library now includes the beamFoam rigid-body coupling headers.
+The `sDoFRGBState` library now includes the beamFoam rigid-body coupling
+headers.
 
 Reason:
 

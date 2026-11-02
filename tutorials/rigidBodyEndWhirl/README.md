@@ -41,14 +41,13 @@ through the arm from the tip to the centre of mass, as the centrifugal pull
 of the whirling body. `../rigidBodyEndTwist` welds the body on instead
 (`joint welded`) and twists the rod.
 
-| Base value | |
-|---|---|
-| Rod | radius 0.05 m, E = 5.4326e7 Pa, G = E/2.6, rho = 1 (rod mass 0.016 kg), 40 segments |
-| Bending stiffness EI | 266.67 N m² (tip stiffness 3EI/L³ = 100 N/m) |
-| Critical speed ω_c | sqrt(3EI/L³ / m) = 10 rad/s |
-| M | 0.225 N m (terminal spin 7.5 rad/s = 0.75 ω_c) |
-| Time | dt = 1e-3 s, 15 s, trapezoidal Newmark (β = 0.25, γ = 0.5) |
-| Partitioned | `nCouplingIterations 50`, `couplingTolerance 1e-10` |
+- Rod: radius 0.05 m, E = 5.4326e7 Pa, G = E/2.6, rho = 1 (rod mass 0.016 kg),
+  40 segments
+- Bending stiffness EI: 266.67 N m² (tip stiffness 3EI/L³ = 100 N/m)
+- Critical speed ω_c: sqrt(3EI/L³ / m) = 10 rad/s
+- M: 0.225 N m (terminal spin 7.5 rad/s = 0.75 ω_c)
+- Time: dt = 1e-3 s, 15 s, trapezoidal Newmark (β = 0.25, γ = 0.5)
+- Partitioned: `nCouplingIterations 50`, `couplingTolerance 1e-10`
 
 The rod is thick so its axial stiffness, EA/L = 2.13e5 N/m, stays low. The
 partitioned coupling iterations converge only while roughly
@@ -62,10 +61,10 @@ first partitioned time step.
 
 Each case is written to `<sweep>/<label>/{partitioned,monolithic}`.
 
-| Sweep | Varies | Values | Terminal spin M/(c ω_c) |
-|---|---|---|---|
-| `moment` | M [N m] | 0.075, 0.15, 0.225, 0.27, 0.3, 0.45, 0.9 | 0.25 – 3 |
-| `stiffness` | EI relative to base (E and G scaled together) | 0.25, 0.5, 0.75, 1, 2, 4, 16, 64 | 1.5 – 0.094 |
+- `moment`: M [N m] = 0.075, 0.15, 0.225, 0.27, 0.3, 0.45, 0.9; terminal spin
+  M/(c ω_c) 0.25 – 3
+- `stiffness`: EI relative to base (E and G scaled together) = 0.25, 0.5, 0.75,
+  1, 2, 4, 16, 64; terminal spin M/(c ω_c) 1.5 – 0.094
 
 The stiffness sweep also raises the axial stiffness, and with it the
 partitioned stability number β dt² EA/(L m_pin): from 0.027 to 6.8.
@@ -106,16 +105,20 @@ and deflections more than it tests the coupling.
 
 **Stiffness sweep (M = 0.225 N m).**
 
-| EI factor | Stability number | Partitioned coupling iterations / step (max) | Partitioned Newton / step | Monolithic Newton / step | Runtime part. / mono. [s] |
-|---|---|---|---|---|---|
-| 0.25 | 0.027 | 2.21 (4)  | 6.90  | 3.00 | 32 / 15 |
-| 0.5  | 0.053 | 2.46 (5)  | 7.17  | 3.00 | 33 / 14 |
-| 0.75 | 0.080 | 3.31 (6)  | 8.41  | 3.86 | 39 / 19 |
-| 1    | 0.107 | 3.46 (6)  | 8.74  | 3.90 | 40 / 19 |
-| 2    | 0.213 | 3.79 (8)  | 9.41  | 3.92 | 42 / 19 |
-| 4    | 0.427 | 6.50 (14) | 14.83 | 3.94 | 64 / 19 |
-| 16   | 1.707 | diverges in step 2 | – | 3.96 | – / 19 |
-| 64   | 6.827 | diverges in step 1 | – | 3.97 | – / 18 |
+| EI   | Stab. no. | Coupl. it. (max)   | Newton P | Newton M | Run P / M [s] |
+| ---- | --------- | ------------------ | -------- | -------- | ------------- |
+| 0.25 | 0.027     | 2.21 (4)           | 6.90     | 3.00     | 32 / 15       |
+| 0.5  | 0.053     | 2.46 (5)           | 7.17     | 3.00     | 33 / 14       |
+| 0.75 | 0.080     | 3.31 (6)           | 8.41     | 3.86     | 39 / 19       |
+| 1    | 0.107     | 3.46 (6)           | 8.74     | 3.90     | 40 / 19       |
+| 2    | 0.213     | 3.79 (8)           | 9.41     | 3.92     | 42 / 19       |
+| 4    | 0.427     | 6.50 (14)          | 14.83    | 3.94     | 64 / 19       |
+| 16   | 1.707     | diverges in step 2 | –        | 3.96     | – / 19        |
+| 64   | 6.827     | diverges in step 1 | –        | 3.97     | – / 18        |
+
+EI: EI relative to base. Stab. no.: stability number. Coupl. it.: partitioned
+coupling iterations per step (max). Newton P / M: Newton iterations per step,
+partitioned / monolithic. Run P / M: runtime, partitioned / monolithic.
 
 Partitioned coupling slows as the stability number rises and fails between
 0.43 and 1.7: the coupling iterations grow instead of shrinking, and the

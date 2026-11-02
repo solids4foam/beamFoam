@@ -29,13 +29,14 @@ sixDoFRigidBodyMotionFvBeam
 ```
 
 The beam attachment point is still imposed on the beam boundary from the current
-rigid-body transform before the beam solve. The beam reaction is then included in
-the BlockEigen rigid-body RHS using `blockEigenForceCoupling`. After the solve,
-the BlockEigen rigid-body state is applied to `sixDoFRigidBodyMotionFvBeam`.
+rigid-body transform before the beam solve. The beam reaction is then included
+in the BlockEigen rigid-body RHS using `blockEigenForceCoupling`. After the
+solve, the BlockEigen rigid-body state is applied to
+`sixDoFRigidBodyMotionFvBeam`.
 
-When this authoritative path is active, `finiteVolumeBeam` returns zero force and
-zero moment to the old restraint accumulator. This avoids double-counting the
-beam force.
+When this authoritative path is active, `finiteVolumeBeam` returns zero force
+and zero moment to the old restraint accumulator. This avoids double-counting
+the beam force.
 
 ## Decision For Future Kinematic Coupling
 
@@ -83,8 +84,8 @@ For the current mode:
 prescribedByRigidBody
 ```
 
-`finiteVolumeBeam` keeps setting the beam attachment boundary from the rigid-body
-transform.
+`finiteVolumeBeam` keeps setting the beam attachment boundary from the
+rigid-body transform.
 
 For the future fully coupled mode:
 
@@ -92,9 +93,9 @@ For the future fully coupled mode:
 solvedByBlockEigen
 ```
 
-`finiteVolumeBeam` should stop imposing the attachment displacement directly, and
-`blockEigenKinematicCoupling` should provide the compatibility coefficients that
-connect the beam-end rows to the rigid-body translation and rotation DOFs.
+`finiteVolumeBeam` should stop imposing the attachment displacement directly,
+and `blockEigenKinematicCoupling` should provide the compatibility coefficients
+that connect the beam-end rows to the rigid-body translation and rotation DOFs.
 
 ## Next Work Item
 

@@ -6,8 +6,8 @@ and the related wiring in `coupledTotalLagNewtonRaphsonBeamEvolve.C`.
 
 ## Background
 
-`BlockEigenSolverOF` converts the beamFoam 6-DOF block matrix into an Eigen sparse
-matrix. The matrix already contained the beam unknowns:
+`BlockEigenSolverOF` converts the beamFoam 6-DOF block matrix into an Eigen
+sparse matrix. The matrix already contained the beam unknowns:
 
 - `W_x, W_y, W_z`
 - `Theta_x, Theta_y, Theta_z`
@@ -17,9 +17,10 @@ The coupled rigid-body work appends six additional unknowns:
 - rigid-body displacement correction, 3 components
 - rigid-body rotation correction, 3 components
 
-Before these changes, the appended rigid-body block was mostly an identity block.
-The beam rows could depend on rigid-body unknowns through kinematic coupling, but
-the rigid-body rows did not contain reciprocal beam-to-rigid-body terms.
+Before these changes, the appended rigid-body block was mostly an identity
+block. The beam rows could depend on rigid-body unknowns through kinematic
+coupling, but the rigid-body rows did not contain reciprocal beam-to-rigid-body
+terms.
 
 In matrix form, the old structure was approximately:
 
@@ -115,8 +116,8 @@ The rigid-body rows therefore now receive matrix terms from:
 ## Why These Changes Were Made
 
 The previous implementation was only partly coupled in the matrix. It allowed
-the beam equation to depend on rigid-body motion, but the rigid-body equation did
-not implicitly depend on the beam solution.
+the beam equation to depend on rigid-body motion, but the rigid-body equation
+did not implicitly depend on the beam solution.
 
 That is not a fully coupled beam/rigid-body linear system. It is closer to a
 one-way matrix coupling plus explicit force feedback.
@@ -152,7 +153,8 @@ The code was rebuilt successfully with:
 from `src/beamFoam`, and then the top-level moorFV libraries were rebuilt with:
 
 ```bash
-BEAMFOAM_DIR=/Users/colmmcalister/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam ./Allwmake
+export BEAMFOAM_DIR=/Users/colmmcalister/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam
+./Allwmake
 ```
 
 Both builds completed successfully. The build still emits existing Eigen/header

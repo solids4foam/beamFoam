@@ -39,17 +39,17 @@ solver (about 65 min on one core):
 
 ## Seabed contact
 
-Seabed contact is switched on only by `constant/beamMomentumContributionProperties`
-(type `groundContact`, read by every beam in the case). The
-`groundContactActive`, `groundZ`, `gStiffness` and `gDamping` keys in
-`beamProperties` are not read by the code.
+Seabed contact is switched on only by
+`constant/beamMomentumContributionProperties` (type `groundContact`, read by
+every beam in the case). The `groundContactActive`, `groundZ`, `gStiffness` and
+`gDamping` keys in `beamProperties` are not read by the code.
 
-| Setting      | Value                                   |
-|--------------|-----------------------------------------|
-| groundZ      | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
-| kNormal      | 1e4 Pa/m                                |
-| cNormal      | 1 Pa s/m                                |
-| Friction     | none (as in MoorDyn)                    |
+| Setting  | Value                                   |
+| -------- | --------------------------------------- |
+| groundZ  | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
+| kNormal  | 1e4 Pa/m                                |
+| cNormal  | 1 Pa s/m                                |
+| Friction | none (as in MoorDyn)                    |
 
 Contact acts on the cell centres below `groundZ`, with a force per unit
 length max(2R (kNormal penetration - cNormal Uz), 0). The normal stiffness
@@ -75,12 +75,12 @@ four beam function objects run from the main `system/controlDict` with
 `region beamone;` (in a coupled run `system/beamone/controlDict` is not
 read):
 
-| Function object             | File in postProcessing/0                  |
-|-----------------------------|--------------------------------------------|
-| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor)        |
-| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)          |
-| beamDisplacementsAttachment | beamDisplacements_right.dat (box)          |
-| beamConvergenceData         | beamConvergenceData.dat                    |
+| Function object             | File in postProcessing/0            |
+| --------------------------- | ----------------------------------- |
+| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor) |
+| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)   |
+| beamDisplacementsAttachment | beamDisplacements_right.dat (box)   |
+| beamConvergenceData         | beamConvergenceData.dat             |
 
 The force Q in beamForcesMoments and in anchor/attachmentForce is the end
 force vector (axial plus shear), not the tension: once the line is slack
@@ -95,14 +95,14 @@ Plot with `../../plot_monolithic_vs_partitioned_floatRigidBody.py`,
 
 ## Geometry
 
-| Item            | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)     |
-| Water depth     | 0.15 m (`system/setFieldsDict`)                            |
-| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width   |
-| Box draft       | 0.025 m (half submerged)                                   |
-| Line anchor     | (0.25 0.025 0)                                             |
-| Line attachment | box bottom-left corner (0.45 0.025 0.125)                  |
+| Item            | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)  |
+| Water depth     | 0.15 m (`system/setFieldsDict`)                          |
+| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width |
+| Box draft       | 0.025 m (half submerged)                                 |
+| Line anchor     | (0.25 0.025 0)                                           |
+| Line attachment | box bottom-left corner (0.45 0.025 0.125)                |
 
 The box is cut out of the blockMesh with `topoSet` + `subsetMesh`; the
 exposed faces go into the (initially empty) `floatingObject` wall patch. It

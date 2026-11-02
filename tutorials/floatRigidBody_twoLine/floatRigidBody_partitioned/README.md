@@ -11,22 +11,20 @@ Built 13 October 2026; not yet run.
 
 ## Changes from the one-line case
 
-| File                        | Change                                                     |
-|-----------------------------|------------------------------------------------------------|
-| `beamInit/makeBeams`        | Second row in `lines`: `beamtwo`                           |
-| `constant/dynamicMeshDict`  | Restraint `beamtwo`; `mass` 0.124319 -> 0.123863           |
-| `system/controlDict`        | Comment only: beam function objects stay on beamone        |
-| `Allclean`                  | Removes the generated beamtwo folders too                  |
+- `beamInit/makeBeams`: Second row in `lines`: `beamtwo`
+- `constant/dynamicMeshDict`: Restraint `beamtwo`; `mass` 0.124319 -> 0.123863
+- `system/controlDict`: Comment only: beam function objects stay on beamone
+- `Allclean`: Removes the generated beamtwo folders too
 
 Everything else (tank, waves, box, line properties, seabed contact, PIMPLE
 settings) is unchanged.
 
 ## Lines
 
-| Line    | Anchor               | Attachment (box edge)        |
-|---------|----------------------|------------------------------|
-| beamone | (0.25 0.025 -0.15)   | (0.45 0.025 -0.025), lower left  |
-| beamtwo | (0.75 0.025 -0.15)   | (0.55 0.025 -0.025), lower right |
+| Line    | Anchor             | Attachment (box edge)            |
+| ------- | ------------------ | -------------------------------- |
+| beamone | (0.25 0.025 -0.15) | (0.45 0.025 -0.025), lower left  |
+| beamtwo | (0.75 0.025 -0.15) | (0.55 0.025 -0.025), lower right |
 
 The lines are mirror images about the box centre x = 0.5. Both are built the
 same way by `beamInit/makeBeams` (R = 1 mm, E = 5 MPa, rho = 141.8 kg/m3

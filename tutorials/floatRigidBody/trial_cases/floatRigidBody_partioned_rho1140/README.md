@@ -1,21 +1,21 @@
 # floatRigidBody_partioned_rho1140
 
-floatRigidBody_partioned with the full nylon density for the line, rho = 1140 kg/m3
-(`beamInit/template/constant/beamProperties`), instead of the submerged
-density 141.8. The beam model applies no buoyancy, so the line now weighs
-its full weight in water (about 8 times its real submerged weight) but has
-the correct inertia. Its initial pull on the box is (0.0265 0 0.0208) N.
-The box `mass` (0.124316) and `momentOfInertia` are those of the MoorDyn
-reference case (foamMooring/floatRigidBody_moorDyn), so the box is the same
-in both; it is therefore not in vertical equilibrium at t = 0 (the extra
-0.016 N of line pull sinks it about 0.3 mm). See `constant/dynamicMeshDict`.
+floatRigidBody_partioned with the full nylon density for the line, rho = 1140
+kg/m3 (`beamInit/template/constant/beamProperties`), instead of the submerged
+density 141.8. The beam model applies no buoyancy, so the line now weighs its
+full weight in water (about 8 times its real submerged weight) but has the
+correct inertia. Its initial pull on the box is (0.0265 0 0.0208) N. The box
+`mass` (0.124316) and `momentOfInertia` are those of the MoorDyn reference case
+(foamMooring/floatRigidBody_moorDyn), so the box is the same in both; it is
+therefore not in vertical equilibrium at t = 0 (the extra 0.016 N of line pull
+sinks it about 0.3 mm). See `constant/dynamicMeshDict`.
 
-The whole case is also shifted down 0.15 m to match the MoorDyn case's
-vertical datum: floor z = -0.15, still water z = 0, box centre
-(0.5 0.025 0), attachment (0.45 0.025 -0.025), anchor (0.25 0.025 -0.15),
-free-surface probes at z = 0 (blockMeshDict, topoSetDict, setFieldsDict,
-controlDict, beamInit/makeBeams, dynamicMeshDict). The z values in the
-tables below are those of the unshifted case. Everything else is as in floatRigidBody_partioned.
+The whole case is also shifted down 0.15 m to match the MoorDyn case's vertical
+datum: floor z = -0.15, still water z = 0, box centre (0.5 0.025 0), attachment
+(0.45 0.025 -0.025), anchor (0.25 0.025 -0.15), free-surface probes at z = 0
+(blockMeshDict, topoSetDict, setFieldsDict, controlDict, beamInit/makeBeams,
+dynamicMeshDict). The z values in the tables below are those of the unshifted
+case. Everything else is as in floatRigidBody_partioned.
 
 A floating box moored by a single beamFoam mooring line in a small wave tank,
 run in serial with interFoam and the `sixDoFRigidBodyMotionFvBeam` motion
@@ -26,14 +26,14 @@ solver.
 
 ## Geometry
 
-| Item            | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)     |
-| Water depth     | 0.15 m (`system/setFieldsDict`)                            |
-| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width   |
-| Box draft       | 0.025 m (half submerged)                                   |
-| Line anchor     | (0.25 0.025 0)                                             |
-| Line attachment | box bottom-left corner (0.45 0.025 0.125)                  |
+| Item            | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)  |
+| Water depth     | 0.15 m (`system/setFieldsDict`)                          |
+| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width |
+| Box draft       | 0.025 m (half submerged)                                 |
+| Line anchor     | (0.25 0.025 0)                                           |
+| Line attachment | box bottom-left corner (0.45 0.025 0.125)                |
 
 The box is cut out of the blockMesh with `topoSet` + `subsetMesh`; the
 exposed faces go into the (initially empty) `floatingObject` wall patch. It

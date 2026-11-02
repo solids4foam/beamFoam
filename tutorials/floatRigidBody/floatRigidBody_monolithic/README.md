@@ -50,13 +50,13 @@ still coupled to that subsystem through the three PIMPLE outer correctors.
 Both cases (run 9 Oct 2026) reach 10 s with no fatal errors, in the same 5008
 time steps.
 
-| Quantity at 10 s     | Monolithic | Partitioned | Partitioned - monolithic |
-|----------------------|------------|-------------|--------------------------|
-| Surge                | -87.393 mm | -88.516 mm  | -1.123 mm                |
-| Heave                | +6.392 mm  | +6.460 mm   | +0.068 mm                |
-| Pitch                | +2.756 deg | +2.770 deg  | +0.014 deg               |
-| Axial force at box   | +0.030 mN  | -0.016 mN   | -0.046 mN                |
-| Axial force at anchor | -0.528 mN | -0.578 mN   | -0.050 mN                |
+| Quantity at 10 s      | Monolithic | Partitioned | Partitioned - monolithic |
+| --------------------- | ---------- | ----------- | ------------------------ |
+| Surge                 | -87.393 mm | -88.516 mm  | -1.123 mm                |
+| Heave                 | +6.392 mm  | +6.460 mm   | +0.068 mm                |
+| Pitch                 | +2.756 deg | +2.770 deg  | +0.014 deg               |
+| Axial force at box    | +0.030 mN  | -0.016 mN   | -0.046 mN                |
+| Axial force at anchor | -0.528 mN  | -0.578 mN   | -0.050 mN                |
 
 Over the full histories the largest differences are 1.12 mm in surge,
 0.075 mm in heave and 0.154 deg in pitch; sway, roll and yaw stay exactly
@@ -66,7 +66,7 @@ and 0.1006 N at 2.316 s (partitioned), 3.7% apart; MoorDyn gives 0.1098 N
 at 2.296 s.
 
 | Cost metric                                      | Monolithic | Partitioned |
-|--------------------------------------------------|------------|-------------|
+| ------------------------------------------------ | ---------- | ----------- |
 | Time steps                                       | 5008       | 5008        |
 | Mean summed beam Newton iterations per time step | 12.72      | 12.08       |
 | Execution time                                   | 3834.84 s  | 3835.94 s   |
@@ -77,17 +77,17 @@ iterations per time step, but each is cheaper.
 
 ## Seabed contact
 
-Seabed contact is switched on only by `constant/beamMomentumContributionProperties`
-(type `groundContact`, read by every beam in the case). The
-`groundContactActive`, `groundZ`, `gStiffness` and `gDamping` keys in
-`beamProperties` are not read by the code.
+Seabed contact is switched on only by
+`constant/beamMomentumContributionProperties` (type `groundContact`, read by
+every beam in the case). The `groundContactActive`, `groundZ`, `gStiffness` and
+`gDamping` keys in `beamProperties` are not read by the code.
 
-| Setting      | Value                                   |
-|--------------|-----------------------------------------|
-| groundZ      | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
-| kNormal      | 1e4 Pa/m                                |
-| cNormal      | 1 Pa s/m                                |
-| Friction     | none (as in MoorDyn)                    |
+| Setting  | Value                                   |
+| -------- | --------------------------------------- |
+| groundZ  | -0.15 m (tank floor, MoorDyn `WtrDpth`) |
+| kNormal  | 1e4 Pa/m                                |
+| cNormal  | 1 Pa s/m                                |
+| Friction | none (as in MoorDyn)                    |
 
 Contact acts on the cell centres below `groundZ`, with a force per unit
 length max(2R (kNormal penetration - cNormal Uz), 0). The normal stiffness
@@ -113,12 +113,12 @@ four beam function objects run from the main `system/controlDict` with
 `region beamone;` (in a coupled run `system/beamone/controlDict` is not
 read):
 
-| Function object             | File in postProcessing/0                  |
-|-----------------------------|--------------------------------------------|
-| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor)        |
-| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)          |
-| beamDisplacementsAttachment | beamDisplacements_right.dat (box)          |
-| beamConvergenceData         | beamConvergenceData.dat                    |
+| Function object             | File in postProcessing/0            |
+| --------------------------- | ----------------------------------- |
+| beamForcesMomentsAnchor     | beamForcesMoments_left.dat (anchor) |
+| beamForcesMomentsAttachment | beamForcesMoments_right.dat (box)   |
+| beamDisplacementsAttachment | beamDisplacements_right.dat (box)   |
+| beamConvergenceData         | beamConvergenceData.dat             |
 
 The force Q in beamForcesMoments and in anchor/attachmentForce is the end
 force vector (axial plus shear), not the tension: once the line is slack
@@ -165,14 +165,14 @@ which put the arm 0.3 m off and gave spurious roll and yaw; it now uses
 
 ## Geometry
 
-| Item            | Value                                                      |
-|-----------------|------------------------------------------------------------|
-| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)     |
-| Water depth     | 0.15 m (`system/setFieldsDict`)                            |
-| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width   |
-| Box draft       | 0.025 m (half submerged)                                   |
-| Line anchor     | (0.25 0.025 0)                                             |
-| Line attachment | box bottom-left corner (0.45 0.025 0.125)                  |
+| Item            | Value                                                    |
+| --------------- | -------------------------------------------------------- |
+| Tank            | 1.0 x 0.05 x 0.3 m, 100 x 5 x 60 cells (10 x 10 x 5 mm)  |
+| Water depth     | 0.15 m (`system/setFieldsDict`)                          |
+| Box             | 0.1 x 0.05 x 0.05 m, centre (0.5 0.025 0.15), full width |
+| Box draft       | 0.025 m (half submerged)                                 |
+| Line anchor     | (0.25 0.025 0)                                           |
+| Line attachment | box bottom-left corner (0.45 0.025 0.125)                |
 
 The box is cut out of the blockMesh with `topoSet` + `subsetMesh`; the
 exposed faces go into the (initially empty) `floatingObject` wall patch. It

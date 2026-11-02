@@ -6,7 +6,7 @@ its mooring line. Like `rigidBodyEndTwist`, each case is run with both
 couplings.
 
 ```sh
-./Allrun [stiffness|period|animation]   # generate, run (NJOBS at once, default 10), summarise
+./Allrun [stiffness|period|animation]   # generate, run (NJOBS=10), summarise
 ./summarise.py                          # summary only; also written to summary.txt
 ./Allclean
 ../plot_floatRigidBody_sweeps.py        # plots (Spyder, or SAVE_FIGURES = True)
@@ -21,6 +21,7 @@ running at once.
 0.1 × 0.05 × 0.05 m box floats half submerged in a 1 m tank of water
 0.15 m deep. It is free to surge, heave and pitch. One line runs from the tank
 floor at (0.25, −0.15) to the box at (0.45, −0.025):
+
 - length 0.236 m
 - radius 1 mm
 - E = 5e6 Pa, so EA/L = 66.6 N/m
@@ -31,6 +32,7 @@ lasts 10 s, with 3 PIMPLE outer correctors and the time step set by Courant
 number (at most 2 ms).
 
 `makeCases` changes only:
+
 - **Solver type:** the `solver` type in `constant/dynamicMeshDict`.
 - **Line stiffness:** E and G = E/2.8 in `beamInit/makeBeams`. `beamInit`
   rebuilds the line for each case.
@@ -45,11 +47,10 @@ line's weight on the box changes very little with E.
 
 ## Sweeps
 
-| Sweep | Varies | Values |
-|---|---|---|
-| `stiffness` | line E (and G) relative to base, 1 s waves | 0.25, 1, 4, 16, 64, 256, 1024 |
-| `period` | wave period (s), base line | 0.5, 0.6, 0.8, 1.0, 1.25, 1.5 |
-| `animation` | none: base, for ParaView (`case.foam`) | |
+- `stiffness`: line E (and G) relative to base, 1 s waves. Values: 0.25, 1, 4,
+  16, 64, 256, 1024
+- `period`: wave period (s), base line. Values: 0.5, 0.6, 0.8, 1.0, 1.25, 1.5
+- `animation`: none: base, for ParaView (`case.foam`)
 
 - **Stiffness sweep:** the line's axial mode on the box, sqrt(EA/(L m)), goes
   from 12 to 740 rad/s. At the top of the range that is 8.5 ms per period, or
@@ -61,6 +62,7 @@ line's weight on the box changes very little with E.
 ## Output
 
 `summary.txt` (from `summarise.py`) gives, for each case and coupling:
+
 - status and the time reached
 - time steps
 - beam Newton iterations per step (mean and max, over all outer correctors)
@@ -77,25 +79,26 @@ The Newton counts come from the `beamSolverIterations` function object.
 
 `summary.txt` has the full table. 19 of 28 runs reached 10 s:
 
-| Case | Partitioned | Monolithic |
-|---|---|---|
-| Ex0.25 | finished, 12.1 Newton/step | finished, 12.8 |
-| Ex1 (= T1) | crashed 2.61 s | finished, 12.6 |
-| Ex4 | finished, 11.9 | crashed 6.75 s |
-| Ex16 | crashed 6.29 s | crashed 3.28 s |
-| Ex64 | crashed 1.97 s | crashed 6.09 s |
-| Ex256 | finished, 11.5 | finished, 13.6 |
-| Ex1024 | finished, 11.2 | finished, 13.5 |
-| T0.5 | crashed 6.61 s | crashed 3.74 s |
-| T0.6 | finished, 12.2 | finished, 14.0 |
-| T0.8 | finished, 12.1 | finished, 13.5 |
-| T1.25 | finished, 11.9 | finished, 12.5 |
-| T1.5 | finished, 11.9 | finished, 12.1 |
-| animation (base) | finished, 12.0 | finished, 12.6 |
+| Case             | Partitioned                | Monolithic     |
+| ---------------- | -------------------------- | -------------- |
+| Ex0.25           | finished, 12.1 Newton/step | finished, 12.8 |
+| Ex1 (= T1)       | crashed 2.61 s             | finished, 12.6 |
+| Ex4              | finished, 11.9             | crashed 6.75 s |
+| Ex16             | crashed 6.29 s             | crashed 3.28 s |
+| Ex64             | crashed 1.97 s             | crashed 6.09 s |
+| Ex256            | finished, 11.5             | finished, 13.6 |
+| Ex1024           | finished, 11.2             | finished, 13.5 |
+| T0.5             | crashed 6.61 s             | crashed 3.74 s |
+| T0.6             | finished, 12.2             | finished, 14.0 |
+| T0.8             | finished, 12.1             | finished, 13.5 |
+| T1.25            | finished, 11.9             | finished, 12.5 |
+| T1.5             | finished, 11.9             | finished, 12.1 |
+| animation (base) | finished, 12.0             | finished, 12.6 |
 
 Every crash is the beam's Newton solve failing, either hitting 200
 iterations or diverging. 8 of the 9 happen while the line is touching the
 tank floor:
+
 - **Contact chatter:** the number of line cells in contact flips between
   two values (for example 3, 4, 3) from one Newton iteration to the next.
 - **Line on the floor:** most of the line is lying on the floor. This
@@ -106,6 +109,7 @@ tank floor:
 Only Ex64 partitioned fails with no floor contact.
 
 Whether a borderline case survives depends on the exact time steps:
+
 - Ex1 partitioned crashes here but finishes in `animation/partitioned` and
   in `../floatRigidBody`. The only difference is the write interval, and
   `adjustableRunTime` shortens steps to land on write times.

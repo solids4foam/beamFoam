@@ -21,7 +21,10 @@ its patch. The beam's end face then turns with the body (by the body's step
 rotation, from the end face's rotation at the start of the step), and the
 beam's end moment acts back on the body:
 
-    J alpha + omega x (J omega) + c omega = externalMoment + r x beamForce + beamMoment
+```text
+J alpha + omega x (J omega) + c omega
+    = externalMoment + r x beamForce + beamMoment
+```
 
 with beamMoment = −M on the end face.
 
@@ -53,8 +56,8 @@ oscillation decays at c/(2J) = 10 s⁻¹ whatever the stiffness, so each run
 settles on the static twist M L/(G Ip). For a circular rod that answer is
 exact at any twist.
 
-| Base value | |
-|---|---|
+| Quantity | Base value |
+| --- | --- |
 | Torsional stiffness kt = G Ip/L | 102.57 N m/rad |
 | Torsional mode sqrt(kt/J) | 45.3 rad/s |
 | M | 102.57 N m (static twist 1 rad) |
@@ -67,10 +70,9 @@ moment equals −kt θ, and the two couplings agree to 1e-10 rad.
 
 ## Sweeps (`makeCases`)
 
-| Sweep | Varies | Values |
-|---|---|---|
-| `moment` | M, as the static twist it gives | 0.1, 0.5, 1, 2, 3, 4, 6 rad |
-| `stiffness` | G (so kt) relative to base, M as base | 0.25, 1, 4, 16, 64, 256, 1024, 4096, 16384 |
+- `moment`: M, as the static twist it gives. Values: 0.1, 0.5, 1, 2, 3, 4, 6 rad
+- `stiffness`: G (so kt) relative to base, M as base. Values: 0.25, 1, 4, 16,
+  64, 256, 1024, 4096, 16384
 
 The stiffness sweep raises the partitioned stability number β dt² kt/J from
 1.3e-4 to 8.4. Above roughly 4.1 rad of static twist (Greenhill's torque
@@ -100,17 +102,21 @@ two couplings.
 
 **Stiffness sweep (M = 102.57 N m).**
 
-| G factor | Stability number | Partitioned coupling iterations / step (max) | Partitioned Newton / step | Monolithic Newton / step | Runtime part. / mono. [s] |
-|---|---|---|---|---|---|
-| 0.25  | 1.3e-4 | 2.15 (3)  | 4.23  | 2.00 | 2.1 / 1.1 |
-| 1     | 5.1e-4 | 2.30 (4)  | 4.58  | 2.00 | 2.3 / 1.2 |
-| 4     | 2.1e-3 | 3.04 (4)  | 6.08  | 2.00 | 3.0 / 1.2 |
-| 16    | 8.2e-3 | 3.57 (5)  | 7.13  | 2.00 | 3.5 / 1.2 |
-| 64    | 0.033  | 5.14 (7)  | 10.28 | 2.00 | 4.7 / 1.2 |
-| 256   | 0.13   | 8.53 (12) | 17.14 | 2.00 | 7.8 / 1.2 |
-| 1024  | 0.53   | 28.15 (36) | 56.66 | 2.00 | 24.4 / 1.2 |
-| 4096  | 2.1    | diverges in step 2 | – | 2.00 | – / 1.2 |
-| 16384 | 8.4    | diverges in step 3 | – | 2.00 | – / 1.2 |
+| G     | Stab. no. | Coupl. it. (max)   | Newton P | Newton M | Run P / M [s] |
+| ----- | --------- | ------------------ | -------- | -------- | ------------- |
+| 0.25  | 1.3e-4    | 2.15 (3)           | 4.23     | 2.00     | 2.1 / 1.1     |
+| 1     | 5.1e-4    | 2.30 (4)           | 4.58     | 2.00     | 2.3 / 1.2     |
+| 4     | 2.1e-3    | 3.04 (4)           | 6.08     | 2.00     | 3.0 / 1.2     |
+| 16    | 8.2e-3    | 3.57 (5)           | 7.13     | 2.00     | 3.5 / 1.2     |
+| 64    | 0.033     | 5.14 (7)           | 10.28    | 2.00     | 4.7 / 1.2     |
+| 256   | 0.13      | 8.53 (12)          | 17.14    | 2.00     | 7.8 / 1.2     |
+| 1024  | 0.53      | 28.15 (36)         | 56.66    | 2.00     | 24.4 / 1.2    |
+| 4096  | 2.1       | diverges in step 2 | –        | 2.00     | – / 1.2       |
+| 16384 | 8.4       | diverges in step 3 | –        | 2.00     | – / 1.2       |
+
+G: G relative to base. Stab. no.: stability number. Coupl. it.: partitioned
+coupling iterations per step (max). Newton P / M: Newton iterations per step,
+partitioned / monolithic. Run P / M: runtime, partitioned / monolithic.
 
 - Partitioned needs more coupling iterations as the rod stiffens and fails
   between stability numbers 0.53 and 2.1.
@@ -136,12 +142,15 @@ and omega = 39.3 rad/s. dt = 0.002 s, 0.5 s, 3 PIMPLE outer correctors with
 floatRigidBody_partioned) and `monolithic` (`beamFoamCoupled`) side by side,
 then `compare.py` writes `comparison.txt`.
 
-| Coupling | Peak twist / theory, per half period | Largest deviation from theory | Run time |
-|---|---|---|---|
-| monolithic, 3 outer correctors | 0.9998 every half period | 1.0% of the amplitude (period error) | 170 s |
-| partitioned, 3 outer correctors | 1.028, 1.091, 1.157, 1.227, 1.301, 1.380 | 38% | 175 s |
-| partitioned, 8 outer correctors (0.25 s) | 1.0016, 1.0052, 1.0089 | | 205 s |
-| partitioned, 20 outer correctors (0.25 s) | 0.9998, 0.9998, 0.9998 | | 452 s |
+- monolithic, 3 outer correctors: peak twist / theory 0.9998 every half period;
+  largest deviation from theory 1.0% of the amplitude (period error); run time
+  170 s
+- partitioned, 3 outer correctors: peak twist / theory 1.028, 1.091, 1.157,
+  1.227, 1.301, 1.380; largest deviation from theory 38%; run time 175 s
+- partitioned, 8 outer correctors (0.25 s): peak twist / theory 1.0016, 1.0052,
+  1.0089; run time 205 s
+- partitioned, 20 outer correctors (0.25 s): peak twist / theory 0.9998, 0.9998,
+  0.9998; run time 452 s
 
 The partitioned coupling iterates only through the PIMPLE outer correctors,
 and the body is driven by the beam state of the previous corrector. Not

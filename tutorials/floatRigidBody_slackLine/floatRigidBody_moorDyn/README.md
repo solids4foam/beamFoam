@@ -28,16 +28,21 @@ restraint (`libsixDoFMooring`).
 
 ## Differences from floatRigidBody_base
 
-| Item | base (beamFoam) | this case (MoorDyn v2) |
-|---|---|---|
-| Motion solver | `sixDoFRigidBodyMotionFvBeam` | `sixDoFRigidBodyMotion` motion with modified morphing: `sixDoFRigidBodyMotionModifiedMorphing` (+ `libs (sixDoFMooring)`) |
-| Mooring | `finiteVolumeBeam` restraint, `beamInit/makeBeams` | `moorDynR2`, POINT coupling, `Mooring/lines.txt` |
-| Vertical datum | floor z = 0, still water z = 0.15 | floor z = -0.15, still water z = 0 |
-| Box centre | (0.5 0.025 0.15) | (0.5 0.025 0) |
-| Fairlead | (0.45 0.025 0.125) | (0.45 0.025 -0.025) |
-| Anchor | (0.25 0.025 0) | (0.25 0.025 -0.15) |
-| State function object | `sixDoFRigidBodyStateFvBeam` | `sixDoFRigidBodyState` |
-| Mesh morphing | moorFV modified morphing (`xDistance`, `yDistance`) | the same, via `sixDoFRigidBodyMotionModifiedMorphing` (moorFV `src/sixDoFModifiedMorphing`) |
+- Motion solver: `sixDoFRigidBodyMotionFvBeam` (base); `sixDoFRigidBodyMotion`
+  motion with modified morphing: `sixDoFRigidBodyMotionModifiedMorphing` (+
+  `libs (sixDoFMooring)`) (this case)
+- Mooring: `finiteVolumeBeam` restraint, `beamInit/makeBeams` (base);
+  `moorDynR2`, POINT coupling, `Mooring/lines.txt` (this case)
+- Vertical datum: floor z = 0, still water z = 0.15 (base); floor z = -0.15,
+  still water z = 0 (this case)
+- Box centre: (0.5 0.025 0.15) (base); (0.5 0.025 0) (this case)
+- Fairlead: (0.45 0.025 0.125) (base); (0.45 0.025 -0.025) (this case)
+- Anchor: (0.25 0.025 0) (base); (0.25 0.025 -0.15) (this case)
+- State function object: `sixDoFRigidBodyStateFvBeam` (base);
+  `sixDoFRigidBodyState` (this case)
+- Mesh morphing: moorFV modified morphing (`xDistance`, `yDistance`) (base); the
+  same, via `sixDoFRigidBodyMotionModifiedMorphing` (moorFV
+  `src/sixDoFModifiedMorphing`) (this case)
 
 Everything is shifted down 0.15 m because MoorDyn puts the still-water level
 at z = 0 and the seabed at z = -WtrDpth, and foamMooring passes OpenFOAM

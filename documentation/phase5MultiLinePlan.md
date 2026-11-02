@@ -32,7 +32,7 @@ welded joint (see `monolithicSolverTestProgressReport.pdf` and
 For line *i*, write the Newton system with the beam increments ΔUᵢ and the
 body increments Δq (6 unknowns):
 
-```
+```text
 [ Kᵢ  Cᵢ ] [ΔUᵢ]   [rᵢ]      Cᵢ: nonzero only in the attachment-cell rows
 [ Bᵢ  Dᵢ ] [Δq ] = [sᵢ]      Bᵢ: nonzero only in the attachment-cell columns
 ```
@@ -40,7 +40,7 @@ body increments Δq (6 unknowns):
 Eliminating each line and summing over the lines gives a 6×6 system for the
 body:
 
-```
+```text
 [ K_body + Σ(Dᵢ − Bᵢ Kᵢ⁻¹ Cᵢ) ] Δq = s_body + Σ(sᵢ − Bᵢ Kᵢ⁻¹ rᵢ)
 then  ΔUᵢ = Kᵢ⁻¹ (rᵢ − Cᵢ Δq)   for each line
 ```
@@ -85,7 +85,9 @@ tracked files of `tutorials/floatRigidBody/floatRigidBody_partioned`:
   8-corrector copy over a short window to give the reference. Ask before
   starting any long run.
 
-### Stage 1: refactor one line into condense and back-substitute steps, with no change in behaviour
+### Stage 1: split one line into condense and back-substitute steps
+
+This stage refactors only; behaviour does not change.
 
 - Split `rigidBodyEnd` into a body part and an attachment part (patch, joint,
   arm r₀ᵢ, beam force and moment, and their derivative terms). The body keeps

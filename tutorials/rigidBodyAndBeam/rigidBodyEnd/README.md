@@ -25,14 +25,26 @@ All use a rod along +x, 2 m long, fixed at `left`, with a 10 kg body pinned to
 `right`. Gravity acts on the body and the rod. The first three use a point
 mass; the last three give the body a moment of inertia and rotate it.
 
-| Case | Setup | Checked against |
-|---|---|---|
-| `hangingMass` | Rod hanging along +x; damped Newmark on the body (β = 0.49, γ = 0.9) so it settles | End force = −mg; stretch = (mg + ½ rod weight)·L/EA |
-| `axialOscillation` | As above, undamped (β = 0.25, γ = 0.5), released unstretched | Period of the exact rod-plus-end-mass mode (z tan z = rod mass/end mass), with the trapezoidal-rule period elongation; mean and peak displacement |
-| `pendulum` | Thin rod clamped at the top, gravity tilted 5° | Pendulum period with finite-amplitude correction; effective length includes the stretch and the bending boundary layer √(EI/T) at the clamp |
-| `hangingBody` | As `pendulum` with gravity along the rod; centre of mass 0.2 m to the side of the attachment, so the body swings 90° and settles (`linearDamping`, `angularDamping`) | Force from the beam = −mg; centre of mass directly below the attachment |
-| `freeRotation` | No gravity; asymmetric body (J = 0.1, 0.2, 0.3) spinning about its centre of mass at the attachment | Global angular momentum and kinetic energy conserved |
-| `compoundPendulum` | As `pendulum`, centre of mass 0.2 m beyond the attachment, J = 0.1 | Both mode frequencies of the linearised rod + body double pendulum |
+- `hangingMass`: Rod hanging along +x; damped Newmark on the body (β = 0.49, γ =
+  0.9) so it settles. Checked against: End force = −mg; stretch = (mg + ½ rod
+  weight)·L/EA
+- `axialOscillation`: As above, undamped (β = 0.25, γ = 0.5), released
+  unstretched. Checked against: Period of the exact rod-plus-end-mass mode (z
+  tan z = rod mass/end mass), with the trapezoidal-rule period elongation; mean
+  and peak displacement
+- `pendulum`: Thin rod clamped at the top, gravity tilted 5°. Checked against:
+  Pendulum period with finite-amplitude correction; effective length includes
+  the stretch and the bending boundary layer √(EI/T) at the clamp
+- `hangingBody`: As `pendulum` with gravity along the rod; centre of mass 0.2 m
+  to the side of the attachment, so the body swings 90° and settles
+  (`linearDamping`, `angularDamping`). Checked against: Force from the beam =
+  −mg; centre of mass directly below the attachment
+- `freeRotation`: No gravity; asymmetric body (J = 0.1, 0.2, 0.3) spinning about
+  its centre of mass at the attachment. Checked against: Global angular momentum
+  and kinetic energy conserved
+- `compoundPendulum`: As `pendulum`, centre of mass 0.2 m beyond the attachment,
+  J = 0.1. Checked against: Both mode frequencies of the linearised rod + body
+  double pendulum
 
 The pendulum rod is clamped at the top because a rod pinned at both ends can
 twist freely about its own axis, which leaves the beam solve almost singular.
