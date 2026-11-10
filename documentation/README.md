@@ -65,6 +65,10 @@ removed.
 - `paperOutline.txt`: A section-by-section layout for writing the monolithic
   coupling up as a numerical methods paper, with which file in this folder holds
   the material for each section, figures to prepare, and gaps to fill first.
+- `paperOutline.tex`, `paperOutline.pdf`: The same outline in LaTeX (standard
+  `article` class, with the equations typeset), and its compiled PDF. Rebuild
+  with `latexmk -pdf paperOutline.tex && latexmk -c` (MacTeX, in
+  `/Library/TeX/texbin`).
 
 ## Sources of the PDFs (`source/`)
 
