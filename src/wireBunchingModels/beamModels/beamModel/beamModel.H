@@ -47,7 +47,6 @@ SourceFiles
 #include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
-#include "RigidBodyCouplingData.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -170,24 +169,6 @@ class beamModel
 
         //- Outer iteration counter
         label iOuterCorr_;
-
-        //- Time index of the solver work counters below
-        label solverCountsTimeIndex_;
-
-        //- Calls to evolve() in the current time step. In a coupled
-        //  interFoam run there is one per PIMPLE outer corrector that
-        //  moves the mesh
-        label nEvolveCalls_;
-
-        //- Beam Newton loops in the current time step (more than
-        //  nEvolveCalls_ with partitioned rigidBodyEnd coupling iterations)
-        label nBeamSolves_;
-
-        //- Linear solves (Newton iterations) in the current time step
-        label nNewtonIterations_;
-
-        //- Linear solves (Newton iterations) since the start of the run
-        label totalNewtonIterations_;
 
         //- Artificial scaling factor for changing the inertia
         //- tensor I_rho in the angular momentum tensor
@@ -611,64 +592,6 @@ public:
                 return iOuterCorr_;
             }
 
-            //- Count a call to evolve(); the first call of a time step
-            //  resets the per time step counters
-            void countEvolveCall()
-            {
-                if (solverCountsTimeIndex_ != runTime_.timeIndex())
-                {
-                    solverCountsTimeIndex_ = runTime_.timeIndex();
-                    nEvolveCalls_ = 0;
-                    nBeamSolves_ = 0;
-                    nNewtonIterations_ = 0;
-                }
-
-                ++nEvolveCalls_;
-            }
-
-            //- Count a beam Newton loop
-            void countBeamSolve()
-            {
-                ++nBeamSolves_;
-            }
-
-            //- Count a linear solve (Newton iteration)
-            void countNewtonIteration()
-            {
-                ++nNewtonIterations_;
-                ++totalNewtonIterations_;
-            }
-
-            //- Time index of the solver work counters
-            label solverCountsTimeIndex() const
-            {
-                return solverCountsTimeIndex_;
-            }
-
-            //- Calls to evolve() in the current time step
-            label nEvolveCalls() const
-            {
-                return nEvolveCalls_;
-            }
-
-            //- Beam Newton loops in the current time step
-            label nBeamSolves() const
-            {
-                return nBeamSolves_;
-            }
-
-            //- Linear solves (Newton iterations) in the current time step
-            label nNewtonIterations() const
-            {
-                return nNewtonIterations_;
-            }
-
-            //- Linear solves (Newton iterations) since the start of the run
-            label totalNewtonIterations() const
-            {
-                return totalNewtonIterations_;
-            }
-
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
             virtual volVectorField& solutionW() const = 0;
@@ -741,68 +664,6 @@ public:
                 vectorField& points,
                 vectorField& tangents
             ) const = 0;
-
-            //- Create a rigidBodyEnd from a caller's body description and
-            //  solve it monolithically with the beam (e.g. from moorFV)
-            virtual void initialiseRigidBodyEnd
-            (
-                const dictionary&,
-                const vector& gravity
-            )
-            {
-                FatalErrorInFunction
-                    << "This beam model does not support rigidBodyEnd"
-                    << abort(FatalError);
-            }
-
-            //- Set the rigidBodyEnd's applied force and moment for the next
-            //  evolve (global axes, moment about the centre of mass)
-            virtual void setRigidBodyEndExternalLoad
-            (
-                const vector& force,
-                const vector& moment
-            )
-            {
-                FatalErrorInFunction
-                    << "This beam model does not support rigidBodyEnd"
-                    << abort(FatalError);
-            }
-
-            //- Set the rigidBodyEnd's translation and rotation constraint
-            //  projections for the next evolve (global axes)
-            virtual void setRigidBodyEndConstraints
-            (
-                const tensor& tConstraints,
-                const tensor& rConstraints
-            )
-            {
-                FatalErrorInFunction
-                    << "This beam model does not support rigidBodyEnd"
-                    << abort(FatalError);
-            }
-
-            //- Accepted rigidBodyEnd state after evolve; false if there is
-            //  no rigidBodyEnd
-            virtual bool getRigidBodyEndState(RigidBodyEndState&) const
-            {
-                return false;
-            }
-
-            //- Welded end driven by a caller (e.g. moorFV's partitioned
-            //  coupling): turn the end face of patch patchI with a body
-            //  that has turned by the spatial rotation R since the start
-            //  of the time step. Applied by the next evolve; needs a
-            //  fixedValue Theta condition on the patch
-            virtual void setEndStepRotation
-            (
-                const label patchI,
-                const tensor& R
-            )
-            {
-                FatalErrorInFunction
-                    << "This beam model does not support welded ends"
-                    << abort(FatalError);
-            }
 
             //- Final beam points
             tmp<vectorField> points(const label bI = 0) const;

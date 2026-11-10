@@ -35,7 +35,6 @@ SourceFiles
     coupledTotalLagNewtonRaphsonBeamEvolve.C
     coupledTotalLagNewtonRaphsonBeamMatrix.C
     coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
-    coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -47,8 +46,6 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
-#include "BlockEigenSolverOF.H"
-#include "rigidBodyEnd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -197,33 +194,6 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Beam cross-section constant (supports multi-beam)
         volTensorField CIRho_;
 
-        //- Rigid body owned by beamFoam, attached to the end patch
-        autoPtr<rigidBodyEnd> rigidBodyEndPtr_;
-
-        //- Coupling between the beam and rigidBodyEnd:
-        //  none, partitioned or monolithic
-        word rigidBodyCoupling_;
-
-        //- Index of the patch rigidBodyEnd is attached to
-        label rigidBodyEndPatchIndex_;
-
-        //- Monolithic rigidBodyEnd Newton iterate: displacement and step
-        //  rotation vector
-        vector rigidBodyEndX_;
-        vector rigidBodyEndTheta_;
-
-        //- Welded end: patch, its end-face rotation Lambdaf at the start of
-        //  the time step, and the time index it was stored at
-        label weldPatchIndex_;
-        tensor weldLambda0_;
-        label weldTimeIndex_;
-
-        //- Time index at which the Newmark predictor was last applied.
-        //  The predictor must run once per time step: U and Accl are then
-        //  updated incrementally with DW, so re-applying it on a repeated
-        //  solve would make them inconsistent with W
-        label newmarkPredictorTimeIndex_;
-
     //- Fields related to time integration schemes
 
         //- ddtScheme name from fvSchemes dictionary
@@ -338,95 +308,6 @@ class coupledTotalLagNewtonRaphsonBeam
             const bool writeConvergedReason = true
         );
 
-        //- Beam Newton solve for the current time step
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
-        scalar evolveBeam();
-
-        //- Read rigidBodyCoupling and construct rigidBodyEnd if present
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        void readRigidBodyEnd();
-
-        //- Construct rigidBodyEnd from a body dictionary and attach it to its
-        //  patch
-        void createRigidBodyEnd
-        (
-            const dictionary& bodyDict,
-            const vector& gravity
-        );
-
-        //- Evolve the beam and rigidBodyEnd with partitioned coupling
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        scalar evolvePartitionedRigidBodyEnd();
-
-        //- Evolve the beam and rigidBodyEnd in one Newton solve
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        scalar evolveMonolithicRigidBodyEnd();
-
-        //- True when rigidBodyEnd is solved inside the beam Newton solve
-        bool rigidBodyEndMonolithic() const
-        {
-            return
-                rigidBodyEndPtr_.valid()
-             && rigidBodyCoupling_ == "monolithic";
-        }
-
-        //- Attachment W for a body displacement and step rotation
-        vector rigidBodyEndAttachmentW
-        (
-            const vector& x,
-            const vector& theta
-        ) const;
-
-        //- Set the body iterate, and the attachment W and its previous
-        //  iterate from it, so the boundary increment in the beam equations
-        //  is zero and the body columns carry it instead
-        void setRigidBodyEndIterate(const vector& x, const vector& theta);
-
-        //- Welded end: store the end-face rotation of a patch at the start
-        //  of a time step. Safe to call more than once per time step
-        void storeWeldLambda0(const label patchI);
-
-        //- Welded end: spatial rotation vector that turns the end face from
-        //  its current rotation to R & (its rotation at the start of the
-        //  time step), R being the body's rotation over the step
-        vector weldRotationIncrement(const tensor& R) const;
-
-        //- Welded end: set the fixedValue Theta on the patch so the next
-        //  beam solve turns the end face by the given increment
-        void setWeldRotationIncrement(const vector& increment);
-
-        //- Welded rigidBodyEnd: end-face rotation increment for a step
-        //  rotation theta of the body
-        vector rigidBodyEndRotationIncrement(const vector& theta) const
-        {
-            return weldRotationIncrement
-            (
-                rigidBodyEnd::rotationTensor(theta)
-            );
-        }
-
-        //- Moment from the beam on the body: minus the end-face moment for a
-        //  welded joint, zero for a pin
-        vector rigidBodyEndBeamMoment() const;
-
-        //- Monolithic coupling blocks at the current iterate. Needs the
-        //  equation coefficients to be up to date
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        RigidBodyMonolithicCoupling rigidBodyEndMonolithicCoupling();
-
-        //- Project the monolithic coupling blocks onto the body's free
-        //  directions: constrained increments are zero and their residuals
-        //  are dropped
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        void constrainRigidBodyEndCoupling
-        (
-            RigidBodyMonolithicCoupling& coupling
-        ) const;
-
-        //- Compare the body columns and body rows with finite differences
-        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
-        void checkRigidBodyEndJacobian();
-
         // //- Apply conical pulleys contact force
         // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
 
@@ -459,38 +340,6 @@ public:
         {}
 
     // Member Functions
-            //- Create a rigidBodyEnd from a caller's body description,
-            //  solved monolithically with the beam
-            virtual void initialiseRigidBodyEnd
-            (
-                const dictionary& bodyDict,
-                const vector& gravity
-            );
-
-            //- Set the rigidBodyEnd's applied force and moment
-            virtual void setRigidBodyEndExternalLoad
-            (
-                const vector& force,
-                const vector& moment
-            );
-
-            //- Set the rigidBodyEnd's constraint projections
-            virtual void setRigidBodyEndConstraints
-            (
-                const tensor& tConstraints,
-                const tensor& rConstraints
-            );
-
-            //- Accepted rigidBodyEnd state after evolve
-            virtual bool getRigidBodyEndState(RigidBodyEndState& state) const;
-
-            //- Welded end driven by a caller: see beamModel
-            virtual void setEndStepRotation
-            (
-                const label patchI,
-                const tensor& R
-            );
-  
         // Access
             //- Each beamModel must indicate whether W or DW is the primary
             //  solution variable
