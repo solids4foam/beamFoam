@@ -1,0 +1,151 @@
+{
+  "d45a8d4": {
+    "summary": "Adds a single '//git check' comment to BlockEigenSolverOF.C to test the git setup. No functional change.",
+    "details": ["BlockEigenSolverOF.C: comment line only"]
+  },
+  "ebe8931": {
+    "summary": "Grows the Eigen system by six rows and puts a 6x6 identity block in them, with zero right-hand side and zero initial guess. The extra rows are not linked to the beam rows, so the beam solution does not change.",
+    "details": [
+      "BlockEigenSolverOF::convertFoamMatrixToEigenMatrix: nRows = 6*(d.size() + 1), 36 extra triplets reserved",
+      "Identity triplets at rbRow = 6*d.size()",
+      "BlockEigenSolverOF::solve: six zero RHS entries; result copied into an unused local vector rigidBodyX",
+      "Removes the d45a8d4 test comment"
+    ]
+  },
+  "955aa6a": {
+    "summary": "Passes the six extra solution entries back to the caller through a new solve() argument. The beam model creates a zero 6x1 matrix for it; the result is not used.",
+    "details": [
+      "BlockEigenSolverOF::solve gains scalarRectangularMatrix& sixDOFx (.C and .H)",
+      "coupledTotalLagNewtonRaphsonBeamEvolve.C: creates sixDOFx(6,1,0.0) and passes it to eigenSolver.solve",
+      "Residual loop uses nCells = d_.size() + 1"
+    ]
+  },
+  "39386fb": {
+    "summary": "Fills the six extra RHS entries with a Newmark-beta displacement and rotation prediction computed from hard-coded placeholder values (deltaT = 1, constant velocity, acceleration and torque). The matrix block stays an identity, so the extra unknowns just equal this RHS.",
+    "details": [
+      "BlockEigenSolverOF::solve: rigidStart = nRows - 6; beta = 0.25, gamma = 0.5",
+      "Translational RHS: d0 + dt*v0 + dt^2*(beta*a + (0.5 - beta)*a0)",
+      "Rotational RHS built the same way from angular momentum and torque",
+      "Info printouts of matrix size and of input/output sixDOFx"
+    ]
+  },
+  "ed35025": {
+    "summary": "Replaces the hard-coded values with a 24-entry sixDOF_source vector (previous position, orientation, velocity, angular momentum, accelerations and torques). The beam model still fills it with dummy numbers. Also computes Newmark velocity and angular-momentum updates, which are printed but not used.",
+    "details": [
+      "coupledTotalLagNewtonRaphsonBeamEvolve.C: builds sixDOF_source(24,1) filled with placeholder constants",
+      "BlockEigenSolverOF::solve gains a sixDOF_source argument and unpacks it",
+      "Bug: the orientation entries are read into rb_angMomentum_prev, which is then overwritten",
+      "rb_v and rb_angMomentum are computed and printed only"
+    ]
+  },
+  "55580f3": {
+    "summary": "Adds commented-out code in the beam evolve loop for looking up the fluid mesh (region0) from the beam's object registry. No functional change.",
+    "details": ["coupledTotalLagNewtonRaphsonBeamEvolve.C: commented lookupObject<fvMesh>(\"region0\")"]
+  },
+  "6c25265": {
+    "summary": "Adds named structs that carry rigid-body data from the motion solver into the beam and back, in place of the raw arrays. The six appended rows are still an uncoupled identity block, and the result is only printed.",
+    "details": [
+      "New RigidBodyCouplingData.H: RigidBodyState, RigidBodyStepData, RigidBodySolution",
+      "beamModel::setRigidBodyStepData (empty virtual), overridden in coupledTotalLagNewtonRaphsonBeam with rigidBodyData_ and rigidBodyDataValid_",
+      "BlockEigenSolverOF::solve(solVec, source, RigidBodySolution&, const RigidBodyStepData&); zero state used if no data is supplied",
+      "Adds backup copies original_BlockEigenSolverOF.C/.H"
+    ]
+  },
+  "a94db8d": {
+    "summary": "Adds the rigidBodyAndBeam tutorial: an interFoam floating box tied to a beam through the moorFV sixDoFRigidBodyMotionFvBeam solver and finiteVolumeBeam restraint. Also adds debug printouts in the beam evolve loop and a build fix.",
+    "details": [
+      "tutorials/rigidBodyAndBeam: blockMesh/snappyHexMesh case, beam region, dynamicMeshDict with FvBeamNewmark solver and finiteVolumeBeam restraint",
+      "Allwmake builds only createBeamMesh and setInitialPositionBeam utilities",
+      "Make/options adds the coupledTotalLagNewtonRaphsonBeam include path",
+      "coupledTotalLagNewtonRaphsonBeamEvolve.C: 'CTLNRB debug' Info lines"
+    ]
+  },
+  "7a41f13": {
+    "summary": "Changes the rigidBodyAndBeam Allrun to run interFoam after meshing rather than stopping after mesh generation.",
+    "details": ["tutorials/rigidBodyAndBeam/Allrun: adds runApplication interFoam"]
+  },
+  "ab56a8d": {
+    "summary": "Commits a complete run of the rigidBodyAndBeam case (meshes, time directories, logs) as rigidBodyAndBeam_coupledSolver for reference. No source code changes; about 121 million lines of generated output.",
+    "details": [
+      "tutorials/rigidBodyAndBeam_coupledSolver: polyMesh, time directories, uniform/sixDoFRigidBodyMotionFvBeamState",
+      "log.blockMesh, log.snappyHexMesh, log.interFoam"
+    ]
+  },
+  "edfa305": {
+    "summary": "Writes the rigid-body values from each BlockEigen solve to a postProcessing history file and uses the real time step in place of deltaT = 1. Adds a comparison case and a plotting script.",
+    "details": [
+      "BlockEigenSolverOF.C: writeBlockEigenRigidBodyMotion writes postProcessing/BlockEigenSolve_rigidBodyMotion/<startTime>/BlockEigenSolve_rigidBodyMotion.dat",
+      "BlockEigenSolverOF::solve takes const Time& runTime; deltaT = runTime.deltaTValue()",
+      "tutorials/rigidBodyAndBeam_compareSixDoF_Eigen case",
+      "plot_rigid_body_displacement_comparison.py"
+    ]
+  },
+  "c78419b": {
+    "summary": "Adds the beam-end reaction force and moment to the rigid-body RHS as an explicit term, and lets moorFV copy the BlockEigen rigid-body result into the motion state. The rigid-body rows are still an identity block, so the result is an explicit Newmark update, not an implicit solve.",
+    "details": [
+      "RigidBodyForceCoupling struct; RigidBodyStepData gains mass, momentOfInertia, centreOfRotation, attachmentPoint; RigidBodySolution gains velocity, angularMomentum, acceleration, torque",
+      "beamProperties keywords blockEigenForceCoupling and blockEigenKinematicCoupling; dynamicMeshDict keyword blockEigenAuthoritativeMotion",
+      "Kinematic option adds one-way beam-row -> rigid-body-column terms (Cw/pDelta, moment arm set to zero); beamModel::getRigidBodySolution",
+      "Adds two Codex .md notes, plot_rigidBodyAndBeam_new_vs_old.py and a regression check script (Alltest)"
+    ]
+  },
+  "de010c8": {
+    "summary": "Mainly adds rigid-body-row -> beam-column coefficients, so the appended block is two-way coupled when the kinematic option is on (the tutorial has it off). The message's 'attachment force history' change is only a renamed input file in the plot script.",
+    "details": [
+      "BlockEigenSolverOF: rigidBodyBeamForceWCoeff_, rigidBodyBeamForceThetaCoeff_, rigidBodyMomentArm_; localSpinTensor helper",
+      "Reciprocal terms are force stiffnesses (Cw/pDelta, CQTheta) placed in displacement rows without a dt^2/m scale",
+      "Moment arm now attachmentPoint - centreOfRotation",
+      "Adds BLOCK_EIGEN_SOLVER_COUPLING_CHANGES.md; plot script reads attachmentForcebeam.dat"
+    ]
+  },
+  "6bc4d04": {
+    "summary": "Adds blockEigenKinematicCouplingMode (staged or fullyImplicit). Staged, the tutorial default, sets the beam end to the body's current displacement as a fixed value and adds no off-diagonal terms, so the rigid-body rows are an uncoupled identity block. Only fullyImplicit adds coupling terms.",
+    "details": [
+      "beamProperties: blockEigenKinematicCouplingMode (default staged); dynamicMeshDict: beamAttachmentKinematics solvedByBlockEigen",
+      "coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C: end-face source uses blockEigenStagedAttachmentDisplacement_ in staged mode, no source in fullyImplicit mode",
+      "BlockEigenSolverOF: rigid-body unknowns become increments about rigidBodyAttachmentDisplacementPrevious_; coupling block only when rigidBodyKinematicCoupling_ (fullyImplicit)",
+      "RigidBodyStepData::solveAttachmentKinematicsInBlockEigen; adds two Codex development logs"
+    ]
+  },
+  "9e9ddd3": {
+    "summary": "Scales the reciprocal rigid-body-row coefficients by dt^2*beta/m so they act like a Newmark-scaled attachment stiffness. This code only runs in fullyImplicit mode, which none of the tutorial cases use. Adds three more tutorial cases.",
+    "details": [
+      "BlockEigenSolverOF: rigidBodyNewmarkDisplacementScale = sqr(deltaT)*rbNewmarkBeta/mass passed into convertFoamMatrixToEigenMatrix",
+      "Rigid-body rows get +scale*K on rigid-body columns and -scale*K on beam columns; torque terms and localSpinTensor removed",
+      "New cases rigidBodyAndBeam_ForceCoupledSolver, _fullTime, _shortTime (staged or force-only)",
+      "Adds rigidBodyImplicitAttachmentCoefficientChanges.txt"
+    ]
+  },
+  "a399e30": {
+    "summary": "Adds a Python script that parses two interFoam logs and compares run time, PIMPLE iterations and beam Newton iterations between the new and original coupling cases.",
+    "details": ["tutorials/plot_rigidBodyAndBeam_algorithm_efficiency_new_vs_old.py (compares rigidBodyAndBeam_fullTime with rigidBodyAndBeam_compareSixDoF_Eigen)"]
+  },
+  "778e43d": {
+    "summary": "Adds plots to the efficiency script: Newton iterations per time step, summed over fixed time intervals, and cumulative.",
+    "details": ["plot_rigidBodyAndBeam_algorithm_efficiency_new_vs_old.py: interval and cumulative Newton-iteration plots"]
+  },
+  "bda04a6": {
+    "summary": "Moves the six Codex development notes from the repository root into codexLogs/ and adds a PR summary PDF. The PDF described the work as monolithic coupling; f84a03a later corrects it.",
+    "details": [
+      "codexLogs/: the three .md notes and three .txt logs (renames only)",
+      "Adds codexLogs/rigidBodyCouplingPRSummary.pdf"
+    ]
+  },
+  "fb5d6c1": {
+    "summary": "Adds two comparison cases and groups the older cases under tutorials/rigidBodyAndBeam/. The 'monolithic' case uses staged mode, so it is still a partitioned scheme with an identity rigid-body block; the 'loop' case turns all BlockEigen coupling switches off.",
+    "details": [
+      "tutorials/rigidBodyAndBeam_monolithic: force coupling, staged kinematic coupling, solvedByBlockEigen, blockEigenAuthoritativeMotion",
+      "tutorials/rigidBodyAndBeam_loop: original partitioned coupling via sixDoFRigidBodyMotionFvBeam",
+      "Moves rigidBodyAndBeam, _compareSixDoF_Eigen, _coupledSolver, _ForceCoupledSolver, _fullTime, _short, _shortTime into tutorials/rigidBodyAndBeam/",
+      "Both plotting scripts now point at the monolithic and loop cases"
+    ]
+  },
+  "f84a03a": {
+    "summary": "Replaces the PR summary PDF with a version checked against the code. It states that staged-mode rigid-body rows are an uncoupled identity block and that FvBeamNewmark recomputes the body state, and swaps in the monolithic-vs-loop benchmark.",
+    "details": ["codexLogs/rigidBodyCouplingPRSummary.pdf (binary update)"]
+  },
+  "4ab6dc8": {
+    "summary": "Adds a PDF plan for a real monolithic beam / rigid-body coupling, which the later Phase 0-4 commits follow.",
+    "details": ["codexLogs/monolithicCouplingPlan.pdf (new binary)"]
+  }
+}

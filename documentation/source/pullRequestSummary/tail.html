@@ -1,0 +1,118 @@
+<h2 id="issues">5. Open issues found while preparing this summary</h2>
+<p>Each of these was checked against the current code (beamFoam <code>74ebab7</code>, moorFV <code>f1bd195</code>). None is fixed on the branch yet.</p>
+<table>
+  <tr><th style="width:34%">Where</th><th>Issue</th><th style="width:12%">From</th></tr>
+  <tr><td><code>beamModel.C:540–544</code></td><td>The "Missing E, G" <code>FatalErrorInFunction</code> ends with <code>endl</code>, not
+      <code>abort(FatalError)</code>, so a case with no E or G carries on with zero stiffness.</td><td>f534931</td></tr>
+  <tr><td><code>beamModel.C:579–582</code></td><td><code>startPatchName</code> and <code>endPatchName</code> are hard-coded to
+      <code>left</code> and <code>right</code>; any value in <code>beamProperties</code> is ignored.</td><td>cf11bd9</td></tr>
+  <tr><td><code>tutorials/rigidBodyAndBeam_*/0/beam/CQ</code>, <code>CM</code></td><td>Saved stiffness fields are read in preference to E and G
+      (<code>READ_IF_PRESENT</code>), so editing E in <code>beamProperties</code> has no effect.</td><td>fb5d6c1 and earlier cases</td></tr>
+  <tr><td>moorFV <code>sixDoFRigidBodyMotionFvBeam.C:312</code></td><td><code>static bool first</code>: acceleration relaxation also applies
+      on the first outer corrector of each step, mixing in the previous step's acceleration (a lag in <code>FvBeamNewmark</code>).</td><td>pre-existing</td></tr>
+  <tr><td><code>tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/</code> and other cases</td><td>Complete run output is committed:
+      670 files and 2.6 GB on disk for this case alone (about 121 million lines in ab56a8d). This makes up most of the PR diff.</td><td>ab56a8d</td></tr>
+  <tr><td><code>BlockEigenSolverOF/original_BlockEigenSolverOF.C/.H</code>, editor <code>#…#</code> files</td><td>Backup and editor files are tracked.</td><td>6c25265 and earlier</td></tr>
+  <tr><td>BlockEigen <code>staged</code> / <code>fullyImplicit</code> path, <code>blockEigen*</code> switches; moorFV <code>blockEigenAuthoritativeMotion</code></td>
+      <td>The earlier coupling path is still present alongside the monolithic one. It is a partitioned scheme, and <code>fullyImplicit</code> was never validated.</td><td>Feb – Aug 2026</td></tr>
+</table>
+<p class="small muted">Other mismatches between commit messages and diffs are noted on the commit cards above. Several are commits that don't compile on their own and are fixed in the next commit (e.g. e2272c1 and 95ad89d, fixed in f1bd715).</p>
+
+<h2 id="phase5">6. Phase 5: several mooring lines (plan)</h2>
+
+<h3>The problem</h3>
+<ul>
+  <li><b>Only one line is supported.</b> The monolithic coupling adds the body's six unknowns to <i>one</i> beam's BlockEigen system, and
+    <code>beamFoamCoupled</code> stops if the body has a second <code>finiteVolumeBeam</code> restraint.</li>
+  <li><b>The target case has four.</b> <code>mooringCase-H12T20</code> has four lines (<code>beamone</code> … <code>beamfour</code>). Each is a
+    separate restraint with its own beam region and its own <code>beamModel</code> (<code>finiteVolumeBeam.C:65–70</code>,
+    <code>beamModel::New</code> per restraint), so it has its own mesh and its own linear system. The body is a 3.144 kg floating box in waves.
+    It runs with <code>FvBeamNewmark</code>, <code>accelerationRelaxation 0.7</code> and 3 outer correctors.</li>
+</ul>
+
+<h3>Two ways to couple several lines</h3>
+<table>
+  <tr><th style="width:20%">Approach</th><th>How</th><th style="width:30%">Trade-offs</th></tr>
+  <tr><td><b>A. One combined matrix</b></td>
+      <td>Put every line and the body in one sparse system: body columns on each line's end cell, with the body rows summing all
+        attachment forces. Easiest if all lines live in one beamFoam region, which beamFoam already supports for several beams via cell zones
+        (<code>nBeams &gt; 1</code> in the <code>CQ_</code>/<code>CM_</code> set-up).</td>
+      <td>Reuses the Phase 1–2 code almost unchanged. But the case must be rebuilt with one beam region; the system grows with every line;
+        it is serial; and all lines share one Newton loop.</td></tr>
+  <tr><td><b>B. Static condensation</b> (recommended)</td>
+      <td>Each line keeps its own system. It is reduced to a 3×3 stiffness and a 3-vector residual at its attachment, and the body solves a 6×6
+        system with all lines' contributions. Each line then back-substitutes. This is the same Newton step as A, without approximation.</td>
+      <td>Keeps the current one-restraint-per-line set-up. Cost grows linearly with the number of lines, and lines can later run on different
+        processors. A single line reproduces today's results. Needs a refactor of the coupling interface.</td></tr>
+</table>
+
+<h3>Static condensation, in equations</h3>
+<p>The attachment is a pin, so each line passes only a force to the body.</p>
+<ul>
+  <li><b>Partition.</b> Split line i's Newton unknowns into its interior, Δu<sub>i</sub>, and its attachment displacement, Δw<sub>i</sub>
+    (3 components). Its linear system is then:
+    <div class="eq">[ K<sub>uu</sub>  K<sub>uw</sub> ; K<sub>wu</sub>  K<sub>ww</sub> ] [ Δu<sub>i</sub> ; Δw<sub>i</sub> ] = − [ r<sub>u</sub> ; r<sub>w</sub> ]</div></li>
+  <li><b>Condense.</b> Eliminating the interior gives the line's effective stiffness and residual at its attachment:
+    <div class="eq">S<sub>i</sub> = K<sub>ww</sub> − K<sub>wu</sub>K<sub>uu</sub><sup>−1</sup>K<sub>uw</sub>,&nbsp;&nbsp;&nbsp;
+      r̃<sub>i</sub> = r<sub>w</sub> − K<sub>wu</sub>K<sub>uu</sub><sup>−1</sup>r<sub>u</sub></div>
+    Both need only the factorisation BlockEigen already computes, plus three extra back-substitutions (the columns of
+    K<sub>uu</sub><sup>−1</sup>K<sub>uw</sub>).</li>
+  <li><b>Compatibility.</b> Each attachment moves with the body. With body unknowns Δq = (Δx, Δθ) and arm r<sub>i</sub> (from
+    <code>refAttachmentPt</code>):
+    <div class="eq">Δw<sub>i</sub> = T<sub>i</sub> Δq,&nbsp;&nbsp; T<sub>i</sub> = [ I&nbsp;&nbsp; −spin(R r<sub>i</sub>)·T(θ) ]</div>
+    These are the same terms as the Phase 2 rotation columns.</li>
+  <li><b>Body step.</b> The 6×6 body system sums every line's contribution:
+    <div class="eq">( K<sub>body</sub> + Σ<sub>i</sub> T<sub>i</sub><sup>T</sup> S<sub>i</sub> T<sub>i</sub> ) Δq = − ( R<sub>body</sub> + Σ<sub>i</sub> T<sub>i</sub><sup>T</sup> r̃<sub>i</sub> )</div></li>
+  <li><b>Back-substitution.</b> Each line recovers its interior update:
+    Δu<sub>i</sub> = − K<sub>uu</sub><sup>−1</sup>( r<sub>u</sub> + K<sub>uw</sub> T<sub>i</sub> Δq ).</li>
+</ul>
+<p>K<sub>body</sub> and R<sub>body</sub> are the existing <code>rigidBodyEnd</code> residuals and Jacobians (inertia, gyroscopic, damping, applied
+  load). Only the beam force term changes, from one line to a sum over lines.</p>
+
+<h3>Implementation steps</h3>
+<ol>
+  <li><b>Tidy first.</b> Remove the earlier staged / <code>fullyImplicit</code> path, and fix the tutorial <code>CQ</code>/<code>CM</code> override and the missing
+    <code>abort</code>. Then only one coupling path needs to change.</li>
+  <li><b>BlockEigen.</b> Add a way to return the condensed attachment block (S<sub>i</sub>, r̃<sub>i</sub>) from the current factorisation,
+    and to finish the line's Newton update for a given attachment increment Δw<sub>i</sub>. The current appended body rows become the single-line
+    special case.</li>
+  <li><b><code>beamModel</code> interface.</b> Replace "evolve with the body inside" with steps a coordinator can call: assemble and condense,
+    apply attachment increment, report convergence.</li>
+  <li><b>Coordinator.</b> Move the body state and Newton loop out of a single beam into a coordinator that owns
+    <code>rigidBodyEnd</code>; moorFV's <code>beamFoamCoupled</code> is the natural home. It collects every <code>finiteVolumeBeam</code>
+    restraint and, at each Newton iteration:
+    <ol type="a">
+      <li>has each line assemble and condense;</li>
+      <li>builds and solves the 6×6 system;</li>
+      <li>back-substitutes;</li>
+      <li>checks convergence of the body and every line.</li>
+    </ol></li>
+  <li><b>Diagnostics.</b> Add a per-line Jacobian check (finite differences of the condensed 6×6 tangent), extending <code>jacobianCheck</code>.</li>
+  <li><b>Parallel.</b> Keep every line on the master process at first, as now (<code>Pstream::master()</code> in
+    <code>applyRestraints</code> and <code>update</code>, then <code>Pstream::scatter</code> of the state). Later, lines can be spread over processors:
+    only S<sub>i</sub> and r̃<sub>i</sub> (12 numbers per line) need a <code>sumOp</code> reduction, and Δq a broadcast.</li>
+</ol>
+
+<h3>Validation</h3>
+<ul>
+  <li><b>One line:</b> the condensed path reproduces the current monolithic results to round-off. That covers the 54 <code>rigidBodyEnd</code>
+    checks and the <code>rigidBodyAndBeam_beamFoamCoupled</code> interFoam case.</li>
+  <li><b>Standalone beamFoam with several lines:</b>
+    <ul>
+      <li>two symmetric lines, where the vertical frequency must be √(Σk/m);</li>
+      <li>a four-line spread mooring with an offset, compared with converged partitioned coupling;</li>
+      <li>a line going slack.</li>
+    </ul></li>
+  <li><b><code>mooringCase-H12T20</code>:</b> monolithic with 1–3 outer correctors against <code>FvBeamNewmark</code> with converged
+    correctors. <b>Pass:</b> the 4-line case runs monolithically and matches the converged partitioned run.</li>
+</ul>
+
+<h3>Things to watch</h3>
+<ul>
+  <li><b>Fluid added mass.</b> The H12T20 body floats in water, and the fluid force is still explicit. Expect to keep 2–3 outer correctors with
+    <code>moveMeshOuterCorrectors yes</code>. What Phase 5 removes is the beam–body splitting and the need for <code>accelerationRelaxation</code>.</li>
+  <li><b>Slack lines.</b> S<sub>i</sub> tends to zero when a line is slack. The body system stays well posed through its inertia term
+    m/(βΔt²).</li>
+  <li><b>Seabed contact</b> (<code>groundContact</code>) only changes the line's own K<sub>uu</sub>, so condensation still applies.</li>
+  <li><b>Restarts.</b> The coordinator must write and read the body state; <code>rigidBodyEnd</code> has no restart support yet.</li>
+</ul>

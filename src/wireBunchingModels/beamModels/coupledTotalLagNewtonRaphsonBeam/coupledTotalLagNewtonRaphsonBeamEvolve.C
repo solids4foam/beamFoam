@@ -46,9 +46,11 @@ namespace beamModels
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-scalar coupledTotalLagNewtonRaphsonBeam::evolve()
+scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
 {
     beamModel::evolve();
+
+    countBeamSolve();
 
     const dictionary& beamDict = beamProperties();
 
@@ -157,19 +159,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
             const labelList& nei = mesh().neighbour();
 
-            W_.boundaryFieldRef().updateCoeffs();
-            Theta_.boundaryFieldRef().updateCoeffs();
-
-            const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-            // Update the coefficients of W_ and Theta_ equations
-            // These coefficients are inputs to the Jacobian matrix
-            updateEqnCoefficients();
-
             // SB: Initial accleration and velocity values at 0th iteration
             // Valid for Newmark-beta integration scheme
-            if (d2dt2SchemeName_ == "Newmark" && iOuterCorr() == 0)
+            if
+            (
+                d2dt2SchemeName_ == "Newmark"
+             && iOuterCorr() == 0
+             && runTime().timeIndex() != newmarkPredictorTimeIndex_
+            )
             {
+                newmarkPredictorTimeIndex_ = runTime().timeIndex();
+
                 // if (iOuterCorr() == 0)
                 // {
                 Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
@@ -188,6 +188,32 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                   *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
                 // }
             }
+
+            // Monolithic rigidBodyEnd: the attachment W holds the current
+            // body iterate with a zero boundary increment, so the body
+            // column carries the increment instead
+            if (rigidBodyEndMonolithic())
+            {
+                if
+                (
+                    runTime().timeIndex() <= rigidBodyEndPtr_().nJacobianChecks()
+                 && iOuterCorr() < 2
+                )
+                {
+                    checkRigidBodyEndJacobian();
+                }
+
+                setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_);
+            }
+
+            W_.boundaryFieldRef().updateCoeffs();
+            Theta_.boundaryFieldRef().updateCoeffs();
+
+            const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+
+            // Update the coefficients of W_ and Theta_ equations
+            // These coefficients are inputs to the Jacobian matrix
+            updateEqnCoefficients();
 
             //- Assembling the diagonal and off-diagonal contributions
             //- of DW_ and DTheta_ to solve in block-coupled
@@ -585,9 +611,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                 }
             }
             // Block coupled solver call
-
-            // Create Eigen linear solver
             BlockEigenSolverOF eigenSolver(d, l, u, own, nei);
+
+            if (rigidBodyEndMonolithic())
+            {
+                RigidBodyMonolithicCoupling coupling =
+                    rigidBodyEndMonolithicCoupling();
+
+                constrainRigidBodyEndCoupling(coupling);
+
+                eigenSolver.setMonolithicCoupling(coupling);
+            }
 
             // Create solution vector
             Field<scalarRectangularMatrix> solVec
@@ -599,6 +633,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // currentResidualNorm is the imbalance vector
             currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
             reduce(currentResidualNorm, sumOp<scalar>());
+            countNewtonIteration();
 
             if (iOuterCorr() == 0)
             {
@@ -623,12 +658,51 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             DW_.correctBoundaryConditions();
             DTheta_.correctBoundaryConditions();
 
+            // Monolithic rigidBodyEnd: the solve returns the body
+            // displacement and rotation increments; the attachment W
+            // follows from the updated body state
+            scalar rigidBodyEndIncrementSqr = 0;
+
+            if (rigidBodyEndMonolithic())
+            {
+                const vector dx = eigenSolver.bodyTranslationIncrement();
+                const vector dTheta =
+                    rigidBodyEndPtr_().rotation()
+                  ? eigenSolver.bodyRotationIncrement()
+                  : vector::zero;
+
+                rigidBodyEndIncrementSqr = magSqr(dx) + magSqr(dTheta);
+
+                rigidBodyEndX_ += dx;
+                rigidBodyEndTheta_ += dTheta;
+
+                const label patchI = rigidBodyEndPatchIndex_;
+                const vector WbNew =
+                    rigidBodyEndAttachmentW(rigidBodyEndX_, rigidBodyEndTheta_);
+
+                DW_.boundaryFieldRef()[patchI][0] =
+                    WbNew - W_.boundaryField()[patchI][0];
+                W_.boundaryFieldRef()[patchI][0] = WbNew;
+
+                // Welded: the end face turns with the updated body, exactly
+                // rather than by the linearised increment
+                if (rigidBodyEndPtr_().welded())
+                {
+                    const vector increment =
+                        rigidBodyEndRotationIncrement(rigidBodyEndTheta_);
+
+                    setWeldRotationIncrement(increment);
+                    DTheta_.boundaryFieldRef()[patchI][0] = increment;
+                }
+            }
+
             // Update all the solution and output variables for
             // the current (Newton) iteration loop
             updateSolutionVariables();
 
             // Calculating norm of primary correction variables DW_ & DTheta_
-            deltaXNorm = sqrt(sum(magSqr(solVec)));
+            deltaXNorm =
+                sqrt(sum(magSqr(solVec)) + rigidBodyEndIncrementSqr);
 
             // Calculating the norm of W_ and Theta_
             XNorm =

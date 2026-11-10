@@ -1,0 +1,634 @@
+Layout of the monolithic beam + rigid body matrix
+=================================================
+
+This note explains where every coefficient of the monolithic beam + rigid
+body system sits in the matrix built by
+BlockEigenSolverOF::convertFoamMatrixToEigenMatrix, what each body
+coupling block means, and how the index expressions in the code map to
+rows and columns.
+
+For the order of calls that build and solve the matrix, see
+monolithicRigidBodyCodePath.txt. For how the PIMPLE loop reaches the
+solver, see pimpleToRigidBodySolverCallChain.txt.
+
+Files (line numbers are written as <letter>:<line>):
+  B = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.C
+  R = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+  C = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+  D = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/RigidBodyCouplingData.H
+      (struct RigidBodyMonolithicCoupling, which holds all the body blocks)
+  E = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  RB = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.C
+  M = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamMatrix.C
+  K = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.C
+
+
+1. Blocks of six: translation first, then rotation
+---------------------------------------------------
+Every block of the matrix, for a beam cell or for the body, is 6 rows by
+6 columns, ordered translation first and then rotation:
+
+  Offset in the block   Beam cell rows / columns        Body rows / columns
+  --------------------  ------------------------------  ------------------------------
+  +0, +1, +2            force balance / DW  (x, y, z)    force balance / dx  (x, y, z)
+  +3, +4, +5            moment balance / DTheta (x,y,z)  moment balance / dtheta (x,y,z)
+
+The unknowns are Newton increments: DW and DTheta for every beam cell,
+and dx (body displacement) and dtheta (body step rotation vector) for
+the body. The body block comes after all the beam cells.
+
+Two starting indices are used in the code (B:100-101):
+
+    const label rbRow   = 6*d.size();            // first body row = first body column
+    const label beamRow = 6*c.attachmentCell;    // first row of the attachment cell
+
+So "+3" in an index always means "skip the three translation entries of
+this block and go to its three rotation entries".
+
+
+2. Naming of the coupling blocks: the name gives the ROWS
+----------------------------------------------------------
+The names of the beam-row coupling blocks describe the rows they sit in,
+not the columns. Their columns are always the body's columns.
+
+  Name                     Rows                                      Columns
+  -----------------------  ----------------------------------------  ----------------------------
+  beamWRowCoeff            attachment cell's force rows (+0..+2)     body translation (dx)
+  beamThetaRowCoeff        attachment cell's moment rows (+3..+5)    body translation (dx)
+  beamWRowRotCoeff         attachment cell's force rows (+0..+2)     body rotation (dtheta)
+  beamThetaRowRotCoeff     attachment cell's moment rows (+3..+5)    body rotation (dtheta)
+
+The body-row blocks are named after the body rows and the columns they
+multiply:
+
+  Name                     Rows                     Columns
+  -----------------------  -----------------------  ------------------------------------
+  bodyCoeff                body force rows          body translation (dx)
+  bodyTransRotCoeff        body force rows          body rotation (dtheta)
+  bodyWCoeff               body force rows          attachment cell DW
+  bodyThetaCoeff           body force rows          attachment cell DTheta
+  bodyRotTransCoeff        body moment rows         body translation (dx)
+  bodyRotCoeff             body moment rows         body rotation (dtheta)
+  bodyRotWCoeff            body moment rows         attachment cell DW
+  bodyRotThetaCoeff        body moment rows         attachment cell DTheta
+
+The beam's own blocks d, l and u only ever fill beam columns. The body
+columns are new, so nothing in the beam assembly overlaps the coupling
+blocks.
+
+
+3. The index expressions in convertFoamMatrixToEigenMatrix
+-----------------------------------------------------------
+Inside a double loop over rowI = 0..2 and colI = 0..2 (B:117-230), each
+block is entered with Eigen::Triplet(row, column, value). The four blocks
+of the attachment cell's rows use all four combinations of the two +3s:
+
+    (beamRow + rowI,     rbRow + colI)       beamWRowCoeff         force rows,  dx cols     (B:126)
+    (beamRow + 3 + rowI, rbRow + colI)       beamThetaRowCoeff     moment rows, dx cols     (B:134)
+    (beamRow + rowI,     rbRow + 3 + colI)   beamWRowRotCoeff      force rows,  dtheta cols (B:176)
+    (beamRow + 3 + rowI, rbRow + 3 + colI)   beamThetaRowRotCoeff  moment rows, dtheta cols (B:184)
+
+and the body rows:
+
+    (rbRow + rowI,       rbRow + colI)       bodyCoeff                                      (B:144)
+    (rbRow + rowI,       beamRow + colI)     bodyWCoeff                                     (B:152)
+    (rbRow + rowI,       beamRow + 3 + colI) bodyThetaCoeff                                 (B:160)
+    (rbRow + rowI,       rbRow + 3 + colI)   bodyTransRotCoeff                              (B:192)
+    (rbRow + 3 + rowI,   rbRow + colI)       bodyRotTransCoeff                              (B:202)
+    (rbRow + 3 + rowI,   rbRow + 3 + colI)   bodyRotCoeff                                   (B:210)
+    (rbRow + 3 + rowI,   beamRow + colI)     bodyRotWCoeff                                  (B:218)
+    (rbRow + 3 + rowI,   beamRow + 3 + colI) bodyRotThetaCoeff                              (B:226)
+
+Because rowI and colI each run over 0, 1, 2, every line fills a full 3x3
+block (all nine entries), not just three entries.
+
+No two coupling blocks share a position. Pairs such as beamThetaRowCoeff
+and beamThetaRowRotCoeff share their rows (the attachment cell's moment
+rows) but not their columns: the first uses rbRow + colI (dx), the second
+rbRow + 3 + colI (dtheta). For the example in section 4:
+
+  beamWRowCoeff          rows 12-14  cols 18-20
+  beamThetaRowCoeff      rows 15-17  cols 18-20
+  beamWRowRotCoeff       rows 12-14  cols 21-23
+  beamThetaRowRotCoeff   rows 15-17  cols 21-23
+  bodyCoeff              rows 18-20  cols 18-20
+  bodyWCoeff             rows 18-20  cols 12-14
+  bodyThetaCoeff         rows 18-20  cols 15-17
+  bodyTransRotCoeff      rows 18-20  cols 21-23
+  bodyRotTransCoeff      rows 21-23  cols 18-20
+  bodyRotCoeff           rows 21-23  cols 21-23
+  bodyRotWCoeff          rows 21-23  cols 12-14
+  bodyRotThetaCoeff      rows 21-23  cols 15-17
+
+(Had two triplets landed on the same position, A.setFromTriplets would
+add them together rather than overwrite one with the other.)
+
+The blocks whose rows depend on dtheta (all the ...Rot... ones) are only
+added when the body rotates (rotationActive): the loop does "continue"
+before them otherwise (B:164-167). Without rotation the body's rotation
+rows are set to the identity with a zero right-hand side instead
+(B:105-114), so dtheta = 0.
+
+
+4. The full matrix for a small example
+--------------------------------------
+Take a beam with 3 cells (0, 1, 2), the attachment patch next to cell 2,
+and internal faces 0 (owner 0, neighbour 1) and 1 (owner 1, neighbour 2).
+There are 3 x 6 = 18 beam rows plus 6 body rows: a 24 x 24 matrix, with
+beamRow = 6*2 = 12 and rbRow = 6*3 = 18.
+
+Each entry below is a 3x3 block. W means a cell's displacement increment
+(force-balance rows or columns) and Theta its rotation increment
+(moment-balance rows or columns). d2ThW means the moment-row / W-column
+part of cell 2's diagonal block, and so on.
+
+                cell 0             cell 1             cell 2 (attachment)         body
+                W0      Th0        W1      Th1        W2           Th2            x (dx)              th (dtheta)
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows  0- 2 W0| d0WW    d0WTh    | u0WW    u0WTh    |  0            0           |  0                   0                   |
+rows  3- 5 Th0| d0ThW  d0ThTh   | u0ThW   u0ThTh   |  0            0           |  0                   0                   |
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows  6- 8 W1| l0WW    l0WTh    | d1WW    d1WTh    |  u1WW         u1WTh       |  0                   0                   |
+rows  9-11 Th1| l0ThW  l0ThTh   | d1ThW   d1ThTh   |  u1ThW        u1ThTh      |  0                   0                   |
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows 12-14 W2|  0       0       | l1WW    l1WTh    |  d2WW         d2WTh       |  beamWRowCoeff       beamWRowRotCoeff    |
+rows 15-17 Th2|  0      0       | l1ThW   l1ThTh   |  d2ThW        d2ThTh      |  beamThetaRowCoeff   beamThetaRowRotCoeff|
+             +------------------+------------------+---------------------------+------------------------------------------+
+rows 18-20 x |  0       0       |  0       0       |  bodyWCoeff   bodyThetaCoeff    |  bodyCoeff           bodyTransRotCoeff   |
+rows 21-23 th|  0       0       |  0       0       |  bodyRotWCoeff bodyRotThetaCoeff|  bodyRotTransCoeff   bodyRotCoeff        |
+             +------------------+------------------+---------------------------+------------------------------------------+
+                cols 0-5           cols 6-11          cols 12-17                  cols 18-20           cols 21-23
+
+  unknowns:         [ DW0, DTh0, DW1, DTh1, DW2, DTh2, dx, dtheta ]
+  right-hand side:  [ source0, source1, source2, bodySource, bodyRotSource ]
+
+Where the beam blocks go (B:61-87 and B:234-279):
+  d[c]  at rows 6c..6c+5,      columns 6c..6c+5        (cell c's own block)
+  u[f]  at rows 6*own..+5,     columns 6*nei..+5       (owner row, neighbour column)
+  l[f]  at rows 6*nei..+5,     columns 6*own..+5       (neighbour row, owner column)
+None of them reach the body columns 18-23.
+
+Examples of the index arithmetic for this matrix:
+  beamThetaRowCoeff    (beamRow + 3 + rowI, rbRow + colI)     -> rows 15-17, cols 18-20
+  beamThetaRowRotCoeff (beamRow + 3 + rowI, rbRow + 3 + colI) -> rows 15-17, cols 21-23
+  bodyRotCoeff         (rbRow + 3 + rowI,   rbRow + 3 + colI) -> rows 21-23, cols 21-23
+
+The beam-only system (no monolithic body) is the top-left 18 x 18 part
+alone: BlockEigenSolverOF only adds the body block when the coupling is
+active.
+
+
+5. What is on the diagonal, and what is not
+-------------------------------------------
+An entry is on the matrix diagonal only when its row equals its column.
+A block lies on the diagonal only when its rows and columns start from
+the same offset:
+
+  Block           Row               Column            Example rows / cols
+  --------------  ----------------  ----------------  --------------------------------
+  d[c]            6c + i            6c + j            12-17 / 12-17 for cell 2
+  bodyCoeff       rbRow + rowI      rbRow + colI      18-20 / 18-20
+  bodyRotCoeff    rbRow + 3 + rowI  rbRow + 3 + colI  21-23 / 21-23
+
+beamThetaRowRotCoeff, at (beamRow + 3 + rowI, rbRow + 3 + colI), looks
+symmetric because of the two +3s, but the +3s are added to different
+starting points: beamRow (= 12, the attachment cell) and rbRow (= 18, the
+body). Its rows are 15-17 and its columns 21-23, so it is never on the
+diagonal. It is an off-diagonal block: to the right of cell 2's diagonal
+block and above bodyRotCoeff.
+
+  The neighbourhood of the attachment cell and the body:
+
+                     cell 2 (cols 12-17)       body x (18-20)        body th (21-23)
+  row W2  (12-14)    d2 (diagonal block)       beamWRowCoeff         beamWRowRotCoeff
+  row Th2 (15-17)    d2 (diagonal block)       beamThetaRowCoeff     beamThetaRowRotCoeff
+  row x   (18-20)    bodyWCoeff ...            bodyCoeff (diag)      bodyTransRotCoeff
+  row th  (21-23)    bodyRotWCoeff ...         bodyRotTransCoeff     bodyRotCoeff (diag)
+
+
+6. Where the body columns come from: the attachment face
+---------------------------------------------------------
+The attachment patch has a fixedValue W condition. Its boundary
+contributions to cell 2 (C:360-397 for the force rows, C:1056-1086 for
+the moment rows) are:
+
+    d[fc[faceI]](0,0) += -pCQW[faceI].xx()/pDelta[faceI];    // force rows, cell W columns   (C:370)
+    source[fc[faceI]](0,0) -= WContrib.x();                  // WContrib = CQW.DW_b/pDelta    (C:395)
+
+    d[fc[faceI]](3,0) -= pCMQW[faceI].xx()/pDelta[faceI];    // moment rows, cell W columns  (C:1059)
+    source[fc[faceI]](3,0) -= curSource.x();                 // curSource = CMQW.DW_b/pDelta  (C:1084)
+
+So the force and moment balance of cell 2 depend on two displacement
+increments:
+  - the cell's own DW2, with coefficient -Kb (force rows) or -KbM (moment
+    rows). These go into d2WW and d2ThW, in cell 2's W columns;
+  - the attachment face's DW_b, with coefficient +Kb or +KbM, where
+        Kb  = CQW_b/pDelta     (R:581)
+        KbM = CMQW_b/pDelta    (R:582)
+In effect, the end-face force and moment depend on DW_b - DW2 across the
+half-cell from the cell centre to the face.
+
+Beam only: DW_b is known (prescribed), so its term is moved to the
+right-hand side. These are the source lines above.
+
+Monolithic:
+  1. setRigidBodyEndIterate (R:463, W_.storePrevIter()) stores the
+     boundary value as the previous iterate, so DW_b = 0 in the boundary
+     condition and those source terms vanish.
+  2. The face really moves with the body: DW_b = dx - Sr T dtheta (the
+     rotation moves the attachment point through the arm r).
+  3. So the +Kb and +KbM coefficients are moved from the source into
+     columns for dx and dtheta. These columns are the beam-row coupling
+     blocks:
+
+    coupling.beamWRowCoeff        = Kb;                       // R:633
+    coupling.beamThetaRowCoeff    = KbM;                      // R:634
+    coupling.beamWRowRotCoeff     = -(Kb & SrT);              // R:649
+    coupling.beamThetaRowRotCoeff = -(KbM & SrT);             // R:650
+
+The pairs therefore sit in the same rows but in different columns:
+  d2WW  (contains -Kb)   with  beamWRowCoeff     (+Kb)
+  d2ThW (contains -KbM)  with  beamThetaRowCoeff (+KbM)
+(d2WW also holds the internal-face and inertia terms of cell 2.)
+
+
+7. The rotation terms: arm r, Sr and T
+--------------------------------------
+When the body turns by dtheta, the attachment point moves, because it is
+at the end of the arm r from the centre of mass (R:625-627):
+
+    const vector r   = body.arm(rigidBodyEndTheta_);        // CoM -> attachment point
+    const tensor Sr  = *r;                                  // r x (.) as a matrix
+    const tensor SrT = (Sr & body.rotationJacobian(rigidBodyEndTheta_));
+
+T (rotationJacobian) turns a change of the step rotation vector into the
+spatial rotation of the body, T dtheta. The attachment point then moves
+by (T dtheta) x r = -Sr T dtheta. Multiplying by the face coefficients
+gives the rotation columns of the beam rows:
+  beamWRowRotCoeff     = -(Kb  & SrT)   the end cell's force balance per unit dtheta
+  beamThetaRowRotCoeff = -(KbM & SrT)   the end cell's moment balance per unit dtheta
+
+
+8. All the body coupling blocks
+-------------------------------
+Built in rigidBodyEndMonolithicCoupling (R:568 onwards). Qb is the
+attachment face force (the beam pushes on the body with -Qb), dcW and
+dcTheta are the attachment cell's boundary-only diagonal blocks (how the
+face force depends on the cell's DW and DTheta).
+
+  Block                  Value (pin joint)                                      Line
+  ---------------------  -----------------------------------------------------  -----
+  beamWRowCoeff          Kb                                                     R:633
+  beamThetaRowCoeff      KbM                                                    R:634
+  bodyCoeff              translationalJacobian*I + Kb                           R:639
+                         (= m/(beta dt^2) + damping, plus Kb)
+  bodyWCoeff             dcW                                                    R:640
+  bodyThetaCoeff         dcTheta                                                R:641
+  bodySource             -translationalResidual(x, -Qb)                         R:643
+  beamWRowRotCoeff       -(Kb & SrT)                                            R:649
+  beamThetaRowRotCoeff   -(KbM & SrT)                                           R:650
+  bodyTransRotCoeff      -(Kb & SrT)                                            R:651
+  bodyRotTransCoeff      Sr & Kb                                                R:656
+  bodyRotCoeff           rotationalInertiaJacobian + ((*Qb) & SrT)              R:657
+                         - (Sr & Kb & SrT)
+  bodyRotWCoeff          Sr & dcW                                               R:661
+  bodyRotThetaCoeff      Sr & dcTheta                                           R:662
+  bodyRotSource          -rotationalResidual(theta, -Qb)                        R:664
+
+Welded joint: the end face also turns with the body, so the end-face
+rotation's own coefficients are added to the rotation blocks, in the same
+positions (R:695-707):
+    beamWRowRotCoeff     += CF & T
+    beamThetaRowRotCoeff += CM & T
+    bodyTransRotCoeff    += CF & T
+    bodyRotCoeff         += (Sr & CF & T) + (CMb & T)
+    bodyRotThetaCoeff    -= CMTheta_b/pDelta
+and bodyRotSource includes the end-face moment Mb.
+
+Constraints: constrainRigidBodyEndCoupling (R:714 onwards) projects the
+body columns onto the free directions (on the right, & Pt or & Pr) and
+the body rows onto the free directions (on the left, Pt & or Pr &). It
+adds (I - P), scaled like the block, to bodyCoeff and bodyRotCoeff, so
+the constrained increments solve (I - P) dx = 0 and stay zero.
+
+
+9. What the coefficients are, and where they come from in the code
+-------------------------------------------------------------------
+Section 8 lists the coupling blocks. This section explains every
+quantity they are built from, from the beam's basic quantities up.
+
+All the coupling blocks are built in one function,
+rigidBodyEndMonolithicCoupling() (R:568-712), from three groups of
+ingredients:
+  1. the beam's face stiffnesses, computed every Newton iteration in
+     updateEqnCoefficients();
+  2. the attachment cell's boundary-only matrix entries;
+  3. the rigid body's Newmark residuals and their derivatives, in
+     rigidBodyEnd.C.
+
+Notation: *v (OpenFOAM), spin(v) and spinTensor(v) all mean the
+cross-product matrix, so (*v) & a = v x a.
+
+
+9.1 Beam quantities on each face (updateEqnCoefficients, E:699-778)
+
+Material stiffness, in the cross-section's own axes (constructor K:542-580,
+or read from 0/<beam>/CQ and CM if those files exist):
+  CQ = diag(EA, GA, GA)      axial and shear stiffness [N]
+  CM = diag(GJ, EIyy, EIzz)  torsion and bending stiffness [N m^2]
+
+Current state on each face:
+  Lambdaf = Lambdaf_ & refLambdaf_ (E:704)   the cross-section's current rotation
+  R'      = dRdS = dR0/ds + snGrad(W)       the current tangent
+  Gamma                                     the strain
+  K                                         the curvature
+  Q       = Lambdaf CQ Gamma                the force
+  M       = Lambdaf CM K                    the moment
+
+  Coefficient          Formula                                   Meaning
+  -------------------  ----------------------------------------  ------------------------------------------
+  CQW_ (E:706)         Lambdaf CQ Lambdaf^T                      Stiffness rotated into global axes: change
+                                                                 in face force per unit change in strain.
+                                                                 Divided by a length it gives N/m.
+  explicitQ_ (E:708)   Lambdaf CQ Gamma                          The face force at the current iterate.
+  explicitM_ (E:710)   Lambdaf CM K                              The face moment at the current iterate.
+  CQTheta_ (E:712)     CQW spin(R') - spin(Q)                    Change in face force when the cross-section
+                                                                 turns by dtheta: the first term changes the
+                                                                 strain, the second rotates the existing
+                                                                 force.
+  CQDTheta_ (E:723)    Lambdaf CDQDK Lambdaf^T                   Kirchhoff-beam term. Marked "NOT USED",
+                                                                 normally zero.
+  CMTheta_ (E:725)     Lambdaf CM Lambdaf^T                      Bending/torsion stiffness in global axes.
+                                                                 Divided by a length it gives moment per unit
+                                                                 rotation difference.
+  CMTheta2_ (E:729)    -spin(M)                                  Geometric term: turning the section rotates
+                                                                 the existing moment.
+  CMQW_ (E:732)        1/2 (spin(R') CQW - spin(Q)) Delta        Change in the R' x Q moment term per unit
+                                                                 face displacement, over half the face
+                                                                 spacing Delta. Doubled on a boundary face
+                                                                 (E:774), so it uses the full cell-to-face
+                                                                 distance there.
+  CMQTheta_ (E:744)    1/2 (spin(R') CQW spin(R')                The same R' x Q term per unit cross-section
+                            - spin(R') spin(Q)) Delta            rotation (= spin(R') CQTheta). Also doubled
+                                                                 on boundaries.
+
+Why CMQW exists: the Simo-Reissner moment balance is M' + R' x Q + m = 0.
+If a face moves by DW, both R' (by DW/Delta) and Q (by CQW DW/Delta)
+change:
+    d(R' x Q) = (DW/Delta) x Q + R' x (CQW DW/Delta)
+              = [spin(R') CQW - spin(Q)] DW/Delta
+
+
+9.2 From the face to the attachment cell: Kb and KbM (R:576-582)
+
+pDelta is the distance from the attachment cell's centre to the
+attachment face.
+
+    const tensor Kb  = CQW_.boundaryField()[patchI][faceI]/pDelta;    // R:581  [N/m]
+    const tensor KbM = CMQW_.boundaryField()[patchI][faceI]/pDelta;   // R:582  [N]
+
+  Kb   change in the end cell's force balance per unit displacement of
+       the attachment face. Axially about EA/pDelta: a spring over the
+       half-cell.
+  KbM  = spin(R'_b) CQW_b - spin(Q_b) (the doubled CMQW divided by pDelta):
+       the same for the cell's moment balance.
+
+They are the coefficients the fixed-value W condition uses in C:360-397
+and C:1056-1086, where with the opposite sign they multiply the cell's
+own W (d -= CQW/pDelta, d(3..5, 0..2) -= CMQW/pDelta).
+
+
+9.3 The attachment cell's boundary-only terms: dcW, dcTheta, Qb (R:584-622)
+
+The function assembles only the boundary conditions into a fresh, empty
+matrix (assembleBoundaryConditions(dB, lB, uB, sB), R:604), then reads
+the attachment cell's entries:
+
+    const scalarSquareMatrix& dc = dB[cellI];
+    const vector Qb(-sB[cellI](0,0), -sB[cellI](1,0), -sB[cellI](2,0));   // R:607
+    dcW     = dc rows 0-2, cols 0-2                                       // R:609
+    dcTheta = dc rows 0-2, cols 3-5                                       // R:615
+
+  Qb       The attachment-face force at the current iterate, as the beam
+           equations see it. The boundary source is -explicitQ_b (C:526);
+           for a pin it also gets the correction that enforces zero
+           moment. Because setRigidBodyEndIterate makes DW_b = 0, the
+           displacement source term drops out. The beam pushes on the
+           body with -Qb.
+  dcW      How the face force depends on the cell's own DW: -Kb. For a
+           welded joint it also includes -CQDTheta/pDelta (normally zero).
+  dcTheta  How the face force depends on the cell's own DTheta.
+             Pin: the attachment patch's Theta condition is
+             momentBeamRotationNR with zero moment. The face rotation is
+             removed through that condition, which leaves
+             CQTheta inv(CMTheta/pDelta + CMTheta2) CMTheta/pDelta
+             (C:414-435).
+             Welded: Theta is fixed, so this is 0.
+
+So, linearised, the face force is
+    Qb + Kb DW_b + dcW DW_cell + dcTheta DTheta_cell,
+and for a pin that is
+    Qb + Kb (DW_b - DW_cell) + dcTheta DTheta_cell.
+
+
+9.4 Body quantities (rigidBodyEnd.C)
+
+Translation, with x = body displacement:
+  predictor (RB:430):        x_pred = x0 + dt v0 + dt^2 (1/2 - beta) a0
+  acceleration:              a = (x - x_pred)/(beta dt^2)
+  velocity:                  v = v0 + dt((1 - gamma) a0 + gamma a)
+  totalForce(F)              = F + externalForce + m g. In moorFV,
+                             externalForce holds the fluid force, the
+                             weight and the other restraints, and g = 0.
+  translationalResidual(x, F) (RB:444):
+                             m/(beta dt^2) (x - x_pred) + c v(x) - totalForce(F)
+  translationalJacobian() (RB:457):
+                             m/(beta dt^2) + c gamma/(beta dt),
+                             the derivative of that residual with respect to x
+
+Rotation, with theta = the step rotation vector and R(theta) = exp(theta) Q0:
+  inertia(theta) (RB:177):   J = R diag(J_body) R^T
+  angularPredictor() (RB:141):
+                             theta_pred = dt omega0 + dt^2 (1/2 - beta) alpha0
+  angular acceleration:      alpha = (theta - theta_pred)/(beta dt^2)
+  angular velocity:          omega = omega0 + dt((1 - gamma) alpha0 + gamma alpha)
+  rotationalResidual(theta, F, M) (RB:493):
+                             J alpha + omega x (J omega) + c_r omega - M_ext - r x F - M
+  rotationalInertiaJacobian(theta) (RB:518), the derivative of the
+  inertial part with respect to theta:
+        J/(beta dt^2)
+      + (-spin(J alpha) + J spin(alpha)) T
+      + gamma/(beta dt) (spin(omega) J - spin(J omega) + c_r I)
+    The terms are, in order: change of alpha, J turning with the body,
+    and the gyroscopic and damping terms through omega.
+  rotationJacobian(theta) (RB:544):
+        T = I + a spin(theta) + b spin(theta)^2,
+        a = (1 - cos|theta|)/|theta|^2,  b = (|theta| - sin|theta|)/|theta|^3
+    A change dtheta of the step rotation vector turns the body by
+    T dtheta in global axes.
+
+Arm and its cross-product matrices (R:625-627):
+  r   = arm(theta) = R(theta) armBody (RB:477). armBody is the
+        CoM -> attachment vector in body axes, set from
+        attachmentPoint - centreOfMass (RB:347-348).
+  Sr  = *r, so Sr a = r x a.
+  SrT = Sr T. A body rotation dtheta moves the attachment point by
+        (T dtheta) x r = -SrT dtheta.
+
+
+9.5 The 12 coupling blocks (pin joint, R:631-666)
+
+Beam rows (end cell): how the beam's equations see the body.
+
+  Block                  Value          Why
+  ---------------------  -------------  -----------------------------------------------
+  beamWRowCoeff          Kb             The face moves by dx, so the end cell's force
+                                        balance changes by Kb dx.
+  beamThetaRowCoeff      KbM            Same, for the end cell's moment balance.
+  beamWRowRotCoeff       -Kb SrT        The face moves by -SrT dtheta.
+  beamThetaRowRotCoeff   -KbM SrT       Same, for the moment balance.
+
+Body force rows. The residual is m a + c v - F_ext + Qb, since the beam
+pushes the body with -Qb.
+
+  Block                  Value                            Why
+  ---------------------  -------------------------------  --------------------------------------
+  bodyCoeff              translationalJacobian I + Kb     Inertia and damping, plus Qb changing
+                                                          as the face moves with dx.
+  bodyWCoeff             dcW                              Qb depends on the end cell's DW.
+  bodyThetaCoeff         dcTheta                          Qb depends on the end cell's DTheta.
+  bodyTransRotCoeff      -Kb SrT                          Qb changes when rotation moves the face.
+  bodySource             -translationalResidual(x, -Qb)   Minus the residual (right-hand side).
+
+Body moment rows. The residual is
+J alpha + omega x J omega + c_r omega - M_ext + r x Qb.
+
+  Block                  Value                            Why
+  ---------------------  -------------------------------  --------------------------------------
+  bodyRotTransCoeff      Sr Kb                            r x (change in Qb from dx).
+  bodyRotCoeff           rotationalInertiaJacobian        Inertia; the arm turning (dr x Qb);
+                         + (*Qb) SrT - Sr Kb SrT          Qb changing as the face moves through
+                                                          the arm.
+  bodyRotWCoeff          Sr dcW                           r x (change in Qb from the cell's DW).
+  bodyRotThetaCoeff      Sr dcTheta                       r x (change in Qb from the cell's
+                                                          DTheta).
+  bodyRotSource          -rotationalResidual(theta, -Qb)  Minus the residual.
+
+bodyRotCoeff, step by step: d(r x Qb) = dr x Qb + r x dQb.
+  - With dr = -SrT dtheta, the first term is
+        dr x Qb = -Qb x dr = (*Qb) SrT dtheta.
+  - With dQb = Kb(-SrT dtheta), the second term is
+        r x dQb = -Sr Kb SrT dtheta.
+
+
+9.6 Welded joint: extra terms (R:670-708)
+
+The end face also turns with the body by T dtheta, so it brings in the
+beam's rotation coefficients at the face. First the face coefficients:
+
+    const tensor T   = body.rotationJacobian(theta);                    // R:675
+    const tensor CF  = CQTheta_b + CQDTheta_b/pDelta;                   // R:677  face force per face rotation
+    const tensor CMb = CMTheta_b/pDelta + CMTheta2_b;                   // R:683  end-face moment per face rotation
+    const tensor CM  = CMb + CMQTheta_b;                                // R:687  cell moment row per face rotation
+    const vector Mb  = explicitM_b + CMb (pending boundary increment);  // R:692  end-face moment
+
+These are added to the blocks:
+
+    beamWRowRotCoeff     += CF T;        beamThetaRowRotCoeff += CM T;
+    bodyTransRotCoeff    += CF T;        bodyRotCoeff         += Sr CF T + CMb T;
+    bodyRotThetaCoeff    -= CMTheta_b/pDelta;
+    bodyRotSource         = -rotationalResidual(theta, -Qb, -Mb);   // the body also feels -Mb
+
+
+9.7 Constraints (R:714-757)
+
+constrainRigidBodyEndCoupling uses Pt and Pr, the projections onto the
+free translation and rotation directions:
+  - body columns are multiplied on the right (& Pt, & Pr);
+  - body rows are multiplied on the left (Pt &, Pr &);
+  - (I - P), scaled to the block's size, is added to bodyCoeff and
+    bodyRotCoeff.
+As a result, the constrained increments solve (I - P) dx = 0 and stay
+zero.
+
+
+9.8 Where the beam's own blocks d, l, u come from
+
+They are built by assembleMatrixCoefficients (M:55) from the same face
+coefficients (CQW, CQTheta, CMTheta, CMTheta2, CMQW, CMQTheta, divided by
+the face spacing; e.g. u(0..2, 0..2) += CQW/Delta and d(own) -= CQW/Delta
+at M:84-100), plus the beam's own inertia added in evolveBeam. The
+boundary conditions then add the boundary-face terms (file C). So the
+same face stiffnesses describe both beam-beam coupling between cells and
+beam-body coupling at the attachment face. The only difference is that
+at the attachment face, the "other side" is the body.
+
+
+10. Why the Newmark predictor has no beta dt^2 a_{n+1} term
+===========================================================
+
+predictor() (RB:430-435) returns
+
+    x_pred = x0 + dt v0 + dt^2 (1/2 - beta) a0
+
+which looks like Newmark-beta with the beta dt^2 a_{n+1} term left out.
+Nothing is left out: that term is the unknown that the Newton solve finds.
+
+10.1 Split the Newmark update into known and unknown parts
+
+    x_{n+1} = x0 + dt v0 + dt^2 (1/2 - beta) a0  +  beta dt^2 a_{n+1}
+              \_________ x_pred (known) ______/     \___ unknown __/
+
+Everything in x_pred comes from step n, so it is fixed before the step
+starts. The last term needs a_{n+1}, which depends on the beam force at
+n+1, which depends on x_{n+1}. That is the implicit part.
+
+Rearranging for the acceleration:
+
+    a_{n+1} = (x_{n+1} - x_pred)/(beta dt^2)
+
+which is exactly what the code uses (velocityAt, RB:168-174, and the
+residual):
+
+    translationalResidual(x, F) (RB:444-454)
+      =  inertiaCoefficient()*(x - predictor())    // m/(beta dt^2)(x - x_pred) = m a_{n+1}
+       + linearDamping_*velocityAt(x)              // c v_{n+1}
+       - totalForce(beamForce)                     // F_{n+1}
+
+So the residual is m a_{n+1} + c v_{n+1} - F_{n+1} = 0, with a_{n+1}
+written in terms of the unknown displacement x. The beta dt^2 a_{n+1}
+term is inside (x - x_pred). When Newton converges on x, the full Newmark
+equation, including that term, is satisfied.
+
+10.2 Why x_pred cannot contain beta dt^2 a_pred
+
+  - a_{n+1} is not known until x_{n+1} has been solved, so it cannot go
+    into a quantity evaluated before the solve.
+  - It would count the term twice. The residual divides (x - x_pred) by
+    beta dt^2 to recover a_{n+1}. If x_pred already held
+    beta dt^2 a_{n+1}, then (x - x_pred) would be zero at the solution
+    and the inertia would disappear.
+
+"Predictor" here has its standard meaning (Hughes' x-tilde): the
+position the body would reach if a_{n+1} were zero. It is not a guess
+of x_{n+1}.
+
+10.3 The same pattern elsewhere
+
+  - Rotation: angularPredictor() (RB:141-146)
+        theta_pred = dt omega0 + dt^2 (1/2 - beta) alpha0
+    and angularAcceleration(theta) = (theta - theta_pred)/(beta dt^2)
+    (RB:149-155).
+  - Partitioned path: newmarkDisplacement() (RB:407-427) freezes the
+    beam force, so a_{n+1} can be computed first from m a + c v = F and
+    then written out explicitly:
+        x0 + dt v0 + dt^2 ((1/2 - beta) a0 + beta aNew)
+    This is the "textbook" form. It is algebraically the same as the
+    monolithic form; the only difference is whether a_{n+1} is known
+    before x_{n+1} or solved together with it.
+
+Because the monolithic path solves for displacement and recovers the
+acceleration from it, the body's diagonal coefficient is
+    m/(beta dt^2)                  (inertiaCoefficient(), RB:438-441)
+plus c gamma/(beta dt) from the damping (translationalJacobian(),
+RB:457-462).

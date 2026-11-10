@@ -1,0 +1,44 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    arch        "LSB;label=32;scalar=64";
+    class       surfaceTensorField;
+    location    "0";
+    object      refLambdaf;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 0 0 0 0 0 0];
+
+internalField   uniform (0.847998304005 0 -0.529998940003 0 1 0 0.529998940003 0 0.847998304005);
+
+boundaryField
+{
+    left
+    {
+        type            calculated;
+        value           uniform (0.847998304005 0 -0.529998940003 0 1 0 0.529998940003 0 0.847998304005);
+    }
+    right
+    {
+        type            calculated;
+        value           uniform (0.847998304005 0 -0.529998940003 0 1 0 0.529998940003 0 0.847998304005);
+    }
+    beam
+    {
+        type            empty;
+        value           nonuniform List<tensor> 0();
+    }
+}
+
+
+// ************************************************************************* //
