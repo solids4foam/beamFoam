@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""
+Write the rigidBodyEnd body of a beamFoam case as VTK, for ParaView.
+
+beamFoam writes the body's motion only to
+postProcessing/rigidBodyEnd/<startTime>/rigidBodyEnd.dat, so the body does not
+show when the case is opened in ParaView. This script draws it as a box centred
+on the centre of mass, turned with the body, and an arm from the centre of mass
+to the attachment point on the beam, at every time directory of the case:
+
+    VTK/rigidBody/rigidBody_<time>.vtk
+    VTK/rigidBody.vtk.series     (open this in ParaView, with the case.foam)
+
+The time directories match the beam fields, so with the beam shown through
+Warp By Vector (pointW) the two animate together.
+
+Position:    centreOfMass + disp
+Orientation: R = exp(rotation) . orientation^T (rotation is logMap(Q) in the
+             history file, Q the body-to-global orientation)
+
+Usage: writeRigidBodyVTK [case ...] [--size L]   (default case: .)
+       --size  side of the body box [m] (default 0.8 x arm length, or 0.1)
+"""
+
+import json
+import math
+import os
+import re
+import sys
+
+
+def parse_vector(text, key):
+    m = re.search(rf"^\s*{key}\s+\(([^)]*)\)\s*;", text, flags=re.M)
+    return [float(v) for v in m.group(1).split()] if m else None
+
+
+def rigid_body_dict(case):
+    with open(os.path.join(case, "constant", "beamProperties")) as f:
+        text = f.read()
+    # Drop comments
+    text = re.sub(r"//.*", "", text)
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    i = text.find("rigidBodyEnd")
+    if i < 0:
+        sys.exit(f"{case}: no rigidBodyEnd in constant/beamProperties")
+    return text[i:]
+
+
+def attachment_point(case, patch):
+    """Mean of the patch's face centres, from the undeformed mesh"""
+    mesh = os.path.join(case, "constant", "polyMesh")
+
+    def read_list(name):
+        with open(os.path.join(mesh, name)) as f:
+            text = f.read()
+        text = text[text.find("\n(", text.find("FoamFile")) + 1:]
+        return text
+
+    pts = [
+        [float(c) for c in m.split()]
+        for m in re.findall(r"^\(([^()]*)\)$", read_list("points"), flags=re.M)
+    ]
+    # faceList: n(...) on one line, or n ( ... ) over several lines
+    tokens = re.findall(r"\d+|\(|\)", read_list("faces").split("//")[0])
+    faces = []
+    i = 1  # skip the outer "("
+    while i < len(tokens) and tokens[i] != ")":
+        n = int(tokens[i])
+        faces.append([int(t) for t in tokens[i + 2:i + 2 + n]])
+        i += n + 3
+    with open(os.path.join(mesh, "boundary")) as f:
+        boundary = f.read()
+    m = re.search(
+        rf"\b{patch}\s*\{{[^}}]*nFaces\s+(\d+);[^}}]*startFace\s+(\d+);",
+        boundary,
+    )
+    if not m:
+        return None
+    n, start = int(m.group(1)), int(m.group(2))
+    c = [0.0, 0.0, 0.0]
+    for face in faces[start:start + n]:
+        for j in range(3):
+            c[j] += sum(pts[p][j] for p in face)/len(face)/n
+    return c
+
+
+def rotation_tensor(theta):
+    """Rodrigues: rows of R with R.b = rotation of b by theta"""
+    angle = math.sqrt(sum(t*t for t in theta))
+    if angle < 1e-12:
+        return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    k = [t/angle for t in theta]
+    c, s = math.cos(angle), math.sin(angle)
+    K = [[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]]
+    KK = [[sum(K[i][l]*K[l][j] for l in range(3)) for j in range(3)]
+          for i in range(3)]
+    return [[(i == j) + s*K[i][j] + (1 - c)*KK[i][j] for j in range(3)]
+            for i in range(3)]
+
+
+def matmul(A, B):
+    return [[sum(A[i][l]*B[l][j] for l in range(3)) for j in range(3)]
+            for i in range(3)]
+
+
+def apply(R, v):
+    return [sum(R[i][j]*v[j] for j in range(3)) for i in range(3)]
+
+
+def box(centre, axes, half):
+    """8 corners of a box: centre + sum(+-half[k] axes[k])"""
+    return [
+        [centre[i] + sx*half[0]*axes[0][i] + sy*half[1]*axes[1][i]
+         + sz*half[2]*axes[2][i] for i in range(3)]
+        for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)
+    ]
+
+
+# Quads of a box from box() corner order (index = 4 ix + 2 iy + iz)
+BOX_FACES = [
+    (0, 1, 3, 2), (4, 6, 7, 5),  # -x, +x
+    (0, 4, 5, 1), (2, 3, 7, 6),  # -y, +y
+    (0, 2, 6, 4), (1, 5, 7, 3),  # -z, +z
+]
+
+
+def read_history(case):
+    root = os.path.join(case, "postProcessing", "rigidBodyEnd")
+    rows = {}
+    header = None
+    for start in sorted(os.listdir(root), key=float):
+        with open(os.path.join(root, start, "rigidBodyEnd.dat")) as f:
+            for line in f:
+                if line.startswith("#"):
+                    header = line[1:].split()
+                    continue
+                v = line.split()
+                if v:
+                    rows[float(v[0])] = dict(zip(header, map(float, v)))
+    return rows
+
+
+def time_dirs(case):
+    times = []
+    for name in os.listdir(case):
+        try:
+            t = float(name)
+        except ValueError:
+            continue
+        if os.path.isdir(os.path.join(case, name)):
+            times.append((t, name))
+    return sorted(times)
+
+
+def write_case(case, size):
+    rb = rigid_body_dict(case)
+    com0 = parse_vector(rb, "centreOfMass")
+    Qinit = parse_vector(rb, "orientation") or [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    Qinit = [Qinit[0:3], Qinit[3:6], Qinit[6:9]]
+    QinitT = [[Qinit[j][i] for j in range(3)] for i in range(3)]
+    m = re.search(r"^\s*patch\s+(\w+)\s*;", rb, flags=re.M)
+    patch = m.group(1) if m else "right"
+    attach0 = attachment_point(case, patch)
+    if com0 is None:
+        com0 = attach0
+    arm0 = [attach0[i] - com0[i] for i in range(3)]
+    armLength = math.sqrt(sum(a*a for a in arm0))
+
+    if size is None:
+        size = 0.8*armLength if armLength > 1e-9 else 0.1
+    half = [0.5*size]*3
+
+    rows = read_history(case)
+    hist_times = sorted(rows)
+    if not hist_times:
+        sys.exit(f"{case}: empty rigidBodyEnd history")
+    dt = hist_times[1] - hist_times[0] if len(hist_times) > 1 else 1
+
+    outDir = os.path.join(case, "VTK", "rigidBody")
+    os.makedirs(outDir, exist_ok=True)
+    series = []
+    maxPinError = 0
+
+    for t, name in time_dirs(case):
+        if t < hist_times[0] - 0.5*dt:
+            row = None  # initial state
+        else:
+            tr = min(hist_times, key=lambda h: abs(h - t))
+            if abs(tr - t) > 0.5*dt:
+                continue
+            row = rows[tr]
+
+        if row:
+            disp = [row["dispX"], row["dispY"], row["dispZ"]]
+            theta = [row["rotationX"], row["rotationY"], row["rotationZ"]]
+            omega = [row["omegaX"], row["omegaY"], row["omegaZ"]]
+            vel = [row["velX"], row["velY"], row["velZ"]]
+            attachDisp = [row["attachDispX"], row["attachDispY"],
+                          row["attachDispZ"]]
+        else:
+            disp = theta = omega = vel = attachDisp = [0, 0, 0]
+
+        # Turn from the initial orientation
+        R = matmul(rotation_tensor(theta), QinitT)
+        com = [com0[i] + disp[i] for i in range(3)]
+        axes = [apply(R, [float(i == k) for i in range(3)]) for k in range(3)]
+        armNow = apply(R, arm0)
+        pin = [com[i] + armNow[i] for i in range(3)]
+
+        # The pin should sit on the beam tip
+        pinBeam = [attach0[i] + attachDisp[i] for i in range(3)]
+        maxPinError = max(
+            maxPinError,
+            math.sqrt(sum((pin[i] - pinBeam[i])**2 for i in range(3))),
+        )
+
+        points = box(com, axes, half)
+        cells = [list(f) for f in BOX_FACES]
+        part = [0]*6
+
+        # Arm: a thin square prism from the centre of mass to the pin
+        if armLength > 1e-9:
+            a = [armNow[i]/armLength for i in range(3)]
+            # Perpendicular directions turned with the body
+            ref = axes[0] if abs(sum(a[i]*axes[0][i] for i in range(3))) < 0.9 \
+                else axes[1]
+            p = [ref[i] - sum(ref[j]*a[j] for j in range(3))*a[i]
+                 for i in range(3)]
+            pn = math.sqrt(sum(c*c for c in p))
+            p = [c/pn for c in p]
+            q = [a[1]*p[2] - a[2]*p[1], a[2]*p[0] - a[0]*p[2],
+                 a[0]*p[1] - a[1]*p[0]]
+            mid = [com[i] + 0.5*armNow[i] for i in range(3)]
+            w = 0.1*size
+            n0 = len(points)
+            points += box(mid, [a, p, q], [0.5*armLength, w, w])
+            cells += [[n0 + c for c in f] for f in BOX_FACES]
+            part += [1]*6
+
+        vtkName = f"rigidBody_{name}.vtk"
+        with open(os.path.join(outDir, vtkName), "w") as f:
+            f.write("# vtk DataFile Version 3.0\n")
+            f.write(f"rigidBodyEnd t = {name}\nASCII\nDATASET POLYDATA\n")
+            f.write(f"POINTS {len(points)} double\n")
+            for pt in points:
+                f.write(" ".join(f"{c:.10g}" for c in pt) + "\n")
+            f.write(f"POLYGONS {len(cells)} {5*len(cells)}\n")
+            for c in cells:
+                f.write("4 " + " ".join(map(str, c)) + "\n")
+            f.write(f"CELL_DATA {len(cells)}\n")
+            f.write("SCALARS part int 1\nLOOKUP_TABLE default\n")
+            f.write("\n".join(map(str, part)) + "\n")
+            f.write(f"POINT_DATA {len(points)}\n")
+            # Rigid-body velocity of each point: v + omega x r
+            f.write("VECTORS U double\n")
+            for pt in points:
+                r = [pt[i] - com[i] for i in range(3)]
+                u = [vel[0] + omega[1]*r[2] - omega[2]*r[1],
+                     vel[1] + omega[2]*r[0] - omega[0]*r[2],
+                     vel[2] + omega[0]*r[1] - omega[1]*r[0]]
+                f.write(" ".join(f"{c:.10g}" for c in u) + "\n")
+            f.write("VECTORS omega double\n")
+            for _ in points:
+                f.write(" ".join(f"{c:.10g}" for c in omega) + "\n")
+
+        series.append({"name": f"rigidBody/{vtkName}", "time": t})
+
+    with open(os.path.join(case, "VTK", "rigidBody.vtk.series"), "w") as f:
+        json.dump({"file-series-version": "1.0", "files": series}, f, indent=1)
+
+    print(f"{case}: {len(series)} frames in VTK/rigidBody.vtk.series"
+          f" (pin to beam tip, max {maxPinError:.2e} m)")
+
+
+args = sys.argv[1:]
+size = None
+if "--size" in args:
+    i = args.index("--size")
+    size = float(args[i + 1])
+    del args[i:i + 2]
+for case in args or ["."]:
+    write_case(case, size)
