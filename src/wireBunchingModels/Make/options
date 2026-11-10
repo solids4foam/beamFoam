@@ -11,8 +11,6 @@ endif
 # not), corrupting the Jacobian and making the tutorials diverge.
 EXE_INC = \
     $(DISABLE_WARNING_FLAGS) -D__restrict__= \
-    -I./numerics/BlockEigenSolvers/BlockEigenSolverOF \
-    -I./beamModels/coupledTotalLagNewtonRaphsonBeam \
     -I../../ThirdParty/eigen3 \
     -I../../ThirdParty/eigen3/unsupported/Eigen/src/IterativeSolvers \
     -I$(FOAM_SRC)/finiteVolume/lnInclude  \

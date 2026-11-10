@@ -254,10 +254,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         mesh(),
         dimensionedVector("0", dimForce*dimLength, vector::zero)
     ),
-    // Lambdaf and Lambda are written so that a restart (and the coupled run
-    // starting from the beamInit state) continues from the current
-    // rotations; without them they restart as the identity, inconsistent
-    // with a deformed W
     Lambdaf_
     (
         IOobject
@@ -630,14 +626,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     totalContactTime_(0),
     totalSolutionTime_()
 {
-  newmarkPredictorTimeIndex_ = -1;
-  rigidBodyEndPatchIndex_ = -1;
-  rigidBodyEndX_ = vector::zero;
-  rigidBodyEndTheta_ = vector::zero;
-  weldPatchIndex_ = -1;
-  weldLambda0_ = tensor::I;
-  weldTimeIndex_ = -1;
-
     // Check to enforce user to specify the d2dt2Schemes
     // system/fvSchemes - Required for dynamic simulations
 
@@ -1126,8 +1114,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         Info<< "beamMomentumContributionProperties file not found: skipping"
             << endl;
     }
-
-    readRigidBodyEnd();
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

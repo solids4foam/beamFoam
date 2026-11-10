@@ -64,8 +64,7 @@ groundContactContribution::groundContactContribution
     (
         readScalar(beamMomentumContribDict_.lookup("muFriction"))
     ),
-    groundPlane_(readGroundPlane(beamMomentumContribDict_)),
-    contactStiffness_()
+    groundPlane_(readGroundPlane(beamMomentumContribDict_))
 {
     Info<< "Found beamMomentumContribution type: " << typeName << endl;
 }
@@ -126,32 +125,7 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
             mesh.nCells(), scalarSquareMatrix(6, 0.0)
         )
     );
-    Field<scalarSquareMatrix>& result = tresult.ref();
-
-    // The diagonal holds the derivative of the residual (internal plus
-    // external force minus inertia) with respect to W, like the implicit
-    // inertia coefficient. The normal contact force is
-    // -2*R*kNormal*d*L along the ground normal n, d being the signed distance
-    // from the ground, so its derivative with respect to W is
-    // -2*R*kNormal*L*(n n). The damping and friction terms stay explicit.
-    // contactStiffness_ is set by linearMomentumSource, which the beam model
-    // calls first in the same Newton iteration
-    if (contactStiffness_.size() == mesh.nCells())
-    {
-        const vector& n = groundPlane_.normal();
-
-        forAll(result, cellI)
-        {
-            for (direction i = 0; i < vector::nComponents; ++i)
-            {
-                for (direction j = 0; j < vector::nComponents; ++j)
-                {
-                    result[cellI](i, j) -=
-                        contactStiffness_[cellI]*n[i]*n[j];
-                }
-            }
-        }
-    }
+    // Field<scalarSquareMatrix>& result = tresult.ref();
 
     return tresult;
 }
@@ -205,12 +179,6 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     vectorField UtHat (Ut/(mag(Ut) + SMALL));
 
-    // Beam cell lengths: the forces below are per unit length
-    const volScalarField& L = bm.L();
-
-    contactStiffness_.setSize(mesh.nCells());
-    contactStiffness_ = 0;
-
     // Initialise beam cells in contact with ground
     label cellsInContact = 0;
 
@@ -223,8 +191,6 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (d < 0)
         {
             cellsInContact++;
-            contactStiffness_[cellI] = 2*R*kNormal_*L[cellI];
-
             // Seabed force on the cell, along the ground normal: the spring
             // pushes the penetrating cell out, and the damper resists its
             // rebound (velocity along the normal). The seabed can only push,
@@ -254,9 +220,8 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
             }
 
             // The solver adds external forces to the source with a minus
-            // sign, as for gravity, so subtract the seabed force. The forces
-            // above are per unit length, so multiply by the cell length
-            result[cellI] -= (f_gc_normal*n + f_gc_tangential)*L[cellI];
+            // sign, as for gravity, so subtract the seabed force
+            result[cellI] -= f_gc_normal*n + f_gc_tangential;
         }
      }
 
