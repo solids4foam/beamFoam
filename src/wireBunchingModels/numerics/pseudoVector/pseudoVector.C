@@ -266,6 +266,56 @@ tensor rotationMatrix(const vector& rotationAngle)
     return R;
 }
 
+
+tmp<surfaceTensorField> rotationTangentOperator
+(
+    const surfaceVectorField& rotationAngle
+)
+{
+    tmp<surfaceTensorField> tT
+    (
+        new surfaceTensorField
+        (
+            IOobject
+            (
+                "rotationTangentOperator(" + rotationAngle.name() + ")",
+                rotationAngle.time().timeName(),
+                rotationAngle.db(),
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            rotationAngle.mesh(),
+            dimensionedTensor("0", dimless, tensor::I)
+        )
+    );
+
+    const surfaceScalarField magAngle(mag(rotationAngle) + SMALL);
+    const surfaceTensorField angleHat(spinTensor(rotationAngle));
+
+    const dimensionedTensor I("I", dimless, tensor::I);
+
+    tT.ref() =
+        (Foam::sin(magAngle)/magAngle)*I
+      + ((1.0 - Foam::sin(magAngle)/magAngle)/sqr(magAngle))
+       *(rotationAngle*rotationAngle)
+      + ((1.0 - Foam::cos(magAngle))/sqr(magAngle))*angleHat;
+
+    return tT;
+}
+
+
+tensor rotationTangentOperator(const vector& rotationAngle)
+{
+    const scalar magAngle = mag(rotationAngle) + SMALL;
+    const tensor angleHat = spinTensor(rotationAngle);
+
+    return
+        (Foam::sin(magAngle)/magAngle)*I
+      + ((1.0 - Foam::sin(magAngle)/magAngle)/sqr(magAngle))
+       *(rotationAngle*rotationAngle)
+      + ((1.0 - Foam::cos(magAngle))/sqr(magAngle))*angleHat;
+}
+
 /*
     NOTE: currently unused - kept for reference.
 
