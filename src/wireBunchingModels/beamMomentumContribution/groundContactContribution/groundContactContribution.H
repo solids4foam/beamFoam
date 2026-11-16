@@ -108,6 +108,10 @@ private:
     //- Ground plane, with the normal pointing from the ground into the fluid
     plane groundPlane_;
 
+    //- Normal contact stiffness of each cell (2*R*kNormal*L if in contact,
+    //  else zero), set by linearMomentumSource and used by diagCoeff
+    scalarField contactStiffness_;
+
 public:
 
     //- Runtime type information
