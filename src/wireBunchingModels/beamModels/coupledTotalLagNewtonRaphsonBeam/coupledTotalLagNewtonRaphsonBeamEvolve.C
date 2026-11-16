@@ -818,23 +818,8 @@ void coupledTotalLagNewtonRaphsonBeam::updateSolutionVariables()
 
     const surfaceVectorField DThetaf(fvc::interpolate(DTheta_));
 
-    const surfaceScalarField magDThetaf(mag(DThetaf) + SMALL);
-    const surfaceTensorField DThetaHat(spinTensor(DThetaf));
-
-    const dimensionedTensor I("I", dimless, tensor::I);
-
-    // Tangent operator
-    const surfaceTensorField DT
-    (
-        (Foam::sin(magDThetaf)/magDThetaf)*I
-        + (
-            (1.0-Foam::sin(magDThetaf)/magDThetaf)/sqr(magDThetaf)
-        )
-        *(DThetaf*DThetaf)
-        + (
-            (1.0-Foam::cos(magDThetaf))/sqr(magDThetaf)
-        )*DThetaHat
-    );
+    // Tangent operator of the rotation increment
+    const surfaceTensorField DT(rotationTangentOperator(DThetaf));
 
     // Update bending strain vector
     K_ +=

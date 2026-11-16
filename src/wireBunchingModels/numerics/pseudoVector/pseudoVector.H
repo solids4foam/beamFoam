@@ -26,8 +26,10 @@ Description
     4. Interpolate rotational strains between cell-centre and face-centre values of a
        beam cell-segment (member function 'meanLineCurvature')
     5. Calculation of spatial derivative of the rotation matrix (member function 'rotationAngleDerivative')
+    6. Construct the tangent operator of a rotation vector (member functions 'rotationTangentOperator')
 
-    Currently used by the solver: 'pseudoVector', 'rotationMatrix' and the
+    Currently used by the solver: 'pseudoVector', 'rotationMatrix',
+    'rotationTangentOperator' and the
     face-to-cell 'interpolateRotationMatrix(bm, Rf, R)', which calculates the
     cell-centre reference rotation matrix refLambda from refLambdaf.
 
@@ -67,6 +69,24 @@ tmp<volTensorField> rotationMatrix(const volVectorField& rotatioAngle);
 tmp<surfaceTensorField> rotationMatrix(const surfaceVectorField& rotatioAngle);
 
 tensor rotationMatrix(const vector& rotationAngle);
+
+//- Tangent operator T of the rotation vector theta, with
+//  R = rotationMatrix(theta). This is the left Jacobian (dexp) of SO(3):
+//
+//      T = sin|theta|/|theta| I
+//        + (1 - sin|theta|/|theta|)/|theta|^2 (theta theta)
+//        + (1 - cos|theta|)/|theta|^2 spinTensor(theta)
+//
+//  It maps a change in theta to the spatial rotation it causes,
+//      delta(R) & R.T() = spinTensor(T & delta(theta)),
+//  and its transpose maps it to the material (body-frame) rotation,
+//      R.T() & delta(R) = spinTensor(T.T() & delta(theta)).
+tmp<surfaceTensorField> rotationTangentOperator
+(
+    const surfaceVectorField& rotationAngle
+);
+
+tensor rotationTangentOperator(const vector& rotationAngle);
 
 //- Cell-to-face objective interpolation of rotation matrices
 //  NOTE: currently unused (former objectiveInterpolation option)
