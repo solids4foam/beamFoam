@@ -1,0 +1,232 @@
+How the body's matrix row relates to the Newmark-beta update
+===========================================================
+
+Question: with no rotation and no damping, the rigid body's Newmark-beta
+update is
+
+    x_{n+1} - x_n = dt v_n + dt^2 [beta a_{n+1} + (1/2 - beta) a_n]
+
+while the x row of the monolithic matrix gives something like
+
+    dx = [-R_x + k_b DW1] / (m/(beta dt^2) + k_b)
+
+How are these the same thing? Isn't dx supposed to come from Newmark-beta?
+
+Short answer: they are the same scheme. The matrix row is the Newmark-beta
+equation, written so the force can be solved for at the same time, and
+then linearised for Newton. dx is not the Newmark step x_{n+1} - x_n. It
+is the Newton correction to the current guess of x_{n+1}. When Newton
+converges, the result satisfies the Newmark equation exactly.
+
+For the matrix itself, see twoCellMonolithicMatrix.txt. For the residual
+and predictor in the code, see monolithicMatrixLayout.txt sections 9.4 and
+10.
+
+Code (line numbers are written as <letter>:<line>):
+  RB = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.C
+  R  = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+
+
+0. The row, with the right signs
+--------------------------------
+
+The x row has (x,W1) = -k_b and (x,x) = mu_B + k_b. In one dimension,
+with no rotation and no damping (mu_B = m/(beta dt^2)):
+
+    -k_b DW1 + (m/(beta dt^2) + k_b) dx = -R_x
+
+    =>  dx = [-R_x + k_b DW1] / (m/(beta dt^2) + k_b)
+
+Two details:
+  - The DW1 term is +k_b DW1, because moving -k_b DW1 to the right-hand
+    side flips its sign.
+  - k_b ~ EA/pDelta, where pDelta is the distance from the cell centre to
+    the attachment face (half a cell), not the whole length L. In 3D, k_b
+    is a tensor: EA along the beam and GA across it. Code:
+    Kb = CQW_b/pDelta (R:581).
+
+
+1. Newmark, rearranged for the acceleration
+-------------------------------------------
+
+    x_{n+1} = x_n + dt v_n + dt^2 [(1/2 - beta) a_n + beta a_{n+1}]
+            = x_pred + beta dt^2 a_{n+1}
+
+    x_pred  = x_n + dt v_n + dt^2 (1/2 - beta) a_n      (predictor(), RB:430)
+
+    =>  a_{n+1} = (x_{n+1} - x_pred) / (beta dt^2)
+
+
+1a. What x_pred is
+------------------
+
+x_pred is the Newmark predictor: the part of the Newmark update that can
+be computed from the previous step alone, before anything is solved.
+
+    x_pred = x_n + dt v_n + dt^2 (1/2 - beta) a_n
+
+Physical meaning: where the body would be at the end of the step if its
+new acceleration a_{n+1} were zero. It "coasts" on its old position, old
+velocity and old acceleration (weighted by 1/2 - beta).
+
+Role in the scheme: the full update splits into a known and an unknown
+part,
+
+    x_{n+1} = x_pred  +  beta dt^2 a_{n+1}
+              known      unknown (depends on the force at n+1)
+
+so x_pred is the fixed starting point and beta dt^2 a_{n+1} is the
+correction from the force at the new step. Rearranged, it gives the
+acceleration in terms of the unknown position,
+
+    a_{n+1} = (x_{n+1} - x_pred) / (beta dt^2)
+
+which is how the code turns "solve for x" into "satisfy m a = F" (the
+residual m (x - x_pred)/(beta dt^2) - F_ext + Q_b in section 2).
+
+What it is not: it is not a first guess at x_{n+1}, and it has no
+beta dt^2 a term in it; it is only the part already known. The name is
+the standard one (Hughes writes it x-tilde).
+
+In the code: predictor(), RB:430-435,
+
+    return x0_ + deltaT*v0_ + sqr(deltaT)*(0.5 - beta_)*a0_;
+
+It is fixed for the whole time step, because x0_, v0_ and a0_ only change
+in newTimeStep() (RB:387).
+
+The rotational version is angularPredictor() (RB:141-146),
+
+    theta_pred = dt omega_n + dt^2 (1/2 - beta) alpha_n
+
+It has no theta_n term because theta is the rotation within the step,
+which starts at zero.
+
+
+2. Put it into the body's equation of motion at n+1
+---------------------------------------------------
+
+    m a_{n+1} = F_ext + F_beam(x_{n+1}, W1)
+
+The beam pulls on the body with -Q_b. Moving everything to one side gives
+the residual in the code (translationalResidual, RB:444):
+
+    R_x(x) = m (x - x_pred)/(beta dt^2) - F_ext + Q_b(x, W1) = 0
+
+Solving R_x = 0 for x is the Newmark step. The only unknown is x_{n+1};
+a_{n+1} and v_{n+1} follow from it through the Newmark relations.
+
+
+3. Why Newton is needed
+-----------------------
+
+Q_b depends on x_{n+1} (the face spring stretches as the body moves) and
+on the beam through W1, so the equation cannot be solved explicitly.
+Newton linearises it about the current iterate x^k:
+
+    R_x(x^k) + (dR_x/dx) dx + (dR_x/dW1) DW1 = 0
+
+    dR_x/dx  = m/(beta dt^2) + k_b       (inertia + face spring)
+    dR_x/dW1 = -k_b
+
+    =>  (m/(beta dt^2) + k_b) dx - k_b DW1 = -R_x(x^k)
+
+This is the x row of the matrix. Each iteration updates
+x^{k+1} = x^k + dx.
+
+
+4. Showing the two are equivalent
+---------------------------------
+
+Q_b^{k+1} is not substituted into the row from outside. It appears when
+the terms of the row are regrouped. Step by step:
+
+Step 1: start from the x row
+
+    (m/(beta dt^2) + k_b) dx - k_b DW1 = -R_x(x^k)
+
+Step 2: write out the residual at the current iterate
+
+    R_x(x^k) = m (x^k - x_pred)/(beta dt^2) - F_ext + Q_b^k
+
+Step 3: move everything to the left-hand side
+
+    m/(beta dt^2) dx + k_b dx - k_b DW1
+  + m (x^k - x_pred)/(beta dt^2) - F_ext + Q_b^k = 0
+
+Step 4: group the inertia terms
+
+    m/(beta dt^2) dx + m (x^k - x_pred)/(beta dt^2)
+      = m (x^k + dx - x_pred)/(beta dt^2)
+      = m (x^{k+1} - x_pred)/(beta dt^2)       since x^{k+1} = x^k + dx
+
+Step 5: group the force terms. This is where Q_b^{k+1} appears.
+
+    Q_b^k + k_b dx - k_b DW1 = Q_b^k + k_b (dx - DW1)
+
+  The k_b terms come from the matrix coefficients (x,x) containing k_b
+  and (x,W1) = -k_b. Together they are the first-order change in the face
+  force when the body moves by dx and the cell moves by DW1:
+
+    Delta Q_b ~ k_b (dx - DW1)
+
+  So Q_b^k + k_b (dx - DW1) is the linearised face force at the new
+  iterate. That is what Q_b^{k+1} means here: a name for these grouped
+  terms, not something brought in from outside.
+
+    Q_b^{k+1} = Q_b^k + k_b (dx - DW1)
+
+Step 6: put the groups back together
+
+    m (x^{k+1} - x_pred)/(beta dt^2) - F_ext + Q_b^{k+1} = 0
+
+    =>  m (x^{k+1} - x_pred)/(beta dt^2) = F_ext - Q_b^{k+1}
+
+So the matrix row is just the body's equation of motion at the new
+iterate, with the face force linearised. The left side is m a_{n+1},
+using the Newmark expression for a_{n+1}. The right side is the total
+force on the body.
+
+Q_b^{k+1} is only the first-order estimate of the face force. After the
+solve, the code recomputes the true Q_b from the new beam state. If it
+differs from the estimate, R_x is not zero and Newton takes another
+iteration.
+
+Rearranging step 6:
+
+    x^{k+1} = x_pred + beta dt^2 (F_ext - Q_b^{k+1})/m
+            = x_n + dt v_n + dt^2 [(1/2 - beta) a_n + beta a_{n+1}]
+
+This is the Newmark equation. Each row solve is a Newmark-beta step with
+the beam force taken to first order. The only approximation is the
+linearisation of Q_b. As Newton converges, Q_b^{k+1} becomes the true
+force and x^{k+1} satisfies Newmark exactly.
+
+  - If the beam force were exactly linear in x and W1, one Newton
+    iteration would give the exact Newmark answer.
+  - The beam is geometrically nonlinear, so it takes several iterations.
+
+
+5. Why dx cannot be computed from that one row on its own
+---------------------------------------------------------
+
+DW1 is unknown in the same solve, so
+
+    dx = [-R_x + k_b DW1] / (...)
+
+cannot be evaluated in isolation. That is the point of the monolithic
+solve: dx and DW1 come out together, each accounting for the other's
+response.
+
+In the partitioned scheme, DW1 is effectively frozen from the previous
+coupling iteration, and the body takes an explicit Newmark step against
+it (newmarkDisplacement(), RB:407-427). That version matches the Newmark
+equation at the top term for term:
+
+    x_{n+1} = x_n + dt v_n + dt^2 ((1/2 - beta) a_n + beta aNew)
+
+with aNew computed first from the frozen force.
+
+In moorFV, F_ext (the fluid force) is held fixed during the beam's Newton
+loop and updated at each PIMPLE outer corrector. So within one beam solve,
+only Q_b changes with x.

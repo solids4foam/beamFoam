@@ -1,0 +1,445 @@
+% Outline for a numerical methods paper on the monolithic beam + rigid body
+% solver. LaTeX version of paperOutline.txt.
+%
+% Each section lists what should go in it. The [material: ...] notes name
+% the file in documentation/ that already holds the material (see the table
+% in the "Material" section). For submission, swap the document class for
+% the journal's (e.g. elsarticle for CMAME / Comput. Struct., or the Wiley
+% NME template) and replace the itemised notes with text.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=25mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+
+% Vectors and tensors
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\tens}[1]{\boldsymbol{#1}}
+\newcommand{\skewm}[1]{[\vect{#1}]_{\times}}
+\newcommand{\dt}{\Delta t}
+
+% Pointer to the documentation file that holds the material
+\newcommand{\material}[1]{\par\smallskip{\raggedright\noindent\textit{[material: #1]}\par}}
+\newcommand{\file}[1]{\texttt{#1}}
+
+\title{A monolithic Newton--Raphson coupling of a finite-volume geometrically
+  exact beam and a rigid body, for moored floating bodies\\[4pt]
+  \large Paper outline}
+\author{Colm Mc Alister}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{About this outline}
+
+This is a suggested layout for writing up the monolithic beam + rigid body
+coupling as a paper for a numerical methods journal (for example
+\emph{Int.\ J.\ Numer.\ Meth.\ Engng}, \emph{Comput.\ Methods Appl.\ Mech.\
+Engrg}, \emph{J.\ Comput.\ Phys.}, \emph{Computers \& Structures}). For each
+section it says what should go in it, and which file in
+\file{documentation/} already holds the material.
+
+Literature references are not listed here: each claim about prior work needs
+a source checked by hand before it goes in.
+
+\paragraph{Alternative titles.}
+\begin{itemize}
+  \item Monolithic finite-volume beam--rigid body coupling with Newmark
+        integration in displacement form
+  \item Removing the partitioned stability limit in beam-moored rigid body
+        simulations
+\end{itemize}
+
+\paragraph{Material files} (all in \file{documentation/}):
+
+\begin{center}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.85\textwidth}@{}}
+  \toprule
+  Key & File \\
+  \midrule
+  CP & \file{monolithicRigidBodyCodePath.txt} \\
+  PC & \file{pimpleToRigidBodySolverCallChain.txt} \\
+  ML & \file{monolithicMatrixLayout.txt} \\
+  TC & \file{twoCellMonolithicMatrix.txt} \\
+  NB & \file{newmarkAndMonolithicBodyRow.txt} \\
+  OC & \file{outerCorrectorsAndNewmark.pdf}; sources
+       \file{source/outerCorrectorsAndNewmark.html}, \file{source/model.py},
+       \file{source/order.py} \\
+  MP & \file{monolithicCouplingPlan.pdf} \\
+  TR & \file{monolithicSolverTestProgressReport.pdf} \\
+  P5 & \file{phase5MultiLinePlan.md} \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Abstract (150--250 words)}
+
+\begin{itemize}
+  \item Problem: a floating rigid body moored by flexible lines, inside a CFD
+        simulation. The body and lines are usually coupled by partitioned
+        iteration.
+  \item Difficulty: partitioned coupling becomes unstable for light bodies and
+        stiff, short lines (the limit
+        $\beta\,\dt^2 EA/(L\,m_\mathrm{pin}) \gtrsim 1$).
+  \item Method: the body's Newton--Euler equations, integrated with
+        Newmark-$\beta$ in displacement form, are added as 6 extra rows and
+        columns to the finite-volume beam's Newton system. The joint
+        compatibility is eliminated, so beam and body are advanced together
+        by one Newton iteration.
+  \item Results: agrees with analytic and partitioned reference solutions;
+        second order in time; stable where the partitioned scheme diverges;
+        one PIMPLE outer corrector is enough, which reduces cost.
+  \item Implementation in OpenFOAM (beamFoam / moorFV), with a single switch
+        between partitioned and monolithic coupling.
+\end{itemize}
+
+\section{Introduction}
+
+\begin{itemize}
+  \item Motivation: floating offshore structures (wave energy converters,
+        floating wind, aquaculture) moored by lines that bend, twist and go
+        slack. CFD of the body needs a mooring model that is both accurate
+        and robust.
+  \item Mooring models: quasi-static, lumped-mass (e.g.\ MoorDyn), finite
+        element and finite volume beam models.
+  \item Coupling: partitioned (body solver and line solver take turns) versus
+        monolithic (one system). Partitioned stability problems for light
+        bodies and stiff connections (added-mass-like instability).
+  \item Gap: no finite-volume geometrically exact beam with the rigid body in
+        the same Newton system (check this claim against the literature).
+  \item Contributions:
+  \begin{enumerate}
+    \item Monolithic formulation: body residuals in force units,
+          Newmark-$\beta$ in displacement form, rotations by a step rotation
+          vector.
+    \item Elimination of the joint (pin and welded) so the attachment
+          displacement is not an unknown.
+    \item Block structure of the coupled Jacobian, and its physical
+          interpretation (action--reaction in the columns, non-symmetry).
+    \item Stability analysis of the partitioned scheme on a linear model,
+          giving the limit the monolithic scheme removes.
+    \item Verification and application to moored floating bodies in waves.
+  \end{enumerate}
+  \item Paper layout paragraph.
+\end{itemize}
+
+\section{Governing equations}
+
+\subsection{Geometrically exact beam}
+\begin{itemize}
+  \item Total Lagrangian, Simo--Reissner type: displacement $\vect{W}$,
+        rotation tensor $\tens{\Lambda}$ (incremental rotation
+        $\vect{\Theta}$), internal force $\vect{Q}$ and moment $\vect{M}$.
+  \item Balance of linear and angular momentum per unit length, including
+        the lever-arm term $\vect{R}' \times \vect{Q}$.
+  \item Constitutive law in section axes:
+        $\tens{C}_Q = \mathrm{diag}(EA, GA, GA)$,
+        $\tens{C}_M = \mathrm{diag}(GJ, EI_{yy}, EI_{zz})$.
+        $J$ is the torsion constant ($\pi R^4/2$ for a solid circle).
+  \item Loads: gravity, distributed hydrodynamic load (if any), ground
+        contact.
+\end{itemize}
+\material{ML section 9 (coefficient origins), TC ``What each symbol is''}
+
+\subsection{Rigid body}
+\begin{itemize}
+  \item Newton--Euler about the centre of mass:
+  \begin{align*}
+    m\,\vect{a} + c\,\vect{v} &= \vect{F}_\mathrm{ext} + \vect{F}_\mathrm{beam},\\
+    \tens{J}\vect{\alpha} + \vect{\omega}\times\tens{J}\vect{\omega}
+      + c_r\,\vect{\omega} &= \vect{M}_\mathrm{ext}
+      + \vect{r}\times\vect{F}_\mathrm{beam}\;(+\,\vect{M}_\mathrm{beam}).
+  \end{align*}
+  \item Orientation $\tens{R} = \exp(\skewm{\theta})\,\tens{R}_0$, inertia
+        $\tens{J} = \tens{R}\,\tens{J}_\mathrm{body}\,\tens{R}^T$.
+  \item Fluid force and moment from the CFD as external loads; motion
+        constraints (e.g.\ surge--heave--pitch only) as projections.
+\end{itemize}
+\material{ML 9.4, CP section 4}
+
+\subsection{Joint between beam end and body}
+\begin{itemize}
+  \item Compatibility: attachment point
+        $\vect{u}_b = \vect{x} + (\tens{R} - \tens{I})\,\vect{r}_0$.
+  \item Pin: force passes, no moment (zero-moment end condition).
+  \item Welded: end section rotates with the body; force and moment pass.
+  \item Action--reaction: the body receives $-\vect{Q}_b$ (and $-\vect{M}_b$
+        if welded).
+\end{itemize}
+\material{TC (layout, $\tens{B}_b$), ML section 6}
+
+\section{Discretisation}
+
+\subsection{Finite-volume beam in space}
+\begin{itemize}
+  \item Cell-centred unknowns, face fluxes of force and moment.
+  \item Newton linearisation of the face force and moment: the face
+        coefficients $\tens{k}$, $\tens{\kappa}$, $\tens{g}$,
+        $\tens{\gamma}$, $\tens{K}^M$, $\tens{\eta}$ (definitions and
+        physical meaning). Boundary faces, half-cell distance
+        $\Delta_p$ (\file{pDelta}).
+  \item Pin end factor
+        $\tens{B} = (\tens{\kappa} + \tens{\gamma})^{-1}\tens{\kappa}$:
+        the end face rotation eliminated by the zero-moment condition.
+\end{itemize}
+\material{ML sections 9.1--9.3, TC ``What each symbol is'' and ``Notation''}
+
+\subsection{Time integration}
+\begin{itemize}
+  \item Beam: Newmark (as implemented) with its predictor.
+  \item Body: Newmark-$\beta$ in displacement form, with predictor and
+        acceleration
+        \begin{equation*}
+          \tilde{\vect{x}} = \vect{x}_n + \dt\,\vect{v}_n
+            + \dt^2\left(\tfrac12 - \beta\right)\vect{a}_n,
+          \qquad
+          \vect{a}_{n+1} = \frac{\vect{x}_{n+1} - \tilde{\vect{x}}}{\beta\,\dt^2},
+        \end{equation*}
+        and the same for the step rotation vector $\vect{\theta}$. Explain
+        why the predictor has no $\beta\,\dt^2\,\vect{a}_{n+1}$ term.
+  \item Rotation Jacobian $\tens{T}(\vect{\theta})$ and its closed form.
+\end{itemize}
+\material{ML sections 9.4 and 10, NB sections 1 and 1a}
+
+\section{Monolithic coupling}
+
+The core of the paper.
+
+\subsection{Unknowns and residuals}
+\begin{itemize}
+  \item Unknowns $[\Delta\vect{W}, \Delta\vect{\Theta}]$ per cell and
+        $[\Delta\vect{x}, \Delta\vect{\theta}]$ for the body, in
+        $6\times 6$ blocks.
+  \item Body residuals in force units:
+  \begin{align*}
+    \vect{R}_x &= \frac{m\,(\vect{x} - \tilde{\vect{x}})}{\beta\,\dt^2}
+      + c\,\vect{v} - \vect{F}_\mathrm{ext} + \vect{Q}_b,\\
+    \vect{R}_\theta &= \tens{J}\vect{\alpha}
+      + \vect{\omega}\times\tens{J}\vect{\omega} + c_r\,\vect{\omega}
+      - \vect{M}_\mathrm{ext} + \vect{r}\times\vect{Q}_b.
+  \end{align*}
+  \item Statement and short proof that a converged Newton iterate satisfies
+        the Newmark-$\beta$ update exactly (the linearisation of
+        $\vect{Q}_b$ is the only approximation per iteration).
+\end{itemize}
+\material{NB sections 2--4}
+
+\subsection{Eliminating the joint}
+\begin{itemize}
+  \item $\Delta\vect{u}_b = \Delta\vect{x} - \tens{A}\,\Delta\vect{\theta}$,
+        with $\tens{A} = \skewm{r}\,\tens{T}$.
+  \item How the attachment-face source term
+        $\tens{K}_b(\vect{W}_b - \vect{W}_{b,\mathrm{prev}})$ becomes the
+        body columns of the matrix.
+\end{itemize}
+\material{MP section 2, ML section 6}
+
+\subsection{Linearisation and block structure}
+\begin{itemize}
+  \item The coupling blocks (table), and the body diagonal including the
+        turning-arm term $\skewm{Q_b}\tens{A}$ and the gyroscopic terms.
+  \item Physical reading: every coupling entry is the linearised face force
+        $\Delta\vect{Q}_b$ passed through a row operator ($\tens{I}$,
+        $\tens{I}$, lever arm $\tens{K}^M$, $\skewm{r}$). Action--reaction
+        appears down the columns, not across transposes.
+  \item Why the Jacobian is not symmetric even with consistent signs.
+  \item Pin versus welded: extra blocks for the welded joint.
+  \item Motion constraints as projections of the body rows and columns.
+\end{itemize}
+\material{ML sections 1--8, TC ``Where the action--reaction balance is''}
+
+\subsection{Solution of the linear system}
+\begin{itemize}
+  \item Assembly into one sparse matrix; sparse LU (non-symmetric).
+  \item Sparsity: block-tridiagonal beam plus one bordering block row and
+        column at the attachment cell. Cost relative to the beam alone.
+\end{itemize}
+\material{ML sections 3--4, CP sections 5--6}
+
+\subsection{Algorithm}
+\begin{itemize}
+  \item Pseudo-code for one time step: new time step (store state, reset
+        $\vect{\theta}$), Newton loop (assemble beam, add body blocks, solve,
+        update beam and body, check convergence), accept (update
+        $\vect{v}$, $\vect{a}$, $\vect{\omega}$, $\vect{\alpha}$).
+\end{itemize}
+\material{CP, NB section 3}
+
+\section{The partitioned scheme and its stability limit}
+
+\begin{itemize}
+  \item The partitioned algorithm used for comparison
+        (\file{FvBeamNewmark}): body Newmark step against the frozen beam
+        force, then the beam with the end prescribed, repeated in the outer
+        correctors.
+  \item Linear body--spring model: amplification matrices for the
+        partitioned loop and the monolithic update. Show the partitioned
+        iteration diverges when $\beta\,\dt^2 k/m_\mathrm{pin} \gtrsim 1$,
+        with $m_\mathrm{pin} = 1/(1/m + a^2/J)$ for an off-centre
+        attachment.
+  \item One outer corrector: partitioned is explicit, first order and
+        unstable; monolithic is implicit and second order.
+\end{itemize}
+\material{OC (figures \file{growth.png}, \file{newton.png}),
+  \file{source/model.py}, \file{source/order.py}, the
+  \file{rigidBodyEndWhirl} sweeps}
+
+\section{Coupling with the flow solver}
+
+Keep this short: it is context, not the contribution.
+\begin{itemize}
+  \item interFoam PIMPLE loop, mesh motion with
+        \file{moveMeshOuterCorrectors}.
+  \item Fluid force held fixed during the beam + body Newton loop and
+        updated at each outer corrector (the fluid stays partitioned).
+  \item Run-time selection of partitioned or monolithic coupling.
+\end{itemize}
+\material{PC, OC sections 1--2}
+
+\section{Verification}
+
+Each test: setup, what it checks, the result, a figure or table.
+\begin{itemize}
+  \item Translation only: body on a beam spring, against an analytic
+        spring--mass solution.
+  \item Rotation: off-centre attachment and twist
+        (\file{rigidBodyEndTwist}), pin and welded joints.
+  \item Order of accuracy in time (expect second order), for both
+        translation and rotation.
+  \item Newton convergence: quadratic convergence of the residual norm
+        (show the exact Jacobian pays off).
+  \item Monolithic vs converged partitioned on cases where both run: they
+        should agree to the iteration tolerance.
+  \item Robustness: \file{rigidBodyEndWhirl} sweeps of moment and $EI$; the
+        partitioned limit seen numerically, matching the stability section.
+\end{itemize}
+\material{TR, \file{tutorials/rigidBodyEnd*}, \file{rigidBodyAndBeam\_loop}
+  and \file{\_beamFoamCoupled}, the regression check of 2026-10-20
+  (agreement to $\sim 2\times10^{-6}$ with identical Newton counts after the
+  legacy removal)}
+
+\section{Application: moored floating bodies in waves}
+
+\begin{itemize}
+  \item \file{floatRigidBody}: floating box with a mooring line in waves;
+        motion and line force, monolithic vs partitioned vs MoorDyn.
+  \item Slack line (\file{floatRigidBody\_slackLine}): snap loads and
+        compression, where line bending and ground contact matter.
+  \item Two lines (\file{floatRigidBody\_twoLine}), if Phase 5 is complete.
+  \item Sweeps of line stiffness and wave period
+        (\file{floatRigidBody\_sweeps}): where the partitioned scheme fails,
+        and cost.
+  \item Cost: Newton iterations per step (\file{beamSolverIterations}
+        function object), outer correctors needed, wall time split fluid /
+        beam.
+\end{itemize}
+\material{\file{tutorials/floatRigidBody*},
+  \file{plot\_floatRigidBody\_sweeps.py},
+  \file{plot\_monolithic\_vs\_partitioned\_*.py}}
+
+\section{Discussion}
+
+\begin{itemize}
+  \item When monolithic coupling matters (the stability number) and when
+        partitioned is good enough.
+  \item Cost: the extra rows are cheap; the saving comes from fewer outer
+        correctors and fewer failed runs.
+  \item Limitations:
+  \begin{itemize}
+    \item one line per body today (Phase 5 plan for several lines);
+    \item the fluid stays partitioned (no fluid added mass in the monolithic
+          system);
+    \item non-symmetric Jacobian, so a direct sparse LU; scaling to long
+          lines and many lines;
+    \item geometric terms that are only first order in $\vect{\theta}$
+          ($\tens{T} = \tens{I}$ limit).
+  \end{itemize}
+  \item Extensions: several lines on one body, several bodies, implicit
+        fluid added mass, iterative solvers with block preconditioners.
+\end{itemize}
+\material{P5, OC}
+
+\section{Conclusions}
+
+\begin{itemize}
+  \item Restate the contributions and the main quantitative results (the
+        stability number, order of accuracy, cost).
+\end{itemize}
+
+\appendix
+
+\section{The full two-cell matrix in physical terms}
+With the meaning of every entry.
+\material{TC}
+
+\section{Derivation of the face coefficients}
+$\tens{k}$, $\tens{\kappa}$, $\tens{g}$, $\tens{\gamma}$, $\tens{K}^M$,
+$\tens{\eta}$, and the pin factor $\tens{B}$.
+\material{ML section 9, TC ``Notation''}
+
+\section{Rotation}
+Exponential map, rotation Jacobian $\tens{T}(\vect{\theta})$, and the
+rotational inertia Jacobian.
+\material{ML 9.4}
+
+\section{Linear stability model}
+Of the partitioned and monolithic schemes.
+\material{OC, \file{source/model.py}}
+
+\section{Implementation notes and code availability}
+Repositories, branch, and the tutorial cases that reproduce each figure.
+\material{CP, PC}
+
+\section*{Figures and tables to prepare}
+
+\begin{center}
+\begin{tabular}{@{}lp{0.8\textwidth}@{}}
+  \toprule
+  Item & Content \\
+  \midrule
+  Fig.~1 & Sketch: body, joint, beam cells and faces, with $\vect{r}$,
+           $\vect{Q}_b$, $\vect{x}$, $\vect{\theta}$. \\
+  Fig.~2 & Sparsity pattern of the coupled Jacobian (beam blocks + bordered
+           body block). \\
+  Fig.~3 & Linear model: spectral radius vs
+           $\beta\,\dt^2 k/m_\mathrm{pin}$, partitioned and monolithic
+           (\file{growth.png}). \\
+  Fig.~4 & Order of accuracy in time. \\
+  Fig.~5 & Newton residual vs iteration (quadratic convergence). \\
+  Fig.~6 & Verification time histories against analytic / reference. \\
+  Fig.~7 & Robustness map: where partitioned diverges, monolithic runs. \\
+  Fig.~8 & \file{floatRigidBody} motion and line force: monolithic,
+           partitioned, MoorDyn. \\
+  Fig.~9 & Cost: Newton iterations and wall time per step, sweeps. \\
+  Tab.~1 & Notation. \\
+  Tab.~2 & Coupling blocks and their physical meaning. \\
+  Tab.~3 & Case parameters. \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\section*{Gaps to fill before writing}
+
+\begin{itemize}
+  \item A clean order-of-accuracy study in the full code (not only the
+        linear model), for translation and rotation.
+  \item A Newton convergence plot from the code showing quadratic
+        convergence, with and without the welded terms.
+  \item Wall-time measurements on the same machine for monolithic vs
+        partitioned with the outer corrector count each needs.
+  \item A literature review to support the ``gap'' claim in the
+        introduction and to place the method against monolithic FSI and
+        mooring coupling work.
+\end{itemize}
+
+\end{document}

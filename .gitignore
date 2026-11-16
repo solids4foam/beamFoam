@@ -161,4 +161,14 @@ PlyParser_FoamFileParser_parsetab.py
 /.tags
 #ignore vscode introductory files
 .vscode
+# rigidBodyAndBeam_coupledSolver is a results-only reference: keep its logs and
+# postProcessing histories, not its fields or mesh
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/0.*/
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/constant/polyMesh/
+/tutorials/rigidBodyAndBeam/rigidBodyAndBeam_coupledSolver/case.foam
+# snappyHexMesh -overwrite and the mesh motion write these into 0/; the
+# rigidBodyAndBeam Allrun scripts regenerate them
+/tutorials/rigidBodyAndBeam/*/0/pointLevel
+/tutorials/rigidBodyAndBeam/*/0/cellLevel
+/tutorials/rigidBodyAndBeam/*/0/motionScale
 # end-of-file

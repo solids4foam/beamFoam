@@ -1,0 +1,46 @@
+Sweep: stiffness
+case            E     EA/L  omega     T lambda coupling     status         t  steps Newton mean/max   total  runtime    surge    heave    pitch  tension part-mono
+Ex0.25   1.25e+06     16.7   11.6  1.00  1.090 partitioned  finished  10.000   5001     12.13/13      60658     5106 2.31e-02 9.78e-03 7.14e-02 1.55e-02          
+Ex0.25   1.25e+06     16.7   11.6  1.00  1.090 monolithic   finished  10.000   5001     12.82/15      64135     5102 2.22e-02 9.77e-03 7.04e-02 1.74e-02   9.2e-03
+Ex1         5e+06     66.6   23.1  1.00  1.090 partitioned  crashed    2.608   1305     11.48/13      14964     1243 - - - 1.10e-01          
+Ex1         5e+06     66.6   23.1  1.00  1.090 monolithic   finished  10.000   5020     12.63/15      63398     5112 2.06e-02 9.71e-03 7.18e-02 1.14e-01         -
+Ex4         2e+07      266   46.3  1.00  1.090 partitioned  finished  10.000   5001     11.87/14      59371     5131 2.79e-02 9.87e-03 8.71e-02 2.66e-01          
+Ex4         2e+07      266   46.3  1.00  1.090 monolithic   crashed    6.754   3378     12.67/16      42793     3402 1.76e-02 9.75e-03 8.73e-02 3.27e-01   1.3e-01
+Ex16        8e+07 1.07e+03   92.6  1.00  1.090 partitioned  crashed    6.286   3159     11.66/22      36826     3184 2.72e-02 9.59e-03 8.03e-02 1.49e+00          
+Ex16        8e+07 1.07e+03   92.6  1.00  1.090 monolithic   crashed    3.279   1641     12.50/46      20505     1584 - - - 8.39e-01         -
+Ex64      3.2e+08 4.26e+03  185.2  1.00  1.090 partitioned  crashed    1.970    986     10.91/15      10743      878 - - - 2.20e+00          
+Ex64      3.2e+08 4.26e+03  185.2  1.00  1.090 monolithic   crashed    6.093   3086     13.25/39      40877     3107 1.77e-02 9.00e-03 1.58e-01 3.60e+00         -
+Ex256    1.28e+09 1.71e+04  370.3  1.00  1.090 partitioned  finished  10.000   5001     11.53/16      57651     4941 5.46e-03 9.19e-03 4.89e-02 1.16e+00          
+Ex256    1.28e+09 1.71e+04  370.3  1.00  1.090 monolithic   finished  10.000   5001     13.58/16      67906     4894 5.46e-03 9.19e-03 4.85e-02 6.68e-01   1.0e-02
+Ex1024   5.12e+09 6.82e+04  740.7  1.00  1.090 partitioned  finished  10.000   5001     11.24/12      56235     4930 5.45e-03 9.19e-03 4.76e-02 1.99e-01          
+Ex1024   5.12e+09 6.82e+04  740.7  1.00  1.090 monolithic   finished  10.000   5001     13.50/14      67518     4909 5.45e-03 9.19e-03 4.77e-02 1.98e-01   1.9e-03
+
+Sweep: period
+case            E     EA/L  omega     T lambda coupling     status         t  steps Newton mean/max   total  runtime    surge    heave    pitch  tension part-mono
+T0.5        5e+06     66.6   23.1  0.50  0.385 partitioned  crashed    6.607   3326     11.88/16      39505     3447 2.11e-02 8.98e-03 1.47e-01 4.05e-01          
+T0.5        5e+06     66.6   23.1  0.50  0.385 monolithic   crashed    3.739   1873     13.00/17      24328     1837 - - - 2.86e-01         -
+T0.6        5e+06     66.6   23.1  0.60  0.531 partitioned  finished  10.000   5158     12.21/15      62968     5517 2.63e-02 9.78e-03 2.19e-01 2.90e-01          
+T0.6        5e+06     66.6   23.1  0.60  0.531 monolithic   finished  10.000   5141     14.00/17      71971     5508 2.23e-02 9.83e-03 2.01e-01 2.72e-01   1.7e-01
+T0.8        5e+06     66.6   23.1  0.80  0.818 partitioned  finished  10.000   5003     12.10/14      60513     5117 2.00e-02 1.02e-02 1.03e-01 1.18e-01          
+T0.8        5e+06     66.6   23.1  0.80  0.818 monolithic   finished  10.000   5003     13.54/15      67729     5137 2.12e-02 1.02e-02 1.01e-01 1.24e-01   1.5e-02
+T1          5e+06     66.6   23.1  1.00  1.090 partitioned  crashed    2.608   1305     11.48/13      14964     1181 - - - 1.10e-01          
+T1          5e+06     66.6   23.1  1.00  1.090 monolithic   finished  10.000   5020     12.63/15      63398     4379 2.06e-02 9.71e-03 7.18e-02 1.14e-01         -
+T1.25       5e+06     66.6   23.1  1.25  1.418 partitioned  finished  10.000   5008     11.93/13      59731     4822 1.84e-02 1.02e-02 6.99e-02 6.40e-02          
+T1.25       5e+06     66.6   23.1  1.25  1.418 monolithic   finished  10.000   5008     12.54/15      62782     4842 1.86e-02 1.02e-02 6.77e-02 6.72e-02   6.0e-03
+T1.5        5e+06     66.6   23.1  1.50  1.738 partitioned  finished  10.000   5280     11.87/13      62676     4480 3.02e-02 1.09e-02 5.04e-02 1.29e-01          
+T1.5        5e+06     66.6   23.1  1.50  1.738 monolithic   finished  10.000   5235     12.08/15      63225     4781 2.88e-02 1.09e-02 4.95e-02 1.30e-01   1.4e-02
+
+Sweep: animation
+case            E     EA/L  omega     T lambda coupling     status         t  steps Newton mean/max   total  runtime    surge    heave    pitch  tension part-mono
+base        5e+06     66.6   23.1  1.00  1.090 partitioned  finished  10.000   5016     11.96/13      59992     5446 2.15e-02 9.72e-03 7.26e-02 1.10e-01          
+base        5e+06     66.6   23.1  1.00  1.090 monolithic   finished  10.000   5014     12.64/15      63361     5455 2.06e-02 9.71e-03 7.18e-02 1.14e-01   1.0e-02
+
+E: line Young's modulus [Pa]; EA/L: line axial stiffness [N/m]; omega:
+the line's axial mode sqrt(EA/(L m)) on the box [rad/s]; T: wave period
+[s]; lambda: wavelength in 0.15 m of water [m]; t: time reached [s];
+steps: time steps; Newton mean/max: beam Newton iterations per time step
+(all PIMPLE outer correctors); total: Newton iterations in the run;
+runtime: ExecutionTime [s]; surge, heave [m], pitch [rad]: half the
+range for t >= 5 s; tension: largest axial line force [N];
+part-mono: largest partitioned-monolithic heave difference for
+t >= 5 s over the monolithic heave amplitude.

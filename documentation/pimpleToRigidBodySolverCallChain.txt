@@ -1,0 +1,475 @@
+From interFoam's PIMPLE loop to beamFoamCoupled::solve
+======================================================
+
+This note explains how a moorFV run gets from interFoam's PIMPLE loop to
+beamFoamCoupled::solve (the monolithic rigid body + beam solver), which
+files and functions are involved, and where the base and derived classes
+live. It starts with a short explanation of classes, since the whole chain
+is built from them.
+
+For what happens from beamFoamCoupled::solve onwards, see
+monolithicRigidBodyCodePath.txt in this folder.
+
+Root folders used below:
+  OF  = /Users/colmmcalister/OpenFOAM/OpenFOAM-v2312            (OpenFOAM itself)
+  MFV = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src    (moorFV)
+  BF  = /Volumes/OpenFOAM/colmmcalister-v2312/run/moorFV/src/beamFoam/src/wireBunchingModels
+                                                                (beamFoam library)
+Line numbers are written as <file>:<line>.
+
+
+=========================================================================
+Part 1: Classes, base classes and derived classes
+=========================================================================
+
+What a class is
+---------------
+A class is a user-defined type that bundles data together with the
+functions that work on that data. For example, the class
+sixDoFRigidBodyMotionFvBeam holds the body's mass, inertia, position,
+orientation and velocity (its "member data"), and functions such as
+update() and centreOfRotation() that act on them ("member functions").
+
+A class is only a description. An object is one actual instance of it,
+created while the program runs. A run with two floating bodies would have
+two sixDoFRigidBodyMotionFvBeam objects, each with its own mass and
+position, sharing the same code.
+
+In OpenFOAM a class is usually split over several files:
+  Name.H     declaration: what data and functions the class has
+  Name.C     definition: the code of the functions
+  NameI.H    short "inline" functions, such as accessors
+  NameNew.C  the New() function that picks a derived class by name (below)
+
+Members are public (anyone can use them), protected (only the class and
+classes derived from it) or private (only the class itself).
+
+
+Base class and derived class (inheritance)
+------------------------------------------
+A derived class is built on top of another class, its base class. It
+inherits the base class's data and functions and adds or replaces some of
+them. In C++ this is written in the declaration:
+
+    class beamFoamCoupled
+    :
+        public sixDoFFvBeamSolver      // beamFoamCoupled derives from sixDoFFvBeamSolver
+    {
+        ...
+    };
+
+The base class describes what every member of a family can do. Each
+derived class says how it does it. Here sixDoFFvBeamSolver is "a rigid-body
+time integrator", and FvBeamNewmark and beamFoamCoupled are two particular
+integrators.
+
+A derived class can itself be a base class for another level. For example:
+    motionSolver  <-  points0MotionSolver  <-  displacementMotionSolver
+                  <-  sixDoFRigidBodyMotionFvBeamSolver
+
+
+Virtual functions: how the base class calls the derived code
+------------------------------------------------------------
+The key mechanism is the virtual function. The base class declares a
+function as virtual, and a derived class can override it:
+
+    // base class, sixDoFFvBeamSolver.H:187
+    virtual void solve(bool firstIter, const vector& fGlobal, ...) = 0;
+
+    // derived class, beamFoamCoupled.H
+    virtual void solve(bool firstIter, const vector& fGlobal, ...);
+
+The "= 0" makes it pure virtual: the base class has no code for it, so
+every derived class must supply one. A class with a pure virtual function
+is abstract and no object of it can be made on its own.
+
+Code that only knows about the base class can still call the derived
+code. sixDoFRigidBodyMotionFvBeam holds its solver as a pointer to the
+base class:
+
+    autoPtr<sixDoFFvBeamSolver> solver_;      // sixDoFRigidBodyMotionFvBeam.H:123
+
+and calls solver_->solve(...). At run time C++ looks at the actual object
+behind the pointer and runs beamFoamCoupled::solve or FvBeamNewmark::solve.
+The caller never needs to know which one it has.
+
+
+"Has-a" versus "is-a"
+---------------------
+Inheritance means "is a": beamFoamCoupled IS A sixDoFFvBeamSolver.
+A class can also simply contain another object, meaning "has a":
+sixDoFRigidBodyMotionFvBeamSolver HAS A sixDoFRigidBodyMotionFvBeam
+(member motion_), which HAS A sixDoFFvBeamSolver (member solver_) and a
+list of restraints (member restraints_). The call chain below goes through
+both kinds of link.
+
+
+Run-time selection: how a word in a dictionary picks a class
+------------------------------------------------------------
+OpenFOAM lets the case files choose the derived class by name. Three
+macros set this up:
+  - declareRunTimeSelectionTable in the base class's .H creates a table of
+    constructors for that family.
+  - TypeName("beamFoamCoupled") in the derived class's .H gives the class
+    its name.
+  - addToRunTimeSelectionTable(sixDoFFvBeamSolver, beamFoamCoupled,
+    dictionary) in the derived class's .C adds it to the base class's
+    table when the library is loaded.
+The base class's static New() function then reads a word from a
+dictionary, looks it up in the table and constructs that derived class:
+
+    // sixDoFFvBeamSolverNew.C:33-57
+    const word solverType(dict.get<word>("type"));          // "beamFoamCoupled"
+    auto cstrIter = dictionaryConstructorTablePtr_->cfind(solverType);
+    return cstrIter()(dict, body);                          // constructs beamFoamCoupled
+
+This is why changing "type FvBeamNewmark;" to "type beamFoamCoupled;" in
+dynamicMeshDict changes the solver without recompiling anything.
+
+
+=========================================================================
+Part 2: Where the classes live
+=========================================================================
+
+Convention: a base class sits in a folder of its own name, and each derived
+class sits in a sibling folder next to it, under a folder named after the
+family. The Make/files of each library lists the .C files it compiles.
+
+OpenFOAM (OF/src), used as is
+-----------------------------
+  Class                        Derives from              File
+  ---------------------------  ------------------------  -------------------------------------------------------------
+  dynamicFvMesh                fvMesh                    OF/src/dynamicFvMesh/dynamicFvMesh/dynamicFvMesh.H:64
+    (base: a mesh that can move; pure virtual update() at :186)
+  dynamicMotionSolverFvMesh    dynamicFvMesh             OF/src/dynamicFvMesh/dynamicMotionSolverFvMesh/dynamicMotionSolverFvMesh.H:54
+    (a mesh moved by a motionSolver)
+  motionSolver                 IOdictionary              OF/src/dynamicMesh/motionSolvers/motionSolver/motionSolver.H:59
+    (base: pure virtual solve() at :165 and curPoints() at :160)
+  points0MotionSolver          motionSolver              OF/src/dynamicMesh/motionSolvers/displacement/points0/points0MotionSolver.H:59
+  displacementMotionSolver     points0MotionSolver       OF/src/dynamicMesh/motionSolvers/displacement/displacement/displacementMotionSolver.H:54
+    (adds the pointDisplacement field)
+
+moorFV (MFV/sDoFRGBFvBeam, library libfiniteVolumeBeamMooring)
+---------------------------------------------------------------
+  Class                                Derives from / role                     File
+  -----------------------------------  --------------------------------------  ---------------------------------------------------------------
+  sixDoFRigidBodyMotionFvBeamSolver    displacementMotionSolver (OpenFOAM);    sixDoFRigidBodyMotionFvBeamSolver/sixDoFRigidBodyMotionFvBeamSolver.H:59
+                                       TypeName "sixDoFRigidBodyMotionFvBeam"
+  sixDoFRigidBodyMotionFvBeam          no base class; the body itself          sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.H:70
+  sixDoFFvBeamSolver                   base: rigid-body time integrator        sixDoFFvBeamSolvers/sixDoFFvBeamSolver/sixDoFFvBeamSolver.H:55
+  FvBeamNewmark                        sixDoFFvBeamSolver (partitioned)        sixDoFFvBeamSolvers/FvBeamNewmark/FvBeamNewmark.H:73
+  beamFoamCoupled                      sixDoFFvBeamSolver (monolithic)         sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.H:81
+  sixDoFRigidBodyMotionFvBeamRestraint base: force on the body                 sixDoFRigidBodyMotionFvBeam/restraints/sixDoFRigidBodyMotionFvBeamRestraint/
+                                       (pure virtual restrain() at .H:138)       sixDoFRigidBodyMotionFvBeamRestraint.H:67
+  finiteVolumeBeam                     sixDoFRigidBodyMotionFvBeamRestraint    sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.H:54
+  sixDoFRigidBodyMotionFvBeamConstraint base: motion constraint                sixDoFRigidBodyMotionFvBeam/constraints/sixDoFRigidBodyMotionFvBeamConstraint/
+  plane, axis, line, point, ...        sixDoFRigidBodyMotionFvBeamConstraint   sixDoFRigidBodyMotionFvBeam/constraints/planeFvBeam/ etc.
+(paths relative to MFV/sDoFRGBFvBeam)
+
+So the solver family looks like this on disk:
+  sixDoFFvBeamSolvers/
+      sixDoFFvBeamSolver/   base class (.H, .C, I.H, New.C)
+      FvBeamNewmark/        derived
+      beamFoamCoupled/      derived
+and the restraint family:
+  sixDoFRigidBodyMotionFvBeam/restraints/
+      sixDoFRigidBodyMotionFvBeamRestraint/   base class
+      finiteVolumeBeamRestraint/              derived (class finiteVolumeBeam)
+
+beamFoam (BF, library libwireBunchingModels)
+--------------------------------------------
+  Class                               Derives from   File
+  ----------------------------------  -------------  -------------------------------------------------------------
+  beamModel                           IOdictionary   BF/beamModels/beamModel/beamModel.H:69
+    (base: pure virtual evolve() at :844; New() in newBeamModel.C:31)
+  coupledTotalLagNewtonRaphsonBeam    beamModel      BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeam.H:74
+  rigidBodyEnd                        none           BF/beamModels/coupledTotalLagNewtonRaphsonBeam/rigidBodyEnd/rigidBodyEnd.H
+    (owned by coupledTotalLagNewtonRaphsonBeam: "has a")
+
+The lnInclude folders (e.g. MFV/sDoFRGBFvBeam/lnInclude) hold links to all
+the headers of a library, made by wmake so that #include "beamFoamCoupled.H"
+works from anywhere. They are not separate copies to edit.
+
+
+=========================================================================
+Part 3: Set-up at the start of the run (which words pick which classes)
+=========================================================================
+
+Before the time loop, the objects of the chain are constructed from the
+case dictionaries. Using floatRigidBody_monolithic/constant/dynamicMeshDict:
+
+    dynamicFvMesh       dynamicMotionSolverFvMesh;
+    motionSolverLibs    ("libfiniteVolumeBeamMooring");
+    motionSolver        sixDoFRigidBodyMotionFvBeam;
+    sixDoFRigidBodyMotionFvBeamCoeffs
+    {
+        ...
+        solver      { type beamFoamCoupled; }
+        constraints { xzPlane { sixDoFRigidBodyMotionFvBeamConstraint plane; ... } ... }
+        restraints  { beamone { sixDoFRigidBodyMotionFvBeamRestraint finiteVolumeBeam;
+                                beamRegion "beamone"; ... } }
+    }
+
+1. interFoam creates the mesh
+     OF/applications/solvers/multiphase/interFoam/interFoam.C:73
+         #include "createDynamicFvMesh.H"
+     -> dynamicFvMesh::New (OF/src/dynamicFvMesh/dynamicFvMesh/dynamicFvMeshNew.C)
+        reads "dynamicFvMesh" (line 57) and constructs a
+        dynamicMotionSolverFvMesh. interFoam only holds it as a
+        dynamicFvMesh& mesh (the base class).
+
+2. The mesh creates its motion solver
+     dynamicMotionSolverFvMesh constructor
+     (OF/src/dynamicFvMesh/dynamicMotionSolverFvMesh/dynamicMotionSolverFvMesh.C:103)
+         motionPtr_(motionSolver::New(*this))
+     -> motionSolver::New (OF/src/dynamicMesh/motionSolvers/motionSolver/motionSolver.C:104)
+        loads the libraries in motionSolverLibs (line 119), which registers
+        moorFV's classes in the tables, then reads "motionSolver" and
+        constructs sixDoFRigidBodyMotionFvBeamSolver (registered with
+        TypeName "sixDoFRigidBodyMotionFvBeam").
+
+3. The moorFV motion solver creates the body
+     sixDoFRigidBodyMotionFvBeamSolver constructor
+     (MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeamSolver/sixDoFRigidBodyMotionFvBeamSolver.C:76)
+     constructs its member motion_ (a sixDoFRigidBodyMotionFvBeam) from
+     sixDoFRigidBodyMotionFvBeamCoeffs.
+
+4. The body creates its integrator, restraints and constraints
+     sixDoFRigidBodyMotionFvBeam constructor
+     (MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C:99)
+         solver_(sixDoFFvBeamSolver::New(dict.subDict("solver"), *this))   // :135
+         addRestraints(dict, time);                                         // :137
+         addConstraints(dict);                                              // :141
+     - sixDoFFvBeamSolver::New reads "type beamFoamCoupled" and constructs
+       a beamFoamCoupled.
+     - addRestraints (:195) calls sixDoFRigidBodyMotionFvBeamRestraint::New
+       for each entry, which constructs a finiteVolumeBeam.
+     - addConstraints builds the plane and axis constraints and turns them
+       into the tConstraints/rConstraints projections.
+
+5. The restraint creates the beam
+     finiteVolumeBeam constructor
+     (MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C:58)
+         beam_(beamModel::New(time, "beamone"))                             // :69
+     -> beamModel::New (BF/beamModels/beamModel/newBeamModel.C:31) reads
+        "beamModel coupledTotalLagNewtonRaphsonBeam" from
+        constant/beamone/beamProperties and constructs that beam model on
+        the beamone mesh region.
+
+After set-up, the ownership is:
+
+    interFoam
+      mesh : dynamicMotionSolverFvMesh            (held as dynamicFvMesh&)
+        motionPtr_ : sixDoFRigidBodyMotionFvBeamSolver  (held as motionSolver*)
+          motion_ : sixDoFRigidBodyMotionFvBeam
+            solver_     : beamFoamCoupled         (held as sixDoFFvBeamSolver*)
+            restraints_ : [ finiteVolumeBeam ]    (held as ...Restraint*)
+                beam_ : coupledTotalLagNewtonRaphsonBeam   (held as beamModel*)
+            constraints_: [ plane, axis ]
+
+beamFoamCoupled also has a reference back to the body (body_, a protected
+member of sixDoFFvBeamSolver), which is how it reaches the restraints and
+the body state. The body's state (motionState_) is private, but
+sixDoFRigidBodyMotionFvBeam declares "friend class sixDoFFvBeamSolver"
+(sixDoFRigidBodyMotionFvBeam.H:72), which lets the base solver class read
+and change it. Its accessors (sixDoFFvBeamSolverI.H) are protected, so the
+derived solvers can use them too.
+
+
+=========================================================================
+Part 4: Each time step, from the PIMPLE loop to beamFoamCoupled::solve
+=========================================================================
+
+Step 1: interFoam's time and PIMPLE loops
+  OF/applications/solvers/multiphase/interFoam/interFoam.C
+      while (runTime.run())                                   // :90  time loop
+      {
+          ++runTime;                                          // :105
+          while (pimple.loop())                               // :110 PIMPLE outer correctors
+          {
+              if (pimple.firstIter() || moveMeshOuterCorrectors)   // :112
+              {
+                  mesh.update();                              // :114
+                  ...
+              }
+              // alpha, UEqn, pEqn ...
+          }
+      }
+  The floatRigidBody cases set nOuterCorrectors 3 and
+  moveMeshOuterCorrectors yes in system/fvSolution, so mesh.update() runs
+  in every outer corrector: three times per time step. Each time the
+  fluid force is newer, which is how the body and the fluid are coupled.
+
+Step 2: the mesh asks its motion solver for new points
+  mesh is a dynamicFvMesh&, and update() is pure virtual there
+  (dynamicFvMesh.H:186), so the call goes to the derived class:
+  OF/src/dynamicFvMesh/dynamicMotionSolverFvMesh/dynamicMotionSolverFvMesh.C:115
+      bool Foam::dynamicMotionSolverFvMesh::update()
+      {
+          fvMesh::movePoints(motionPtr_->newPoints());        // :117
+          ...
+      }
+
+Step 3: newPoints = solve, then curPoints
+  OF/src/dynamicMesh/motionSolvers/motionSolver/motionSolver.C:200
+      Foam::tmp<Foam::pointField> Foam::motionSolver::newPoints()
+      {
+          solve();                                            // :202
+          return curPoints();                                 // :203
+      }
+  newPoints() is written once in the base class. solve() and curPoints()
+  are pure virtual there (motionSolver.H:160, :165), so these two calls run
+  moorFV's sixDoFRigidBodyMotionFvBeamSolver::solve and ::curPoints.
+
+Step 4: moorFV's motion solver: fluid force, then the body
+  MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeamSolver/sixDoFRigidBodyMotionFvBeamSolver.C:271
+      void Foam::sixDoFRigidBodyMotionFvBeamSolver::solve()
+      {
+          // First call in a time step: store the old body state
+          bool firstIter = false;
+          if (curTimeIndex_ != this->db().time().timeIndex())       // :286
+          {
+              motion_.newTime();             // motionState0_ = motionState_ (sixDoFRigidBodyMotionFvBeamI.H:285)
+              curTimeIndex_ = this->db().time().timeIndex();
+              firstIter = true;
+          }
+
+          // Gravity from constant/g
+          g = db().time().lookupObject<uniformDimensionedVectorField>("g");   // :297
+
+          // Fluid force and moment on the body patches
+          functionObjects::forces f("forces", db(), forcesDict);     // :328
+          f.calcForcesMoments();                                     // :330
+
+          motion_.update                                             // :332
+          (
+              firstIter,
+              f.forceEff() + motion_.mass()*g.value(),               // fGlobal: fluid + weight
+              f.momentEff() + motion_.mass()*(motion_.momentArm() ^ g.value()),   // tauGlobal
+              t.deltaTValue(),
+              t.deltaT0Value()
+          );
+
+          // Move the mesh points with the new body position
+          pointDisplacement_.primitiveFieldRef() =
+              motion_.transform(points0(), ...) - points0();         // :368-377
+      }
+  Note that the forces object is built and evaluated here, inside the
+  motion solver, from the current pressure and velocity fields. It is not
+  the forces function object in controlDict.
+
+Step 5: the body hands the force to its integrator
+  MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/sixDoFRigidBodyMotionFvBeam.C:311
+      void Foam::sixDoFRigidBodyMotionFvBeam::update(firstIter, fGlobal, tauGlobal, deltaT, deltaT0)
+      {
+          if (Pstream::master())
+          {
+              solver_->solve(firstIter, fGlobal, tauGlobal, deltaT, deltaT0);   // :322
+              if (report_) { status(); }
+          }
+          Pstream::scatter(motionState_);
+      }
+  solver_ is an autoPtr<sixDoFFvBeamSolver> (the base class), and solve is
+  pure virtual there (sixDoFFvBeamSolver.H:187). The object behind it was
+  built as a beamFoamCoupled in set-up step 4, so this call runs:
+
+Step 6: beamFoamCoupled::solve
+  MFV/sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C:56
+  From here on, see monolithicRigidBodyCodePath.txt. In short: it adds the
+  other restraints to fGlobal/tauGlobal, calls
+  finiteVolumeBeam::solveMonolithic, which calls beam.evolve() on the
+  coupledTotalLagNewtonRaphsonBeam, and copies the returned body state
+  into the motion. The helpers it uses, such as restraints(),
+  centreOfRotation(), Q(), v(), tConstraints(), are inherited from the base
+  class sixDoFFvBeamSolver (sixDoFFvBeamSolverI.H), which reaches into the
+  body through body_.
+
+  With "type FvBeamNewmark;" the same call at step 5 runs
+  FvBeamNewmark::solve instead, which calls updateAcceleration ->
+  applyRestraints -> finiteVolumeBeam::restrain -> beam.evolve()
+  (the partitioned path).
+
+Step 7: back up the chain
+  - beamFoamCoupled::solve returns, having set centreOfRotation, Q, v, a,
+    pi and tau of the body.
+  - sixDoFRigidBodyMotionFvBeamSolver::solve uses the new body position to
+    set pointDisplacement for every mesh point (rigid near the body,
+    blended to zero further away: innerDistance/outerDistance, and the
+    modified morphing xDistance/yDistance).
+  - motionSolver::newPoints calls curPoints()
+    (sixDoFRigidBodyMotionFvBeamSolver.C:249): points0 + pointDisplacement.
+  - dynamicMotionSolverFvMesh::update passes them to fvMesh::movePoints,
+    which moves the mesh and computes the mesh fluxes.
+  - interFoam continues the PIMPLE corrector: alpha, momentum and pressure
+    on the moved mesh. On the next outer corrector the fluid force is
+    recomputed and the chain runs again from step 2.
+
+
+Repeated calls within one time step
+-----------------------------------
+With moveMeshOuterCorrectors yes, steps 2-7 run once per outer corrector.
+The old-time state is protected against this:
+  - sixDoFRigidBodyMotionFvBeamSolver stores the old body state
+    (motion_.newTime()) only on the first call of a time step
+    (curTimeIndex_ check, :286), and firstIter is true only then.
+  - In beamFoam, rigidBodyEnd::newTimeStep() stores x0, v0, a0, Q0, omega0,
+    alpha0 only once per time step (timeIndex_ guard), and the beam's
+    Newmark predictor runs only once per time step
+    (newmarkPredictorTimeIndex_).
+So each outer corrector re-solves the same time step with a newer fluid
+force, starting from the same old state.
+
+
+Summary of the chain, down to eigenSolver.solve (monolithic beamFoamCoupled)
+---------------------------------------------------------------------------
+File names are short here. Full paths:
+  beamFoamCoupled.C   MFV/sDoFRGBFvBeam/sixDoFFvBeamSolvers/beamFoamCoupled/beamFoamCoupled.C
+  finiteVolumeBeam.C  MFV/sDoFRGBFvBeam/sixDoFRigidBodyMotionFvBeam/restraints/finiteVolumeBeamRestraint/finiteVolumeBeam.C
+  RigidBodyEnd.C      BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
+  Evolve.C            BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamEvolve.C
+  ...BeamMatrix.C     BF/beamModels/coupledTotalLagNewtonRaphsonBeam/coupledTotalLagNewtonRaphsonBeamMatrix.C
+  BlockEigenSolverOF  BF/numerics/BlockEigenSolvers/BlockEigenSolverOF/BlockEigenSolverOF.{C,H}
+
+  interFoam.C:114                                  mesh.update()
+  -> dynamicMotionSolverFvMesh::update             (OpenFOAM, derived from dynamicFvMesh)
+  -> motionSolver::newPoints                       (OpenFOAM base class)
+  -> sixDoFRigidBodyMotionFvBeamSolver::solve      (moorFV, derived from displacementMotionSolver)
+       forces f(...); f.calcForcesMoments();
+  -> sixDoFRigidBodyMotionFvBeam::update           (moorFV, the body)
+  -> solver_->solve                                (virtual call through the base sixDoFFvBeamSolver)
+  -> beamFoamCoupled::solve                        (moorFV, derived from sixDoFFvBeamSolver)
+       sums the other restraints into force/moment; constraints into global axes
+  -> finiteVolumeBeam::solveMonolithic             (moorFV, derived from ...Restraint)        beamFoamCoupled.C:119
+       first call only: beam.initialiseRigidBodyEnd(bodyDict, 0)                             finiteVolumeBeam.C:510
+       beam.setRigidBodyEndConstraints(tC, rC)                                               finiteVolumeBeam.C:535
+       beam.setRigidBodyEndExternalLoad(force, moment)                                       finiteVolumeBeam.C:536
+  -> beam.evolve()                                 (virtual call through the base beamModel)  finiteVolumeBeam.C:538
+  -> coupledTotalLagNewtonRaphsonBeam::evolve      (beamFoam, derived from beamModel)          RigidBodyEnd.C:271
+       rigidBodyCoupling_ == "monolithic"
+  -> evolveMonolithicRigidBodyEnd                  (beamFoam)                                  RigidBodyEnd.C:277 -> :400
+       body.newTimeStep()              store x0, v0, a0, Q0, omega0, alpha0 (once per step)  RigidBodyEnd.C:404
+       setRigidBodyEndIterate(x, theta=0)  attachment W = body attachment point             RigidBodyEnd.C:412
+  -> evolveBeam                                    (beamFoam, the Newton loop)                 RigidBodyEnd.C:414 -> Evolve.C:55
+       do {                                                                                  Evolve.C:99
+         setRigidBodyEndIterate(rigidBodyEndX_, rigidBodyEndTheta_)                          Evolve.C:189
+         assembleMatrixCoefficients(d, l, u, source)   beam Jacobian and residual            Evolve.C:203 (code in ...BeamMatrix.C:55)
+         ... loads, beam inertia, momentum contributions added to source/d ...
+         BlockEigenSolverOF eigenSolver(d, l, u, own, nei)                                   Evolve.C:557
+         coupling = rigidBodyEndMonolithicCoupling()   body residual and Jacobian blocks     Evolve.C:562 (code at RigidBodyEnd.C:568)
+         constrainRigidBodyEndCoupling(coupling)       project onto free DOFs                Evolve.C:564 (code at RigidBodyEnd.C:714)
+         eigenSolver.setMonolithicCoupling(coupling)   store the 6 body rows/cols            Evolve.C:566 (BlockEigenSolverOF.H:154)
+  ->     eigenSolver.solve(solVec, source)                                                    Evolve.C:575
+  ->       BlockEigenSolverOF::solve                                                          BlockEigenSolverOF.C:312
+             convertFoamMatrixToEigenMatrix(d_, l_, u_, own_, nei_, A)  beam + body blocks    BlockEigenSolverOF.C:319 (code at :44)
+             b = beam source + bodySource/bodyRotSource; x = 0; initial residual
+             Eigen::SparseLU<...> solver(A);  x = solver.solve(b);                           BlockEigenSolverOF.C:441-443
+         ... DW, DTheta, then rigidBodyEndX_ += dx, rigidBodyEndTheta_ += dtheta ...
+       } while (!checkConvergence(...))                                                      Evolve.C:672
+     then body.accept(x, theta, ...) gives a, v, alpha, omega, and the chain
+     unwinds back to beamFoamCoupled::solve                                                  RigidBodyEnd.C:416
+
+Everything from evolve down is one class, coupledTotalLagNewtonRaphsonBeam:
+its member functions are split over several .C files, and none of those
+calls are virtual except evolve() itself. BlockEigenSolverOF is a separate
+class with no base class; evolveBeam creates it as an ordinary local object
+in every Newton iteration.

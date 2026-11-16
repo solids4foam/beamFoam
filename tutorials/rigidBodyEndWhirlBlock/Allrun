@@ -1,0 +1,31 @@
+#!/bin/sh
+# Generate and run the rigidBodyEndWhirl sweeps, several cases at once (each
+# in serial), then summarise them.
+# Usage: ./Allrun [sweep ...]     NJOBS (default 6) sets how many run at once
+cd "${0%/*}" || exit 1
+
+./makeCases "$@" || exit 1
+
+if [ $# -eq 0 ]
+then
+    set -- moment stiffness
+fi
+
+cases=""
+for sweep in "$@"
+do
+    cases="$cases $(ls -d "$sweep"/*/*)"
+done
+
+echo $cases | tr ' ' '\n' | xargs -P "${NJOBS:-6}" -I{} \
+    sh -c 'cd {} && ./Allrun > Allrun.out 2>&1; echo "{} finished"'
+
+# The rigid body is only in postProcessing/rigidBodyEnd: write it as VTK for
+# ParaView, and a case.foam for the beam
+for c in $cases
+do
+    ./writeRigidBodyVTK "$c"
+    touch "$c/case.foam"
+done
+
+./summarise.py "$@"

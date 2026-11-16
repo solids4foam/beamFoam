@@ -1,0 +1,68 @@
+{
+  "a2dcb75": {
+    "summary": "Phase 0. Adds rigidBodyEnd, a point-mass body owned by beamFoam and attached to a beam end. Also adds partitioned coupling with converged coupling iterations, and standalone tests against analytic results. Fixes two existing bugs.",
+    "details": [
+      "rigidBodyEnd.H/.C (new): mass, external force, gravity, Newmark update, newTimeStep() by time index, history file postProcessing/rigidBodyEnd",
+      "coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C (new): reads rigidBodyCoupling none | partitioned | monolithic; evolve() dispatches to evolvePartitionedRigidBodyEnd(), and the old evolve() becomes evolveBeam()",
+      "Bug fix, Evolve.C: the Newmark predictor is applied once per time step (newmarkPredictorTimeIndex_), not on every repeated solve",
+      "Bug fix, beamModel.C: the gravity rho check moved to after rho_ is filled (it crashed cases with a g file and per-beam rho); new tutorials/rigidBodyEnd (hangingMass, axialOscillation, pendulum) with checkRigidBodyEnd.py"
+    ]
+  },
+  "0b3fa2b": {
+    "summary": "Marks Phase 0 as completed in the development plan PDF.",
+    "details": []
+  },
+  "359e651": {
+    "summary": "Phase 1. Solves the body's translation in the same Newton iteration as the beam, inside BlockEigenSolverOF: true monolithic coupling for translation.",
+    "details": [
+      "RigidBodyCouplingData.H: new RigidBodyMonolithicCoupling (attachment cell, beam-row and body-row coefficients, body source)",
+      "BlockEigenSolverOF.C/.H: setMonolithicCoupling(); body columns +CQW/pDelta on the end cell's force rows and +CMQW/pDelta on its moment rows; body rows R = m a + c v - F_ext - m g + Q_b; the increment is returned in rigidBodySolution",
+      "RigidBodyEnd.C: evolveMonolithicRigidBodyEnd(), setRigidBodyEndIterate(), rigidBodyEndMonolithicCoupling() (boundary terms assembled alone into zeroed fields), checkRigidBodyEndJacobian() (finite-difference check)",
+      "Evolve.C: hooks before updateCoeffs and after the solve (x += dx; the attachment W is updated); deltaXNorm includes the body increment"
+    ]
+  },
+  "03bbd7d": {
+    "summary": "Phase 2. Adds body rotation to both couplings: inertia tensor, centre of mass away from the attachment, angular velocity, damping and external moment, all solved monolithically with the beam.",
+    "details": [
+      "rigidBodyEnd: orientation exp(theta)·Q_n with Newmark on theta; moment balance J alpha + omega x J omega + c_r omega - M_ext - r x F_beam; rotationalResidual(), rotationJacobian() with the SO(3) left Jacobian T(theta); arm(), attachmentDisplacement()",
+      "BlockEigenSolverOF.C: rotation rows and columns, plus translation-rotation cross terms",
+      "RigidBodyCouplingData.H: rotation coefficients (bodyRot*, beam*RowRotCoeff) and RigidBodyEndState",
+      "New tutorials hangingBody, freeRotation and compoundPendulum; checkRigidBodyEnd.py grows to 54 checks"
+    ]
+  },
+  "83acbbb": {
+    "summary": "Phase 3, beamFoam side. Adds a beamModel interface so a caller (moorFV) can create the body, set its applied load each step and read back the solved state. Adds the interFoam case using moorFV's new beamFoamCoupled solver.",
+    "details": [
+      "beamModel.H: virtual initialiseRigidBodyEnd(dict, gravity), setRigidBodyEndExternalLoad(F, M) and getRigidBodyEndState()",
+      "rigidBodyEnd: initial orientation; inertia and arm in body axes; setExternalLoad(); the history folder is named after the start time",
+      "RigidBodyEnd.C: createRigidBodyEnd(); the Jacobian check uses central differences",
+      "tutorials/rigidBodyAndBeam_beamFoamCoupled with checkCoupledState.py and Alltest (moorFV's state equals beamFoam's to about 2e-10)"
+    ]
+  },
+  "bf5bbbe": {
+    "summary": "Renames codexLogs/ to documentation/. Its message describes all of Phase 4, but a failed git add left only the rename in this commit; the remaining files are in 74ebab7.",
+    "details": []
+  },
+  "74ebab7": {
+    "summary": "Phase 4. Adds the converged-reference interFoam cases, the stress-test generator, updated plotting scripts and the outer-corrector / Newmark note, and marks Phase 4 completed in the plan.",
+    "details": [
+      "rigidBodyAndBeam_loop_nOuter8, rigidBodyAndBeam_beamFoamCoupled_nOuter8: nOuterCorrectors 8, moveMeshOuterCorrectors yes",
+      "rigidBodyAndBeam_stress: makeCases (stiffLine, lightBody, stiffLight, stiffLargeDt x 4 methods; removes 0/beam/CQ and CM so E takes effect), Allrun (parallel), summarise.py",
+      "plot_rigidBodyAndBeam_new_vs_old.py rewritten for several cases with a reference and CASE_SET; the efficiency script gets stress-case labels and summed Newton iterations",
+      "documentation/outerCorrectorsAndNewmark.pdf and documentation/source/ (HTML, model.py, figs.py); codexLogs references updated"
+    ]
+  },
+  "36393fb": {
+    "summary": "Phase 3, moorFV side. New sixDoF solver beamFoamCoupled: moorFV hands the fluid load to beamFoam, which solves beam and body together; moorFV then copies the solved state as it is.",
+    "details": [
+      "beamFoamCoupled.H/.C (new): applied load = fluid force/moment with weight + other restraints (explicit); calls finiteVolumeBeam::solveMonolithic; sets centre of rotation, Q, v, a, pi = J·(Q^T omega), tau",
+      "finiteVolumeBeam.C/.H: solveMonolithic(motion, force, moment, solverDict); on the first call it sets up beamFoam's body from the motion (no gravity in beamFoam)",
+      "sixDoFFvBeamSolver.H / I.H: protected accessors restraints(), constraints() and initialCentreOfRotation()",
+      "Make/files registers the solver; the beamFoam submodule points to 83acbbb"
+    ]
+  },
+  "f1bd195": {
+    "summary": "Points the beamFoam submodule at 74ebab7 (Phase 4 validation and documentation).",
+    "details": []
+  }
+}

@@ -1,0 +1,152 @@
+{
+ "1b31789": {
+  "summary": "Updates the cantilever tutorial. Allrun now plots tip displacement with gnuplot and opens the PDF, a plot script and output PDF are added, and the time step drops from 0.2 to 0.01.",
+  "details": []
+ },
+ "6f37f60": {
+  "summary": "Adds a run-time-selectable momentumContribution base class and hooks it into the coupled Newton-Raphson beam solver, so external linear and angular momentum sources plus diagonal coefficients can be added per cell. The morisonMomentum stub only returns zero fields.",
+  "details": [
+   "New abstract momentumContribution (an IOdictionary) with diagCoeff, linearMomentumSource and angularMomentumSource, read from constant/momentumContributionProperties",
+   "coupledTotalLagNewtonRaphsonBeam gains autoPtr momentumContribPtr_; evolve() adds the sources to source rows 0-5 and the coefficients to d",
+   "The header check is inverted (!typeHeaderOk), so the object is created only when the file is missing",
+   "morisonMomentum.C is not added to Make/files, so it is not compiled"
+  ]
+ },
+ "669b52c": {
+  "summary": "Moves the Morison drag calculation out of the beam solver's evolve() into morisonMomentum, and changes the contribution interface to take the beam model and velocity field instead of W and Theta.",
+  "details": [
+   "Removes the inline dragActive_ drag block and its steady-state check from coupledTotalLagNewtonRaphsonBeamEvolve.C",
+   "morisonMomentum reads Cdn/Cdt from <type>Coeffs and computes normal and tangential drag along the HermiteSpline tangents",
+   "Raises a FatalError if ddt(W) uses steadyState",
+   "Signatures change to (const beamModel&, const volVectorField& U); morisonMomentum.C is added to Make/files"
+  ]
+ },
+ "a6340bd": {
+  "summary": "Replaces momentumContribution with beamMomentumContribution, which allows a list of contributions per case. Morison drag becomes morisonDragContribution and the inline ground-contact code becomes groundContactContribution. The commit message notes ground contact did not yet work properly.",
+  "details": [
+   "beamMomentumContribution is built by name from a dictionary; the solver reads a beamMomentumContributions list from constant/beamMomentumContributionProperties into a PtrList",
+   "evolve() loops over every contribution, adding its sources and diagonal coefficients",
+   "groundContact applies a z-direction penalty spring/damper below groundZ, using optional refW from 0/, and prints debug output",
+   "Removes the dragActive_/Cdn_/Cdt_ members and the inline groundContactActive_ block from the solver"
+  ]
+ },
+ "5cc922b": {
+  "summary": "Adds the cantileverDrag tutorial, which tests the morisonDrag contribution, with case files, a README, a gnuplot script and plots with and without drag.",
+  "details": []
+ },
+ "ada45c4": {
+  "summary": "Adds the acceleration field Accl as a third argument to every beamMomentumContribution member function, so later added-mass terms can use it. The solver now passes Accl_ to each contribution.",
+  "details": [
+   "diagCoeff, linearMomentumSource and angularMomentumSource now take (bm, U, Accl) in the base class, morisonDragContribution and groundContactContribution",
+   "Removes commented-out leftover code from beamMomentumContribution.C"
+  ]
+ },
+ "9f74d0c": {
+  "summary": "Adds a FatalError when the d2dt2Scheme is not recognised during source assembly. It also enables the Accl_ = fvc::ddt(U_) update for the Euler scheme so contributions get a valid acceleration.",
+  "details": [
+   "Adds an else branch with FatalErrorInFunction for an undefined d2dt2SchemeName_ in coupledTotalLagNewtonRaphsonBeamEvolve.C",
+   "Uncomments Accl_ = fvc::ddt(U_) in updateSolutionVariables() for Euler"
+  ]
+ },
+ "44e8e74": {
+  "summary": "Cleanup with no change in behaviour: removes the leftover ground-contact members from the beam solver, deletes commented legacy code, fixes indentation and adds an author credit.",
+  "details": [
+   "Removes groundContactActive_, gDamping_, gStiffness_ and groundZ_ from coupledTotalLagNewtonRaphsonBeam",
+   "Removes debug Info prints from groundContactContribution and notes that contact is z-direction only",
+   "Adds Amirhossein Taran as author in the contribution headers",
+   "Removes commented blocks from the cantileverDrag beamMomentumContributionProperties"
+  ]
+ },
+ "e2272c1": {
+  "summary": "morisonDragContribution now reads a rhoFluid coefficient and uses the fluid density in the drag force instead of the beam density.",
+  "details": [
+   "Fdn and Fdt use rhoFluid_ in place of bm.rho()",
+   "The rhoFluid_ member is declared in the header only in the next commit (95ad89d), so this commit alone would not compile"
+  ]
+ },
+ "95ad89d": {
+  "summary": "Rewrites the ground-contact force with separate normal stiffness and damping, reverses the sign convention for the normal force, and adds stick-slip Coulomb tangential friction. This revision does not compile.",
+  "details": [
+   "Replaces gDamping/gStiffness with kNormal_, cNormal_, kTangential_ and muFriction_",
+   "Tangential force is a linear spring capped at muFriction*|normal force|",
+   "Wrong lookup keys (\"kNormal_\" is read three times), mismatched member names and an undeclared spline",
+   "Also declares rhoFluid_ in morisonDragContribution.H"
+  ]
+ },
+ "f1bd715": {
+  "summary": "Fixes the compile errors in groundContactContribution from the previous commit and removes the unused beam density variable from morisonDragContribution.",
+  "details": [
+   "Correct lookup keys: kNormal, cNormal, kTangential, muFriction",
+   "Member names now match the header (cNormal_, kTangential_)",
+   "Builds the HermiteSpline in linearMomentumSource and adds UtHat for the friction direction",
+   "Removes const scalar rho = bm.rho().value() from morisonDragContribution.C"
+  ]
+ },
+ "c599cf0": {
+  "summary": "Style-only changes in groundContactContribution: the normal force becomes const and the friction condition loses its redundant parentheses.",
+  "details": []
+ },
+ "71a9e43": {
+  "summary": "README update that documents the Eigen third-party dependency (tested with 3.3.7), names the createBeamMesh utility and fixes typos.",
+  "details": []
+ },
+ "8478030": {
+  "summary": "Fixes the dimensions of the default refW field in groundContactContribution from velocity to length, and adds an author line to the followerForceBeamDisplacementNR boundary condition header.",
+  "details": [
+   "dimensionedVector(\"refW\", dimLength, ...) replaces dimVelocity",
+   "Adds Seevani Bali as author in followerForceBeamDisplacementNRFvPatchVectorField.H"
+  ]
+ },
+ "d6d8035": {
+  "summary": "Adds the linearSpringForceBeamDisplacementNR boundary condition. It derives from forceBeamDisplacementNR and applies a linear spring force along a chosen direction at a beam end, updating the Newton-Raphson patch coefficients.",
+  "details": [
+   "Reads springStiffness and springDirection (normalised) from a linearSpringCoeffs subdictionary; Ks_ = k * d d",
+   "evaluate() sets force() to -k (W . d) d on each face and changes the CQW/delta coefficient by Ks_",
+   "Includes a commented-out placeholder for an extra time-varying force",
+   "Registers the new source file in Make/files"
+  ]
+ },
+ "8d1096a": {
+  "summary": "Adds the beamAndSpringInSeries tutorial: a beam with a fixed left end and a linearSpringForceBeamDisplacementNR spring at the right end, acting in x.",
+  "details": []
+ },
+ "94fa2f5": {
+  "summary": "Adds the cantileverSpring tutorial: a cantilever under a uniformly distributed load with a vertical linear spring (stiffness 800, direction y) at the free end. It includes a README, a plot script and a result PDF.",
+  "details": []
+ },
+ "50fb9cd": {
+  "summary": "Tidies the beamAndSpringInSeries tutorial: removes commented boundary blocks and the gnuplot/open steps from Allrun, and sets startFrom to startTime.",
+  "details": []
+ },
+ "3deff39": {
+  "summary": "Deletes the README, gnuplot scripts, Allrun plot steps and result PDFs from the cantileverDrag and cantileverSpring tutorials. It also adds rhoFluid 1000 to the drag case and shortens its endTime to 0.15.",
+  "details": []
+ },
+ "f175274": {
+  "summary": "Adds an optional time-varying offset force to the linear spring BC, read from an offsetForceSeries table. It also changes the spring term in the patch coefficient from −Ks to +Ks, which is the correct sign for a restoring spring (the code comment explains it). The message does not mention this.",
+  "details": [
+   "New offsetForce_ (vectorField) and offsetForceSeries_ (interpolationTable<vector>) members, mapped in autoMap/rmap",
+   "updateCoeffs() re-evaluates offsetForce_ at the current time",
+   "Coefficient changes from CQW/delta − Ks_ to CQW/delta + Ks_ (a sign fix; not in the commit message)",
+   "Tutorial beamAndSpringInSeries adds an offsetForceSeries entry and constant/timeVsOffsetForce (100 N in x)"
+  ]
+ },
+ "725dc50": {
+  "summary": "Removes the cantileverDrag tutorial completely.",
+  "details": []
+ },
+ "1882ba1": {
+  "summary": "Removes the unused constant/timeVsForce file from the beamAndSpringInSeries tutorial.",
+  "details": []
+ },
+ "8544eea": {
+  "summary": "Allwmake now exits if WM_PROJECT is unset (OpenFOAM not sourced). It warns, without stopping, when the sourced version is not in a list from v2106 to v2506.",
+  "details": []
+ },
+ "b4f737a": {
+  "summary": "Changes the Allwmake shebang from sh to bash, which its [[ ]] checks need. It also makes the script run from its own directory.",
+  "details": [
+   "Adds cd \"${0%/*}\" || exit; the commit message does not mention this"
+  ]
+ }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pull request summary</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  :root {
+    --ink: #1c1f24; --muted: #5b6270; --rule: #d9dde3; --accent: #1f5f8b;
+    --soft: #f3f6f9; --warn: #9a5b00; --warnbg: #fdf6ea; --ok: #2d6a3e; --okbg: #eef6f0;
+    --bf: #1f5f8b; --mf: #7a3e9d;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 9.6pt/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; background: #fff; }
+  h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 4pt; letter-spacing: -0.01em; }
+  h2 { font-size: 12.5pt; color: var(--accent); margin: 16pt 0 6pt; padding-bottom: 3pt; border-bottom: 1px solid var(--rule); break-after: avoid; }
+  h3 { font-size: 10.4pt; margin: 10pt 0 3pt; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt; padding-left: 15pt; }
+  li { margin-bottom: 2pt; }
+  a { color: inherit; text-decoration: none; }
+  code { font: 8.4pt/1.3 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); padding: 0.5pt 3pt; border-radius: 2pt; }
+  pre { font: 8.2pt/1.45 Menlo, "SF Mono", Consolas, monospace; background: var(--soft); border-left: 3px solid var(--accent); padding: 6pt 9pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 3pt 0 8pt; font-size: 8.8pt; }
+  th, td { text-align: left; vertical-align: top; padding: 2.5pt 5pt; border-bottom: 1px solid var(--rule); }
+  th { background: var(--soft); font-weight: 600; }
+  td.n, th.n { text-align: right; }
+  .meta { color: var(--muted); font-size: 9pt; margin-bottom: 10pt; }
+  .lede { font-size: 10pt; background: var(--soft); border-radius: 3pt; padding: 8pt 11pt; margin: 8pt 0 4pt; }
+  .callout { border-radius: 3pt; padding: 7pt 10pt; margin: 6pt 0 9pt; break-inside: avoid; }
+  .warn { background: var(--warnbg); border-left: 3px solid var(--warn); }
+  .okc { background: var(--okbg); border-left: 3px solid var(--ok); }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.6pt; }
+  table.files { font-size: 7.6pt; margin: 3pt 0 2pt; }
+  table.files td, table.files th { padding: 1.5pt 4pt; }
+  table.files td.path { font-family: Menlo, "SF Mono", Consolas, monospace; font-size: 7.2pt; word-break: break-all; width: 52%; }
+  table.files td.pm { white-space: nowrap; font-family: Menlo, monospace; font-size: 7.2pt; width: 11%; }
+  table.files th.pmh { width: 11%; }
+  table.files td.lines { font-family: Menlo, monospace; font-size: 7pt; color: #3a4150; }
+  table.files tr.grp td { background: var(--soft); font-weight: 600; font-size: 7.6pt; }
+  table.files tr.caserow td, table.files tr.docrow td { color: var(--muted); }
+  .pre { color: #9aa1ad; }
+  .add { color: #2d6a3e; } .del { color: #a33a2a; } .bin { color: var(--muted); }
+  .commit { border: 1px solid var(--rule); border-radius: 3pt; padding: 5pt 8pt 4pt; margin: 6pt 0; break-inside: avoid-page; }
+  .ch { font-size: 8.4pt; color: var(--muted); display: flex; gap: 8pt; align-items: baseline; }
+  .sha { font-family: Menlo, monospace; color: var(--ink); font-weight: 600; }
+  .repo { font-size: 7.4pt; font-weight: 700; padding: 0.5pt 6pt; border-radius: 8pt; color: #fff; }
+  .repo.beamFoam { background: var(--bf); } .repo.moorFV { background: var(--mf); }
+  .subj { font-weight: 600; margin: 1pt 0 2pt; }
+  .summary { margin: 0 0 2pt; }
+  ul.det { margin: 0 0 3pt; font-size: 8.8pt; }
+  .eq { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; text-align: center; margin: 4pt 0 6pt; }
+  .toc a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>Pull request summary: beam / rigid-body coupling</h1>
+<div class="meta">
+  1 October 2026 · Colm Mc Alister<br>
+  <b>beamFoam</b> <code>colm_6DOF_solver</code> → <code>openfoam-v2306</code> (solids4foam/beamFoam#49). Branch point: {{BF_BASE}}. {{NB}} commits plus 12 merges.<br>
+  <b>moorFV</b> <code>feature-beamFoamCoupling-colm</code> → <code>main</code> (solids4foam/moorFV#16). Branch point: {{MF_BASE}}. {{NM}} commits.
+</div>
+
+<div class="lede">
+  <b>What this document is.</b> Every commit since the two branches left their base branches, in chronological order, with:
+  <ul>
+    <li>a short explanation of what the diff does;</li>
+    <li>every file it changes;</li>
+    <li>for code and scripts, the line ranges changed.</li>
+  </ul>
+  beamFoam and moorFV commits are interleaved by time and tagged
+  <span class="repo beamFoam">beamFoam</span> / <span class="repo moorFV">moorFV</span>. Section 3 summarises the net moorFV changes;
+  section 5 lists open issues found along the way;
+  section 6, at the end, sets out the plan for Phase 5 (several mooring lines).
+</div>
+
+<h2>Contents</h2>
+<ol class="toc">
+  <li><a href="#overview">Overview, timeline and net changes</a></li>
+  <li>Chronological commit log:
+    <ol style="list-style:none;padding-left:6pt">
+      <li><a href="#era1">2.1 June – September 2025</a></li>
+      <li><a href="#era2">2.2 November – December 2025</a></li>
+      <li><a href="#era3">2.3 February – August 2026</a></li>
+      <li><a href="#era4">2.4 30 September – 1 October 2026</a></li>
+    </ol></li>
+  <li><a href="#moorfv">moorFV: net changes</a></li>
+  <li><a href="#merges">beamFoam merge commits</a></li>
+  <li><a href="#issues">Open issues found while preparing this summary</a></li>
+  <li><a href="#phase5">Phase 5: several mooring lines (plan)</a></li>
+</ol>
+
+<h2 id="overview">1. Overview</h2>
+<h3>Timeline</h3>
+{{TIMELINE}}
+
+<h3>What the branches add, in brief</h3>
+<ul>
+  <li><b>2025, beamFoam (Seevani Bali, Philip Cardiff, Amirhossein Taran).</b>
+    <ul>
+      <li><b>New:</b> cross-section classes for v2306, one <code>createBeamMesh</code> utility, four function objects (convergence,
+        displacements, energy, forces/moments), per-beam material properties, and a <code>beamMomentumContribution</code>
+        framework (Morison drag, ground contact).</li>
+      <li><b>Solver changes:</b> a linear spring boundary condition with a time-varying offset force, a refactored solver with
+        <code>d2dt2</code> scheme names and normalised residuals, and a fix to the Euler inertia terms.</li>
+      <li><b>Removed:</b> unused contact, pulley, plasticity, bunching and boundary-condition code.</li>
+      <li><b>Repository:</b> OFW-paper tutorials, READMEs, a GitHub Actions build and <code>Allwmake</code> fixes.</li>
+    </ul></li>
+  <li><b>February – August 2026 (Colm, with Codex).</b>
+    <ul>
+      <li>Six rigid-body unknowns appended to the BlockEigen system, and rigid-body step data passed from moorFV.</li>
+      <li>A "staged" and an experimental "fullyImplicit" coupling mode, history files, efficiency plots and interFoam cases.</li>
+      <li>In effect still a partitioned scheme: the body block is an identity, and <code>FvBeamNewmark</code> recomputes the body state afterwards.</li>
+    </ul></li>
+  <li><b>30 September – 1 October 2026 (Colm, with Claude).</b>
+    <ul>
+      <li>A review of the earlier path and a development plan.</li>
+      <li><b>Phase 0:</b> the <code>rigidBodyEnd</code> body inside beamFoam, plus two bug fixes.</li>
+      <li><b>Phase 1:</b> monolithic translation in BlockEigen. <b>Phase 2:</b> rotation.</li>
+      <li><b>Phase 3:</b> moorFV's <code>beamFoamCoupled</code> solver.</li>
+      <li><b>Phase 4:</b> validation and stress tests in interFoam.</li>
+    </ul></li>
+</ul>
+
+<div class="callout warn"><b>How to read the line ranges.</b> Ranges are line numbers in the file <i>after</i> that commit
+  (from <code>git show -U0</code>). <code>−n at L</code> means n lines were removed just after line L, with nothing added there.
+  Generated tutorial files (fields, meshes, time directories, logs) are grouped by case directory with a file count.
+  Tutorial scripts (<code>.py</code>, <code>Allrun</code> …) are listed like code. "bin" marks a binary file such as a PDF or image.
+  Path prefixes <span class="pre">src/wireBunchingModels/</span> (beamFoam) and <span class="pre">src/sDoFRGBFvBeam/</span> (moorFV)
+  are greyed out.</div>
+
+<h3>Net change against the base branches</h3>
+<p><b>beamFoam:</b> {{BF_TOTALS}}. Most of the line count is generated tutorial output.<br>
+<b>moorFV:</b> {{MF_TOTALS}}.</p>
+
+<h3>beamFoam: net changes to code, scripts and documents</h3>
+{{BF_NET}}
+
+<h3>beamFoam: net changes to tutorial cases</h3>
+<p class="small muted">Generated and setup files per case, from the branch point to now. Scripts are listed in the table above.</p>
+{{BF_CASES}}
+
+{{LOG}}
+
+<h2 id="moorfv">3. moorFV: net changes</h2>
+<p>All moorFV changes, branch point to now (the beamFoam submodule pointer is listed as <code>src/beamFoam</code>):</p>
+{{MF_NET}}
+<ul>
+  <li><b>New sixDoF solver <code>beamFoamCoupled</code></b> (<code>sixDoFFvBeamSolvers/beamFoamCoupled/</code>, 36393fb).
+    The fluid force and moment (with the weight) and any other restraints form the applied load. beamFoam solves the beam and
+    the body together, and the state it returns is copied into the motion without recomputation or relaxation.</li>
+  <li><b><code>finiteVolumeBeam</code> restraint.</b>
+    <ul>
+      <li><code>solveMonolithic()</code> (36393fb).</li>
+      <li>Earlier: <code>RigidBodyStepData</code> is passed to the beam, there are <code>beamAttachmentKinematics</code> and
+        <code>blockEigenAuthoritativeMotion</code> options, and the attachment force has a history file (d72ed0a, 3dc0bb1, ffa51e3).</li>
+    </ul></li>
+  <li><b>Interface change.</b> <code>sixDoFRigidBodyMotionFvBeamRestraint::restrain()</code> takes a non-const motion.</li>
+  <li><b>Base solver accessors:</b> <code>restraints()</code>, <code>constraints()</code>, <code>initialCentreOfRotation()</code>;
+    <code>sixDoFRigidBodyMotionFvBeam</code> gains <code>applyBlockEigenSolution()</code> and <code>state0()</code>.</li>
+  <li><b>Build.</b> <code>Make/options</code> include beamFoam headers through <code>$(BEAMFOAM_DIR)</code> (74005ba), replacing hard-coded paths.</li>
+  <li><b>Open points from the review:</b>
+    <ul>
+      <li>The acceleration relaxation in <code>updateAcceleration</code> also applies on the first outer corrector of each step (<code>static bool first</code>).</li>
+      <li><code>main</code> has renamed <code>sDoFRGBFvBeam</code>, so the branch must be rebased.</li>
+      <li>The <code>displacement*.dat</code> file holds the anchor displacement.</li>
+    </ul></li>
+</ul>
+
+<h2 id="merges">4. beamFoam merge commits</h2>
+<p class="small">Merges bring branches together. Their content is already covered by the commits above.</p>
+{{MERGES}}
+
+{{TAIL}}
+
+</body>
+</html>

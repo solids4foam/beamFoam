@@ -1,0 +1,50 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| beamFoam: finite volume solver for geometrically exact beams                |
+| Web:         https://github.com/solids4foam/beamFoam                        |
+| Disclaimer:  This offering is not approved or endorsed by OpenCFD Limited,  |
+|              producer and distributor of the OpenFOAM software via          |
+|              www.openfoam.com, and owner of the OPENFOAM® and OpenCFD®      |
+|              trade marks.                                                   |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      W;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 0 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    // Anchor
+    left
+    {
+        type            fixedValue;
+        value           uniform (0 0 0);
+    }
+
+    // Attachment: pulled along the line to pretension it. In the coupled
+    // run this becomes fixedValue and the rigid body drives it.
+    right
+    {
+        type            fixedDisplacement;
+        value           uniform (0 0 0);
+        displacementSeries
+        {
+            file        "$FOAM_CASE/constant/timeVsDisplacement";
+            outOfBounds clamp;
+        }
+    }
+
+    beam
+    {
+        type            empty;
+    }
+}
+
+// ************************************************************************* //

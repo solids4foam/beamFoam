@@ -1,0 +1,4 @@
+#!/bin/sh
+cd "${0%/*}" || exit 1
+rm -rf mesh partitioned monolithic partitioned_nOuter*
+rm -f Allrun.out comparison.txt

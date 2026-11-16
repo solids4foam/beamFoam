@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""
+Generate the floatRigidBody sweeps from ./base (a copy of
+../floatRigidBody/floatRigidBody_monolithic).
+
+A 0.1 x 0.05 x 0.05 m box floats half submerged in a 1 m wave tank (water
+depth 0.15 m), moored by one line from the tank floor. StokesII waves of
+height 0.02 m come in from the left, ramped up over 2 s; the run lasts
+10 s. Two sweeps, each case run with partitioned (FvBeamNewmark) and with
+monolithic (beamFoamCoupled) coupling:
+
+    stiffness  the line's E (and G = E/2.8) relative to base
+               (wave period as in base)
+    period     the wave period (line as in base)
+
+Base: E = 5e6 Pa, line radius 1 mm and length 0.236 m, so EA/L = 66.6 N/m;
+wave period 1 s.
+
+The sweep cases write fields at 5 and 10 s only: the results come from the
+function objects in postProcessing. The animation cases (base, both
+couplings) write compressed fields every 0.05 s for ParaView.
+
+Cases are written to <sweep>/<label>/<coupling> and animation/<coupling>.
+
+Usage: ./makeCases [sweep ...]   (default: all sweeps and animation)
+"""
+
+import os
+import re
+import shutil
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(HERE, "base")
+
+BASE_E = 5.0e6
+
+# E relative to base: the line's axial mode sqrt(EA/(L m)) on the box goes
+# from 12 to 740 rad/s (period 0.53 s to 8.5 ms, against dt <= 2 ms)
+STIFFNESS_FACTORS = [0.25, 1, 4, 16, 64, 256, 1024]
+
+# Wave period [s]: wavelength 0.39 m to 1.7 m in 0.15 m of water, from
+# near the box's heave period (about 0.4 s) to an Ursell number of about 18
+# (StokesII holds to about 26)
+PERIODS = [0.5, 0.6, 0.8, 1.0, 1.25, 1.5]
+
+SWEEPS = {
+    "stiffness": {f"Ex{f:g}": {"E": f*BASE_E} for f in STIFFNESS_FACTORS},
+    "period": {f"T{t:g}": {"period": t} for t in PERIODS},
+    "animation": {"": {"animation": True}},
+}
+
+SOLVERS = {"partitioned": "FvBeamNewmark", "monolithic": "beamFoamCoupled"}
+
+
+def substitute(path, pattern, replacement):
+    with open(path) as f:
+        text = f.read()
+    text, n = re.subn(pattern, replacement, text, flags=re.M)
+    if n != 1:
+        raise RuntimeError(f"{pattern!r} found {n} times in {path}")
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def make_case(sweep, label, coupling):
+    settings = SWEEPS[sweep][label]
+    case = os.path.join(HERE, sweep, label, coupling)
+
+    if os.path.isdir(case):
+        shutil.rmtree(case)
+    shutil.copytree(BASE, case)
+
+    substitute(
+        os.path.join(case, "constant", "dynamicMeshDict"),
+        r"^(\s*type\s+)beamFoamCoupled;", rf"\g<1>{SOLVERS[coupling]};",
+    )
+
+    control = os.path.join(case, "system", "controlDict")
+    if settings.get("animation"):
+        substitute(control, r"^writeCompression\s+\w+;", "writeCompression on;")
+    else:
+        substitute(control, r"^writeInterval\s+\S+;", "writeInterval   5;")
+
+    if "E" in settings:
+        E = settings["E"]
+        makeBeams = os.path.join(case, "beamInit", "makeBeams")
+        substitute(makeBeams, r"^E=\S+", f"E={E:.6g}")
+        substitute(makeBeams, r"^G=\S+", f"G={E/2.8:.6g}")
+    if "period" in settings:
+        substitute(
+            os.path.join(case, "constant", "waveProperties"),
+            r"^(\s*wavePeriod\s+)\S+;", rf"\g<1>{settings['period']:g};",
+        )
+
+    open(os.path.join(case, "case.foam"), "w").close()
+    return case
+
+
+sweeps = sys.argv[1:] or list(SWEEPS)
+for sweep in sweeps:
+    if sweep not in SWEEPS:
+        sys.exit(f"Unknown sweep {sweep}; choose from {', '.join(SWEEPS)}")
+    for label in SWEEPS[sweep]:
+        for coupling in SOLVERS:
+            case = make_case(sweep, label, coupling)
+            print("Created", os.path.relpath(case, HERE))

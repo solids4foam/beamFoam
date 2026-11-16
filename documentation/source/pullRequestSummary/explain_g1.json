@@ -1,0 +1,367 @@
+{
+ "c4ff656": {
+  "summary": "Re-enables the crossSectionModel family (circle, rectangle, polygon, polyline, annularSector) for OpenFOAM v2306+ and makes beamModel build per-beam cross-sections from a 'beams' list. Also adds a createMultipleBeamMesh utility.",
+  "details": [
+   "Make/files: compiles crossSectionModel, circle, rectangle, quadrilateral, polygon, annularSector, polyline",
+   "beamModel.C/.H: crossSections_ PtrList and crossSections() accessor un-commented; R and A() now come from each beam's crossSectionModel",
+   "crossSection sources: run-time selection table and tmp/.ref() usage updated to the newer OpenFOAM API",
+   "createMultipleBeamMesh.C: new utility that meshes several beams, one per 'beams' entry"
+  ]
+ },
+ "6e5bbc4": {
+  "summary": "Renames the face rotation-tensor variable in the follower-force boundary condition from Lambda to Lambdaf and looks up the 'Lambdaf' surface field, matching the solver's naming.",
+  "details": [
+   "followerForceBeamDisplacementNRFvPatchVectorField.C: lookupPatchField<surfaceTensorField>(\"Lambdaf\") replaces \"Lambda\""
+  ]
+ },
+ "baebd59": {
+  "summary": "Adds a cantilever follower-end-force test case under tutorials/ofw-paper (fields, beamProperties, load tables, Allrun/Allclean).",
+  "details": []
+ },
+ "075bae9": {
+  "summary": "Whitespace-only fix (a space before '=') in the follower-force boundary condition.",
+  "details": []
+ },
+ "d7fe04b": {
+  "summary": "Formatting-only change: re-indents code and commented-out lines in annularSector.C; behaviour is unchanged.",
+  "details": []
+ },
+ "607b84c": {
+  "summary": "Adds the beamDisplacements function object, which writes the average W displacement (x, y, z) on a named patch to a time-history file.",
+  "details": [
+   "functionObjects/beamDisplacements: new class; reads 'historyPatch' and writes Time, w_x, w_y, w_z",
+   "Ships its own Make/files and Make/options"
+  ]
+ },
+ "af7f8a5": {
+  "summary": "Adds the beamForcesMoments function object, which writes the average force Q and moment M on a named patch to a time-history file.",
+  "details": [
+   "functionObjects/beamForcesMoments: new class; reads 'historyPatch' and writes Q_x..Q_z and M_x..M_z"
+  ]
+ },
+ "f6a1cc3": {
+  "summary": "Adds the beamEnergyData function object, which writes the beam's internal energy and its linear and angular kinetic energy each time step.",
+  "details": [
+   "functionObjects/beamEnergyData: computes energies from Gamma, K, CQ, CM, U and Omega; writes beamEnergyData.dat"
+  ]
+ },
+ "3273c83": {
+  "summary": "Adds the beamConvergenceData function object, which writes the number of Newton-Raphson corrections used in each time step.",
+  "details": [
+   "functionObjects/beamConvergenceData: writes Time and nCorrectors to beamConvergenceData.dat"
+  ]
+ },
+ "139421a": {
+  "summary": "Adds the four new beam function objects to the main library build so they compile into the wireBunchingModels library.",
+  "details": [
+   "src/wireBunchingModels/Make/files: adds beamEnergyData, beamConvergenceData, beamDisplacements, beamForcesMoments"
+  ]
+ },
+ "3056142": {
+  "summary": "Deletes the per-function-object Make folders, which are now redundant after 139421a, and adds a displacement-magnitude column to beamDisplacements output.",
+  "details": [
+   "beamDisplacements.C: writes mag(avgW) with header 'mag(w)'",
+   "Removes Make/files and Make/options under all four functionObjects directories"
+  ]
+ },
+ "f3fd8ca": {
+  "summary": "Comments out annularSector's plasticity and stress-resultant virtual functions. It also drops polygon and polyline from the library build, which the commit message does not mention.",
+  "details": [
+   "annularSector.C/.H: CNM, greenLagrangianStrain, resultantForce/Moment, resultantTangentMatrices commented out",
+   "Make/files: polygon.C and polyline.C no longer compiled"
+  ]
+ },
+ "e6d8425": {
+  "summary": "Comments out the matching pure virtual functions in the crossSectionModel base class, so derived cross-sections no longer have to implement them.",
+  "details": [
+   "crossSectionModel.H: CNM, greenLagrangianStrain, resultantTotalForce, resultantForce, resultantMoment, resultantTangentMatrices commented out"
+  ]
+ },
+ "ab4ee5a": {
+  "summary": "Comments out the same unused virtual functions (plus writeVTK) in the circle and rectangle cross-sections.",
+  "details": [
+   "circle.C/.H, rectangle.C/.H: plasticity, stress-resultant and writeVTK members commented out"
+  ]
+ },
+ "4a6fbcc": {
+  "summary": "Adds createBeamMesh, a single mesh utility that merges createCircularBeamMesh and createMultipleBeamMesh. It is mostly a reformatted copy of createMultipleBeamMesh, but places the beam axis along x instead of z.",
+  "details": [
+   "createBeamMesh.C: reads the 'beams' list with crossSectionModel, length and nSegments per beam",
+   "Beam points are laid out along x; the decomposePatches option is disabled"
+  ]
+ },
+ "71644d5": {
+  "summary": "Disables the 'objectiveInterpolation' option, an alternative rotation-update path the code marked as not working, so only the standard update remains. Also expands the reference-configuration error message to point users to createBeamMesh.",
+  "details": [
+   "beamModel.C/.H: objectiveInterpolation_ member, keyword and accessor commented out; kCI() accessor tidied",
+   "coupledTotalLagNewtonRaphsonBeamEvolve.C: objective-interpolation branch commented out",
+   "coupledTotalLagNewtonRaphsonBeam.C: error now warns that the deprecated mesh utilities plus transformPoints are no longer supported"
+  ]
+ },
+ "28a7c84": {
+  "summary": "Replaces deprecated autoPtr::set() with reset() for the gravity pointer, and adds a d2dt2Schemes block to the ofw-paper follower-force tutorial.",
+  "details": [
+   "beamModel.C: gPtr_.set -> gPtr_.reset",
+   "tutorials/ofw-paper/.../fvSchemes: d2dt2Schemes default steadyState"
+  ]
+ },
+ "7100bc8": {
+  "summary": "Selects time integration from fvSchemes instead of a beamProperties 'newmark' flag, and rewrites the Newmark/Euler inertia terms in the solver.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeam.C/.H: new ddtSchemeName_ and d2dt2SchemeName_; d2dt2 must be steadyState, Euler or Newmark, with ddt/d2dt2 pairs checked for consistency",
+   "newmark_ flag removed; info message prints the Newmark beta and gamma values",
+   "Evolve.C: Newmark predictor for Accl/U and dotOmega/Omega; scheme-specific inertia source and diagonal coefficients"
+  ]
+ },
+ "33e3e99": {
+  "summary": "Cherry-pick of 71644d5 with an identical patch (same patch-id): disables objectiveInterpolation.",
+  "details": []
+ },
+ "e84b895": {
+  "summary": "Cherry-pick of 28a7c84 with an identical patch (same patch-id): set() to reset(), and d2dt2Schemes added to the tutorial.",
+  "details": []
+ },
+ "5cdb1f0": {
+  "summary": "Cherry-pick of 7100bc8 with an identical patch (same patch-id): fvSchemes-driven time integration and Newmark/Euler refactor.",
+  "details": []
+ },
+ "4f4a3e6": {
+  "summary": "Makes Newmark configurable entirely from fvSchemes: it now requires (Newmark, Newmark) for ddt/d2dt2, with beta and gamma read there. Drag on a steady case becomes a fatal error, and the gravity/buoyancy source loop is commented out.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeam.C: scheme lookups use ddt(W)/d2dt2(W); newmarkBeta(W)/newmarkGamma(W) read from d2dt2Schemes (defaults 0.25/0.5)",
+   "Allowed scheme pairs: (Euler, Euler), (steadyState, steadyState), (Newmark, Newmark)",
+   "Evolve.C: dragActive with a steady scheme now aborts; the (rho - rhoFluid)*g source loop is commented out"
+  ]
+ },
+ "f9d21a6": {
+  "summary": "Removes unused increment accessors from beamModel and the solver.",
+  "details": [
+   "beamModel.H: pure virtuals currentDisplacementIncrement() and currentRotationIncrement() removed, plus the commented objectiveInterpolation accessor",
+   "coupledTotalLagNewtonRaphsonBeam.C/.H: implementations of both functions deleted"
+  ]
+ },
+ "c94ad56": {
+  "summary": "Deletes the tutorials/ofw-paper follower-force case so it can be reorganised under tutorials/.",
+  "details": []
+ },
+ "f534931": {
+  "summary": "Allows E, G and rho to be set per beam inside each 'beams' entry, or globally, but not both. The 'beams' list becomes mandatory, rho defaults to zero, and a missing-E/G error does not abort.",
+  "details": [
+   "beamModel.H: E_, G_, rho_ become scalarLists; E(bI), G(bI), rho(bI) accessors feed EA, EI, GJ and the inertia terms",
+   "beamModel.C: fatal error if both local and global values are given",
+   "Old nBeams/R/U input paths and U_ commented out",
+   "Missing-E/G FatalErrorInFunction ends with endl rather than abort, so it does not stop the run"
+  ]
+ },
+ "a1e5b97": {
+  "summary": "Fixes spacing, line breaks and wording in the local-versus-global material-property error message.",
+  "details": [
+   "beamModel.C: message text only"
+  ]
+ },
+ "bf468a1": {
+  "summary": "Aborts a transient (Euler or Newmark) run if any beam's density is zero.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeamEvolve.C: loops over beams and raises FatalErrorInFunction when rho(bI) == 0"
+  ]
+ },
+ "743dda9": {
+  "summary": "Deletes the beamContactModel framework and all contact code: line, point, all-angle and pulley contact, plus the normal and friction contact models. It also deletes the solver's applyContacts sources and stray editor and backup files.",
+  "details": [
+   "src/wireBunchingModels/beamContactModel/: entire tree removed (about 24k lines)",
+   "coupledTotalLagNewtonRaphsonBeam: applyContacts.C, applyContacts.org_1 and applyLagrangeMultiplierConicalPulleyContact.H removed"
+  ]
+ },
+ "8c98708": {
+  "summary": "Deletes the unused plasticity stress-resultant return-mapping models.",
+  "details": [
+   "beamModels/plasticityStressResultantReturnMethods/: axialForce3dBending, linearElasticMisesPlastic and the plasticityStressResultantReturn base removed"
+  ]
+ },
+ "c51795d": {
+  "summary": "Deletes two unused include fragments from the solver directory.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeam: correctPlasticity.H and correctBoundaryForcesAndMoments.H removed"
+  ]
+ },
+ "24ef6de": {
+  "summary": "Deletes unused or untested boundary conditions and removes them from Make/files. It also removes forceBeamDisplacement from Make/files, although that BC's sources remain until d11a935.",
+  "details": [
+   "Removed: axialForceTransverseDisplacement(NR), extrapolatedBeamRotation, fixedPathDisplacement, fixedPathRotation, followerDisplacement, momentBeamRotation, myFollowerForceBeamDisplacementNR",
+   "Make/files: entries for the removed BCs and forceBeamDisplacement deleted"
+  ]
+ },
+ "d11a935": {
+  "summary": "Deletes the source files of the forceBeamDisplacement boundary condition, which 24ef6de had already removed from the build.",
+  "details": [
+   "fvPatchFields/forceBeamDisplacement: .C and .H removed"
+  ]
+ },
+ "3c9e06f": {
+  "summary": "Stops writing most internal solver fields to time directories by switching them to NO_WRITE; U, Accl and Omega are among them. Also removes the unused Mref field and comment-includes headers of deleted BCs.",
+  "details": [
+   "beamModel.C: beamIndicator, cellIndicator, L set to NO_WRITE",
+   "coupledTotalLagNewtonRaphsonBeam.C: about 35 fields (U, Accl, Omega, dotOmega, DW, DTheta, Lambda/Lambdaf, ref*, CQ*/CM*, explicit* ...) set to NO_WRITE",
+   "Mref_ member removed; #includes for removed BC headers commented out"
+  ]
+ },
+ "40b7e3a": {
+  "summary": "Comments out the untested axialForceTransverseDisplacementNR branch in the solver's boundary-condition coupling. The remaining supported BCs are forceBeamDisplacementNR, followerForceBeamDisplacementNR, fixedValue and momentBeamRotationNR.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C: axialForceTransverseDisplacementNR block, including its nested rotation handling, commented out; rest reformatted"
+  ]
+ },
+ "4934cd2": {
+  "summary": "Deletes the unused conicalPulley and toroidalPulley geometry classes.",
+  "details": [
+   "beamModel/pulleys/: conicalPulley and toroidalPulley .C/.H removed"
+  ]
+ },
+ "e60943b": {
+  "summary": "Renames the myFixedRotation boundary condition to fixedRotation, including its class, files and type name. Cases that use 'myFixedRotation' must be updated.",
+  "details": [
+   "fvPatchFields/fixedRotation: TypeName(\"fixedRotation\"); Make/files updated"
+  ]
+ },
+ "e1220d6": {
+  "summary": "Normalises the Newton-Raphson solution residuals for W and Theta, making convergence scale-independent. The linear solver's true residual is printed separately, and the material and contact residual checks are dropped.",
+  "details": [
+   "Evolve.C: WResidual and ThetaResidual divided by a normalising denominator; prints 'Normalised Solution Residual'",
+   "eigenSolver residual now printed as 'True Equation Residual' and no longer overwrites currentResidual",
+   "materialTol, currentMaterialResidual and curContactResidual commented out of the loop condition"
+  ]
+ },
+ "ce6e4a1": {
+  "summary": "Deletes the beamsBunchingModel class, which depended on the removed contact code.",
+  "details": [
+   "src/wireBunchingModels/beamsBunchingModel: .C and .H removed"
+  ]
+ },
+ "deebde1": {
+  "summary": "Adds tutorials/cantilever: in-plane bending of a cantilever into a circle by an end moment (IJNME test case).",
+  "details": []
+ },
+ "1c8429a": {
+  "summary": "Adds tutorials/cantileverFollowerForce: quasi-static in-plane cantilever under a follower end force (OFW paper test case 2).",
+  "details": []
+ },
+ "98f81ed": {
+  "summary": "Adds tutorials/3DdynamicCantilever: dynamic 3D cantilever column under a tip force (OFW paper test case 1).",
+  "details": []
+ },
+ "5fcc421": {
+  "summary": "Adds Allrun and Allclean scripts to the cantileverFollowerForce tutorial.",
+  "details": []
+ },
+ "349bb93": {
+  "summary": "Adds tutorials/freeFlexibleBeam: 3D free-free flexible beam driven by end forces and moments (OFW paper test case 3).",
+  "details": []
+ },
+ "27f789a": {
+  "summary": "Replaces the Newton-Raphson convergence test with a PETSc SNES-style check: absolute residual, relative residual, relative step and divergence tolerances plus a maximum iteration count. Also moves the post-solve field update into its own function.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeam.H: new checkConvergence(...) and updateSolutionVariables()",
+   "Evolve.C: new beamProperties keywords residualTol (1e-8), solutionTol (1e-10), absoluteTol (1e-30), divergenceTol (1e4), infoFrequency",
+   "Prints a residual table and the reason for convergence or divergence; evolve() returns the initial residual norm"
+  ]
+ },
+ "5cae30a": {
+  "summary": "Updates the cantileverFollowerForce beamProperties: removes the second beam entry, uses 40 segments, adopts the new solutionTol/residualTol keywords and turns debug off.",
+  "details": []
+ },
+ "cf11bd9": {
+  "summary": "Stops reading startPatchName and endPatchName from beamProperties and hard-codes them to 'left' and 'right'. Only beamModel.C changes; no test-case files are touched, despite what the message says.",
+  "details": [
+   "beamModel.C: lookup of startPatchName/endPatchName replaced by fixed \"left\"/\"right\""
+  ]
+ },
+ "65e4441": {
+  "summary": "Deletes the deprecated createCircularBeamMesh and createMultipleBeamMesh utilities, including committed Make build artefacts, leaving createBeamMesh as the only mesh generator.",
+  "details": [
+   "applications/utilities/createCircularBeamMesh and createMultipleBeamMesh removed"
+  ]
+ },
+ "992731d": {
+  "summary": "Adds printMeshSummary.H to createBeamMesh; the file is identical to the one deleted with createCircularBeamMesh.",
+  "details": [
+   "applications/utilities/createBeamMesh/printMeshSummary.H added"
+  ]
+ },
+ "d237ba0": {
+  "summary": "Removes a local 'debug' variable read from beamProperties that duplicated the existing debug flag, and prints the total iteration count only when debug is on.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeamEvolve.C: duplicate debug lookup removed; 'Total iterations' output gated by debug"
+  ]
+ },
+ "fc21172": {
+  "summary": "Adds a GitHub Actions workflow that builds beamFoam with Allwmake in an opencfd/openfoam-dev:2312 container on push, pull request or manual dispatch.",
+  "details": [
+   ".github/workflows/build.yml added"
+  ]
+ },
+ "240d493": {
+  "summary": "Builds with './Allwmake -j' in the CI workflow so compilation runs in parallel.",
+  "details": [
+   ".github/workflows/build.yml: Allwmake -> Allwmake -j"
+  ]
+ },
+ "740f36f": {
+  "summary": "Renames the CI build step to 'Source OpenFOAM environment and compiling beamFoam'.",
+  "details": []
+ },
+ "05a1e59": {
+  "summary": "Adds a README and an allPlots.gnuplot script to the 3DdynamicCantilever tutorial, hooks plotting into Allrun, and updates beamProperties (40 segments, solutionTol, patch-name and Newmark keywords removed).",
+  "details": []
+ },
+ "ae18c78": {
+  "summary": "Adds gnuplot scripts to the 3DdynamicCantilever tutorial for mesh and time-step convergence plots, and adjusts Allrun and Allclean.",
+  "details": []
+ },
+ "a9c4091": {
+  "summary": "Adds reference results (an Abaqus curve and a solid-model point-displacement file) plus runSweep.sh and runTimeSweep.sh, which rerun the 3DdynamicCantilever case over several mesh sizes and time steps.",
+  "details": []
+ },
+ "acab145": {
+  "summary": "Tweaks the 3DdynamicCantilever plot and time-sweep scripts. It also changes the case's time schemes from Newmark to Euler, not only adding comments, and documents optional newmarkBeta(W)/newmarkGamma(W) values.",
+  "details": []
+ },
+ "0712571": {
+  "summary": "Adds a README, an allPlots.gnuplot script and Allrun plotting steps to the freeFlexibleBeam tutorial.",
+  "details": []
+ },
+ "2698b42": {
+  "summary": "Relaxes freeFlexibleBeam solutionTol from 1e-13 to 1e-10 and removes the now-unused startPatchName/endPatchName entries.",
+  "details": []
+ },
+ "3ea51a1": {
+  "summary": "Adds a README, Simo reference results, a displacement plot script and a mesh-sweep script to cantileverFollowerForce, and updates its beamProperties tolerances and patch-name keywords.",
+  "details": []
+ },
+ "585f6c3": {
+  "summary": "Fixes the explicit inertia source for the Euler scheme: it now uses fvc::ddt(U) and fvc::ddt(Omega) instead of the Newmark-only Accl and dotOmega fields. Newmark keeps its previous terms.",
+  "details": [
+   "coupledTotalLagNewtonRaphsonBeamEvolve.C: QRho/MRho built per d2dt2 scheme",
+   "updateSolutionVariables(): Euler no longer assigns Accl_ = ddt(U) or dotOmega_ = ddt(Omega)"
+  ]
+ },
+ "2bc84b3": {
+  "summary": "Adds load-history data and an allPlots.gnuplot script to cantileverFollowerForce, plots from Allrun and revises its README.",
+  "details": []
+ },
+ "bd3d0c7": {
+  "summary": "Revises the 3DdynamicCantilever README. It also switches the case's ddt/d2dt2 schemes back from Euler to Newmark, which the message ('modified README') does not mention.",
+  "details": []
+ },
+ "d1bd069": {
+  "summary": "Shortens and edits the freeFlexibleBeam README.",
+  "details": []
+ },
+ "5a07ce4": {
+  "summary": "Adds a README to the cantilever tutorial describing the end-moment bending benchmark, its setup and its expected results.",
+  "details": []
+ },
+ "f216707": {
+  "summary": "Updates the top-level README: notes that each case has a README, adds gnuplot plotting instructions and removes outdated paths and the contact section.",
+  "details": []
+ }
+}
