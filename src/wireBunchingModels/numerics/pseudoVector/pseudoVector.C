@@ -129,7 +129,7 @@ vector pseudoVector(const tensor& R)
                 break;
             case 2:
                 q.z() = sqrt(a/2 + (1 - tr(R))/4);
-                q0 = (R.yz() - R.zy())/(4*q.z());
+                q0 = (R.yx() - R.xy())/(4*q.z());
                 q.x() = (R.xz() + R.zx())/(4*q.z());
                 q.y() = (R.yz() + R.zy())/(4*q.z());
                 break;
@@ -150,7 +150,16 @@ vector pseudoVector(const tensor& R)
         }
     }
 
-    const scalar theta = atan(mag(q)/q0)*2;
+    // q0 = cos(theta/2) and mag(q) = sin(theta/2). (q0, q) and (-q0, -q) are
+    // the same rotation: take q0 >= 0 so that theta is in [0, pi]. atan2
+    // avoids dividing by q0, which is exactly zero for a half-turn
+    if (q0 < 0)
+    {
+        q0 = -q0;
+        q = -q;
+    }
+
+    const scalar theta = 2*::atan2(mag(q), q0);
 
     if (mag(theta) > SMALL)
     {
