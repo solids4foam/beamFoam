@@ -278,7 +278,7 @@ tmp<surfaceTensorField> rotationTangentOperator
         (
             IOobject
             (
-                "rotationTangentOperator("+rotationAngle.name()+")",
+                "rotationTangentOperator(" + rotationAngle.name() + ")",
                 rotationAngle.time().timeName(),
                 rotationAngle.db(),
                 IOobject::NO_READ,
@@ -296,9 +296,9 @@ tmp<surfaceTensorField> rotationTangentOperator
 
     tT.ref() =
         (Foam::sin(magAngle)/magAngle)*I
-      + ((1.0-Foam::sin(magAngle)/magAngle)/sqr(magAngle))
+      + ((1.0 - Foam::sin(magAngle)/magAngle)/sqr(magAngle))
        *(rotationAngle*rotationAngle)
-      + ((1.0-Foam::cos(magAngle))/sqr(magAngle))*angleHat;
+      + ((1.0 - Foam::cos(magAngle))/sqr(magAngle))*angleHat;
 
     return tT;
 }
@@ -311,9 +311,9 @@ tensor rotationTangentOperator(const vector& rotationAngle)
 
     return
         (Foam::sin(magAngle)/magAngle)*I
-      + ((1.0-Foam::sin(magAngle)/magAngle)/sqr(magAngle))
+      + ((1.0 - Foam::sin(magAngle)/magAngle)/sqr(magAngle))
        *(rotationAngle*rotationAngle)
-      + ((1.0-Foam::cos(magAngle))/sqr(magAngle))*angleHat;
+      + ((1.0 - Foam::cos(magAngle))/sqr(magAngle))*angleHat;
 }
 
 /*
