@@ -297,6 +297,15 @@ Foam::beamModel::beamModel
     // contactPtr_(),
     deltaTseries_()
 {
+    // Every beam model registers on Time as "beamProperties", so with
+    // several beam regions (e.g. two mooring lines) only the first is
+    // registered. Register the others under a name of their own, so that
+    // lookupBeamModel and the function objects can find them by region
+    if (!registered())
+    {
+        rename("beamProperties_" + region);
+    }
+
     // if (beamProperties().found("rho"))
     // {
     //     rho_ = dimensionedScalar("rho",beamProperties());
