@@ -102,10 +102,13 @@ All three models are configured in
 `constant/beamMomentumContributionProperties` (not in `beamProperties`):
 
 - **`groundContact`:** beam cells penetrating below `groundZ = -0.5 m` receive
-  a normal penalty force with spring stiffness `kNormal = 1e3` and damping
-  `cNormal = 1.0` (tangential stiffness and friction disabled here). The
-  penalty is deliberately soft, giving a stable penetration of a few
-  millimetres.
+  a normal penalty force with spring stiffness `kNormal = 41379.31 N/m^3` and
+  damping `cNormal = 41.37931 N s/m^3` (tangential stiffness and friction
+  disabled here). The penalty is deliberately soft, giving a stable
+  penetration of a few millimetres. Both are per unit length of line and per
+  unit diameter: the force on a cell is multiplied by its length
+  L = 1.45/60 m. These values are 1e3/L and 1/L, which keep the seabed this
+  tutorial had before the contact force was scaled by L.
 - **`morisonDrag`:** drag coefficients `Cdn = 1.6` / `Cdt = 0.05` acting on the
   beam's own velocity through still water. With no dissipation the line would
   bounce indefinitely instead of settling; the Morison drag provides the

@@ -27,6 +27,14 @@ Description
     (cNormal, acting on rebound only), and its sliding along the beam is
     resisted by friction (kTangential, muFriction).
 
+    The forces are per unit length of beam, and are multiplied by the cell
+    length, as for the distributed load and the Morison drag. With d the
+    penetration depth and D = 2R the diameter, the normal force per unit
+    length is kNormal*D*d - cNormal*D*(rebound velocity), so kNormal is a
+    pressure per unit penetration [N/m^3] and cNormal [N s/m^3]. The spring
+    part is also added to the Jacobian (implicit); the damping and friction
+    stay explicit.
+
     The plane is given by groundPoint and groundNormal, or by groundZ as a
     short form for the horizontal plane z = groundZ with normal (0 0 1):
     \verbatim
@@ -107,6 +115,23 @@ private:
 
     //- Ground plane, with the normal pointing from the ground into the fluid
     plane groundPlane_;
+
+
+    // Private Member Functions
+
+        //- Current positions of the beam CV cell-centres
+        tmp<vectorField> cellPositions(const beamModel& bm) const;
+
+        //- Normal contact force per unit length on a cell at signed distance
+        //  d from the ground (negative below it), moving with velocity Un
+        //  along the ground normal. Zero where the damper would pull
+        scalar normalForce
+        (
+            const scalar R,
+            const scalar d,
+            const scalar Un
+        ) const;
+
 
 public:
 
