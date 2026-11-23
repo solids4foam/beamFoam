@@ -28,7 +28,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.CLONER_SECRET }}
+          # Repository secrets are not passed to workflows run for pull
+          # requests from forks, so fall back to the built-in token there
+          token: ${{ secrets.CLONER_SECRET || github.token }}
           submodules: true
           fetch-depth: 0
 
