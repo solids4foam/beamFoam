@@ -26,10 +26,8 @@ jobs:
           apt update
           apt install -y git
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.CLONER_SECRET }}
-          submodules: true
           fetch-depth: 0
 
       - name: Source OpenFOAM environment and compiling beamFoam
@@ -38,5 +36,5 @@ jobs:
           echo "Using OpenFOAM version: ${{ matrix.container-image.name }}"
           source ${{ matrix.container-image.source }}
 
-          # Compile the submodule
+          # Compile beamFoam
           ./Allwmake -j
