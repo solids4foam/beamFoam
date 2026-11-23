@@ -293,6 +293,7 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
+    solverCounters_(),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
     // contactPtr_(),
     deltaTseries_()
@@ -917,6 +918,8 @@ Foam::beamModel::~beamModel()
 
 Foam::scalar Foam::beamModel::evolve()
 {
+    solverCounters_.countEvolveCall(runTime_.timeIndex());
+
     // if (conicalPulleys_.size())
     // {
     //     if (runTime().value() > deleteConicalPulleysAt_)
