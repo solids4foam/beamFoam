@@ -48,6 +48,17 @@ namespace beamModels
 
 scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
+    if (rigidBodyEndPtr_)
+    {
+        return evolvePartitionedRigidBodyEnd();
+    }
+
+    return evolveBeam();
+}
+
+
+scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
+{
     beamModel::evolve();
 
     const dictionary& beamDict = beamProperties();
