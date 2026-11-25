@@ -95,11 +95,12 @@ public:
             ++nEvolveCalls_;
         }
 
-        //- Count a Newton iteration (linear solve)
-        void countNewtonIteration()
+        //- Add the Newton iterations (linear solves) of one call to
+        //  evolve(), i.e. the beam's iOuterCorr() at the end of the call
+        void addNewtonIterations(const label nIter)
         {
-            ++nNewtonIterations_;
-            ++totalNewtonIterations_;
+            nNewtonIterations_ += nIter;
+            totalNewtonIterations_ += nIter;
         }
 
         //- Calls to evolve() in time step timeIndex: zero if the beam was

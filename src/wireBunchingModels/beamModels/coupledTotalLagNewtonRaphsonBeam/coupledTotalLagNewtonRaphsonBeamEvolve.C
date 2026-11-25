@@ -613,7 +613,6 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             // currentResidualNorm is the imbalance vector
             currentResidualNorm = eigenSolver.solve(solVec, source); // peak RAM
             reduce(currentResidualNorm, sumOp<scalar>());
-            solverCounters().countNewtonIteration();
 
             if (iOuterCorr() == 0)
             {
@@ -689,11 +688,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         )
     );
 
-    totalIter_ += iOuterCorr();
+    // iOuterCorr() is now the number of Newton iterations (linear solves)
+    // of this call
+    solverCounters().addNewtonIterations(iOuterCorr());
 
     if (debug)
     {
-        Info<< "Total iterations " << totalIter_ << endl;
+        Info<< "Total iterations "
+            << solverCounters().totalNewtonIterations() << endl;
     }
 
     return initialResidualNorm;

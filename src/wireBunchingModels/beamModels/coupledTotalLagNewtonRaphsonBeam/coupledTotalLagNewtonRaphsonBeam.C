@@ -489,7 +489,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     //     mesh(),
     //     dimensionedVector6("zero", dimless, vector6(1e-6))
     // ),
-    totalIter_(0),
     CQ_
     (
         IOobject

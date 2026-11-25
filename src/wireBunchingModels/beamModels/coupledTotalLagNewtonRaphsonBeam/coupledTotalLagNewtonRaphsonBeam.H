@@ -173,9 +173,6 @@ class coupledTotalLagNewtonRaphsonBeam
         // rotation (second entry)
         // volVector6Field WTheta_;
 
-        //- Total Iterations count for all load steps
-        scalar totalIter_;
-
         //- Beam cross-section constant
         mutable surfaceTensorField CQ_;
 
