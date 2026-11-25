@@ -171,7 +171,8 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
-        //- Solver work counts, for the beamSolverIterations function object
+        //- Solver work counts, written by the beamConvergenceData function
+        //  object
         beamSolverCounters solverCounters_;
 
         //- Artificial scaling factor for changing the inertia

@@ -21,9 +21,11 @@ Class
 Description
     Counts the work of a beam solver: calls to evolve() and Newton
     iterations (linear solves) in the current time step, and Newton
-    iterations since this run started (a restarted run counts from zero:
-    the counts are diagnostics, not solver state). A beam model updates
-    them, and the beamSolverIterations function object writes them.
+    iterations since this run started (a restarted run counts from zero).
+    A beam model updates them, and the beamConvergenceData function object
+    writes them. The count of evolve() calls in the time step also tells
+    the beam model when a time step starts (e.g. for the Newmark
+    predictor), so it is part of the solver state within a time step.
 
     The counts of a time step start at the first evolve() of that time
     step. A coupled solver calls evolve() once per PIMPLE outer corrector
