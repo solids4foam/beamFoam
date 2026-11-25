@@ -103,6 +103,46 @@ plane groundContactContribution::readGroundPlane(const dictionary& dict)
 }
 
 
+// * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+tmp<vectorField> groundContactContribution::cellPositions
+(
+    const beamModel& bm
+) const
+{
+    const volVectorField& W = bm.solutionW();
+    const fvMesh& mesh = W.mesh();
+
+    // The mesh cell-centres plus the reference displacement (registered by
+    // the beam model) and the displacement
+    return tmp<vectorField>::New
+    (
+        mesh.C().internalField()
+      + mesh.lookupObject<volVectorField>("refW").internalField()
+      + W.internalField()
+    );
+}
+
+
+scalar groundContactContribution::normalForce
+(
+    const scalar R,
+    const scalar d,
+    const scalar Un
+) const
+{
+    // The spring pushes the penetrating cell out, and the damper resists its
+    // rebound (velocity along the normal). The seabed can only push, so a
+    // damper stronger than the spring does not pull the cell in
+    return max
+    (
+        (2*R*kNormal_*(-d))
+      - (2*R*cNormal_*max(Un, 0)),
+        0
+    );
+}
+
+
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
 
@@ -125,7 +165,39 @@ tmp<Field<scalarSquareMatrix>> groundContactContribution::diagCoeff
             mesh.nCells(), scalarSquareMatrix(6, 0.0)
         )
     );
-    // Field<scalarSquareMatrix>& result = tresult.ref();
+    Field<scalarSquareMatrix>& result = tresult.ref();
+
+    // The diagonal holds the derivative of the residual (internal plus
+    // external force minus inertia) with respect to W, like the implicit
+    // inertia coefficient. On a cell in contact, the normal contact force is
+    // normalForce*L along the ground normal n, and its spring part
+    // 2*R*kNormal*(-d)*L depends on W through the signed distance d, with
+    // dd/dW = n. Its derivative is therefore -2*R*kNormal*L*(n n). It is
+    // added only where the clipped normal force is positive: where the
+    // damper has cut the force to zero, the force does not depend on W. The
+    // damping and friction terms stay explicit
+    const vectorField coord(cellPositions(bm));
+    const vector& n = groundPlane_.normal();
+    const scalar R = bm.R();
+    const volScalarField& L = bm.L();
+
+    forAll(result, cellI)
+    {
+        const scalar d = groundPlane_.signedDistance(coord[cellI]);
+
+        if (d < 0 && normalForce(R, d, U[cellI] & n) > 0)
+        {
+            const scalar k = 2*R*kNormal_*L[cellI];
+
+            for (direction i = 0; i < vector::nComponents; ++i)
+            {
+                for (direction j = 0; j < vector::nComponents; ++j)
+                {
+                    result[cellI](i, j) -= k*n[i]*n[j];
+                }
+            }
+        }
+    }
 
     return tresult;
 }
@@ -142,15 +214,8 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
     // Take a reference to the mesh
     const fvMesh& mesh = W.mesh();
 
-    // Current position of the beam CV cell-centres: the mesh cell-centres
-    // plus the reference displacement (registered by the beam model) and the
-    // displacement
-    const vectorField coord
-    (
-        mesh.C().internalField()
-      + mesh.lookupObject<volVectorField>("refW").internalField()
-      + W.internalField()
-    );
+    // Current position of the beam CV cell-centres
+    const vectorField coord(cellPositions(bm));
 
     // Unit normal of the ground plane, pointing from the ground into the fluid
     const vector& n = groundPlane_.normal();
@@ -179,6 +244,9 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
 
     vectorField UtHat (Ut/(mag(Ut) + SMALL));
 
+    // Beam cell lengths: the forces below are per unit length
+    const volScalarField& L = bm.L();
+
     // Initialise beam cells in contact with ground
     label cellsInContact = 0;
 
@@ -191,16 +259,8 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
         if (d < 0)
         {
             cellsInContact++;
-            // Seabed force on the cell, along the ground normal: the spring
-            // pushes the penetrating cell out, and the damper resists its
-            // rebound (velocity along the normal). The seabed can only push,
-            // so a damper stronger than the spring does not pull the cell in
-            const scalar f_gc_normal = max
-            (
-                (2*R*kNormal_*(-d))
-              - (2*R*cNormal_*max(U[cellI] & n, 0)),
-                0
-            );
+            // Seabed force per unit length, along the ground normal
+            const scalar f_gc_normal = normalForce(R, d, U[cellI] & n);
 
             vector f_gc_tangential(vector::zero);
 
@@ -220,8 +280,10 @@ tmp<vectorField> groundContactContribution::linearMomentumSource
             }
 
             // The solver adds external forces to the source with a minus
-            // sign, as for gravity, so subtract the seabed force
-            result[cellI] -= f_gc_normal*n + f_gc_tangential;
+            // sign, as for gravity, so subtract the seabed force. The forces
+            // above are per unit length, so multiply by the cell length, as
+            // for the distributed load q and the Morison drag
+            result[cellI] -= (f_gc_normal*n + f_gc_tangential)*L[cellI];
         }
      }
 

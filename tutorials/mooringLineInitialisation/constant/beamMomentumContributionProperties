@@ -32,8 +32,11 @@ beamMomentumContributions
         groundContactCoeffs
         {
             groundZ        -0.5;    // seabed z-coordinate [m]
-            kNormal        1e3;     // normal spring stiffness
-            cNormal        1.0;     // normal damping
+            // Per unit length of line, so per cell they are multiplied by
+            // the cell length L = 1.45/60 m. These are 1e3/L and 1/L, the
+            // seabed of this tutorial before the forces were scaled by L
+            kNormal        41379.31; // normal spring stiffness [N/m^3]
+            cNormal        41.37931; // normal damping [N s/m^3]
             kTangential    0.0;     // tangential (stick) stiffness
             muFriction     0.0;     // Coulomb friction coefficient
         }
