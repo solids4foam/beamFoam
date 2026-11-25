@@ -50,6 +50,17 @@ coupling converges in about 10 iterations per time step.
 
 ---
 
+## Output
+
+`postProcessing/rigidBodyEnd/0/rigidBodyEnd.dat` has the body's motion and
+the force from the beam, one line per time step (see `rigidBodyEndTwist`).
+
+`postProcessing/0/beamConvergenceData.dat` has the solver work per time step:
+`nBeamSolves` is the number of coupling iterations (beam solves), and
+`nNewton` the Newton iterations summed over them.
+
+---
+
 ## Results
 
 `rotationSumZ` in `postProcessing/rigidBodyEnd/0/rigidBodyEnd.dat` is the

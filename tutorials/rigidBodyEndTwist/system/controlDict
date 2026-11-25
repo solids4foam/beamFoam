@@ -54,6 +54,14 @@ functions
         type            beamForcesMoments;
         historyPatch    left;
     }
+
+    // Solver work per time step (postProcessing/0/beamConvergenceData.dat):
+    // nBeamSolves is the number of coupling iterations (beam solves), and
+    // nNewton the Newton iterations summed over them
+    beamConvergenceData
+    {
+        type            beamConvergenceData;
+    }
 }
 
 // ************************************************************************* //

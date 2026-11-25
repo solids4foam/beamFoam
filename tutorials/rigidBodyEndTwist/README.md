@@ -56,6 +56,10 @@ the beam on the body.
 The body state is also written to `<time>/uniform/rigidBodyEnd` at every
 write time, and read back when the run is restarted from that time.
 
+`postProcessing/0/beamConvergenceData.dat` has the solver work per time step:
+`nBeamSolves` is the number of coupling iterations (beam solves), and
+`nNewton` the Newton iterations summed over them.
+
 ---
 
 ## Results
