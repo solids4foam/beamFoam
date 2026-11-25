@@ -159,18 +159,17 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
             // SB: Initial accleration and velocity values at 0th iteration
             // Valid for Newmark-beta integration scheme. Applied once per
-            // time step: a repeated evolve() in the same time step (e.g. one
-            // per PIMPLE outer corrector) continues from the current U and
-            // Accl, which are consistent with the current W
+            // time step, in its first call to evolve(): U and Accl are then
+            // updated incrementally with DW, so a repeated evolve() in the
+            // same time step (e.g. one per PIMPLE outer corrector) continues
+            // from the current U and Accl, which are consistent with W
             if
             (
                 d2dt2SchemeName_ == "Newmark"
              && iOuterCorr() == 0
-             && runTime().timeIndex() != newmarkPredictorTimeIndex_
+             && solverCounters().nEvolveCalls(runTime().timeIndex()) == 1
             )
             {
-                newmarkPredictorTimeIndex_ = runTime().timeIndex();
-
                 // if (iOuterCorr() == 0)
                 // {
                 Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
@@ -688,11 +687,14 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
         )
     );
 
-    totalIter_ += iOuterCorr();
+    // iOuterCorr() is now the number of Newton iterations (linear solves)
+    // of this call
+    solverCounters().addNewtonIterations(iOuterCorr());
 
     if (debug)
     {
-        Info<< "Total iterations " << totalIter_ << endl;
+        Info<< "Total iterations "
+            << solverCounters().totalNewtonIterations() << endl;
     }
 
     return initialResidualNorm;

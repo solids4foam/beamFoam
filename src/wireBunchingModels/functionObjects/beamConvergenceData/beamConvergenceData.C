@@ -23,6 +23,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "IOmanip.H"
 #include "beamModel.H"
+#include "lookupBeamModel.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -43,13 +44,20 @@ bool Foam::functionObjects::beamConvergenceData::writeData()
         time_.lookupObject<fvMesh>(regionName_);
 
     const beamModel& beam =
-        mesh.objectRegistry::parent().lookupObject<beamModel>("beamProperties");
+        lookupBeamModel(mesh);
+
+    // Solver work counts of this time step: zero if the beam was not
+    // solved in it
+    const beamSolverCounters& counts = beam.solverCounters();
+    const label timeIndex = time_.timeIndex();
 
     if (Pstream::master())
     {
         historyFilePtr_()
         << time_.time().value() << " "
-        << beam.iOuterCorr()
+        << beam.iOuterCorr() << " "
+        << counts.nEvolveCalls(timeIndex) << " "
+        << counts.nNewtonIterations(timeIndex)
         << endl;
     }
 
@@ -122,8 +130,7 @@ Foam::functionObjects::beamConvergenceData::beamConvergenceData
             if (historyFilePtr_.valid())
             {
                 historyFilePtr_()
-                << "Time" << " "
-                << "nCorretors"
+                << "# Time nCorrectors nEvolve nNewton"
                 << endl;
             }
         }

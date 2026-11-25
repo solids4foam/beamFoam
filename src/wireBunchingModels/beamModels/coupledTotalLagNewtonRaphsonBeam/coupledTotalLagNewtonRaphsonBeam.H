@@ -173,9 +173,6 @@ class coupledTotalLagNewtonRaphsonBeam
         // rotation (second entry)
         // volVector6Field WTheta_;
 
-        //- Total Iterations count for all load steps
-        scalar totalIter_;
-
         //- Beam cross-section constant
         mutable surfaceTensorField CQ_;
 
@@ -213,13 +210,6 @@ class coupledTotalLagNewtonRaphsonBeam
 
         //- Newmark gamma coefficient
         scalar gammaN_;
-
-        //- Time index at which the Newmark predictor was last applied.
-        //  The predictor must run once per time step: U and Accl are then
-        //  updated incrementally with DW, so re-applying it in a repeated
-        //  evolve() of the same time step (e.g. one per PIMPLE outer
-        //  corrector in a coupled run) would make them inconsistent with W
-        label newmarkPredictorTimeIndex_;
 
         //- Run-time selectable beam momentum contributions
         PtrList<beamMomentumContribution> momentumContribPtr_;

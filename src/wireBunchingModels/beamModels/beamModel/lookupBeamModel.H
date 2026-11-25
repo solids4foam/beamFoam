@@ -16,17 +16,14 @@ License
     along with beamFoam.  If not, see <http://www.gnu.org/licenses/>.
 
 Description
-    Lookup the current beamModel from the given objectRegistry and return it as
-    a reference.
+    Lookup the beamModel of a mesh region and return it as a reference.
 
-    If the beamModel is not found in the current registry then it will check
-    parent registry.
+    The beamModel is found in the given objectRegistry or its parent (the
+    beam models are registered on Time), by the name of its mesh region.
+    With no region name, the region is obReg.name(), so for a beam mesh
+    lookupBeamModel(mesh) returns the beam model of that mesh.
 
-    It assumes that the beamModel is called beamModel_<REGION_NAME> where
-    <REGION_NAME> is taken from obReg.name(). e.g. beamModel_region0 or
-    beamModel_solid.
-
-    This facilitates multiple beamModels to co-exist.
+    This facilitates multiple beamModels to co-exist, one per region.
 
 Author
     Philip Cardiff, UCD.
@@ -50,7 +47,7 @@ const beamModel& lookupBeamModel(const objectRegistry& obReg);
 const beamModel& lookupBeamModel
 (
     const objectRegistry& obReg,
-    const word& obName
+    const word& regionName
 );
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
