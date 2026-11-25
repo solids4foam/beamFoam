@@ -23,19 +23,21 @@ Description
     One line per time step in postProcessing/<startTime>/
     beamConvergenceData.dat:
 
-        Time  nCorrectors  nEvolve  nNewton
+        Time  nCorrectors  nEvolve  nNewton  nBeamSolves
 
-    nCorrectors  Newton iterations in the last call to the beam's evolve()
-                 in the time step
+    nCorrectors  Newton iterations in the last beam solve (beam Newton
+                 loop) in the time step
     nEvolve      calls to the beam's evolve() in the time step. In a coupled
                  run there is one per PIMPLE outer corrector that moves the
                  mesh; in a beamFoam run it is 1
     nNewton      Newton iterations (linear solves) in the time step, summed
-                 over its evolve() calls. Equal to nCorrectors when nEvolve
-                 is 1
+                 over its beam solves. Equal to nCorrectors when
+                 nBeamSolves is 1
+    nBeamSolves  beam Newton loops in the time step: one per evolve(), or
+                 one per coupling iteration with a partitioned rigidBodyEnd
 
-    In a time step in which the beam is not solved, nEvolve and nNewton
-    are 0. The total Newton iterations of a run is the sum of nNewton. Give
+    In a time step in which the beam is not solved, nEvolve, nNewton and
+    nBeamSolves are 0. The total Newton iterations of a run is the sum of nNewton. Give
     the beam region when it is not the default region, e.g. in a coupled
     run:
 
@@ -50,7 +52,8 @@ Description
 
 Author
     Seevani Bali, UCD.  All rights reserved
-    Colm Mc Alister, UCD. Solver work columns (nEvolve, nNewton)
+    Colm Mc Alister, UCD. Solver work columns (nEvolve, nNewton,
+    nBeamSolves)
 
 SourceFiles
     beamConvergenceData.C
