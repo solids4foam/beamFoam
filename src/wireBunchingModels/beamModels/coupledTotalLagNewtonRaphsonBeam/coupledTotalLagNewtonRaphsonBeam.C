@@ -620,7 +620,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
-    newmarkPredictorTimeIndex_(-1),
     // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
     totalContactTime_(0),
