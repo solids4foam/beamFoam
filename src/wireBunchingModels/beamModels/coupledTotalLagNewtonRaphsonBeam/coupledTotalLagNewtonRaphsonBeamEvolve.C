@@ -157,19 +157,20 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
             const labelList& own = mesh().owner(); // unallocLabelList => labelList (ESI)
             const labelList& nei = mesh().neighbour();
 
-            W_.boundaryFieldRef().updateCoeffs();
-            Theta_.boundaryFieldRef().updateCoeffs();
-
-            const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
-
-            // Update the coefficients of W_ and Theta_ equations
-            // These coefficients are inputs to the Jacobian matrix
-            updateEqnCoefficients();
-
             // SB: Initial accleration and velocity values at 0th iteration
-            // Valid for Newmark-beta integration scheme
-            if (d2dt2SchemeName_ == "Newmark" && iOuterCorr() == 0)
+            // Valid for Newmark-beta integration scheme. Applied once per
+            // time step: a repeated evolve() in the same time step (e.g. one
+            // per PIMPLE outer corrector) continues from the current U and
+            // Accl, which are consistent with the current W
+            if
+            (
+                d2dt2SchemeName_ == "Newmark"
+             && iOuterCorr() == 0
+             && runTime().timeIndex() != newmarkPredictorTimeIndex_
+            )
             {
+                newmarkPredictorTimeIndex_ = runTime().timeIndex();
+
                 // if (iOuterCorr() == 0)
                 // {
                 Accl_ = -(1/(runTime().deltaT()*betaN_))*U_.oldTime()
@@ -188,6 +189,19 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
                   *((1 - gammaN_)*dotOmega_.oldTime() + gammaN_*dotOmega_);
                 // }
             }
+
+            // The boundary conditions and the equation coefficients are
+            // updated after the predictor, so that any that depend on the
+            // state of the new time step see the predicted U and Accl, not
+            // those of the previous time step
+            W_.boundaryFieldRef().updateCoeffs();
+            Theta_.boundaryFieldRef().updateCoeffs();
+
+            const surfaceVectorField dRdS(dR0Ds_ + fvc::snGrad(W_));
+
+            // Update the coefficients of W_ and Theta_ equations
+            // These coefficients are inputs to the Jacobian matrix
+            updateEqnCoefficients();
 
             //- Assembling the diagonal and off-diagonal contributions
             //- of DW_ and DTheta_ to solve in block-coupled
