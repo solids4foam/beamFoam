@@ -489,7 +489,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     //     mesh(),
     //     dimensionedVector6("zero", dimless, vector6(1e-6))
     // ),
-    totalIter_(0),
     CQ_
     (
         IOobject
@@ -621,7 +620,6 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
-    newmarkPredictorTimeIndex_(-1),
     rigidBodyEndPtr_(),
     rigidBodyEndPatchIndex_(-1),
     weldLambda0_(tensor::I),

@@ -293,10 +293,20 @@ Foam::beamModel::beamModel
     ),
     pointForces_(),
     iOuterCorr_(0),
+    solverCounters_(),
     kCI_(beamProperties_.getOrDefault<scalar>("scalingInertiaTensor", 1)),
     // contactPtr_(),
     deltaTseries_()
 {
+    // Every beam model registers on Time as "beamProperties", so with
+    // several beam regions (e.g. two mooring lines) only the first is
+    // registered. Register the others under a name of their own, so that
+    // lookupBeamModel and the function objects can find them by region
+    if (!registered())
+    {
+        rename("beamProperties_" + region);
+    }
+
     // if (beamProperties().found("rho"))
     // {
     //     rho_ = dimensionedScalar("rho",beamProperties());
@@ -908,6 +918,8 @@ Foam::beamModel::~beamModel()
 
 Foam::scalar Foam::beamModel::evolve()
 {
+    solverCounters_.countEvolveCall(runTime_.timeIndex());
+
     // if (conicalPulleys_.size())
     // {
     //     if (runTime().value() > deleteConicalPulleysAt_)

@@ -35,37 +35,34 @@ const beamModel& lookupBeamModel(const objectRegistry& obReg)
 const beamModel& lookupBeamModel
 (
     const objectRegistry& obReg,
-    const word& obName
+    const word& regionName
 )
 {
-    if (obReg.foundObject<beamModel>("beamProperties"))
-    // if (obReg.foundObject<beamModel>("beamModel_" + obName))
+    // Beam models are registered on Time under a name that depends on the
+    // order in which they were created ("beamProperties" for the first, see
+    // the beamModel constructor), so match them by their mesh region
+    wordList regions;
+
+    for (const objectRegistry* reg : {&obReg, &obReg.parent()})
     {
-        return obReg.lookupObject<beamModel>
-        (
-            "beamProperties"
-            // "beamModel_" + obName
-        );
-    }
-    else if (obReg.parent().foundObject<beamModel>("beamProperties"))
-    // else if (obReg.parent().foundObject<beamModel>("beamModel_" + obName))
-    {
-        return obReg.parent().lookupObject<beamModel>
-        (
-            "beamProperties"
-            // "beamModel_" + obName
-        );
+        const HashTable<const beamModel*> beams =
+            reg->lookupClass<beamModel>();
+
+        forAllConstIters(beams, iter)
+        {
+            if (iter.val()->mesh().name() == regionName)
+            {
+                return *iter.val();
+            }
+
+            regions.append(iter.val()->mesh().name());
+        }
     }
 
-    FatalErrorIn
-    (
-        "const beamModel& lookupBeamModel(const objectRegistry& obReg)"
-    )   << "Could not find " << word("beamProperties") << nl << nl
-    // )   << "Could not find " << word("beamModel_" + obName) << nl << nl
-        << "beamModels in the objectRegistry: "
-        << obReg.names<beamModel>() << nl << nl
-        << "beamModels in the parent objectRegistry:"
-        << obReg.parent().names<beamModel>() << abort(FatalError);
+    FatalErrorInFunction
+        << "Could not find the beamModel of region " << regionName << nl
+        << "beamModels found, by region: " << regions
+        << abort(FatalError);
 
     // Keep the compiler happy
     return obReg.lookupObject<beamModel>("none");

@@ -106,6 +106,10 @@ Foam::functionObjects::beamForcesMoments::beamForcesMoments
 {
     Info<< "Creating " << this->name() << " function object!" << endl;
 
+    // Beam mesh region: needed when the beam is not the default region,
+    // e.g. a mooring line coupled to an interFoam case
+    dict.readIfPresent("region", regionName_);
+
     if (dict.found("historyPatch"))
     {
         dict.lookup("historyPatch") >> historyPatchName_;

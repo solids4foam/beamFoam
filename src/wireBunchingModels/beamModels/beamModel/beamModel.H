@@ -47,6 +47,7 @@ SourceFiles
 #include "crossSectionModel.H"
 #include "labelPair.H"
 #include "uniformDimensionedFields.H"
+#include "beamSolverCounters.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -170,6 +171,10 @@ class beamModel
         //- Outer iteration counter
         label iOuterCorr_;
 
+        //- Solver work counts, written by the beamConvergenceData function
+        //  object
+        beamSolverCounters solverCounters_;
+
         //- Artificial scaling factor for changing the inertia
         //- tensor I_rho in the angular momentum tensor
         scalar kCI_;
@@ -204,6 +209,12 @@ protected:
 
         //- Multibeam indicator
         tmp<surfaceScalarField> indicator(const label bI) const;
+
+        //- Solver work counts, updated by the beam model
+        beamSolverCounters& solverCounters()
+        {
+            return solverCounters_;
+        }
 
         // //- Return flow properties dictionary
         // dictionary& beamProperties()
@@ -590,6 +601,12 @@ public:
             const label& iOuterCorr() const
             {
                 return iOuterCorr_;
+            }
+
+            //- Solver work counts (calls to evolve() and Newton iterations)
+            const beamSolverCounters& solverCounters() const
+            {
+                return solverCounters_;
             }
 
             //- Each beamModel must indicate whether W or DW is the primary

@@ -23,6 +23,7 @@ License
 #include "addToRunTimeSelectionTable.H"
 #include "IOmanip.H"
 #include "beamModel.H"
+#include "lookupBeamModel.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -79,7 +80,7 @@ bool Foam::functionObjects::beamEnergyData::writeData()
         time_.lookupObject<fvMesh>(regionName_);
 
     const beamModel& beam =
-        mesh.objectRegistry::parent().lookupObject<beamModel>("beamProperties");
+        lookupBeamModel(mesh);
 
     // The internal strains and curvatures for calculation of internal energy
     const surfaceVectorField& Gamma =
@@ -252,7 +253,7 @@ Foam::functionObjects::beamEnergyData::beamEnergyData
         time_.lookupObject<fvMesh>(regionName_);
 
     const beamModel& beam =
-        mesh.objectRegistry::parent().lookupObject<beamModel>("beamProperties");
+        lookupBeamModel(mesh);
 
     // Create history file if not already created
     if (!historyFilePtr_.valid())

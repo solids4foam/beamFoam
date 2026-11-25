@@ -99,6 +99,10 @@ Foam::functionObjects::beamDisplacements::beamDisplacements
 {
     Info<< "Creating " << this->name() << " function object!" << endl;
 
+    // Beam mesh region: needed when the beam is not the default region,
+    // e.g. a mooring line coupled to an interFoam case
+    dict.readIfPresent("region", regionName_);
+
     // word historyPatchName("notSpecified");
 
     if (dict.found("historyPatch"))
