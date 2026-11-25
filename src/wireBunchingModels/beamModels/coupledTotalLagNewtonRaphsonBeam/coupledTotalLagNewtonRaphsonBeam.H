@@ -355,6 +355,12 @@ class coupledTotalLagNewtonRaphsonBeam
         //  welded joint, zero for a pin
         vector rigidBodyEndBeamMoment() const;
 
+        //- Pinned rigidBodyEnd: stop if the momentBeamRotationNR Theta
+        //  condition on the patch applies a moment. Checked when the body is
+        //  attached and after every beam solve, so a moment from a
+        //  momentSeries is caught when it is applied
+        void checkRigidBodyEndPinMoment() const;
+
         // //- Apply conical pulleys contact force
         // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);
 

@@ -148,23 +148,14 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
                 << "rotate; got " << ThetaType << abort(FatalError);
         }
 
-        const momentBeamRotationNRFvPatchVectorField& ThetaPatch =
-            refCast<const momentBeamRotationNRFvPatchVectorField>
-            (
-                Theta_.boundaryField()[patchI]
-            );
-
-        if (max(mag(ThetaPatch.moment())) > SMALL)
-        {
-            FatalErrorInFunction
-                << "A pinned rigidBodyEnd passes no moment: the "
-                << "momentBeamRotationNR Theta condition on patch "
-                << body.patchName() << " must have zero moment, got "
-                << ThetaPatch.moment() << abort(FatalError);
-        }
     }
 
     rigidBodyEndPatchIndex_ = patchI;
+
+    if (!body.welded())
+    {
+        checkRigidBodyEndPinMoment();
+    }
 
     // The end position without W includes the reference displacement refWf
     // (e.g. the placement from setInitialPositionBeam). The beam force and
@@ -288,6 +279,11 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolvePartitionedRigidBodyEnd()
 
         ++nBeamSolves;
 
+        if (!body.welded())
+        {
+            checkRigidBodyEndPinMoment();
+        }
+
         // Force and moment from the beam on the body
         beamForce = -Q_.boundaryField()[patchI][0];
         beamMoment = rigidBodyEndBeamMoment();
@@ -386,6 +382,29 @@ vector coupledTotalLagNewtonRaphsonBeam::rigidBodyEndBeamMoment() const
     // As for the force, the beam acts on the body with minus the end-face
     // moment
     return -M_.boundaryField()[rigidBodyEndPatchIndex_][0];
+}
+
+void coupledTotalLagNewtonRaphsonBeam::checkRigidBodyEndPinMoment() const
+{
+    const label patchI = rigidBodyEndPatchIndex_;
+
+    // The moment the condition applied in the latest beam solve (a
+    // momentSeries is evaluated when the condition is updated)
+    const momentBeamRotationNRFvPatchVectorField& ThetaPatch =
+        refCast<const momentBeamRotationNRFvPatchVectorField>
+        (
+            Theta_.boundaryField()[patchI]
+        );
+
+    if (max(mag(ThetaPatch.moment())) > SMALL)
+    {
+        FatalErrorInFunction
+            << "A pinned rigidBodyEnd passes no moment: the "
+            << "momentBeamRotationNR Theta condition on patch "
+            << mesh().boundary()[patchI].name() << " must have zero moment "
+            << "(also from a momentSeries), got " << ThetaPatch.moment()
+            << " at time " << runTime().timeName() << abort(FatalError);
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
