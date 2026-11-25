@@ -61,7 +61,10 @@ Description
 
     The body state is written to <time>/uniform/rigidBodyEnd at every write
     time (of the beam region) and read back when the run restarts from that
-    time.
+    time. One line per time step is written to
+    postProcessing/rigidBodyEnd/<startTime>/rigidBodyEnd.dat, or
+    postProcessing/<region>/rigidBodyEnd/<startTime>/rigidBodyEnd.dat for a
+    beam that is not in the default region (as for function objects).
 
     The body is read from the "rigidBodyEnd" sub-dictionary of the beam model
     coefficients:
@@ -250,8 +253,9 @@ class rigidBodyEnd
         //- Copy the state into state_, for writing
         void storeState();
 
-        //- Open the history file and write its header
-        void makeHistoryFile();
+        //- Open the history file of the body on the mesh region db and
+        //  write its header
+        void makeHistoryFile(const objectRegistry& db);
 
         //- Newmark predictor: displacement at the new time for zero
         //  new-time acceleration

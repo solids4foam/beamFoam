@@ -21,6 +21,7 @@ License
 #include "pseudoVector.H"
 #include "Pstream.H"
 #include "OSspecific.H"
+#include "polyMesh.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -68,19 +69,23 @@ void Foam::rigidBodyEnd::storeState()
 }
 
 
-void Foam::rigidBodyEnd::makeHistoryFile()
+void Foam::rigidBodyEnd::makeHistoryFile(const objectRegistry& db)
 {
     if (!Pstream::master())
     {
         return;
     }
 
-    // Named after the start time, so a restarted run writes a new file
-    const fileName historyDir
+    // Named after the start time, so a restarted run writes a new file. As
+    // for function objects, a beam that is not in the default region writes
+    // under postProcessing/<region>, so bodies in different regions do not
+    // share a file
+    fileName historyDir
     (
-        runTime_.path()/"postProcessing"/"rigidBodyEnd"
-       /runTime_.timeName(runTime_.startTime().value())
+        runTime_.path()/"postProcessing"/polyMesh::regionName(db.name())
+       /"rigidBodyEnd"/runTime_.timeName(runTime_.startTime().value())
     );
+    historyDir.clean();
 
     mkDir(historyDir);
 
@@ -307,7 +312,7 @@ Foam::rigidBodyEnd::rigidBodyEnd
         << ", couplingTolerance " << couplingTolerance_
         << ", couplingRelaxation " << couplingRelaxation_ << endl;
 
-    makeHistoryFile();
+    makeHistoryFile(db);
 }
 
 
