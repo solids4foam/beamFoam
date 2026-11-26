@@ -161,4 +161,6 @@ PlyParser_FoamFileParser_parsetab.py
 /.tags
 #ignore vscode introductory files
 .vscode
+# local Claude Code settings
+.claude/settings.local.json
 # end-of-file
