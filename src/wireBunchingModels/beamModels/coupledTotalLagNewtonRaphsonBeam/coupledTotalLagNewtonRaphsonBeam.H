@@ -35,6 +35,7 @@ SourceFiles
     coupledTotalLagNewtonRaphsonBeamEvolve.C
     coupledTotalLagNewtonRaphsonBeamMatrix.C
     coupledTotalLagNewtonRaphsonBeamBoundaryConditions.C
+    coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C
 
 \*---------------------------------------------------------------------------*/
 
@@ -46,6 +47,7 @@ SourceFiles
 #include "pointFields.H"
 #include "fvCFD.H"
 #include "beamMomentumContribution.H"
+#include "rigidBodyEnd.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -211,6 +213,17 @@ class coupledTotalLagNewtonRaphsonBeam
         //- Newmark gamma coefficient
         scalar gammaN_;
 
+        //- Rigid body attached to the end patch, if any
+        autoPtr<rigidBodyEnd> rigidBodyEndPtr_;
+
+        //- Index of the patch rigidBodyEnd is attached to
+        label rigidBodyEndPatchIndex_;
+
+        //- Welded rigidBodyEnd: rotation of the end face (Lambdaf) at the
+        //  start of the time step, and the time index it was stored at
+        tensor weldLambda0_;
+        label weldTimeIndex_;
+
         //- Run-time selectable beam momentum contributions
         PtrList<beamMomentumContribution> momentumContribPtr_;
 
@@ -304,6 +317,49 @@ class coupledTotalLagNewtonRaphsonBeam
             const label writeResidualFrequency,
             const bool writeConvergedReason = true
         );
+
+        //- Beam Newton solve for the current time step
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamEvolve.C'
+        scalar evolveBeam();
+
+        //- Construct rigidBodyEnd if the beam model coefficients have a
+        //  rigidBodyEnd dictionary, and attach it to its patch
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        void readRigidBodyEnd();
+
+        //- Evolve the beam and rigidBodyEnd with partitioned coupling
+        // - Function call in 'coupledTotalLagNewtonRaphsonBeamRigidBodyEnd.C'
+        scalar evolvePartitionedRigidBodyEnd();
+
+        //- Attachment W for a body displacement and step rotation
+        vector rigidBodyEndAttachmentW
+        (
+            const vector& x,
+            const vector& theta
+        ) const;
+
+        //- Welded rigidBodyEnd: store the end-face rotation at the start of
+        //  a time step. Safe to call more than once per time step
+        void storeWeldLambda0();
+
+        //- Welded rigidBodyEnd: spatial rotation vector that turns the end
+        //  face from its current rotation to R & (its rotation at the start
+        //  of the time step), R being the body's rotation over the step
+        vector weldRotationIncrement(const tensor& R) const;
+
+        //- Welded rigidBodyEnd: set the fixedValue Theta on the patch so
+        //  the next beam solve turns the end face by the given increment
+        void setWeldRotationIncrement(const vector& increment);
+
+        //- Moment from the beam on the body: minus the end-face moment for a
+        //  welded joint, zero for a pin
+        vector rigidBodyEndBeamMoment() const;
+
+        //- Pinned rigidBodyEnd: stop if the momentBeamRotationNR Theta
+        //  condition on the patch applies a moment. Checked when the body is
+        //  attached and after every beam solve, so a moment from a
+        //  momentSeries is caught when it is applied
+        void checkRigidBodyEndPinMoment() const;
 
         // //- Apply conical pulleys contact force
         // void applyToroidalPulleysContact(fvBlockMatrix<vector6>& eqn);

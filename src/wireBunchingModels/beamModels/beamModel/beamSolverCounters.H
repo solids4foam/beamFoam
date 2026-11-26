@@ -19,17 +19,20 @@ Class
     Foam::beamSolverCounters
 
 Description
-    Counts the work of a beam solver: calls to evolve() and Newton
-    iterations (linear solves) in the current time step, and Newton
-    iterations since this run started (a restarted run counts from zero).
-    A beam model updates them, and the beamConvergenceData function object
-    writes them. The count of evolve() calls in the time step also tells
-    the beam model when a time step starts (e.g. for the Newmark
-    predictor), so it is part of the solver state within a time step.
+    Counts the work of a beam solver: calls to evolve(), beam solves (beam
+    Newton loops) and Newton iterations (linear solves) in the current time
+    step, and Newton iterations since this run started (a restarted run
+    counts from zero). A beam model updates them, and the
+    beamConvergenceData function object writes them. The count of beam
+    solves in the time step also tells the beam model when a time step
+    starts (e.g. for the Newmark predictor), so it is part of the solver
+    state within a time step.
 
     The counts of a time step start at the first evolve() of that time
     step. A coupled solver calls evolve() once per PIMPLE outer corrector
-    that moves the mesh; beamFoam calls it once per time step.
+    that moves the mesh; beamFoam calls it once per time step. Each
+    evolve() solves the beam once, or once per coupling iteration with a
+    partitioned rigidBodyEnd.
 
 Author
     Colm Mc Alister, UCD.
@@ -60,6 +63,9 @@ class beamSolverCounters
         //- Calls to evolve() in time step timeIndex_
         label nEvolveCalls_;
 
+        //- Beam solves (beam Newton loops) in time step timeIndex_
+        label nBeamSolves_;
+
         //- Newton iterations in time step timeIndex_
         label nNewtonIterations_;
 
@@ -76,6 +82,7 @@ public:
         :
             timeIndex_(-1),
             nEvolveCalls_(0),
+            nBeamSolves_(0),
             nNewtonIterations_(0),
             totalNewtonIterations_(0)
         {}
@@ -91,14 +98,22 @@ public:
             {
                 timeIndex_ = timeIndex;
                 nEvolveCalls_ = 0;
+                nBeamSolves_ = 0;
                 nNewtonIterations_ = 0;
             }
 
             ++nEvolveCalls_;
         }
 
-        //- Add the Newton iterations (linear solves) of one call to
-        //  evolve(), i.e. the beam's iOuterCorr() at the end of the call
+        //- Count a beam solve (beam Newton loop) in the time step of the
+        //  latest countEvolveCall()
+        void countBeamSolve()
+        {
+            ++nBeamSolves_;
+        }
+
+        //- Add the Newton iterations (linear solves) of one beam solve,
+        //  i.e. the beam's iOuterCorr() at the end of the solve
         void addNewtonIterations(const label nIter)
         {
             nNewtonIterations_ += nIter;
@@ -110,6 +125,13 @@ public:
         label nEvolveCalls(const label timeIndex) const
         {
             return timeIndex == timeIndex_ ? nEvolveCalls_ : 0;
+        }
+
+        //- Beam solves in time step timeIndex: zero if the beam was not
+        //  solved in that time step
+        label nBeamSolves(const label timeIndex) const
+        {
+            return timeIndex == timeIndex_ ? nBeamSolves_ : 0;
         }
 
         //- Newton iterations in time step timeIndex: zero if the beam was

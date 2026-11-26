@@ -57,7 +57,8 @@ bool Foam::functionObjects::beamConvergenceData::writeData()
         << time_.time().value() << " "
         << beam.iOuterCorr() << " "
         << counts.nEvolveCalls(timeIndex) << " "
-        << counts.nNewtonIterations(timeIndex)
+        << counts.nNewtonIterations(timeIndex) << " "
+        << counts.nBeamSolves(timeIndex)
         << endl;
     }
 
@@ -130,7 +131,7 @@ Foam::functionObjects::beamConvergenceData::beamConvergenceData
             if (historyFilePtr_.valid())
             {
                 historyFilePtr_()
-                << "# Time nCorrectors nEvolve nNewton"
+                << "# Time nCorrectors nEvolve nNewton nBeamSolves"
                 << endl;
             }
         }

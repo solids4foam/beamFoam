@@ -620,6 +620,10 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
     // Newmark-beta time integration parameters
     betaN_(0.0),
     gammaN_(0.0),
+    rigidBodyEndPtr_(),
+    rigidBodyEndPatchIndex_(-1),
+    weldLambda0_(tensor::I),
+    weldTimeIndex_(-1),
     // Pointer to add beamMomentumContributions
     momentumContribPtr_(0),
     totalContactTime_(0),
@@ -1113,6 +1117,8 @@ coupledTotalLagNewtonRaphsonBeam::coupledTotalLagNewtonRaphsonBeam
         Info<< "beamMomentumContributionProperties file not found: skipping"
             << endl;
     }
+
+    readRigidBodyEnd();
 }
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //

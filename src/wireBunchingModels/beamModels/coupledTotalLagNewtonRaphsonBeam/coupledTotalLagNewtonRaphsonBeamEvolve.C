@@ -48,7 +48,22 @@ namespace beamModels
 
 scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 {
+    // Counts the call to evolve(), once per call: with a rigidBodyEnd the
+    // beam is solved several times in one call (evolveBeam())
     beamModel::evolve();
+
+    if (rigidBodyEndPtr_)
+    {
+        return evolvePartitionedRigidBodyEnd();
+    }
+
+    return evolveBeam();
+}
+
+
+scalar coupledTotalLagNewtonRaphsonBeam::evolveBeam()
+{
+    solverCounters().countBeamSolve();
 
     const dictionary& beamDict = beamProperties();
 
@@ -159,15 +174,16 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
 
             // SB: Initial accleration and velocity values at 0th iteration
             // Valid for Newmark-beta integration scheme. Applied once per
-            // time step, in its first call to evolve(): U and Accl are then
-            // updated incrementally with DW, so a repeated evolve() in the
-            // same time step (e.g. one per PIMPLE outer corrector) continues
+            // time step, in its first beam solve: U and Accl are then
+            // updated incrementally with DW, so a repeated beam solve in the
+            // same time step (a repeated evolve(), e.g. one per PIMPLE outer
+            // corrector, or a rigidBodyEnd coupling iteration) continues
             // from the current U and Accl, which are consistent with W
             if
             (
                 d2dt2SchemeName_ == "Newmark"
              && iOuterCorr() == 0
-             && solverCounters().nEvolveCalls(runTime().timeIndex()) == 1
+             && solverCounters().nBeamSolves(runTime().timeIndex()) == 1
             )
             {
                 // if (iOuterCorr() == 0)
@@ -688,7 +704,7 @@ scalar coupledTotalLagNewtonRaphsonBeam::evolve()
     );
 
     // iOuterCorr() is now the number of Newton iterations (linear solves)
-    // of this call
+    // of this beam solve
     solverCounters().addNewtonIterations(iOuterCorr());
 
     if (debug)
