@@ -1,0 +1,178 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     Alltest-regression
+#
+# Description
+#     Runs the regression tests of the tutorials: every case with a
+#     regressionTest.sh, or the cases given. Each case is copied to
+#     ../tutorialsTest-regression and tested there, so the tutorials stay
+#     clean. Plotting (gnuplot, open) is turned off.
+#
+#     $ tutorials/Alltest-regression [-j N] [case ...]
+#
+#     Exits 1 if any test fails. Each test's output is in
+#     tutorialsTest-regression/<case>.log (not in the case, whose Allclean
+#     removes log files).
+#
+#------------------------------------------------------------------------------
+
+set -u
+
+cd "${0%/*}" || exit 1
+
+# Tutorials that are not tested here
+#   beamTunnel: needs moorFV
+SKIP_CASES="beamTunnel"
+
+usage()
+{
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [-j N] [case ...]
+
+Run the tutorial regression tests, N at a time (default 1).
+
+USAGE
+    exit 1
+}
+
+nJobs=1
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+        -j)
+            [ "$#" -ge 2 ] || usage "'-j' needs a number"
+            nJobs="$2"
+            shift 2
+            ;;
+        -h | -help | --help)
+            usage
+            ;;
+        -*)
+            usage "Unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ -z "${WM_PROJECT_DIR:-}" ]
+then
+    echo "Please source the OpenFOAM bashrc first" 1>&2
+    exit 1
+fi
+
+if ! command -v beamFoam > /dev/null
+then
+    echo "beamFoam is not on the PATH: build it first" 1>&2
+    exit 1
+fi
+
+tutorialsDir="$(pwd)"
+outDir="$(cd .. && pwd)/tutorialsTest-regression"
+
+if [ "$#" -gt 0 ]
+then
+    cases="$*"
+else
+    cases=""
+    for allrun in */Allrun
+    do
+        caseName="${allrun%/Allrun}"
+        case " $SKIP_CASES " in
+            *" $caseName "*) continue ;;
+        esac
+        if [ -f "$caseName/regressionTest.sh" ]
+        then
+            cases="$cases $caseName"
+        else
+            echo "Warning: $caseName has no regressionTest.sh"
+        fi
+    done
+fi
+
+rm -rf "$outDir"
+mkdir -p "$outDir"
+cp RegressionFunctions regressionCurveError "$outDir"/
+
+# Turn plotting off: Allrun calls gnuplot and open when they exist
+stubDir="$outDir/.noPlotting"
+mkdir -p "$stubDir"
+for tool in gnuplot open
+do
+    printf '#!/bin/sh\nexit 0\n' > "$stubDir/$tool"
+    chmod +x "$stubDir/$tool"
+done
+export PATH="$stubDir:$PATH"
+
+echo "beamFoam: $(command -v beamFoam)"
+echo "Testing in $outDir:$cases"
+echo
+
+testCase()
+{
+    local caseName="$1"
+    local caseDir="$outDir/$caseName"
+    local start end result
+
+    if [ ! -f "$tutorialsDir/$caseName/regressionTest.sh" ]
+    then
+        echo "FAIL $caseName: no regressionTest.sh" > "$outDir/$caseName.result"
+        printf '%-40s %s\n' "$caseName" "FAIL (no regressionTest.sh)"
+        return
+    fi
+
+    cp -R "$tutorialsDir/$caseName" "$caseDir"
+
+    start=$(date +%s)
+    (cd "$caseDir" && ./regressionTest.sh > "$outDir/$caseName.log" 2>&1)
+    result=$?
+    end=$(date +%s)
+
+    if [ "$result" -eq 0 ]
+    then
+        result=PASS
+    else
+        result=FAIL
+    fi
+
+    echo "$result $caseName" > "$outDir/$caseName.result"
+    printf '%-40s %s %5ss\n' "$caseName" "$result" "$((end - start))"
+}
+
+export outDir tutorialsDir
+export -f testCase
+
+printf '%s\n' $cases | xargs -n 1 -P "$nJobs" bash -c 'testCase "$1"' _
+
+nFailed=0
+for caseName in $cases
+do
+    if ! grep -q '^PASS' "$outDir/$caseName.result" 2> /dev/null
+    then
+        nFailed=$((nFailed + 1))
+        echo
+        echo "---- $caseName"
+        grep -E '^FAIL|FAILED' "$outDir/$caseName.log" 2> /dev/null
+    fi
+done
+
+echo
+if [ "$nFailed" -eq 0 ]
+then
+    echo "All regression tests passed"
+else
+    echo "$nFailed regression test(s) failed:" \
+        "see $outDir/<case>.log"
+    exit 1
+fi
+
+#------------------------------------------------------------------------------

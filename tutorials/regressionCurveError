@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+# -----------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     regressionCurveError
+#
+# Description
+#     Prints the largest difference between a result history and a reference
+#     curve, for the regressionTest.sh scripts of the tutorials.
+#
+#     The result is a column of a postProcessing table, against its Time
+#     column. It is interpolated linearly to the x of each reference point
+#     inside the result's range, and compared with the reference y there.
+#
+#     $ regressionCurveError <resultFile> <resultColumn> \
+#           <referenceFile> <referenceXColumn> <referenceYColumn> \
+#           [--x-scale S] [--y-scale S]
+#
+#     resultColumn is a name from the table's header line, e.g. w_z.
+#     Reference columns are numbered from 1; rows that are too short or not
+#     numeric are skipped. --x-scale multiplies the result's time (e.g. to
+#     turn pseudo-time into load) and --y-scale its values (e.g. -1).
+#
+#     Uses the Python standard library only.
+#
+# -----------------------------------------------------------------------------
+
+import argparse
+import sys
+
+
+def numbers(words):
+    try:
+        return [float(w) for w in words]
+    except ValueError:
+        return None
+
+
+def read_result(path, name):
+    column = None
+    xs, ys = [], []
+    with open(path) as f:
+        for line in f:
+            words = line.split()
+            if not words:
+                continue
+            values = numbers(words)
+            if values is None:
+                names = words[1:] if words[0] == "#" else words
+                if name in names:
+                    column = names.index(name)
+                continue
+            if column is None:
+                sys.exit("Column {} not found in {}".format(name, path))
+            xs.append(values[0])
+            ys.append(values[column])
+    return xs, ys
+
+
+def read_reference(path, x_column, y_column):
+    points = []
+    with open(path) as f:
+        for line in f:
+            values = numbers(line.split())
+            if values is None or len(values) < max(x_column, y_column):
+                continue
+            points.append((values[x_column - 1], values[y_column - 1]))
+    return points
+
+
+def interpolate(xs, ys, x):
+    for i in range(len(xs) - 1):
+        if xs[i] <= x <= xs[i + 1]:
+            if xs[i + 1] == xs[i]:
+                return ys[i]
+            w = (x - xs[i])/(xs[i + 1] - xs[i])
+            return ys[i] + w*(ys[i + 1] - ys[i])
+    return None
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("result_file")
+    parser.add_argument("result_column")
+    parser.add_argument("reference_file")
+    parser.add_argument("reference_x_column", type=int)
+    parser.add_argument("reference_y_column", type=int)
+    parser.add_argument("--x-scale", type=float, default=1.0)
+    parser.add_argument("--y-scale", type=float, default=1.0)
+    args = parser.parse_args()
+
+    xs, ys = read_result(args.result_file, args.result_column)
+    xs = [x*args.x_scale for x in xs]
+    ys = [y*args.y_scale for y in ys]
+
+    reference = read_reference(
+        args.reference_file, args.reference_x_column, args.reference_y_column
+    )
+
+    errors = []
+    for x, y_ref in reference:
+        y = interpolate(xs, ys, x)
+        if y is not None:
+            errors.append(abs(y - y_ref))
+
+    if not errors:
+        sys.exit("No reference points inside the result's range")
+
+    print(max(errors))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

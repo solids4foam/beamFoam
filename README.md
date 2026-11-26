@@ -83,6 +83,34 @@ To visualise a deformed beam in ParaView, apply **Warp By Vector** using the
 `pointW` point-displacement field. Many tutorial cases also provide gnuplot
 scripts.
 
+## Regression Tests
+
+Each standalone tutorial has a `regressionTest.sh` that runs the case and
+checks its results:
+
+- against an analytical solution, a published reference or a physical law
+  where one exists, e.g. the analytical bending of `cantilever`, Simo's
+  results for `cantileverFollowerForce`, the Abaqus solution for
+  `3dDynamicCantilever` and energy conservation in `freeFlexibleBeam`
+- against reference values from `main`, to a relative tolerance of `1e-5`,
+  about the last written digit; the references are the same on OpenFOAM
+  v2306 (clang) and v2312 (gcc)
+- that the total Newton iterations grow by no more than 10%
+
+Run all of them, four at a time, with the OpenFOAM environment sourced and
+beamFoam built:
+
+```bash
+tutorials/Alltest-regression -j 4
+```
+
+The cases run in `tutorialsTest-regression`, so the tutorials stay clean. CI
+runs the same tests on every push and pull request. `beamTunnel` is not
+tested, because it needs moorFV.
+
+If a change is meant to alter results, update the reference values in the
+affected `regressionTest.sh` files in the same pull request and say why.
+
 ## Publication
 
 The formulation, implementation and principal benchmark cases are described in:
