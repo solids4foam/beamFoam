@@ -27,6 +27,8 @@ PR in draft until they are done. -->
   [OpenFOAM coding style](https://openfoam.org/dev/coding-style-guide/).
 - [ ] Tutorial results: unchanged (say how you checked), or the changed
   cases and the size of the change are listed below.
+- [ ] `tutorials/Alltest-regression` passes; any updated reference values in
+  `regressionTest.sh` files are explained below.
 - [ ] Dictionary or boundary condition changes are documented, with defaults
   that keep existing cases working.
 - [ ] If an AI agent wrote or reviewed part of this change, a person has read

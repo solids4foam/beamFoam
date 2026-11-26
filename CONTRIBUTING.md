@@ -27,9 +27,13 @@ what the feature is for.
    unrelated clean-up out of the change.
 3. Build with `./Allwmake -j` and run the tutorials the change affects. If the
    results should not change, compare them with `main`.
-4. Fix file headers with `bin/beamFoamUpdateHeaders <files>` and check
+4. Run the regression tests with `tutorials/Alltest-regression -j 4`. CI runs
+   them too. If your change is meant to alter results, update the reference
+   values in the affected `regressionTest.sh` files and explain why in the
+   pull request. A new standalone tutorial needs its own `regressionTest.sh`.
+5. Fix file headers with `bin/beamFoamUpdateHeaders <files>` and check
    Markdown with `npx markdownlint-cli2 "**/*.md"`. CI runs both checks.
-5. Push the branch and open a pull request into `main`. Fill in the pull
+6. Push the branch and open a pull request into `main`. Fill in the pull
    request template: what the problem was, what you changed, what you tested
    and what you did not.
 

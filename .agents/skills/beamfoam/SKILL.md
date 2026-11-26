@@ -133,6 +133,19 @@ not assume that `beamFoam` is the caller.
 - A numerical change must say which tutorials change and by how much. A
   refactor should leave tutorial output byte-identical; say so in the PR
   and how it was checked.
+- Each standalone tutorial has a `regressionTest.sh`, run by
+  `tutorials/Alltest-regression` and by CI after the build. It checks
+  results against analytical or published references where they exist, and
+  against reference values from `main` to a relative tolerance of `1e-5`.
+  Helpers are in `tutorials/RegressionFunctions`; use them rather than
+  writing new parsing code.
+  - A change meant to alter results updates the reference values in the
+    affected `regressionTest.sh` files in the same pull request, and says
+    why. Never widen a tolerance, or remove a check, just to make a test
+    pass.
+  - A new standalone tutorial gets a `regressionTest.sh` that copies the
+    layout of a neighbouring one, with a physical or published check where
+    one exists. Cases that need moorFV (`beamTunnel`) are not tested here.
 - Use bash and standard Unix tools for `Allrun`, `Allclean` and test
   scripts. Python is acceptable for post-processing and verification, with
   the standard library in anything run by default.
@@ -169,8 +182,14 @@ not assume that `beamFoam` is the caller.
   update registration, `Make/files`, tutorials and documentation.
 - Build with `./Allwmake -j`, or the narrowest target (`wmake libso` in
   `src/wireBunchingModels`, `wmake` in `applications/solvers/beamFoam`).
+- Run the regression tests before opening a pull request, with the
+  OpenFOAM environment sourced and the build installed:
+  `tutorials/Alltest-regression -j 4` (all cases, about a minute) or
+  `tutorials/Alltest-regression <case> ...`. Failures are listed with the
+  failing checks; each case's log is `tutorialsTest-regression/<case>.log`.
 - Verify with the most relevant tutorials, and compare against `main` when
-  results should not change. Report what was and was not verified.
+  results should not change. Report what was and was not verified,
+  including the regression test result.
 - Pull requests target `main` and use the template in
   `.github/pull_request_template.md`. Keep commit messages short and
   descriptive.

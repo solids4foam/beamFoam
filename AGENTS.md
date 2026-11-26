@@ -15,5 +15,9 @@ this repository. It holds the full rules; the most important are:
   `bin/beamFoamUpdateHeaders` on new files.
 - Build with `./Allwmake -j`, run the affected tutorials, and state what was
   and was not verified. Say whether tutorial results changed.
+- Run `tutorials/Alltest-regression -j 4` before opening a pull request. If a
+  change is meant to alter results, update the references in the affected
+  `regressionTest.sh` files and say why; never widen a tolerance just to
+  pass.
 - Pull requests target `main` and use `.github/pull_request_template.md`.
   See `CONTRIBUTING.md`.
