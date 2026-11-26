@@ -1,0 +1,225 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     beamFoamCompareWithBase
+#
+# Description
+#     Shows how the working tree changes the tutorial results compared with a
+#     base commit, e.g. origin/main:
+#       1. builds the base commit (in a git worktree) and the working tree,
+#          each into its own bin and lib directories under <outputDir>, so
+#          the user's $FOAM_USER_APPBIN and $FOAM_USER_LIBBIN are not touched
+#       2. runs the standalone tutorials of each with beamFoamRunTutorials
+#       3. compares the results with beamFoamCompareTutorials and writes
+#          <outputDir>/report.md
+#
+#     $ bin/beamFoamCompareWithBase [-j N] [-o outputDir] [-l label] <baseRef>
+#           [case ...]
+#
+#     Exits 1 if a build fails or if a case that runs on the base fails with
+#     the working tree. Changed results alone do not fail.
+#
+#------------------------------------------------------------------------------
+
+set -u
+
+usage()
+{
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [-j N] [-o outputDir] [-l label] <baseRef> [case ...]
+
+Compare the tutorial results of the working tree with those of <baseRef>.
+
+  -j N           build with N processes and run N cases at a time (default 1)
+  -o outputDir   where to build, run and write report.md, outside the
+                 repository (default: \${TMPDIR:-/tmp}/beamFoamComparison)
+  -l label       name of the working tree in the report
+                 (default: the short commit hash of HEAD)
+
+USAGE
+    exit 1
+}
+
+nJobs=1
+outDir="${TMPDIR:-/tmp}/beamFoamComparison"
+headLabel=""
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+        -j)
+            [ "$#" -ge 2 ] || usage "'-j' needs a number"
+            nJobs="$2"
+            shift 2
+            ;;
+        -o)
+            [ "$#" -ge 2 ] || usage "'-o' needs a directory"
+            outDir="$2"
+            shift 2
+            ;;
+        -l)
+            [ "$#" -ge 2 ] || usage "'-l' needs a label"
+            headLabel="$2"
+            shift 2
+            ;;
+        -h | -help | --help)
+            usage
+            ;;
+        -*)
+            usage "Unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+[ "$#" -ge 1 ] || usage "No base commit given"
+baseRef="$1"
+shift
+
+if [ -z "${WM_PROJECT_DIR:-}" ]
+then
+    echo "Please source the OpenFOAM bashrc first" 1>&2
+    exit 1
+fi
+
+rootDir="$(cd "${0%/*}/.." && pwd)"
+binDir="$rootDir/bin"
+
+baseSha="$(git -C "$rootDir" rev-parse --verify "$baseRef^{commit}")" \
+    || usage "Unknown commit: $baseRef"
+
+case "$outDir" in
+    /*) ;;
+    *) outDir="$PWD/$outDir" ;;
+esac
+
+# Allwmake looks for errors in every log.Allwmake below the repository
+case "$outDir/" in
+    "$rootDir/"*)
+        usage "The output directory must be outside the repository"
+        ;;
+esac
+
+mkdir -p "$outDir"
+outDir="$(cd "$outDir" && pwd)"
+
+baseSrc="$outDir/base/src"
+
+cleanup()
+{
+    git -C "$rootDir" worktree remove --force "$baseSrc" > /dev/null 2>&1
+}
+trap cleanup EXIT
+
+# Build the source tree $1 into $2/platforms/$WM_OPTIONS/{bin,lib}.
+# The layout matches OpenFOAM's, so that the run-time library paths of the
+# executables (rpath on macOS) find the library next to them
+build()
+{
+    local srcDir="$1"
+    local installDir="$2/platforms/$WM_OPTIONS"
+
+    mkdir -p "$installDir/bin" "$installDir/lib"
+
+    (
+        export FOAM_USER_APPBIN="$installDir/bin"
+        export FOAM_USER_LIBBIN="$installDir/lib"
+
+        # Reuse the eigen of this tree rather than downloading it again
+        if [ ! -e "$srcDir/ThirdParty/eigen3" ] \
+        && [ -d "$rootDir/ThirdParty/eigen3" ] \
+        && [ -z "${EIGEN_DIR:-}" ]
+        then
+            export EIGEN_DIR="$rootDir/ThirdParty/eigen3"
+        fi
+
+        cd "$srcDir" && ./Allwmake -j "$nJobs"
+    ) > "$2/log.Allwmake" 2>&1
+
+    if [ ! -x "$installDir/bin/beamFoam" ]
+    then
+        echo "Build failed: see $2/log.Allwmake" 1>&2
+        tail -n 30 "$2/log.Allwmake" 1>&2
+        return 1
+    fi
+}
+
+# Run the tutorials of source tree $1 with the build in $2, in $2/run
+run()
+{
+    local srcDir="$1"
+    local buildDir="$2"
+    local installDir="$2/platforms/$WM_OPTIONS"
+    shift 2
+
+    rm -rf "$buildDir/run"
+    (
+        export FOAM_USER_APPBIN="$installDir/bin"
+        export FOAM_USER_LIBBIN="$installDir/lib"
+        export PATH="$installDir/bin:$PATH"
+        export LD_LIBRARY_PATH="$installDir/lib:${LD_LIBRARY_PATH:-}"
+
+        # macOS: RunFunctions sets DYLD_LIBRARY_PATH from
+        # FOAM_LD_LIBRARY_PATH, which finds a library by its file name
+        # before the path the executable was linked with. Put this build's
+        # library first, or the user's own libwireBunchingModels is loaded
+        export FOAM_LD_LIBRARY_PATH="$installDir/lib:${FOAM_LD_LIBRARY_PATH:-}"
+        export DYLD_LIBRARY_PATH="$installDir/lib:${DYLD_LIBRARY_PATH:-}"
+
+        "$binDir/beamFoamRunTutorials" -j "$nJobs" -t "$srcDir/tutorials" \
+            "$buildDir/run" "$@"
+    )
+}
+
+echo "Base:          $baseRef ($baseSha)"
+echo "Working tree:  $rootDir"
+echo "Output:        $outDir"
+echo
+
+echo "Building the base"
+rm -rf "$outDir/base"
+mkdir -p "$outDir/base"
+git -C "$rootDir" worktree prune
+git -C "$rootDir" worktree add --force --detach "$baseSrc" "$baseSha" \
+    > /dev/null || exit 1
+build "$baseSrc" "$outDir/base" || exit 1
+
+echo "Building the working tree"
+mkdir -p "$outDir/head"
+build "$rootDir" "$outDir/head" || exit 1
+
+echo
+echo "Running the base tutorials"
+run "$baseSrc" "$outDir/base" "$@"
+
+echo
+echo "Running the working tree tutorials"
+run "$rootDir" "$outDir/head" "$@"
+
+[ -n "$headLabel" ] \
+ || headLabel="$(git -C "$rootDir" rev-parse --short=10 HEAD)"
+
+# Name the base by its ref and short hash, or by the short hash alone when it
+# was given as a hash
+baseLabel="${baseSha:0:10}"
+case "$baseSha" in
+    "$baseRef"*) ;;
+    *) baseLabel="$baseRef ($baseLabel)" ;;
+esac
+
+echo
+python3 -I "$binDir/beamFoamCompareTutorials" \
+    --base-label "$baseLabel" \
+    --head-label "$headLabel" \
+    -o "$outDir/report.md" \
+    "$outDir/base/run" "$outDir/head/run"
+
+#------------------------------------------------------------------------------

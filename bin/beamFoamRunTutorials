@@ -1,0 +1,157 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     beamFoamRunTutorials
+#
+# Description
+#     Copies the standalone tutorials to an output directory and runs each
+#     one's Allrun there, with the beamFoam found first on the PATH. Plotting
+#     (gnuplot, open) is turned off. Each case gets a file "status" holding
+#     "ok" or "failed" and the run time in seconds; a case is ok when
+#     log.beamFoam ends with "End".
+#
+#     $ bin/beamFoamRunTutorials [-j N] [-t tutorialsDir] <outputDir> \
+#           [case ...]
+#
+#     With no cases, every tutorial with an Allrun is run, except those in
+#     SKIP_CASES below. The tutorials are taken from tutorialsDir, by default
+#     the tutorials directory of this repository.
+#
+#------------------------------------------------------------------------------
+
+set -u
+
+# Cases that do not run with beamFoam alone
+#   beamTunnel: needs moorFV
+SKIP_CASES="beamTunnel"
+
+usage()
+{
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage: ${0##*/} [-j N] [-t tutorialsDir] <outputDir> [case ...]
+
+Run the beamFoam tutorials in <outputDir>, N at a time (default 1).
+
+USAGE
+    exit 1
+}
+
+nJobs=1
+tutorialsDir="${0%/*}/../tutorials"
+while [ "$#" -gt 0 ]
+do
+    case "$1" in
+        -j)
+            [ "$#" -ge 2 ] || usage "'-j' needs a number"
+            nJobs="$2"
+            shift 2
+            ;;
+        -t)
+            [ "$#" -ge 2 ] || usage "'-t' needs a directory"
+            tutorialsDir="$2"
+            shift 2
+            ;;
+        -h | -help | --help)
+            usage
+            ;;
+        -*)
+            usage "Unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+[ "$#" -ge 1 ] || usage "No output directory given"
+outDir="$1"
+shift
+
+if [ -z "${WM_PROJECT_DIR:-}" ]
+then
+    echo "Please source the OpenFOAM bashrc first" 1>&2
+    exit 1
+fi
+
+if ! command -v beamFoam > /dev/null
+then
+    echo "beamFoam is not on the PATH: build it first" 1>&2
+    exit 1
+fi
+
+tutorialsDir="$(cd "$tutorialsDir" && pwd)" || exit 1
+
+if [ "$#" -gt 0 ]
+then
+    cases="$*"
+else
+    cases=""
+    for allrun in "$tutorialsDir"/*/Allrun
+    do
+        caseName="$(basename "$(dirname "$allrun")")"
+        case " $SKIP_CASES " in
+            *" $caseName "*) continue ;;
+        esac
+        cases="$cases $caseName"
+    done
+fi
+
+mkdir -p "$outDir"
+outDir="$(cd "$outDir" && pwd)"
+
+# Turn plotting off: Allrun calls gnuplot and open when they exist
+stubDir="$outDir/.noPlotting"
+mkdir -p "$stubDir"
+for tool in gnuplot open
+do
+    printf '#!/bin/sh\nexit 0\n' > "$stubDir/$tool"
+    chmod +x "$stubDir/$tool"
+done
+export PATH="$stubDir:$PATH"
+
+echo "beamFoam: $(command -v beamFoam)"
+echo "Running in $outDir:$cases"
+
+runCase()
+{
+    local caseName="$1"
+    local caseDir="$outDir/$caseName"
+    local start end status
+
+    rm -rf "$caseDir"
+    cp -R "$tutorialsDir/$caseName" "$caseDir"
+    (cd "$caseDir" && ./Allclean > /dev/null 2>&1)
+
+    start=$(date +%s)
+    (cd "$caseDir" && ./Allrun > log.Allrun 2>&1)
+    end=$(date +%s)
+
+    if [ -f "$caseDir/log.beamFoam" ] \
+    && tail -n 5 "$caseDir/log.beamFoam" | grep -q '^End'
+    then
+        status=ok
+    else
+        status=failed
+    fi
+
+    echo "$status $((end - start))" > "$caseDir/status"
+    printf '%-40s %-6s %5ss\n' "$caseName" "$status" "$((end - start))"
+}
+
+export outDir tutorialsDir
+export -f runCase
+
+# Run the cases N at a time
+printf '%s\n' $cases | xargs -n 1 -P "$nJobs" bash -c 'runCase "$1"' _
+
+nFailed=$(cat "$outDir"/*/status 2>/dev/null | grep -c '^failed')
+echo "Finished: $nFailed case(s) failed"
+
+#------------------------------------------------------------------------------
