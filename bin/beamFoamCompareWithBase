@@ -207,9 +207,17 @@ run "$rootDir" "$outDir/head" "$@"
 [ -n "$headLabel" ] \
  || headLabel="$(git -C "$rootDir" rev-parse --short=10 HEAD)"
 
+# Name the base by its ref and short hash, or by the short hash alone when it
+# was given as a hash
+baseLabel="${baseSha:0:10}"
+case "$baseSha" in
+    "$baseRef"*) ;;
+    *) baseLabel="$baseRef ($baseLabel)" ;;
+esac
+
 echo
 python3 -I "$binDir/beamFoamCompareTutorials" \
-    --base-label "$baseRef (${baseSha:0:10})" \
+    --base-label "$baseLabel" \
     --head-label "$headLabel" \
     -o "$outDir/report.md" \
     "$outDir/base/run" "$outDir/head/run"
