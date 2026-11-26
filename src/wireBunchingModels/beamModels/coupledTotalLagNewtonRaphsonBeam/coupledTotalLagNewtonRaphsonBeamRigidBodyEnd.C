@@ -72,6 +72,15 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             << "Valid options are: partitioned" << exit(FatalIOError);
     }
 
+    // The body is advanced with the beam's Newmark parameters, which are
+    // only set for the Newmark scheme
+    if (d2dt2SchemeName_ != "Newmark")
+    {
+        FatalIOErrorInFunction(coeffs)
+            << "rigidBodyEnd needs the Newmark d2dt2Scheme in system/fvSchemes"
+            << ", got " << d2dt2SchemeName_ << exit(FatalIOError);
+    }
+
     const word defaultPatchName =
         endPatchIndex() >= 0
       ? mesh().boundaryMesh()[endPatchIndex()].name()
@@ -84,7 +93,9 @@ void coupledTotalLagNewtonRaphsonBeam::readRigidBodyEnd()
             mesh(),
             coeffs.subDict("rigidBodyEnd"),
             defaultPatchName,
-            g().value()
+            g().value(),
+            betaN_,
+            gammaN_
         )
     );
 

@@ -48,6 +48,9 @@ The partitioned stability number beta dt² k/m at the pin is 0.2 along the rod
 (k = E A/L) and 0.003 across it (k = 3 E I/L³, m = 1/(1/m + d²/J)), so the
 coupling converges in about 10 iterations per time step.
 
+The body is advanced with the beam's Newmark parameters, `newmarkBeta(W)` and
+`newmarkGamma(W)` in `d2dt2Schemes` in `system/fvSchemes`.
+
 ---
 
 ## Output

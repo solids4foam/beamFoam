@@ -170,7 +170,9 @@ Foam::rigidBodyEnd::rigidBodyEnd
     const objectRegistry& db,
     const dictionary& dict,
     const word& defaultPatchName,
-    const vector& gravity
+    const vector& gravity,
+    const scalar beta,
+    const scalar gamma
 )
 :
     runTime_(db.time()),
@@ -194,8 +196,8 @@ Foam::rigidBodyEnd::rigidBodyEnd
     linearDamping_(dict.getOrDefault<scalar>("linearDamping", 0)),
     angularDamping_(dict.getOrDefault<scalar>("angularDamping", 0)),
     gravity_(gravity),
-    beta_(dict.getOrDefault<scalar>("newmarkBeta", 0.25)),
-    gamma_(dict.getOrDefault<scalar>("newmarkGamma", 0.5)),
+    beta_(beta),
+    gamma_(gamma),
     nCouplingIterations_
     (
         dict.getOrDefault<label>("nCouplingIterations", 20)
@@ -253,6 +255,20 @@ Foam::rigidBodyEnd::rigidBodyEnd
             << "Invalid rigidBodyEnd joint " << joint << nl
             << "Valid options are pin and welded"
             << exit(FatalIOError);
+    }
+
+    // The body is advanced with the beam's Newmark parameters: stop rather
+    // than ignore parameters given for the body alone
+    for (const word& key : {"newmarkBeta", "newmarkGamma"})
+    {
+        if (dict.found(key))
+        {
+            FatalIOErrorInFunction(dict)
+                << "rigidBodyEnd uses the beam's Newmark parameters: remove "
+                << key << " from the rigidBodyEnd dictionary, and set "
+                << key << "(W) in d2dt2Schemes in system/fvSchemes"
+                << exit(FatalIOError);
+        }
     }
 
     if (mass_ <= SMALL)

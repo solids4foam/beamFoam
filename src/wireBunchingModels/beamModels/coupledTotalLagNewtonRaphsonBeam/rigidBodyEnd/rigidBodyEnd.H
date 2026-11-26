@@ -34,7 +34,9 @@ Description
     Rotation is modelled when a moment of inertia is given. The orientation
     at the new time is rotationMatrix(theta) & Q0, with theta the rotation
     vector of the time step, integrated with the same Newmark parameters as
-    translation:
+    translation. The Newmark parameters are the beam's (newmarkBeta(W) and
+    newmarkGamma(W) in d2dt2Schemes in system/fvSchemes), so that the body
+    and the beam end it is joined to are advanced with the same scheme:
         J alpha + omega x (J omega) + cr omega
           = externalMoment + r x beamForce + beamMoment
     with beamMoment = 0 for a pin.
@@ -85,8 +87,6 @@ Description
             externalMoment      (0 0 0); // constant applied moment [N m]
             linearDamping       0;       // viscous force -c v [N s/m]
             angularDamping      0;       // viscous moment -c omega [N m s]
-            newmarkBeta         0.25;
-            newmarkGamma        0.5;
             nCouplingIterations 20;      // beam solves per time step
             couplingTolerance   1e-8;    // change relative to
                                          // max(step, total) motion
@@ -285,15 +285,17 @@ public:
 
     // Constructors
 
-        //- Construct from dictionary. The state is read from
-        //  <time>/uniform/rigidBodyEnd of the registry (the beam mesh) when
-        //  it exists
+        //- Construct from dictionary, with the beam's gravity and Newmark
+        //  parameters. The state is read from <time>/uniform/rigidBodyEnd
+        //  of the registry (the beam mesh) when it exists
         rigidBodyEnd
         (
             const objectRegistry& db,
             const dictionary& dict,
             const word& defaultPatchName,
-            const vector& gravity
+            const vector& gravity,
+            const scalar beta,
+            const scalar gamma
         );
 
         //- Disallow copy

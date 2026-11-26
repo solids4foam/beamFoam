@@ -41,6 +41,9 @@ The left end is clamped (`fixedValue` W and Theta). The right end has
 iteration. The partitioned stability number beta dt² kt/J is 5.1e-4, so each
 time step converges in 2 to 4 coupling iterations (see `rigidBodyEnd.H`).
 
+The body is advanced with the beam's Newmark parameters, `newmarkBeta(W)` and
+`newmarkGamma(W)` in `d2dt2Schemes` in `system/fvSchemes`.
+
 ---
 
 ## Output

@@ -83,10 +83,6 @@ beams
         velocity            (0 0.1 0);
         angularVelocity     (0 0 0.1);
 
-        // Trapezoidal rule: no numerical damping
-        newmarkBeta         0.25;
-        newmarkGamma        0.5;
-
         // Partitioned coupling: beta dt^2 k/m at the pin is 0.2 along the
         // rod (k = E A/L, m = 10 kg) and 0.003 across it (k = 3 E I/L^3,
         // m = 1/(1/m + d^2/J) = 5 kg), well below 1 (see rigidBodyEnd.H)

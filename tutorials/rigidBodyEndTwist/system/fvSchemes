@@ -24,6 +24,11 @@ ddtSchemes
 d2dt2Schemes
 {
     default         Newmark;
+
+    // Trapezoidal rule, no numerical damping (the defaults). The rigid body
+    // uses the same parameters as the beam
+    newmarkBeta(W)  0.25;
+    newmarkGamma(W) 0.5;
 }
 
 gradSchemes

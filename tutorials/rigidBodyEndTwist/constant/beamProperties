@@ -77,10 +77,6 @@ beams
         externalMoment      (102.57 0 0);
         angularDamping      1;
 
-        // Trapezoidal rule: no numerical damping
-        newmarkBeta         0.25;
-        newmarkGamma        0.5;
-
         // Iterate to convergence in each time step. beta dt^2 kt/J =
         // 5.1e-4 here, so 2-4 iterations are enough (see rigidBodyEnd.H)
         nCouplingIterations 20;
