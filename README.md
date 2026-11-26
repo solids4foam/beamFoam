@@ -83,6 +83,27 @@ To visualise a deformed beam in ParaView, apply **Warp By Vector** using the
 `pointW` point-displacement field. Many tutorial cases also provide gnuplot
 scripts.
 
+## Checking How a Change Affects the Tutorials
+
+Every pull request is checked by the **Tutorial comparison** workflow. It
+builds the pull request and its base branch, runs the standalone tutorials
+(all but `beamTunnel`, which needs moorFV) with each, and comments on the pull
+request with a table of results: `identical`, `round-off`, `changed` (with
+the size of the largest change and where it is) or `fails now`. Only a
+tutorial that fails now fails the check, because many changes alter results
+on purpose.
+
+To run the same comparison locally, with the OpenFOAM environment sourced:
+
+```bash
+bin/beamFoamCompareWithBase -j 4 origin/main
+```
+
+It builds into its own directories, so your installed beamFoam is not
+changed, and writes `report.md` to `${TMPDIR:-/tmp}/beamFoamComparison`. Name
+cases after the base to run only those, e.g.
+`bin/beamFoamCompareWithBase origin/main cantilever`.
+
 ## Publication
 
 The formulation, implementation and principal benchmark cases are described in:

@@ -1,0 +1,168 @@
+# Compare the tutorial results of a pull request with those of its base
+#
+# Builds the base commit and the pull request (merged into the base), runs
+# the standalone tutorials with each, and reports how the results change:
+# in the run summary, and as one comment on the pull request that is updated
+# on every push. Changed results do not fail the check, because many pull
+# requests change them on purpose; a tutorial that runs on the base but fails
+# with the pull request does.
+#
+# Run the same comparison locally with
+#     bin/beamFoamCompareWithBase -j 4 origin/main
+name: Tutorial comparison
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Branch or commit to compare with"
+        default: "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: >-
+    tutorial-comparison-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    container:
+      image: opencfd/openfoam-dev:2312
+
+    env:
+      OPENFOAM_BASHRC: /usr/lib/openfoam/openfoam2312/etc/bashrc
+      OUTPUT_DIR: /tmp/tutorialComparison
+      EVENT_NAME: ${{ github.event_name }}
+      PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      INPUT_BASE: ${{ inputs.base }}
+
+    steps:
+      - name: Install git and python3 on container
+        run: |
+          apt update
+          apt install -y git python3
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and run the tutorials of the base and this change
+        shell: bash -l {0}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          source "$OPENFOAM_BASHRC"
+
+          if [ "$EVENT_NAME" = pull_request ]
+          then
+              base="$PR_BASE_SHA"
+              label="PR head ${PR_HEAD_SHA:0:10}, merged into the base"
+          else
+              base="$INPUT_BASE"
+              git rev-parse --verify -q "$base^{commit}" > /dev/null \
+                  || base="origin/$base"
+              label="$(git rev-parse --short=10 HEAD)"
+          fi
+
+          bin/beamFoamCompareWithBase -j 4 -o "$OUTPUT_DIR" -l "$label" \
+              "$base"
+
+      - name: Write the report to the run summary
+        if: always()
+        run: |
+          if [ -f "$OUTPUT_DIR/report.md" ]
+          then
+              cat "$OUTPUT_DIR/report.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+              echo "The comparison did not finish: see the job log." \
+                  >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the report and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tutorial-comparison
+          path: |
+            ${{ env.OUTPUT_DIR }}/report.md
+            ${{ env.OUTPUT_DIR }}/*/log.Allwmake
+            ${{ env.OUTPUT_DIR }}/*/run/*/log.*
+            ${{ env.OUTPUT_DIR }}/*/run/*/postProcessing/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+  comment:
+    needs: compare
+    # Pull requests from forks get a read-only token, so they only get the
+    # run summary
+    if: >-
+      always()
+      && needs.compare.result != 'cancelled'
+      && github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download the report
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: tutorial-comparison
+
+      - name: Comment on the pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- beamFoam-tutorial-comparison -->';
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}/` +
+              `${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let body;
+            if (fs.existsSync('report.md')) {
+              body = fs.readFileSync('report.md', 'utf8');
+            } else {
+              body = `${marker}\n## Tutorial comparison\n\n` +
+                'The comparison did not finish, for example because a ' +
+                'build failed.';
+            }
+            body += `\n\n[Workflow run and logs](${runUrl})\n`;
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              }
+            );
+            const existing = comments.find(
+              c => c.user.type === 'Bot' && c.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

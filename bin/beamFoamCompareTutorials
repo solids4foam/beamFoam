@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+# -----------------------------------------------------------------------------
+# License
+#     This file is part of beamFoam, licensed under the GNU General Public
+#     License <http://www.gnu.org/licenses/>.
+#
+# Script
+#     beamFoamCompareTutorials
+#
+# Description
+#     Compares two directories of tutorial runs written by
+#     beamFoamRunTutorials, a base and a head, and writes a Markdown report.
+#
+#     Every output file of each case is compared: the fields in the time
+#     directories, the mesh and postProcessing. Logs and plots are not.
+#     Numbers are compared by value and the rest of the text must match. The
+#     size of a change is the largest difference between matching numbers,
+#     divided by the largest value of the quantity: in a postProcessing table
+#     (.dat), the largest value in the same column; in any other file, the
+#     largest value in the file. Integers, such as list sizes, do not count as
+#     values unless the column holds only integers, such as iteration counts.
+#     This measures a change against the size of the field, so that
+#     round-off in components near zero does not look large.
+#
+#     A case is
+#       identical      every output file is byte-for-byte the same
+#       round-off      every change is at most --roundoff (default 1e-5, the
+#                      last digit of writePrecision 6)
+#       changed        a larger change, or a different set of output files
+#       fails now      runs on the base but not on the head
+#       runs now       fails on the base but runs on the head
+#       fails on both  fails on the base and on the head
+#       new case       only in the head
+#       removed        only in the base
+#
+#     $ bin/beamFoamCompareTutorials [-o report.md] <baseDir> <headDir>
+#
+#     Exits 1 if a case fails now, otherwise 0: changed results alone are
+#     not an error, because many pull requests change them on purpose.
+#
+#     Uses the Python standard library only.
+#
+# -----------------------------------------------------------------------------
+
+import argparse
+import os
+import re
+import sys
+
+MARKER = "<!-- beamFoam-tutorial-comparison -->"
+
+# Files and directories that are not results. Hidden files, such as macOS's
+# .DS_Store, are skipped too
+SKIP_PREFIXES = ("log.", ".")
+SKIP_SUFFIXES = (".pdf", ".png", ".eps", ".ps", ".gif", ".mp4", ".foam")
+SKIP_NAMES = {"status"}
+SKIP_DIRS = {".noPlotting"}
+
+TOKEN_SPLIT = re.compile(r"[\s();,]+")
+INTEGER = re.compile(r"^[-+]?\d+$")
+
+
+def read_status(case_dir):
+    """Return (status, seconds) from the case's status file, or None"""
+    try:
+        with open(os.path.join(case_dir, "status")) as f:
+            parts = f.read().split()
+        return parts[0], int(parts[1])
+    except (OSError, IndexError, ValueError):
+        return None
+
+
+def result_files(case_dir):
+    """Return the relative paths of the result files of a case"""
+    files = set()
+    for root, dirs, names in os.walk(case_dir):
+        dirs[:] = [
+            d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")
+        ]
+        for name in names:
+            if (
+                name in SKIP_NAMES
+                or name.startswith(SKIP_PREFIXES)
+                or name.endswith(SKIP_SUFFIXES)
+            ):
+                continue
+            path = os.path.join(root, name)
+            files.add(os.path.relpath(path, case_dir))
+    return files
+
+
+def newton_iterations(case_dir):
+    """Return the total Newton iterations written by beamConvergenceData,
+    or None if the case does not use it"""
+    total = None
+    for root, dirs, names in os.walk(os.path.join(case_dir, "postProcessing")):
+        for name in names:
+            if not (name.startswith("beamConvergenceData")
+                    and name.endswith(".dat")):
+                continue
+            column = None
+            with open(os.path.join(root, name)) as f:
+                for line in f:
+                    words = line.split()
+                    if not words:
+                        continue
+                    if words[0] == "#":
+                        if "nNewton" in words:
+                            column = words.index("nNewton") - 1
+                        continue
+                    if column is None or column >= len(words):
+                        continue
+                    try:
+                        total = (total or 0) + int(float(words[column]))
+                    except ValueError:
+                        pass
+    return total
+
+
+def log_tail(case_dir, n_lines=15):
+    """Return the last lines of the solver log, or of log.Allrun"""
+    for name in ("log.beamFoam", "log.Allrun"):
+        path = os.path.join(case_dir, name)
+        if os.path.isfile(path):
+            with open(path, errors="replace") as f:
+                lines = f.read().rstrip().splitlines()
+            return name, lines[-n_lines:]
+    return None, []
+
+
+def to_number(token):
+    try:
+        return float(token)
+    except ValueError:
+        return None
+
+
+def tokens_by_column(text, tabular):
+    """Return a list of (column, token). The column is the token's position
+    in its line for a table, and None otherwise"""
+    result = []
+    for line in text.splitlines():
+        words = [w for w in TOKEN_SPLIT.split(line) if w]
+        for i, word in enumerate(words):
+            result.append((i if tabular else None, word))
+    return result
+
+
+def compare_file(base_path, head_path):
+    """Compare two files.
+
+    Return (kind, size): kind is "identical", "numbers" (only numbers
+    differ; size is the largest scaled difference) or "text" (the text
+    around the numbers differs; size is None).
+    """
+    with open(base_path, "rb") as f:
+        base_bytes = f.read()
+    with open(head_path, "rb") as f:
+        head_bytes = f.read()
+
+    if base_bytes == head_bytes:
+        return "identical", 0.0
+
+    tabular = base_path.endswith(".dat")
+    try:
+        base_tokens = tokens_by_column(base_bytes.decode(), tabular)
+        head_tokens = tokens_by_column(head_bytes.decode(), tabular)
+    except UnicodeDecodeError:
+        return "text", None
+
+    if len(base_tokens) != len(head_tokens):
+        return "text", None
+
+    diffs = {}
+    scales = {}
+    integer_scales = {}
+    for (column, b), (_, h) in zip(base_tokens, head_tokens):
+        bn = to_number(b)
+        hn = to_number(h)
+        if bn is None or hn is None:
+            if b != h:
+                return "text", None
+            continue
+        if bn != bn or hn != hn:
+            # NaN: equal only if both are NaN
+            if (bn != bn) != (hn != hn):
+                return "text", None
+            continue
+        if bn != hn:
+            diffs[column] = max(diffs.get(column, 0.0), abs(bn - hn))
+        largest = max(abs(bn), abs(hn))
+        if INTEGER.match(b) and INTEGER.match(h):
+            integer_scales[column] = max(integer_scales.get(column, 0.0),
+                                         largest)
+        else:
+            scales[column] = max(scales.get(column, 0.0), largest)
+
+    if not diffs:
+        # Only formatting differs, e.g. 1e-05 and 1.0e-05
+        return "numbers", 0.0
+
+    size = 0.0
+    for column, diff in diffs.items():
+        # A column of integers, such as Newton iteration counts, is measured
+        # by its own largest value
+        scale = scales.get(column, 0.0) or integer_scales.get(column, 0.0)
+        if scale == 0.0 or scale == float("inf"):
+            return "text", None
+        size = max(size, diff/scale)
+
+    return "numbers", size
+
+
+def compare_case(base_dir, head_dir, roundoff):
+    """Return a dict describing the comparison of one case"""
+    base_status = read_status(base_dir) if base_dir else None
+    head_status = read_status(head_dir) if head_dir else None
+
+    result = {
+        "base_status": base_status,
+        "head_status": head_status,
+        "files": [],
+        "only_base": [],
+        "only_head": [],
+        "largest": None,
+        "base_newton": newton_iterations(base_dir) if base_dir else None,
+        "head_newton": newton_iterations(head_dir) if head_dir else None,
+        "log": (None, []),
+    }
+
+    if head_status is not None and head_status[0] != "ok":
+        result["log"] = log_tail(head_dir)
+
+    if base_status is None:
+        result["result"] = "new case"
+        return result
+    if head_status is None:
+        result["result"] = "removed"
+        return result
+
+    base_ok = base_status[0] == "ok"
+    head_ok = head_status[0] == "ok"
+    if base_ok and not head_ok:
+        result["result"] = "fails now"
+        return result
+    if not base_ok and not head_ok:
+        result["result"] = "fails on both"
+        return result
+
+    base_files = result_files(base_dir)
+    head_files = result_files(head_dir)
+    result["only_base"] = sorted(base_files - head_files)
+    result["only_head"] = sorted(head_files - base_files)
+
+    for rel in sorted(base_files & head_files):
+        kind, size = compare_file(
+            os.path.join(base_dir, rel), os.path.join(head_dir, rel)
+        )
+        if kind != "identical":
+            result["files"].append((rel, kind, size))
+
+    def sort_key(entry):
+        rel, kind, size = entry
+        return float("inf") if size is None else size
+
+    result["files"].sort(key=sort_key, reverse=True)
+    if result["files"]:
+        result["largest"] = result["files"][0]
+
+    if not base_ok:
+        result["result"] = "runs now"
+    elif not result["files"] and not result["only_base"] \
+            and not result["only_head"]:
+        result["result"] = "identical"
+    elif (
+        not result["only_base"]
+        and not result["only_head"]
+        and all(size is not None and size <= roundoff
+                for _, _, size in result["files"])
+    ):
+        result["result"] = "round-off"
+    else:
+        result["result"] = "changed"
+
+    return result
+
+
+def format_size(kind, size):
+    if kind == "text":
+        return "text differs"
+    if size == 0.0:
+        return "format only"
+    return "{:.1e}".format(size)
+
+
+def format_time(status):
+    return "-" if status is None else str(status[1])
+
+
+def format_count(count):
+    return "-" if count is None else str(count)
+
+
+def time_of(rel):
+    """Return the time of a file in a time directory, or None"""
+    first = rel.split(os.sep, 1)[0]
+    if INTEGER.match(first) or to_number(first) is not None:
+        return to_number(first)
+    return None
+
+
+def files_to_show(files, n_max=30):
+    """Return the changed files to list, and how many are left out: the
+    files outside time directories (postProcessing, mesh) and the fields at
+    the last time, largest change first"""
+    times = [t for t in (time_of(rel) for rel, _, _ in files) if t is not None]
+    last = max(times) if times else None
+    shown = [
+        entry for entry in files
+        if time_of(entry[0]) is None or time_of(entry[0]) == last
+    ]
+    shown = shown[:n_max]
+    return shown, len(files) - len(shown)
+
+
+def file_summary(r):
+    parts = ["{} changed file(s)".format(len(r["files"]))]
+    if r["only_base"]:
+        parts.append("{} only in the base".format(len(r["only_base"])))
+    if r["only_head"]:
+        parts.append("{} only in this change".format(len(r["only_head"])))
+    return ", ".join(parts)
+
+
+RESULT_LABELS = {
+    "identical": "identical",
+    "round-off": "round-off",
+    "changed": "**changed**",
+    "fails now": ":x: **fails now**",
+    "runs now": "runs now",
+    "fails on both": "fails on both",
+    "new case": "new case",
+    "removed": "removed",
+}
+
+
+def write_report(cases, results, base_label, head_label, roundoff):
+    lines = [
+        MARKER,
+        "## Tutorial comparison",
+        "",
+        "Base: `{}` · This change: `{}`".format(base_label, head_label),
+        "",
+        "| Case | Result | Largest change | In file "
+        "| Newton iterations | Run time (s) |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+
+    for case in cases:
+        r = results[case]
+        if r["largest"]:
+            rel, kind, size = r["largest"]
+            largest = format_size(kind, size)
+            where = "`{}`".format(rel)
+        else:
+            largest = "-"
+            where = "-"
+        if r["only_base"] or r["only_head"]:
+            if where == "-":
+                where = "output files differ"
+            else:
+                where += " (output files differ)"
+        lines.append(
+            "| {} | {} | {} | {} | {} → {} | {} → {} |".format(
+                case,
+                RESULT_LABELS[r["result"]],
+                largest,
+                where,
+                format_count(r["base_newton"]),
+                format_count(r["head_newton"]),
+                format_time(r["base_status"]),
+                format_time(r["head_status"]),
+            )
+        )
+
+    lines += [
+        "",
+        "Largest change: the largest difference between matching numbers, "
+        "divided by the largest value in the same file (or, in a "
+        "postProcessing table, the same column). Round-off: every change is "
+        "at most {:g}, about the last written digit. Newton iterations and "
+        "run times are base → this change.".format(roundoff),
+    ]
+
+    for case in cases:
+        name, tail = results[case]["log"]
+        if not tail:
+            continue
+        lines += [
+            "",
+            "<details><summary>{}: end of {}</summary>".format(case, name),
+            "",
+            "```text",
+        ] + tail + [
+            "```",
+            "",
+            "</details>",
+        ]
+
+    details = [c for c in cases if results[c]["result"] in
+               ("changed", "round-off", "runs now")]
+    for case in details:
+        r = results[case]
+        lines += [
+            "",
+            "<details><summary>{}: {}</summary>".format(
+                case, file_summary(r)
+            ),
+            "",
+            "| File | Change |",
+            "| --- | --- |",
+        ]
+        shown, n_other = files_to_show(r["files"])
+        for rel, kind, size in shown:
+            lines.append("| `{}` | {} |".format(rel, format_size(kind, size)))
+        if n_other:
+            lines.append(
+                "| ... {} more, at earlier times | |".format(n_other)
+            )
+        for key, label in (("only_base", "only in the base"),
+                           ("only_head", "only in this change")):
+            for rel in r[key][:10]:
+                lines.append("| `{}` | {} |".format(rel, label))
+            if len(r[key]) > 10:
+                lines.append(
+                    "| ... {} more | {} |".format(len(r[key]) - 10, label)
+                )
+        lines += ["", "</details>"]
+
+    return "\n".join(lines) + "\n"
+
+
+def list_cases(run_dir):
+    return {
+        name
+        for name in os.listdir(run_dir)
+        if os.path.isfile(os.path.join(run_dir, name, "status"))
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Compare two directories of beamFoam tutorial runs"
+    )
+    parser.add_argument("base_dir")
+    parser.add_argument("head_dir")
+    parser.add_argument("-o", "--output", help="Markdown report to write")
+    parser.add_argument("--base-label", default="base")
+    parser.add_argument("--head-label", default="head")
+    parser.add_argument(
+        "--roundoff",
+        type=float,
+        default=1e-5,
+        help="largest change counted as round-off (default 1e-5)",
+    )
+
+    args = parser.parse_args()
+
+    base_cases = list_cases(args.base_dir)
+    head_cases = list_cases(args.head_dir)
+    cases = sorted(base_cases | head_cases)
+
+    results = {}
+    for case in cases:
+        results[case] = compare_case(
+            os.path.join(args.base_dir, case) if case in base_cases else None,
+            os.path.join(args.head_dir, case) if case in head_cases else None,
+            args.roundoff,
+        )
+
+    report = write_report(
+        cases, results, args.base_label, args.head_label, args.roundoff
+    )
+
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(report)
+
+    for case in cases:
+        r = results[case]
+        largest = ""
+        if r["largest"]:
+            rel, kind, size = r["largest"]
+            largest = "{} in {}".format(format_size(kind, size), rel)
+        print("{:40s} {:14s} {}".format(case, r["result"], largest))
+
+    n_failing = sum(1 for c in cases if results[c]["result"] == "fails now")
+    if n_failing:
+        print("{} case(s) fail now".format(n_failing))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
